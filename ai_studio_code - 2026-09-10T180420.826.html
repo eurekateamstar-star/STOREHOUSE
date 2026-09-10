@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>行動倉儲管理 App</title>
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0; padding: 0;
+            background-color: #000;
+            color: #fff;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .phone-frame {
+            width: 100%;
+            max-width: 480px;
+            height: 100%;
+            margin: 0 auto;
+            background-color: #000;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        header {
+            position: absolute;
+            top: 0; left: 0; width: 100%;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.85), rgba(0,0,0,0));
+            z-index: 100;
+        }
+
+        .header-title {
+            font-size: 12px;
+            font-weight: bold;
+            background: rgba(0,0,0,0.6);
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .header-btns { display: flex; gap: 4px; align-items: center; }
+        .header-btns button {
+            background: rgba(0, 123, 255, 0.85);
+            border: none;
+            color: white;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+        }
+        .header-btns button.active { background: rgba(40, 167, 69, 0.9); }
+
+        .page-nav {
+            position: absolute;
+            top: 52px; left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(0,0,0,0.65);
+            padding: 5px 6px;
+            border-radius: 20px;
+            z-index: 95;
+            border: 1px solid rgba(255,255,255,0.15);
+            backdrop-filter: blur(4px);
+        }
+        .page-nav-btn {
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: #fff;
+            width: 26px; height: 26px;
+            border-radius: 50%;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .page-nav-btn:disabled { opacity: 0.25; cursor: default; }
+        .page-nav-title {
+            font-size: 12px;
+            font-weight: bold;
+            padding: 0 6px;
+            max-width: 130px;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .page-nav-add { background: rgba(40,167,69,0.9) !important; }
+        .page-nav-del { background: rgba(220,53,69,0.9) !important; }
+
+        .image-map-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: #111;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #map-canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            height: 100%;
+            transform-origin: 0 0;
+        }
+
+        #warehouse-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        .box-wrapper {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            touch-action: none;
+            z-index: 50;
+        }
+
+        .box-image-hotspot {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: transparent !important;
+            border: none !important;
+            cursor: pointer;
+            display: block;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.6));
+        }
+
+        .box-wrapper.selected .box-image-hotspot {
+            outline: 2px dashed #ffc107;
+            background: rgba(255, 193, 7, 0.1) !important;
+            border-radius: 4px;
+        }
+
+        .resize-handle {
+            display: none;
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: #ffc107;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            z-index: 60;
+        }
+        .box-wrapper.selected .resize-handle { display: block; }
+        .handle-tl { top: -12px; left: -12px; cursor: nwse-resize; }
+        .handle-tr { top: -12px; right: -12px; cursor: nesw-resize; }
+        .handle-bl { bottom: -12px; left: -12px; cursor: nesw-resize; }
+        .handle-br { bottom: -12px; right: -12px; cursor: nwse-resize; }
+
+        .bg-resize-handle {
+            display: none;
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            background: #17a2b8;
+            border: 3px solid #fff;
+            border-radius: 50%;
+            z-index: 70;
+            touch-action: none;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+        }
+        .bg-resize-handle.visible { display: block; }
+        #bg-handle-tl { cursor: nwse-resize; }
+        #bg-handle-br { cursor: nwse-resize; }
+        #bg-handle-tr { cursor: nesw-resize; }
+        #bg-handle-bl { cursor: nesw-resize; }
+
+        .mode-hint {
+            position: absolute;
+            top: 92px; left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.75);
+            color: #ffc107;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            z-index: 90;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,193,7,0.3);
+            display: none;
+            text-align: center;
+            width: 85%;
+        }
+
+        .edit-toolbar {
+            display: none;
+            position: absolute;
+            bottom: 15px; left: 50%;
+            transform: translateX(-50%);
+            background: rgba(20, 20, 20, 0.95);
+            padding: 10px 15px;
+            border-radius: 20px;
+            border: 1px solid #444;
+            z-index: 100;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.6);
+            width: 90%;
+            max-width: 400px;
+            gap: 8px;
+            align-items: center;
+        }
+        .edit-toolbar input {
+            flex: 1;
+            padding: 8px 12px;
+            background: #333;
+            border: 1px solid #555;
+            color: white;
+            border-radius: 20px;
+            font-size: 13px;
+            outline: none;
+        }
+        .edit-toolbar button {
+            background: #28a745;
+            border: none;
+            color: white;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .modal {
+            display: none;
+            position: absolute;
+            bottom: 0; left: 0; width: 100%;
+            max-height: 90%;
+            background: #1e1e1e;
+            color: #fff;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.9);
+            padding: 20px;
+            z-index: 2000;
+            overflow-y: auto;
+        }
+        #backdrop {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1500;
+        }
+        .close-btn { background: #6c757d !important; margin-top: 15px; width: 100%; padding: 12px; border:none; color:white; border-radius:8px; font-weight:bold; cursor:pointer; }
+        .delete-box-btn { background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; float: right; cursor: pointer; }
+
+        #overview-view {
+            display: none;
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: #0d0d0d;
+            overflow-y: auto;
+            box-sizing: border-box;
+            padding: 100px 14px 30px 14px;
+            z-index: 10;
+        }
+        .ov-page-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #4da3ff;
+            margin: 18px 0 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #2a2a2a;
+        }
+        .ov-page-title:first-child { margin-top: 0; }
+        .ov-box {
+            background: #1c1c1c;
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+        .ov-box:active { background: #262626; }
+        .ov-box-title {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .ov-box-count { font-size: 11px; color: #888; font-weight: normal; }
+        .ov-item {
+            font-size: 13px;
+            color: #ddd;
+            padding: 3px 0 3px 8px;
+            border-left: 2px solid #444;
+            margin-bottom: 2px;
+        }
+        .ov-empty { font-size: 12px; color: #666; font-style: italic; padding-left: 6px; }
+        .ov-empty-page { font-size: 12px; color: #666; padding: 4px 0 4px 2px; }
+
+        .items-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            max-height: 250px;
+            overflow-y: auto;
+            margin-bottom: 12px;
+            padding: 4px;
+        }
+        .grid-item-card {
+            background: #282828;
+            border: 1px solid #383838;
+            border-radius: 10px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .grid-item-card:active { transform: scale(0.96); background: #333; }
+        .grid-item-card img {
+            width: 100%;
+            height: 75px;
+            object-fit: contain;
+            border-radius: 6px;
+            background: #1a1a1a;
+            margin-bottom: 6px;
+        }
+        .grid-item-name {
+            font-size: 12px;
+            font-weight: bold;
+            color: #fff;
+            width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 2px;
+        }
+        .grid-item-qty {
+            font-size: 11px;
+            color: #ffc107;
+            font-weight: bold;
+        }
+        .grid-item-del {
+            position: absolute;
+            top: 4px; right: 4px;
+            background: rgba(220, 53, 69, 0.9);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 22px; height: 22px;
+            font-size: 11px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="phone-frame">
+        <header>
+            <div class="header-title" id="mode-indicator">🔍 檢視模式</div>
+            <div class="header-btns">
+                <button id="btn-toggle-overview" onclick="toggleOverview()">📋 總覽</button>
+                <input type="file" id="bg-upload" style="display: none;" accept="image/*" onchange="uploadBackgroundImage(event)">
+                <button id="btn-change-bg" style="display:none;" onclick="document.getElementById('bg-upload').click()">📁 換底圖</button>
+                <button id="btn-move-mode" style="display:none;" onclick="toggleLayoutMode()">📐 移動/縮放</button>
+                <button id="mode-btn-edit" onclick="toggleContentEditMode()">✏️ 編輯內容</button>
+            </div>
+        </header>
+
+        <div class="page-nav" id="page-nav">
+            <button class="page-nav-btn" id="page-nav-prev" onclick="goToPage(-1)">◀</button>
+            <div class="page-nav-title" id="page-nav-title">載入中…</div>
+            <button class="page-nav-btn" id="page-nav-next" onclick="goToPage(1)">▶</button>
+            <button class="page-nav-btn page-nav-add" id="btn-add-page" style="display:none;" onclick="addNewPage()">＋</button>
+            <button class="page-nav-btn page-nav-del" id="btn-del-page" style="display:none;" onclick="deleteCurrentPage()">🗑</button>
+        </div>
+
+        <div class="image-map-container" id="map-container">
+            <div id="map-canvas">
+                <img id="warehouse-img" src="" alt="請點擊換底圖">
+                <div id="boxes-layer"></div>
+            </div>
+            <div class="bg-resize-handle" id="bg-handle-tl"></div>
+            <div class="bg-resize-handle" id="bg-handle-tr"></div>
+            <div class="bg-resize-handle" id="bg-handle-bl"></div>
+            <div class="bg-resize-handle" id="bg-handle-br"></div>
+            <div id="mode-hint" class="mode-hint">提示</div>
+        </div>
+
+        <div id="overview-view"></div>
+
+        <div class="edit-toolbar" id="edit-toolbar">
+            <input type="text" id="new-box-name" placeholder="新箱子名稱 (例: 救護箱)">
+            <button onclick="addNewBox()">+ 新增箱子</button>
+        </div>
+
+        <!-- 箱子詳情視窗 -->
+        <div id="backdrop" onclick="closeModal()"></div>
+        <div id="item-modal" class="modal">
+            <div style="overflow:hidden; margin-bottom:12px;">
+                <h2 id="modal-box-title" style="margin:0; font-size:18px; display:inline-block;">箱子詳情</h2>
+                <button id="delete-box-btn" class="delete-box-btn" style="display:none;" onclick="deleteCurrentBox()">🗑️ 刪除箱子</button>
+            </div>
+            
+            <div id="box-image-edit-section" style="text-align: center; display:none; margin-bottom: 12px; background: #252525; padding: 10px; border-radius: 8px; border: 1px solid #444;">
+                <input type="file" id="box-img-upload" style="display:none;" accept="image/*" onchange="uploadBoxImage(event)">
+                <button style="background:#ffc107; color:#000; padding:8px 14px; font-size:12px; border:none; border-radius:6px; font-weight:bold; cursor:pointer; width:100%;" onclick="document.getElementById('box-img-upload').click()">📷 更換箱子外觀照片 (支援去背 PNG)</button>
+            </div>
+
+            <div style="font-size: 13px; color:#aaa; margin-bottom:6px;">📦 箱內物品清單 (九宮格)：</div>
+            <div id="item-list-container" class="items-grid"></div>
+            
+            <div id="add-item-section" style="background: #252525; padding: 12px; border-radius: 8px; border: 1px solid #444; display:none;">
+                <div style="font-size: 13px; color: #ffc107; font-weight:bold; margin-bottom: 8px;">➕ 新增庫存物品</div>
+                <input type="text" id="new-item-name" placeholder="物品名稱 (例: N95口罩)" style="width:100%; padding:8px; background:#1a1a1a; border:1px solid #444; color:white; border-radius:6px; margin-bottom:8px; font-size:13px;">
+                <input type="number" id="new-item-qty" placeholder="數量 (例: 50)" value="1" min="1" style="width:100%; padding:8px; background:#1a1a1a; border:1px solid #444; color:white; border-radius:6px; margin-bottom:8px; font-size:13px;">
+                
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <input type="file" id="item-img-file" accept="image/*" style="font-size:11px; flex:1;">
+                    <button style="background:#28a745; border:none; color:white; padding:8px 14px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:13px;" onclick="addItemWithImage()">加入物品</button>
+                </div>
+            </div>
+
+            <button class="close-btn" onclick="closeModal()">關閉視窗</button>
+        </div>
+
+        <!-- 💡 物品編輯獨立彈跳視窗 (App 風格) -->
+        <div id="item-edit-modal" class="modal" style="z-index: 2500;">
+            <h2 style="margin:0 0 12px 0; font-size:18px; color:#ffc107;">✏️ 編輯物品資料</h2>
+            
+            <div style="text-align: center; margin-bottom: 12px; background: #252525; padding: 10px; border-radius: 8px; border: 1px solid #444;">
+                <img id="edit-item-preview-img" src="" style="width: 80px; height: 80px; object-fit: contain; border-radius: 6px; background: #1a1a1a; margin-bottom: 8px; display:block; margin-left:auto; margin-right:auto;">
+                <input type="file" id="edit-item-img-input" style="display:none;" accept="image/*" onchange="uploadNewItemImage(event)">
+                <button style="background:#17a2b8; color:#fff; padding:6px 12px; font-size:11px; border:none; border-radius:6px; font-weight:bold; cursor:pointer;" onclick="document.getElementById('edit-item-img-input').click()">📷 更換物品圖片</button>
+            </div>
+
+            <div style="font-size: 13px; color:#aaa; margin-bottom:4px;">物品名稱：</div>
+            <input type="text" id="edit-item-name-input" style="width:100%; padding:9px; background:#1a1a1a; border:1px solid #444; color:white; border-radius:6px; margin-bottom:10px; font-size:13px;">
+
+            <div style="font-size: 13px; color:#aaa; margin-bottom:4px;">數量：</div>
+            <input type="number" id="edit-item-qty-input" min="1" style="width:100%; padding:9px; background:#1a1a1a; border:1px solid #444; color:white; border-radius:6px; margin-bottom:15px; font-size:13px;">
+
+            <div style="display:flex; gap:10px; margin-bottom:10px;">
+                <button style="flex:1; background:#dc3545; color:white; border:none; padding:10px; border-radius:8px; font-weight:bold; cursor:pointer;" onclick="confirmDeleteEditingItem()">🗑️ 刪除物品</button>
+                <button style="flex:1; background:#28a745; color:white; border:none; padding:10px; border-radius:8px; font-weight:bold; cursor:pointer;" onclick="saveEditingItem()">💾 儲存修改</button>
+            </div>
+            <button class="close-btn" style="margin-top:0;" onclick="closeEditItemModal()">取消返回</button>
+        </div>
+    </div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, getDocs, addDoc, doc, updateDoc, getDoc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD9oJirgoJCTU7h-ODfSpfwC80E5fqze2A",
+      authDomain: "clawone-6445c.firebaseapp.com",
+      projectId: "clawone-6445c",
+      storageBucket: "clawone-6445c.firebasestorage.app",
+      messagingSenderId: "945236029933",
+      appId: "1:945236029933:web:f93ffb9e6f8b41aebd37e4",
+      measurementId: "G-JEB18KRCXS"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+
+    let isLayoutMode = false;
+    let isContentEditActive = false;
+    let isOverviewActive = false;
+    let currentBoxId = null;
+    let editingItemIndex = null; // 記錄目前正在編輯的物品索引
+
+    let scale = 1, panX = 0, panY = 0;
+    let pages = [];
+    let currentPageIndex = 0;
+    let boxesCache = null;
+    const imageMemoryCache = new Map();
+
+    async function deleteImageFromStorage(fileUrl) {
+        if (!fileUrl || !fileUrl.includes('firebasestorage.googleapis.com')) return;
+        try {
+            const decodedUrl = decodeURIComponent(fileUrl);
+            const startIndex = decodedUrl.indexOf('/o/') + 3;
+            const endIndex = decodedUrl.indexOf('?');
+            if (startIndex !== -1 && endIndex !== -1) {
+                const filePath = decodedUrl.substring(startIndex, endIndex);
+                const fileRef = ref(storage, filePath);
+                await deleteObject(fileRef);
+            }
+        } catch (e) {}
+    }
+
+    async function processImageFile(file, maxWidth = 900) {
+        if (file.type === 'image/png') return file;
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    if (width > maxWidth) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    canvas.toBlob((blob) => { resolve(blob); }, 'image/jpeg', 0.75);
+                };
+            };
+        });
+    }
+
+    function preloadImage(src) {
+        if (!src) return Promise.resolve(src);
+        if (imageMemoryCache.has(src)) return Promise.resolve(src);
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => { imageMemoryCache.set(src, true); resolve(src); };
+            img.onerror = () => resolve(src);
+            img.src = src;
+        });
+    }
+
+    async function initApp() {
+        await loadPages();
+        await loadBoxes(true);
+        await switchToPage(currentPageIndex, true);
+    }
+    initApp();
+
+    async function loadPages() {
+        try {
+            const snap = await getDocs(collection(db, "warehouse_pages"));
+            pages = [];
+            snap.forEach(d => pages.push({ id: d.id, ...d.data() }));
+            pages.sort((a, b) => (a.order || 0) - (b.order || 0));
+        } catch (e) { pages = []; }
+
+        if (pages.length === 0) {
+            const migrated = { name: '第 1 排', imageUrl: '', scale: 1, panX: 0, panY: 0, order: Date.now() };
+            try {
+                const oldDoc = await getDoc(doc(db, "settings", "warehouse_layout"));
+                if (oldDoc.exists()) {
+                    const d = oldDoc.data();
+                    migrated.imageUrl = d.imageUrl || '';
+                    migrated.scale = d.scale || 1;
+                    migrated.panX = d.panX || 0;
+                    migrated.panY = d.panY || 0;
+                }
+            } catch (e) {}
+
+            let newPageId = null;
+            try {
+                const docRef = await addDoc(collection(db, "warehouse_pages"), migrated);
+                newPageId = docRef.id;
+                pages = [{ id: newPageId, ...migrated }];
+            } catch (e) {
+                pages = [{ id: 'local-fallback', ...migrated }];
+            }
+
+            if (newPageId) {
+                try {
+                    const boxSnap = await getDocs(collection(db, "warehouse_boxes"));
+                    const updates = [];
+                    boxSnap.forEach(d => {
+                        if (!d.data().pageId) {
+                            updates.push(updateDoc(doc(db, "warehouse_boxes", d.id), { pageId: newPageId }));
+                        }
+                    });
+                    await Promise.all(updates);
+                } catch (e) {}
+            }
+        }
+        currentPageIndex = 0;
+    }
+
+    function updateCanvasTransform() {
+        const canvas = document.getElementById('map-canvas');
+        canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+        updateBgHandles();
+    }
+
+    function updateBgHandles() {
+        const mapContainerEl = document.getElementById('map-container');
+        const rect = mapContainerEl.getBoundingClientRect();
+        const cw = rect.width, ch = rect.height;
+        const corners = {
+            tl: { x: panX, y: panY },
+            tr: { x: panX + cw * scale, y: panY },
+            bl: { x: panX, y: panY + ch * scale },
+            br: { x: panX + cw * scale, y: panY + ch * scale }
+        };
+        Object.entries(corners).forEach(([pos, pt]) => {
+            const el = document.getElementById('bg-handle-' + pos);
+            if (!el) return;
+            el.style.left = pt.x + 'px';
+            el.style.top = pt.y + 'px';
+        });
+    }
+
+    window.toggleContentEditMode = function() {
+        isContentEditActive = !isContentEditActive;
+        const btnEdit = document.getElementById('mode-btn-edit');
+        const btnChangeBg = document.getElementById('btn-change-bg');
+        const btnMoveMode = document.getElementById('btn-move-mode');
+        const indicator = document.getElementById('mode-indicator');
+        const toolbar = document.getElementById('edit-toolbar');
+
+        if (isContentEditActive) {
+            btnEdit.innerText = "🔒 關閉編輯";
+            btnEdit.classList.add('active');
+            indicator.innerText = "✏️ 編輯內容模式";
+            if (!isOverviewActive) {
+                btnChangeBg.style.display = 'block';
+                btnMoveMode.style.display = 'block';
+                toolbar.style.display = 'flex';
+            }
+        } else {
+            btnEdit.innerText = "✏️ 編輯內容";
+            btnEdit.classList.remove('active');
+            indicator.innerText = "🔍 檢視模式";
+            btnChangeBg.style.display = 'none';
+            btnMoveMode.style.display = 'none';
+            toolbar.style.display = 'none';
+            if (isLayoutMode) toggleLayoutMode();
+        }
+        renderPageNav();
+        if (currentBoxId) {
+            const data = (boxesCache || []).find(b => b.id === currentBoxId);
+            if (data) renderBoxModal(data);
+        }
+    }
+
+    window.toggleLayoutMode = function() {
+        isLayoutMode = !isLayoutMode;
+        const btnMove = document.getElementById('btn-move-mode');
+        const indicator = document.getElementById('mode-indicator');
+        const hint = document.getElementById('mode-hint');
+
+        if (isLayoutMode) {
+            btnMove.classList.add('active');
+            indicator.innerText = "📐 移動與縮放模式";
+            hint.style.display = 'block';
+            hint.innerText = "💡 拖動箱子、拉黃點縮放；拉青色圓點縮放整張底圖；雙指或滑輪也可縮放/平移";
+        } else {
+            btnMove.classList.remove('active');
+            indicator.innerText = "✏️ 編輯內容模式";
+            hint.style.display = 'none';
+        }
+        document.querySelectorAll('.bg-resize-handle').forEach(h => h.classList.toggle('visible', isLayoutMode));
+        if (isLayoutMode) updateBgHandles();
+        renderBoxes();
+    }
+
+    window.goToPage = async function(direction) {
+        if (isLayoutMode) return;
+        const newIndex = currentPageIndex + direction;
+        if (newIndex < 0 || newIndex >= pages.length) return;
+        await switchToPage(newIndex);
+    }
+
+    async function switchToPage(index, isInitialLoad = false) {
+        if (!pages.length) {
+            renderPageNav();
+            return;
+        }
+        currentPageIndex = Math.max(0, Math.min(index, pages.length - 1));
+        const page = pages[currentPageIndex];
+
+        scale = page.scale || 1;
+        panX = page.panX || 0;
+        panY = page.panY || 0;
+        updateCanvasTransform();
+
+        const imgEl = document.getElementById('warehouse-img');
+        if (page.imageUrl) {
+            if (!isInitialLoad) await preloadImage(page.imageUrl);
+            imgEl.src = page.imageUrl;
+        } else {
+            imgEl.src = '';
+        }
+
+        renderPageNav();
+        renderBoxes();
+    }
+
+    function renderPageNav() {
+        const title = document.getElementById('page-nav-title');
+        const prevBtn = document.getElementById('page-nav-prev');
+        const nextBtn = document.getElementById('page-nav-next');
+        const addBtn = document.getElementById('btn-add-page');
+        const delBtn = document.getElementById('btn-del-page');
+        const page = pages[currentPageIndex];
+
+        title.innerText = page ? `${page.name} (${currentPageIndex + 1}/${pages.length})` : '尚無頁面';
+        prevBtn.disabled = currentPageIndex <= 0;
+        nextBtn.disabled = currentPageIndex >= pages.length - 1;
+        addBtn.style.display = isContentEditActive ? 'flex' : 'none';
+        delBtn.style.display = (isContentEditActive && pages.length > 1) ? 'flex' : 'none';
+    }
+
+    window.addNewPage = async function() {
+        const defaultName = `第 ${pages.length + 1} 排`;
+        const name = prompt('新頁面名稱 (例: 第二排、B區貨架)', defaultName);
+        if (name === null) return;
+        const finalName = name.trim() || defaultName;
+        const newPage = { name: finalName, imageUrl: '', scale: 1, panX: 0, panY: 0, order: Date.now() };
+        try {
+            const docRef = await addDoc(collection(db, "warehouse_pages"), newPage);
+            pages.push({ id: docRef.id, ...newPage });
+            await switchToPage(pages.length - 1);
+        } catch (e) { alert('新增頁面失敗'); }
+    }
+
+    window.deleteCurrentPage = async function() {
+        if (pages.length <= 1) return alert('至少要保留一個頁面');
+        const page = pages[currentPageIndex];
+        if (!confirm(`確定要刪除「${page.name}」嗎？裡面的箱子也會一併刪除。`)) return;
+        try {
+            const boxesToDelete = (boxesCache || []).filter(b => b.pageId === page.id);
+            for (const b of boxesToDelete) {
+                if (b.imageUrl) await deleteImageFromStorage(b.imageUrl);
+                if (b.items) {
+                    for (const item of b.items) {
+                        if (item.imageUrl) await deleteImageFromStorage(item.imageUrl);
+                    }
+                }
+            }
+            await Promise.all(boxesToDelete.map(b => deleteDoc(doc(db, "warehouse_boxes", b.id))));
+            if (page.imageUrl) await deleteImageFromStorage(page.imageUrl);
+            await deleteDoc(doc(db, "warehouse_pages", page.id));
+            boxesCache = (boxesCache || []).filter(b => b.pageId !== page.id);
+            pages.splice(currentPageIndex, 1);
+            await switchToPage(Math.max(0, currentPageIndex - 1));
+        } catch (e) { alert('刪除頁面失敗'); }
+    }
+
+    function escapeHtml(str) {
+        return String(str == null ? '' : str).replace(/[&<>"']/g, (m) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+        }[m]));
+    }
+
+    window.toggleOverview = function() {
+        setOverviewMode(!isOverviewActive);
+    }
+
+    function setOverviewMode(active) {
+        isOverviewActive = active;
+        const mapContainer = document.getElementById('map-container');
+        const overviewView = document.getElementById('overview-view');
+        const pageNav = document.getElementById('page-nav');
+        const editToolbar = document.getElementById('edit-toolbar');
+        const btnChangeBg = document.getElementById('btn-change-bg');
+        const btnMoveMode = document.getElementById('btn-move-mode');
+        const btnToggleOverview = document.getElementById('btn-toggle-overview');
+        const modeHint = document.getElementById('mode-hint');
+
+        if (active) {
+            mapContainer.style.display = 'none';
+            pageNav.style.display = 'none';
+            editToolbar.style.display = 'none';
+            modeHint.style.display = 'none';
+            btnChangeBg.style.display = 'none';
+            btnMoveMode.style.display = 'none';
+            overviewView.style.display = 'block';
+            btnToggleOverview.innerText = '🗺 地圖檢視';
+            btnToggleOverview.classList.add('active');
+            renderOverview();
+        } else {
+            overviewView.style.display = 'none';
+            mapContainer.style.display = 'block';
+            pageNav.style.display = 'flex';
+            btnToggleOverview.innerText = '📋 總覽';
+            btnToggleOverview.classList.remove('active');
+            if (isContentEditActive) {
+                editToolbar.style.display = 'flex';
+                btnChangeBg.style.display = 'block';
+                btnMoveMode.style.display = 'block';
+            }
+        }
+    }
+
+    function renderOverview() {
+        const container = document.getElementById('overview-view');
+        if (!pages.length) {
+            container.innerHTML = '<div class="ov-empty-page">尚無任何頁面資料</div>';
+            return;
+        }
+        let html = '';
+        pages.forEach((page) => {
+            html += `<div class="ov-page-title">📍 ${escapeHtml(page.name)}</div>`;
+            const boxes = (boxesCache || []).filter(b => b.pageId === page.id);
+            if (boxes.length === 0) {
+                html += `<div class="ov-empty-page">（這一排還沒有箱子）</div>`;
+            } else {
+                boxes.forEach((box) => {
+                    const items = box.items || [];
+                    html += `<div class="ov-box" onclick="openBoxModal('${box.id}')">`;
+                    html += `<div class="ov-box-title"><span>📦 ${escapeHtml(box.name || '未命名箱子')}</span><span class="ov-box-count">${items.length} 項物品</span></div>`;
+                    if (items.length === 0) {
+                        html += `<div class="ov-empty">（箱內尚無物品）</div>`;
+                    } else {
+                        items.forEach((it) => {
+                            html += `<div class="ov-item">• ${escapeHtml(it.name)} x${it.qty || 1}</div>`;
+                        });
+                    }
+                    html += `</div>`;
+                });
+            }
+        });
+        container.innerHTML = html;
+    }
+
+    async function loadBoxes(forceFetch = false) {
+        if (!forceFetch && boxesCache) {
+            renderBoxes();
+            return;
+        }
+        try {
+            const querySnapshot = await getDocs(collection(db, "warehouse_boxes"));
+            const newCache = [];
+            querySnapshot.forEach((docSnap) => {
+                newCache.push({ id: docSnap.id, ...docSnap.data() });
+            });
+            await Promise.all(newCache.map(b => preloadImage(b.imageUrl)));
+            boxesCache = newCache;
+        } catch (e) {
+            if (!boxesCache) boxesCache = [];
+        }
+        renderBoxes();
+    }
+
+    function renderBoxes() {
+        const layer = document.getElementById('boxes-layer');
+        const fragment = document.createDocumentFragment();
+        const currentPage = pages[currentPageIndex];
+        const pageId = currentPage ? currentPage.id : null;
+        (boxesCache || [])
+            .filter(b => b.pageId === pageId)
+            .forEach((data) => {
+                const el = buildBoxElement(data.id, data.imageUrl, data.x || 50, data.y || 50, data.width || 100, data.height || 80);
+                fragment.appendChild(el);
+            });
+        layer.replaceChildren(fragment);
+    }
+
+    function buildBoxElement(id, imageUrl, x, y, width, height) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'box-wrapper';
+        wrapper.style.left = x + '%';
+        wrapper.style.top = y + '%';
+        wrapper.style.width = width + 'px';
+        wrapper.style.height = height + 'px';
+
+        if (isLayoutMode) wrapper.classList.add('selected');
+
+        const img = document.createElement('img');
+        img.className = 'box-image-hotspot';
+        img.src = imageUrl || "https://via.placeholder.com/100?text=BOX";
+        wrapper.appendChild(img);
+
+        if (isLayoutMode) {
+            ['tl', 'tr', 'bl', 'br'].forEach(pos => {
+                const handle = document.createElement('div');
+                handle.className = `resize-handle handle-${pos}`;
+                wrapper.appendChild(handle);
+
+                handle.onpointerdown = (e) => {
+                    e.stopPropagation();
+                    handle.setPointerCapture(e.pointerId);
+                    const startX = e.clientX, startY = e.clientY;
+                    const startW = wrapper.offsetWidth, startH = wrapper.offsetHeight;
+
+                    const onPointerMove = (moveEvent) => {
+                        const dx = moveEvent.clientX - startX;
+                        const dy = moveEvent.clientY - startY;
+                        let newW = startW, newH = startH;
+                        if (pos.includes('r')) newW = Math.max(30, startW + dx);
+                        if (pos.includes('l')) newW = Math.max(30, startW - dx);
+                        if (pos.includes('b')) newH = Math.max(30, startH + dy);
+                        if (pos.includes('t')) newH = Math.max(30, startH - dy);
+                        wrapper.style.width = newW + 'px';
+                        wrapper.style.height = newH + 'px';
+                    };
+
+                    const onPointerUp = async () => {
+                        handle.removeEventListener('pointermove', onPointerMove);
+                        handle.removeEventListener('pointerup', onPointerUp);
+                        const finalW = wrapper.offsetWidth, finalH = wrapper.offsetHeight;
+                        updateCachedBox(id, { width: finalW, height: finalH });
+                        await updateDoc(doc(db, "warehouse_boxes", id), {
+                            width: finalW,
+                            height: finalH
+                        });
+                    };
+                    handle.addEventListener('pointermove', onPointerMove);
+                    handle.addEventListener('pointerup', onPointerUp);
+                };
+            });
+        }
+
+        wrapper.onclick = (e) => {
+            e.stopPropagation();
+            if (justSwiped) return;
+            if (!isLayoutMode) {
+                openBoxModal(id);
+            }
+        };
+
+        let isDragging = false;
+        wrapper.onpointerdown = (e) => {
+            if (!isLayoutMode || e.target.classList.contains('resize-handle')) return;
+            isDragging = true;
+            wrapper.setPointerCapture(e.pointerId);
+            e.stopPropagation();
+        };
+
+        wrapper.onpointermove = (e) => {
+            if (!isDragging || !isLayoutMode) return;
+            const container = document.getElementById('map-canvas').getBoundingClientRect();
+            let newX = ((e.clientX - container.left) / container.width) * 100;
+            let newY = ((e.clientY - container.top) / container.height) * 100;
+            newX = Math.max(2, Math.min(98, newX));
+            newY = Math.max(2, Math.min(98, newY));
+            wrapper.style.left = newX + '%';
+            wrapper.style.top = newY + '%';
+        };
+
+        wrapper.onpointerup = async (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            const container = document.getElementById('map-canvas').getBoundingClientRect();
+            let finalX = ((e.clientX - container.left) / container.width) * 100;
+            let finalY = ((e.clientY - container.top) / container.height) * 100;
+            finalX = Math.round(finalX);
+            finalY = Math.round(finalY);
+            updateCachedBox(id, { x: finalX, y: finalY });
+            await updateDoc(doc(db, "warehouse_boxes", id), { x: finalX, y: finalY });
+        };
+
+        return wrapper;
+    }
+
+    function updateCachedBox(id, patch) {
+        if (!boxesCache) return;
+        const idx = boxesCache.findIndex(b => b.id === id);
+        if (idx !== -1) boxesCache[idx] = { ...boxesCache[idx], ...patch };
+    }
+
+    const container = document.getElementById('map-container');
+    let isPanning = false, startPanX = 0, startPanY = 0;
+    let swipeStartX = 0, swipeStartY = 0, swipeActive = false;
+    let justSwiped = false;
+
+    function zoomAtPoint(newScale, clientX, clientY) {
+        newScale = Math.max(0.5, Math.min(5, newScale));
+        const rect = container.getBoundingClientRect();
+        const px = clientX - rect.left;
+        const py = clientY - rect.top;
+        const canvasX = (px - panX) / scale;
+        const canvasY = (py - panY) / scale;
+        scale = newScale;
+        panX = px - canvasX * scale;
+        panY = py - canvasY * scale;
+        updateCanvasTransform();
+    }
+
+    container.onwheel = (e) => {
+        if (!isLayoutMode) return;
+        e.preventDefault();
+        const zoomIntensity = 0.1;
+        const newScale = e.deltaY < 0 ? scale + zoomIntensity : scale - zoomIntensity;
+        zoomAtPoint(newScale, e.clientX, e.clientY);
+        saveCanvasLayout();
+    };
+
+    const oppositeCorner = { tl: 'br', tr: 'bl', bl: 'tr', br: 'tl' };
+    ['tl', 'tr', 'bl', 'br'].forEach((pos) => {
+        const handle = document.getElementById('bg-handle-' + pos);
+        if (!handle) return;
+        handle.onpointerdown = (e) => {
+            if (!isLayoutMode) return;
+            e.stopPropagation();
+            handle.setPointerCapture(e.pointerId);
+
+            const rect = container.getBoundingClientRect();
+            const cw = rect.width, ch = rect.height;
+            const anchorCanvas = {
+                tl: { x: 0, y: 0 }, tr: { x: cw, y: 0 },
+                bl: { x: 0, y: ch }, br: { x: cw, y: ch }
+            }[oppositeCorner[pos]];
+
+            const startScale = scale;
+            const anchorScreen = { x: panX + anchorCanvas.x * startScale, y: panY + anchorCanvas.y * startScale };
+            const startDist = Math.hypot(e.clientX - anchorScreen.x, e.clientY - anchorScreen.y) || 1;
+
+            const onMove = (moveEvent) => {
+                const curDist = Math.hypot(moveEvent.clientX - anchorScreen.x, moveEvent.clientY - anchorScreen.y);
+                let newScale = startScale * (curDist / startDist);
+                newScale = Math.max(0.5, Math.min(5, newScale));
+                scale = newScale;
+                panX = anchorScreen.x - anchorCanvas.x * scale;
+                panY = anchorScreen.y - anchorCanvas.y * scale;
+                updateCanvasTransform();
+            };
+            const onUp = () => {
+                handle.removeEventListener('pointermove', onMove);
+                handle.removeEventListener('pointerup', onUp);
+                saveCanvasLayout();
+            };
+            handle.addEventListener('pointermove', onMove);
+            handle.addEventListener('pointerup', onUp);
+        };
+    });
+
+    const activePointers = new Map();
+    let pinchPrevDist = null;
+
+    function pointDistance(p1, p2) {
+        return Math.hypot(p1.x - p2.x, p1.y - p2.y);
+    }
+
+    container.onpointerdown = (e) => {
+        if (isLayoutMode) {
+            activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            try { container.setPointerCapture(e.pointerId); } catch (err) {}
+
+            if (activePointers.size >= 2) {
+                isPanning = false;
+                const pts = [...activePointers.values()];
+                pinchPrevDist = pointDistance(pts[0], pts[1]);
+            } else if (e.target.id === 'map-container' || e.target.id === 'warehouse-img' || e.target.id === 'map-canvas') {
+                isPanning = true;
+                startPanX = e.clientX - panX;
+                startPanY = e.clientY - panY;
+            }
+        } else {
+            swipeActive = true;
+            swipeStartX = e.clientX;
+            swipeStartY = e.clientY;
+        }
+    };
+
+    container.onpointermove = (e) => {
+        if (isLayoutMode) {
+            if (activePointers.has(e.pointerId)) {
+                activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            }
+
+            if (activePointers.size >= 2) {
+                const pts = [...activePointers.values()];
+                const newDist = pointDistance(pts[0], pts[1]);
+                if (pinchPrevDist) {
+                    const ratio = newDist / pinchPrevDist;
+                    const midX = (pts[0].x + pts[1].x) / 2;
+                    const midY = (pts[0].y + pts[1].y) / 2;
+                    zoomAtPoint(scale * ratio, midX, midY);
+                }
+                pinchPrevDist = newDist;
+                return;
+            }
+
+            if (!isPanning) return;
+            panX = e.clientX - startPanX;
+            panY = e.clientY - startPanY;
+            updateCanvasTransform();
+        }
+    };
+
+    function endLayoutPointer(e) {
+        activePointers.delete(e.pointerId);
+        if (activePointers.size >= 2) {
+            const pts = [...activePointers.values()];
+            pinchPrevDist = pointDistance(pts[0], pts[1]);
+            isPanning = false;
+        } else if (activePointers.size === 1) {
+            pinchPrevDist = null;
+            const p = [...activePointers.values()][0];
+            startPanX = p.x - panX;
+            startPanY = p.y - panY;
+            isPanning = true;
+        } else {
+            pinchPrevDist = null;
+            if (isPanning) saveCanvasLayout();
+            isPanning = false;
+        }
+    }
+
+    container.onpointerup = (e) => {
+        if (isLayoutMode) {
+            endLayoutPointer(e);
+            return;
+        }
+        if (!swipeActive) return;
+        swipeActive = false;
+        const dx = e.clientX - swipeStartX;
+        const dy = e.clientY - swipeStartY;
+        if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+            justSwiped = true;
+            if (dx < 0) goToPage(1); else goToPage(-1);
+            setTimeout(() => { justSwiped = false; }, 80);
+        }
+    };
+
+    container.onpointercancel = (e) => {
+        if (isLayoutMode) endLayoutPointer(e);
+    };
+
+    async function saveCanvasLayout() {
+        const page = pages[currentPageIndex];
+        if (!page) return;
+        page.scale = scale; page.panX = panX; page.panY = panY;
+        try {
+            await setDoc(doc(db, "warehouse_pages", page.id), { scale, panX, panY }, { merge: true });
+        } catch (e) {}
+    }
+
+    window.addNewBox = async function() {
+        const name = document.getElementById('new-box-name').value;
+        if (!name) return alert('請輸入箱子名稱');
+        const page = pages[currentPageIndex];
+        if (!page) return alert('請先選擇/建立頁面');
+        try {
+            const newBox = { name: name, x: 50, y: 50, width: 100, height: 80, items: [], imageUrl: "", pageId: page.id };
+            const docRef = await addDoc(collection(db, "warehouse_boxes"), newBox);
+            document.getElementById('new-box-name').value = '';
+            if (!boxesCache) boxesCache = [];
+            boxesCache.push({ id: docRef.id, ...newBox });
+            renderBoxes();
+        } catch (e) { alert('新增失敗'); }
+    }
+
+    window.uploadBackgroundImage = async function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const page = pages[currentPageIndex];
+        if (!page) return;
+        try {
+            if (page.imageUrl) await deleteImageFromStorage(page.imageUrl);
+            const processedFile = await processImageFile(file, 1000);
+            const storageRef = ref(storage, 'inv/bg_' + Date.now() + (file.type === 'image/png' ? '.png' : '.jpg'));
+            const snapshot = await uploadBytes(storageRef, processedFile);
+            const url = await getDownloadURL(snapshot.ref);
+            await preloadImage(url);
+            await setDoc(doc(db, "warehouse_pages", page.id), { imageUrl: url }, { merge: true });
+            page.imageUrl = url;
+            document.getElementById('warehouse-img').src = url;
+        } catch (e) { alert('上傳失敗'); }
+    }
+
+    window.openBoxModal = async function(boxId) {
+        currentBoxId = boxId;
+        let data = (boxesCache || []).find(b => b.id === boxId);
+        if (!data) {
+            const docSnap = await getDoc(doc(db, "warehouse_boxes", boxId));
+            if (!docSnap.exists()) return;
+            data = { id: boxId, ...docSnap.data() };
+        }
+        renderBoxModal(data);
+    }
+
+    function renderBoxModal(data) {
+        document.getElementById('modal-box-title').innerText = `箱子: ${data.name}`;
+
+        if (isContentEditActive) {
+            document.getElementById('delete-box-btn').style.display = 'block';
+            document.getElementById('box-image-edit-section').style.display = 'block';
+            document.getElementById('add-item-section').style.display = 'block';
+        } else {
+            document.getElementById('delete-box-btn').style.display = 'none';
+            document.getElementById('box-image-edit-section').style.display = 'none';
+            document.getElementById('add-item-section').style.display = 'none';
+        }
+
+        const container = document.getElementById('item-list-container');
+        container.innerHTML = '';
+
+        if (data.items && data.items.length > 0) {
+            data.items.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = 'grid-item-card';
+
+                let deleteBtnHtml = '';
+                if (isContentEditActive) {
+                    deleteBtnHtml = `<button class="grid-item-del" onclick="event.stopPropagation(); deleteItem(${index})">✕</button>`;
+                }
+
+                card.innerHTML = `
+                    ${deleteBtnHtml}
+                    <img src="${item.imageUrl || 'https://via.placeholder.com/100?text=No+Img'}" alt="物品">
+                    <div class="grid-item-name">${escapeHtml(item.name)}</div>
+                    <div class="grid-item-qty">數量: ${item.qty || 1}</div>
+                `;
+
+                // 💡 編輯內容模式下，點擊卡片開啟 App 風格編輯物品視窗
+                if (isContentEditActive) {
+                    card.onclick = () => openEditItemModal(index);
+                }
+
+                container.appendChild(card);
+            });
+        } else {
+            container.innerHTML = '<div style="color: #777; text-align:center; padding:15px; font-size:13px; grid-column: span 3;">箱內尚無物品</div>';
+        }
+
+        document.getElementById('item-modal').style.display = 'block';
+        document.getElementById('backdrop').style.display = 'block';
+    }
+
+    window.closeModal = function() {
+        document.getElementById('item-modal').style.display = 'none';
+        document.getElementById('backdrop').style.display = 'none';
+        if (isOverviewActive) renderOverview();
+    }
+
+    window.addItemWithImage = async function() {
+        const name = document.getElementById('new-item-name').value;
+        const qty = document.getElementById('new-item-qty').value || 1;
+        const fileInput = document.getElementById('item-img-file');
+        const file = fileInput.files[0];
+
+        if (!name || !currentBoxId) return alert('請輸入物品名稱');
+
+        let imageUrl = "";
+        if (file) {
+            try {
+                const isPng = file.type === 'image/png';
+                const processedFile = await processImageFile(file, 500);
+                const storageRef = ref(storage, 'items/item_' + Date.now() + (isPng ? '.png' : '.jpg'));
+                const snapshot = await uploadBytes(storageRef, processedFile);
+                imageUrl = await getDownloadURL(snapshot.ref);
+                await preloadImage(imageUrl);
+            } catch (e) {}
+        }
+
+        try {
+            const boxRef = doc(db, "warehouse_boxes", currentBoxId);
+            const docSnap = await getDoc(boxRef);
+            let items = docSnap.data().items || [];
+            items.push({ name: name, qty: Number(qty), imageUrl: imageUrl });
+            await updateDoc(boxRef, { items: items });
+
+            updateCachedBox(currentBoxId, { items });
+
+            document.getElementById('new-item-name').value = '';
+            document.getElementById('new-item-qty').value = '1';
+            fileInput.value = '';
+            const data = (boxesCache || []).find(b => b.id === currentBoxId) || { id: currentBoxId, name: '', items };
+            renderBoxModal(data);
+        } catch (e) { alert('新增物品失敗'); }
+    }
+
+    window.deleteItem = async function(index) {
+        if (!confirm('確定要刪除這個物品嗎？')) return;
+        try {
+            const boxRef = doc(db, "warehouse_boxes", currentBoxId);
+            const docSnap = await getDoc(boxRef);
+            let items = docSnap.data().items || [];
+            
+            const targetItem = items[index];
+            if (targetItem && targetItem.imageUrl) {
+                await deleteImageFromStorage(targetItem.imageUrl);
+            }
+
+            items.splice(index, 1);
+            await updateDoc(boxRef, { items: items });
+
+            updateCachedBox(currentBoxId, { items });
+            const data = (boxesCache || []).find(b => b.id === currentBoxId);
+            renderBoxModal(data);
+        } catch (e) { alert('刪除物品失敗'); }
+    }
+
+    // ============ App 風格物品編輯視窗邏輯 ============
+
+    window.openEditItemModal = function(index) {
+        editingItemIndex = index;
+        const boxData = (boxesCache || []).find(b => b.id === currentBoxId);
+        if (!boxData || !boxData.items || !boxData.items[index]) return;
+        const item = boxData.items[index];
+
+        document.getElementById('edit-item-name-input').value = item.name || '';
+        document.getElementById('edit-item-qty-input').value = item.qty || 1;
+        document.getElementById('edit-item-preview-img').src = item.imageUrl || 'https://via.placeholder.com/80?text=No+Img';
+        document.getElementById('edit-item-img-input').value = '';
+
+        document.getElementById('item-edit-modal').style.display = 'block';
+    }
+
+    window.closeEditItemModal = function() {
+        document.getElementById('item-edit-modal').style.display = 'none';
+        editingItemIndex = null;
+    }
+
+    window.uploadNewItemImage = async function(event) {
+        const file = event.target.files[0];
+        if (!file || editingItemIndex === null) return;
+        const boxData = (boxesCache || []).find(b => b.id === currentBoxId);
+        if (!boxData || !boxData.items[editingItemIndex]) return;
+
+        const item = boxData.items[editingItemIndex];
+        try {
+            if (item.imageUrl) await deleteImageFromStorage(item.imageUrl);
+            const isPng = file.type === 'image/png';
+            const processedFile = await processImageFile(file, 500);
+            const storageRef = ref(storage, 'items/item_' + Date.now() + (isPng ? '.png' : '.jpg'));
+            const snapshot = await uploadBytes(storageRef, processedFile);
+            item.imageUrl = await getDownloadURL(snapshot.ref);
+            await preloadImage(item.imageUrl);
+
+            document.getElementById('edit-item-preview-img').src = item.imageUrl;
+        } catch (e) { alert('更換圖片失敗'); }
+    }
+
+    window.saveEditingItem = async function() {
+        if (editingItemIndex === null) return;
+        const boxData = (boxesCache || []).find(b => b.id === currentBoxId);
+        if (!boxData || !boxData.items[editingItemIndex]) return;
+
+        const newName = document.getElementById('edit-item-name-input').value.trim();
+        const newQty = parseInt(document.getElementById('edit-item-qty-input').value, 10);
+
+        if (!newName) return alert('請輸入物品名稱');
+        if (isNaN(newQty) || newQty < 1) return alert('數量必須為大於 0 的數字');
+
+        const item = boxData.items[editingItemIndex];
+        item.name = newName;
+        item.qty = newQty;
+
+        try {
+            const boxRef = doc(db, "warehouse_boxes", currentBoxId);
+            await updateDoc(boxRef, { items: boxData.items });
+            updateCachedBox(currentBoxId, { items: boxData.items });
+            
+            closeEditItemModal();
+            renderBoxModal(boxData);
+        } catch (e) { alert('儲存修改失敗'); }
+    }
+
+    window.confirmDeleteEditingItem = async function() {
+        if (editingItemIndex === null) return;
+        if (!confirm('確定要刪除這個物品嗎？')) return;
+
+        const boxData = (boxesCache || []).find(b => b.id === currentBoxId);
+        if (!boxData || !boxData.items[editingItemIndex]) return;
+
+        try {
+            const targetItem = boxData.items[editingItemIndex];
+            if (targetItem.imageUrl) {
+                await deleteImageFromStorage(targetItem.imageUrl);
+            }
+
+            boxData.items.splice(editingItemIndex, 1);
+            const boxRef = doc(db, "warehouse_boxes", currentBoxId);
+            await updateDoc(boxRef, { items: boxData.items });
+            updateCachedBox(currentBoxId, { items: boxData.items });
+
+            closeEditItemModal();
+            renderBoxModal(boxData);
+        } catch (e) { alert('刪除物品失敗'); }
+    }
+
+    window.uploadBoxImage = async function(event) {
+        const file = event.target.files[0];
+        if (!file || !currentBoxId) return;
+        try {
+            const boxData = (boxesCache || []).find(b => b.id === currentBoxId);
+            if (boxData && boxData.imageUrl) {
+                await deleteImageFromStorage(boxData.imageUrl);
+            }
+
+            const isPng = file.type === 'image/png';
+            const processedFile = await processImageFile(file, 600);
+            const storageRef = ref(storage, 'boxes/box_' + Date.now() + (isPng ? '.png' : '.jpg'));
+            const snapshot = await uploadBytes(storageRef, processedFile);
+            const url = await getDownloadURL(snapshot.ref);
+            await preloadImage(url);
+
+            await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { imageUrl: url });
+            updateCachedBox(currentBoxId, { imageUrl: url });
+            renderBoxes();
+        } catch (e) { alert('照片上傳失敗'); }
+    }
+
+    window.deleteCurrentBox = async function() {
+        if (!currentBoxId) return;
+        if (confirm('確定要刪除這個箱子嗎？')) {
+            try {
+                const boxData = (boxesCache || []).find(b => b.id === currentBoxId);
+                if (boxData) {
+                    if (boxData.imageUrl) await deleteImageFromStorage(boxData.imageUrl);
+                    if (boxData.items) {
+                        for (const item of boxData.items) {
+                            if (item.imageUrl) await deleteImageFromStorage(item.imageUrl);
+                        }
+                    }
+                }
+                await deleteDoc(doc(db, "warehouse_boxes", currentBoxId));
+                if (boxesCache) boxesCache = boxesCache.filter(b => b.id !== currentBoxId);
+                closeModal();
+                renderBoxes();
+            } catch (e) { alert('刪除失敗'); }
+        }
+    }
+</script>
+
+</body>
+</html>
