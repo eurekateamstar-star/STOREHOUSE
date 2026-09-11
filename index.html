@@ -1,4 +1,4 @@
---- START OF FILE Paste September 11, 2026 - 3:30PM ---
+--- START OF FILE Paste September 11, 2026 - 3:45PM ---
 
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -66,7 +66,6 @@
             border: 1px solid rgba(255, 255, 255, 0.12);
             box-shadow: none;
         }
-        .apple-btn.secondary:active { background: rgba(255, 255, 255, 0.15); }
         .apple-btn.danger { background: #ff3b30; box-shadow: 0 4px 12px rgba(255, 59, 48, 0.3); }
         .apple-btn.success { background: #34c759; box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3); }
 
@@ -171,7 +170,6 @@
             font-weight: 600;
             background: rgba(28, 28, 30, 0.75);
             backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
             padding: 8px 14px;
             border-radius: 20px;
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -183,7 +181,6 @@
         .header-btns button {
             background: rgba(28, 28, 30, 0.75);
             backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.1);
             color: white;
             padding: 8px 14px;
@@ -206,7 +203,6 @@
             gap: 6px;
             background: rgba(28, 28, 30, 0.75);
             backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
             padding: 5px 8px;
             border-radius: 24px;
             z-index: 95;
@@ -226,74 +222,35 @@
         }
         .page-nav-btn:disabled { opacity: 0.25; cursor: default; }
         .page-nav-title {
-            font-size: 13px;
-            font-weight: 600;
-            padding: 0 8px;
-            max-width: 140px;
-            text-align: center;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            font-size: 13px; font-weight: 600; padding: 0 8px; max-width: 140px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .page-nav-add { background: #34c759 !important; }
         .page-nav-del { background: #ff3b30 !important; }
 
         .image-map-container {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            background: #000;
-            overflow: hidden;
-            touch-action: none;
+            position: relative; width: 100%; height: 100%; background: #000; overflow: hidden; touch-action: none;
         }
 
         #map-canvas {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%;
-            height: 100%;
-            transform-origin: 0 0;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform-origin: 0 0;
         }
 
-        #warehouse-img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            display: block;
-        }
+        #warehouse-img { width: 100%; height: 100%; object-fit: contain; display: block; }
 
         .box-wrapper {
-            position: absolute;
-            transform: translate(-50%, -50%);
-            touch-action: none;
-            z-index: 50;
+            position: absolute; transform: translate(-50%, -50%); touch-action: none; z-index: 50;
         }
 
         .box-image-hotspot {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            background: transparent !important;
-            border: none !important;
-            cursor: pointer;
-            display: block;
-            filter: drop-shadow(0 6px 12px rgba(0,0,0,0.8));
+            width: 100%; height: 100%; object-fit: contain; background: transparent !important; border: none !important; cursor: pointer; display: block; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.8));
         }
 
         .box-wrapper.selected .box-image-hotspot {
-            outline: 2px dashed #ff9500;
-            background: rgba(255, 149, 0, 0.15) !important;
-            border-radius: 8px;
+            outline: 2px dashed #ff9500; background: rgba(255, 149, 0, 0.15) !important; border-radius: 8px;
         }
 
         .resize-handle {
-            display: none;
-            position: absolute;
-            width: 26px; height: 26px;
-            background: #ff9500;
-            border: 3px solid #fff;
-            border-radius: 50%;
-            z-index: 60;
+            display: none; position: absolute; width: 26px; height: 26px; background: #ff9500; border: 3px solid #fff; border-radius: 50%; z-index: 60;
         }
         .box-wrapper.selected .resize-handle { display: block; }
         .handle-tl { top: -13px; left: -13px; cursor: nwse-resize; }
@@ -302,135 +259,57 @@
         .handle-br { bottom: -13px; right: -13px; cursor: nwse-resize; }
 
         .bg-resize-handle {
-            display: none;
-            position: absolute;
-            width: 30px; height: 30px;
-            background: #0a84ff;
-            border: 3px solid #fff;
-            border-radius: 50%;
-            z-index: 70;
-            touch-action: none;
-            transform: translate(-50%, -50%);
+            display: none; position: absolute; width: 30px; height: 30px; background: #0a84ff; border: 3px solid #fff; border-radius: 50%; z-index: 70; touch-action: none; transform: translate(-50%, -50%);
         }
         .bg-resize-handle.visible { display: block; }
 
         .mode-hint {
-            position: absolute;
-            top: 116px; left: 50%;
-            transform: translateX(-50%);
-            background: rgba(28, 28, 30, 0.85);
-            backdrop-filter: blur(20px);
-            color: #ff9500;
-            padding: 8px 16px;
-            border-radius: 14px;
-            font-size: 12px;
-            z-index: 90;
-            pointer-events: none;
-            border: 1px solid rgba(255,149,0,0.3);
-            display: none;
-            text-align: center;
-            width: 90%;
+            position: absolute; top: 116px; left: 50%; transform: translateX(-50%); background: rgba(28, 28, 30, 0.85); backdrop-filter: blur(20px); color: #ff9500; padding: 8px 16px; border-radius: 14px; font-size: 12px; z-index: 90; pointer-events: none; border: 1px solid rgba(255,149,0,0.3); display: none; text-align: center; width: 90%;
         }
 
         .edit-toolbar {
-            display: none;
-            position: absolute;
-            bottom: 24px; left: 50%;
-            transform: translateX(-50%);
-            background: rgba(28, 28, 30, 0.85);
-            backdrop-filter: blur(25px);
-            padding: 12px 16px;
-            border-radius: 22px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            z-index: 100;
-            box-shadow: 0 12px 40px rgba(0,0,0,0.8);
-            width: 92%;
-            max-width: 420px;
-            gap: 10px;
-            align-items: center;
+            display: none; position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); background: rgba(28, 28, 30, 0.85); backdrop-filter: blur(25px); padding: 12px 16px; border-radius: 22px; border: 1px solid rgba(255, 255, 255, 0.15); z-index: 100; box-shadow: 0 12px 40px rgba(0,0,0,0.8); width: 92%; max-width: 420px; gap: 10px; align-items: center;
         }
 
         #overview-view {
-            display: none;
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: #000;
-            overflow-y: auto;
-            padding: 110px 20px 40px 20px;
-            z-index: 10;
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; overflow-y: auto; padding: 110px 20px 40px 20px; z-index: 10;
         }
         .ov-page-title {
-            font-size: 16px; font-weight: 600; color: #0a84ff;
-            margin: 24px 0 12px; padding-bottom: 8px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-size: 16px; font-weight: 600; color: #0a84ff; margin: 24px 0 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1);
         }
         .ov-box {
-            background: rgba(44, 44, 46, 0.65);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 16px; padding: 16px; margin-bottom: 12px;
-            cursor: pointer;
+            background: rgba(44, 44, 46, 0.65); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px; margin-bottom: 12px; cursor: pointer;
         }
         .ov-box-title { font-weight: 600; font-size: 15px; margin-bottom: 8px; display: flex; justify-content: space-between; }
         .ov-box-count { font-size: 12px; color: #8e8e93; font-weight: normal; }
         .ov-item { font-size: 13px; color: #d1d1d6; padding: 4px 0 4px 10px; border-left: 2px solid #0a84ff; margin-bottom: 4px; }
 
         .modal {
-            display: none;
-            position: absolute;
-            bottom: 0; left: 0; width: 100%;
-            max-height: 90%;
-            background: rgba(30, 30, 32, 0.92);
-            backdrop-filter: blur(40px);
-            color: #fff;
-            border-top-left-radius: 28px;
-            border-top-right-radius: 28px;
-            box-shadow: 0 -20px 50px rgba(0,0,0,0.9);
-            padding: 24px;
-            z-index: 2000;
-            overflow-y: auto;
-            border-top: 1px solid rgba(255,255,255,0.15);
+            display: none; position: absolute; bottom: 0; left: 0; width: 100%; max-height: 90%; background: rgba(30, 30, 32, 0.92); backdrop-filter: blur(40px); color: #fff; border-top-left-radius: 28px; border-top-right-radius: 28px; box-shadow: 0 -20px 50px rgba(0,0,0,0.9); padding: 24px; z-index: 2000; overflow-y: auto; border-top: 1px solid rgba(255,255,255,0.15);
         }
         #backdrop {
-            display: none;
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(10px);
-            z-index: 1500;
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); z-index: 1500;
         }
 
         .items-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            max-height: 280px;
-            overflow-y: auto;
-            margin-bottom: 16px;
-            padding: 4px;
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; max-height: 280px; overflow-y: auto; margin-bottom: 16px; padding: 4px;
         }
         .grid-item-card {
-            background: rgba(44, 44, 46, 0.7);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 14px;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            position: relative;
-            cursor: pointer;
+            background: rgba(44, 44, 46, 0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 10px; display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; cursor: pointer; min-height: 110px; justify-content: center;
+        }
+        /* 💡 數量為 0 時的空細框框風格 */
+        .grid-item-card.empty-slot {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px dashed rgba(255, 255, 255, 0.2);
+            color: #8e8e93;
         }
         .grid-item-card img {
-            width: 100%; height: 75px; object-fit: contain;
-            border-radius: 10px; background: #1c1c1e; margin-bottom: 6px;
+            width: 100%; height: 60px; object-fit: contain; border-radius: 8px; background: #1c1c1e; margin-bottom: 4px;
         }
-        .grid-item-name { font-size: 12px; font-weight: 600; color: #fff; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+        .grid-item-name { font-size: 11px; font-weight: 600; color: #fff; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
         .grid-item-qty { font-size: 11px; color: #ff9500; font-weight: 600; }
         .grid-item-del {
-            position: absolute; top: 6px; right: 6px;
-            background: rgba(255, 59, 48, 0.9); color: white; border: none;
-            border-radius: 50%; width: 22px; height: 22px; font-size: 11px;
-            display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 5;
+            position: absolute; top: 6px; right: 6px; background: rgba(255, 59, 48, 0.9); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 11px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 5;
         }
     </style>
 </head>
@@ -464,12 +343,12 @@
                 <div class="menu-card" onclick="openScanner('in')">
                     <div class="menu-card-icon">📥</div>
                     <div class="menu-card-title">快速進貨</div>
-                    <div class="menu-card-desc">掃碼入庫、點收物資</div>
+                    <div class="menu-card-desc">掃碼入庫、庫存+1</div>
                 </div>
                 <div class="menu-card" onclick="openScanner('out')">
                     <div class="menu-card-icon">📤</div>
                     <div class="menu-card-title">快速出貨</div>
-                    <div class="menu-card-desc">掃碼出庫、扣減庫存</div>
+                    <div class="menu-card-desc">掃碼出庫、庫存-1</div>
                 </div>
                 <div class="menu-card" onclick="openMapQuery()" style="grid-column: span 2;">
                     <div class="menu-card-icon">🗺️</div>
@@ -479,7 +358,7 @@
             </div>
         </div>
 
-        <!-- 3. QR Code 掃描視窗 (無模擬按鈕) -->
+        <!-- 3. QR Code 掃描視窗 -->
         <div id="scanner-modal">
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0;">
                 <div id="scanner-title" style="font-size: 17px; font-weight: 600;">掃描 QR Code</div>
@@ -488,7 +367,7 @@
             
             <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative;">
                 <div id="reader"></div>
-                <div style="margin-top: 15px; font-size: 13px; color: #8e8e93; text-align: center;">請將鏡頭對準物品或箱子之 QR Code</div>
+                <div style="margin-top: 15px; font-size: 13px; color: #8e8e93; text-align: center;" id="scanner-hint">請將鏡頭對準物品 QR Code 進行進/出貨</div>
             </div>
         </div>
 
@@ -530,7 +409,7 @@
 
             <div class="edit-toolbar" id="edit-toolbar">
                 <input type="text" id="new-box-name" class="apple-input" placeholder="新箱子名稱 (例: 救護箱)" style="padding: 10px 14px; font-size: 13px;">
-                <button class="apple-btn success" onclick="addNewBox()" style="padding: 10px 16px; font-size: 13px;">+ 新願箱子</button>
+                <button class="apple-btn success" onclick="addNewBox()" style="padding: 10px 16px; font-size: 13px;">+ 新增箱子</button>
             </div>
         </div>
 
@@ -547,7 +426,7 @@
                 <button class="apple-btn secondary" style="font-size:12px; padding:10px; width:100%;" onclick="document.getElementById('box-img-upload').click()">📷 更換箱子外觀照片</button>
             </div>
 
-            <div style="font-size: 13px; color:#8e8e93; margin-bottom:8px; font-weight: 500;">📦 箱內物品清單 (點擊可查看 QR Code)：</div>
+            <div style="font-size: 13px; color:#8e8e93; margin-bottom:8px; font-weight: 500;">📦 箱內物品清單：</div>
             <div id="item-list-container" class="items-grid"></div>
             
             <div id="add-item-section" style="background: rgba(255,255,255,0.04); padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08); display:none; margin-bottom: 15px;">
@@ -568,9 +447,8 @@
         <div id="item-edit-modal" class="modal" style="z-index: 2500;">
             <h2 style="margin:0 0 14px 0; font-size:18px; font-weight:600; color:#ff9500;">✏️ 物品管理與 QR Code</h2>
             
-            <!-- 專屬 QR Code 顯示區 -->
             <div style="text-align: center; margin-bottom: 14px; background: rgba(255,255,255,0.06); padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1);">
-                <div style="font-size: 12px; color: #0a84ff; font-weight: 600; margin-bottom: 8px;">🏷️ 物品專屬 QR Code (可供掃描辨識)</div>
+                <div style="font-size: 12px; color: #0a84ff; font-weight: 600; margin-bottom: 8px;">🏷️ 物品專屬 QR Code (可掃描入出庫)</div>
                 <div id="qrcode-container" style="display: inline-block; background: #fff; padding: 10px; border-radius: 8px; margin-bottom: 6px;"></div>
                 <div id="item-qr-code-text" style="font-size: 11px; color: #8e8e93; word-break: break-all;"></div>
             </div>
@@ -578,14 +456,14 @@
             <div style="text-align: center; margin-bottom: 14px; background: rgba(255,255,255,0.04); padding: 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08);">
                 <img id="edit-item-preview-img" src="" style="width: 70px; height: 70px; object-fit: contain; border-radius: 10px; background: #1c1c1e; margin-bottom: 8px; display:block; margin-left:auto; margin-right:auto;">
                 <input type="file" id="edit-item-img-input" style="display:none;" accept="image/*" onchange="uploadNewItemImage(event)">
-                <button class="apple-btn secondary" style="padding:6px 12px; font-size:11px;" onclick="document.getElementById('edit-item-img-input').click()">📷 更換物品圖片</button>
+                <button class="apple-btn secondary" style="padding:6px 12px; font-size:11px;" onclick="document.getElementById('edit-item-img-input').click()">📷 更換圖片</button>
             </div>
 
             <div style="font-size: 13px; color:#8e8e93; margin-bottom:4px;">物品名稱：</div>
             <input type="text" id="edit-item-name-input" class="apple-input" style="margin-bottom:10px; font-size:13px; padding:10px;">
 
             <div style="font-size: 13px; color:#8e8e93; margin-bottom:4px;">數量：</div>
-            <input type="number" id="edit-item-qty-input" class="apple-input" min="1" style="margin-bottom:16px; font-size:13px; padding:10px;">
+            <input type="number" id="edit-item-qty-input" class="apple-input" min="0" style="margin-bottom:16px; font-size:13px; padding:10px;">
 
             <div style="display:flex; gap:10px; margin-bottom:10px;">
                 <button class="apple-btn danger" style="flex:1; padding:12px; font-size:13px;" onclick="confirmDeleteEditingItem()">🗑️ 刪除</button>
@@ -620,14 +498,13 @@
     let isOverviewActive = false;
     let currentBoxId = null;
     let editingItemIndex = null;
-    let scannerMode = 'in';
+    let scannerMode = 'in'; // 'in' 進貨 or 'out' 出貨
     let html5QrCode = null;
 
     let scale = 1, panX = 0, panY = 0;
     let pages = [];
     let currentPageIndex = 0;
     let boxesCache = null;
-    const imageMemoryCache = new Map();
 
     window.handleLogin = function() {
         const pin = document.getElementById('login-pin-input').value;
@@ -653,18 +530,22 @@
         if (!boxesCache) await initApp();
     };
 
-    // 掃描 (已移除模擬按鈕)
+    // QR Code 掃描入庫/出庫核心邏輯
     window.openScanner = function(mode) {
         scannerMode = mode;
-        document.getElementById('scanner-title').innerText = mode === 'in' ? '📥 掃描 QR (進貨)' : '📤 掃描 QR (出貨)';
+        const title = mode === 'in' ? '📥 快速進貨 (掃碼入庫+1)' : '📤 快速出貨 (掃碼出庫-1)';
+        document.getElementById('scanner-title').innerText = title;
+        document.getElementById('scanner-hint').innerText = mode === 'in' ? '請對準物品 QR Code 進行進貨加庫' : '請對準物品 QR Code 進行出貨扣庫';
         document.getElementById('scanner-modal').style.display = 'flex';
+
         setTimeout(() => {
             if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
             html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } },
-                (text) => handleScanResult(text), () => {}
+                (text) => handleInventoryScan(text), () => {}
             ).catch((err) => { alert("無法啟動相機：" + err); });
         }, 300);
     };
+
     window.closeScanner = function() {
         if (html5QrCode && html5QrCode.isScanning) {
             html5QrCode.stop().then(() => { document.getElementById('scanner-modal').style.display = 'none'; }).catch(() => { document.getElementById('scanner-modal').style.display = 'none'; });
@@ -673,7 +554,7 @@
         }
     };
 
-    async function handleScanResult(scannedText) {
+    async function handleInventoryScan(scannedText) {
         closeScanner();
         if (!boxesCache) {
             const snap = await getDocs(collection(db, "warehouse_boxes"));
@@ -681,25 +562,38 @@
             snap.forEach(d => boxesCache.push({ id: d.id, ...d.data() }));
         }
 
-        // 支援辨識箱子 ID 或 物品專屬代碼 (ITEM_boxId_index)
-        if (scannedText.startsWith('ITEM_')) {
-            const parts = scannedText.split('_');
-            const boxId = parts[1];
-            const box = boxesCache.find(b => b.id === boxId);
-            if (box) {
-                await openBoxModal(box.id);
-                alert(`✅ 成功掃描定位物品所在箱子：${box.name}`);
-                return;
-            }
+        // 格式檢查: ITEM_boxId_index
+        if (!scannedText.startsWith('ITEM_')) {
+            alert('❌ 無效的物品 QR Code');
+            return;
         }
 
-        let box = boxesCache.find(b => b.id === scannedText);
-        if (box) {
-            await openBoxModal(box.id);
-            alert(`✅ 成功掃描定位箱子：${box.name}`);
-        } else {
-            alert('查無對應的箱子或物品條碼: ' + scannedText);
+        const parts = scannedText.split('_');
+        const boxId = parts[1];
+        const itemIndex = parseInt(parts[2], 10);
+
+        const box = boxesCache.find(b => b.id === boxId);
+        if (!box || !box.items || !box.items[itemIndex]) {
+            alert('❌ 找不到對應的箱子或物品紀錄');
+            return;
         }
+
+        const item = box.items[itemIndex];
+
+        if (scannerMode === 'in') {
+            // 進貨 +1
+            item.qty = (Number(item.qty) || 0) + 1;
+            await updateDoc(doc(db, "warehouse_boxes", boxId), { items: box.items });
+            alert(`✅【進貨成功】\n物品：${item.name}\n所在箱子：${box.name}\n目前數量：${item.qty}`);
+        } else {
+            // 出貨 -1
+            item.qty = (Number(item.qty) || 0) - 1;
+            if (item.qty < 0) item.qty = 0;
+            await updateDoc(doc(db, "warehouse_boxes", boxId), { items: box.items });
+            alert(`✅【出貨成功】\n物品：${item.name}\n所在箱子：${box.name}\n目前剩餘：${item.qty} ${item.qty === 0 ? '(已清空為空框框)' : ''}`);
+        }
+
+        renderBoxes();
     }
 
     async function initApp() {
@@ -893,14 +787,17 @@
         if (b.items && b.items.length > 0) {
             b.items.forEach((it, idx) => {
                 const card = document.createElement('div');
-                card.className = 'grid-item-card';
+                const isQtyZero = (Number(it.qty) || 0) === 0;
+                
+                // 💡 數量為 0 時套用空細框框樣式
+                card.className = `grid-item-card ${isQtyZero ? 'empty-slot' : ''}`;
+                
                 card.innerHTML = `
                     ${isContentEditActive ? `<button class="grid-item-del" onclick="event.stopPropagation(); deleteItem(${idx})">✕</button>` : ''}
-                    <img src="${it.imageUrl || 'https://via.placeholder.com/100?text=No+Img'}" alt="">
+                    <img src="${it.imageUrl || 'https://via.placeholder.com/100?text=No+Img'}" alt="" style="${isQtyZero ? 'opacity: 0.3;' : ''}">
                     <div class="grid-item-name">${escapeHtml(it.name)}</div>
-                    <div class="grid-item-qty">${it.qty || 1} 個</div>
+                    <div class="grid-item-qty" style="${isQtyZero ? 'color: #ff3b30;' : ''}">${isQtyZero ? '已清空' : (it.qty + ' 個')}</div>
                 `;
-                // 點擊任一物品即可開啟編輯並產生專屬 QR Code
                 card.onclick = () => openEditItemModal(idx);
                 container.appendChild(card);
             });
@@ -914,6 +811,7 @@
     window.closeModal = function() {
         document.getElementById('item-modal').style.display = 'none';
         document.getElementById('backdrop').style.display = 'none';
+        if (isOverviewActive) renderOverview();
     };
 
     window.addItemWithImage = async function() {
@@ -936,7 +834,6 @@
         renderBoxModal(b);
     };
 
-    // 物品編輯與 QR Code 生成
     window.openEditItemModal = function(idx) {
         editingItemIndex = idx;
         const b = boxesCache.find(x => x.id === currentBoxId);
@@ -945,24 +842,18 @@
         document.getElementById('edit-item-qty-input').value = it.qty;
         document.getElementById('edit-item-preview-img').src = it.imageUrl || '';
 
-        // 動態產生專屬 QR Code (格式: ITEM_boxId_index)
         const qrCodeContainer = document.getElementById('qrcode-container');
         qrCodeContainer.innerHTML = '';
         const itemQrText = `ITEM_${b.id}_${idx}`;
         document.getElementById('item-qr-code-text').innerText = `代碼: ${itemQrText}`;
         
         new QRCode(qrCodeContainer, {
-            text: itemQrText,
-            width: 120,
-            height: 120,
-            colorDark : "#000000",
-            colorLight : "#ffffff",
-            correctLevel : QRCode.CorrectLevel.H
+            text: itemQrText, width: 120, height: 120,
+            colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H
         });
 
         document.getElementById('item-edit-modal').style.display = 'block';
     };
-
     window.closeEditItemModal = function() { document.getElementById('item-edit-modal').style.display = 'none'; };
 
     window.saveEditingItem = async function() {
@@ -973,7 +864,6 @@
         closeEditItemModal();
         renderBoxModal(b);
     };
-
     window.confirmDeleteEditingItem = function() { deleteItem(editingItemIndex); closeEditItemModal(); };
 
     window.uploadBoxImage = async function(e) {
