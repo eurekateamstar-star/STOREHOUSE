@@ -1,3 +1,5 @@
+--- START OF FILE Paste September 11, 2026 - 6:30PM ---
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -79,17 +81,19 @@
         }
         .apple-input:focus { border-color: #0071e3; background: rgba(255, 255, 255, 0.12); }
 
+        /* 上傳進度條樣式 */
+        .progress-bar-container {
+            width: 100%; background: rgba(255,255,255,0.1); border-radius: 8px; height: 8px; overflow: hidden; margin-top: 8px; display: none;
+        }
+        .progress-bar-fill {
+            width: 0%; height: 100%; background: #34c759; transition: width 0.1s linear;
+        }
+
         /* 1. 登入畫面 */
         #login-view {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: linear-gradient(135deg, #050505 0%, #1c1c1e 100%);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 30px;
-            z-index: 3000;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 30px; z-index: 3000;
         }
         .login-logo { font-size: 54px; margin-bottom: 10px; }
         .login-title { font-size: 24px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 6px; }
@@ -97,40 +101,13 @@
 
         /* 2. 主選單儀表板 */
         #main-menu-view {
-            display: none;
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: #000;
-            padding: 24px 20px;
-            flex-direction: column;
-            z-index: 2000;
-            overflow-y: auto;
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; padding: 24px 20px; flex-direction: column; z-index: 2000; overflow-y: auto;
         }
-        .menu-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-            padding-top: 10px;
-        }
-        .menu-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 14px;
-            margin-bottom: 20px;
-        }
+        .menu-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-top: 10px; }
+        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
         .menu-card {
-            background: rgba(28, 28, 30, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 20px;
-            padding: 20px 14px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            cursor: pointer;
-            transition: transform 0.2s, background 0.2s;
+            background: rgba(28, 28, 30, 0.8); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; padding: 20px 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; cursor: pointer; transition: transform 0.2s, background 0.2s;
         }
         .menu-card:active { transform: scale(0.95); background: rgba(44, 44, 46, 0.9); }
         .menu-card-icon { font-size: 32px; margin-bottom: 8px; }
@@ -139,59 +116,31 @@
 
         /* 3. 掃描 QR 視窗 */
         #scanner-modal {
-            display: none;
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95);
-            z-index: 4000;
-            flex-direction: column;
-            padding: 20px;
-            justify-content: space-between;
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 4000; flex-direction: column; padding: 20px; justify-content: space-between;
         }
         #reader { width: 100%; border-radius: 16px; overflow: hidden; background: #111; }
 
-        /* 4. Apple 風格倉儲地圖介面 */
+        /* 4. 倉儲地圖介面 */
         header {
-            position: absolute;
-            top: 12px; left: 16px; right: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 100;
-            pointer-events: none;
+            position: absolute; top: 12px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: center; z-index: 100; pointer-events: none;
         }
         header > * { pointer-events: auto; }
-
         .header-title {
-            font-size: 13px; font-weight: 600;
-            background: rgba(28, 28, 30, 0.75);
-            backdrop-filter: blur(20px);
-            padding: 8px 14px; border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            font-size: 13px; font-weight: 600; background: rgba(28, 28, 30, 0.75); backdrop-filter: blur(20px); padding: 8px 14px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1); color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         }
-
         .header-btns { display: flex; gap: 8px; align-items: center; }
         .header-btns button {
-            background: rgba(28, 28, 30, 0.75); backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1); color: white;
-            padding: 8px 14px; border-radius: 14px; font-size: 12px; font-weight: 500;
-            cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: all 0.2s;
+            background: rgba(28, 28, 30, 0.75); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); color: white; padding: 8px 14px; border-radius: 14px; font-size: 12px; font-weight: 500; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: all 0.2s;
         }
         .header-btns button:active { transform: scale(0.95); }
         .header-btns button.active { background: #34c759; border-color: transparent; }
 
         .page-nav {
-            position: absolute; top: 68px; left: 50%; transform: translateX(-50%);
-            display: flex; align-items: center; gap: 6px;
-            background: rgba(28, 28, 30, 0.75); backdrop-filter: blur(20px);
-            padding: 5px 8px; border-radius: 24px; z-index: 95;
-            border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            position: absolute; top: 68px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; background: rgba(28, 28, 30, 0.75); backdrop-filter: blur(20px); padding: 5px 8px; border-radius: 24px; z-index: 95; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 4px 16px rgba(0,0,0,0.4);
         }
         .page-nav-btn {
-            background: rgba(255, 255, 255, 0.08); border: none; color: #fff;
-            width: 30px; height: 30px; border-radius: 50%; font-size: 13px;
-            cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.08); border: none; color: #fff; width: 30px; height: 30px; border-radius: 50%; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
         }
         .page-nav-btn:disabled { opacity: 0.25; cursor: default; }
         .page-nav-title { font-size: 13px; font-weight: 600; padding: 0 8px; max-width: 140px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -202,11 +151,22 @@
         #map-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform-origin: 0 0; }
         #warehouse-img { width: 100%; height: 100%; object-fit: contain; display: block; }
 
-        .box-wrapper { position: absolute; transform: translate(-50%, -50%); touch-action: none; z-index: 50; }
-        .box-image-hotspot { width: 100%; height: 100%; object-fit: contain; background: transparent !important; border: none !important; cursor: pointer; display: block; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.8)); }
-        .box-wrapper.selected .box-image-hotspot { outline: 2px dashed #ff9500; background: rgba(255, 149, 0, 0.15) !important; border-radius: 8px; }
+        .box-wrapper {
+            position: absolute; transform: translate(-50%, -50%); touch-action: none; z-index: 50;
+        }
+        .box-wrapper.layout-active { cursor: grab; }
+        .box-wrapper.layout-active:active { cursor: grabbing; }
 
-        .resize-handle { display: none; position: absolute; width: 26px; height: 26px; background: #ff9500; border: 3px solid #fff; border-radius: 50%; z-index: 60; }
+        .box-image-hotspot {
+            width: 100%; height: 100%; object-fit: contain; background: transparent !important; border: none !important; display: block; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.8)); pointer-events: none;
+        }
+        .box-wrapper.selected .box-image-hotspot {
+            outline: 2px dashed #ff9500; background: rgba(255, 149, 0, 0.15) !important; border-radius: 8px;
+        }
+
+        .resize-handle {
+            display: none; position: absolute; width: 26px; height: 26px; background: #ff9500; border: 3px solid #fff; border-radius: 50%; z-index: 60; box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+        }
         .box-wrapper.selected .resize-handle { display: block; }
         .handle-tl { top: -13px; left: -13px; cursor: nwse-resize; }
         .handle-tr { top: -13px; right: -13px; cursor: nesw-resize; }
@@ -217,22 +177,15 @@
         .bg-resize-handle.visible { display: block; }
 
         .mode-hint {
-            position: absolute; top: 116px; left: 50%; transform: translateX(-50%);
-            background: rgba(28, 28, 30, 0.85); backdrop-filter: blur(20px); color: #ff9500;
-            padding: 8px 16px; border-radius: 14px; font-size: 12px; z-index: 90;
-            pointer-events: none; border: 1px solid rgba(255,149,0,0.3); display: none; text-align: center; width: 90%;
+            position: absolute; top: 116px; left: 50%; transform: translateX(-50%); background: rgba(28, 28, 30, 0.85); backdrop-filter: blur(20px); color: #ff9500; padding: 8px 16px; border-radius: 14px; font-size: 12px; z-index: 90; pointer-events: none; border: 1px solid rgba(255,149,0,0.3); display: none; text-align: center; width: 90%;
         }
 
         .edit-toolbar {
-            display: none; position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
-            background: rgba(28, 28, 30, 0.85); backdrop-filter: blur(25px); padding: 12px 16px;
-            border-radius: 22px; border: 1px solid rgba(255, 255, 255, 0.15); z-index: 100;
-            box-shadow: 0 12px 40px rgba(0,0,0,0.8); width: 92%; max-width: 420px; gap: 10px; align-items: center;
+            display: none; position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); background: rgba(28, 28, 30, 0.85); backdrop-filter: blur(25px); padding: 12px 16px; border-radius: 22px; border: 1px solid rgba(255, 255, 255, 0.15); z-index: 100; box-shadow: 0 12px 40px rgba(0,0,0,0.8); width: 92%; max-width: 420px; gap: 10px; align-items: center;
         }
 
         #overview-view {
-            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; overflow-y: auto; padding: 110px 20px 40px 20px; z-index: 10;
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; overflow-y: auto; padding: 110px 20px 40px 20px; z-index: 10;
         }
         .ov-page-title { font-size: 16px; font-weight: 600; color: #0a84ff; margin: 24px 0 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); }
         .ov-box { background: rgba(44, 44, 46, 0.65); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px; margin-bottom: 12px; cursor: pointer; }
@@ -240,14 +193,11 @@
         .ov-box-count { font-size: 12px; color: #8e8e93; font-weight: normal; }
         .ov-item { font-size: 13px; color: #d1d1d6; padding: 4px 0 4px 10px; border-left: 2px solid #0a84ff; margin-bottom: 4px; }
 
-        /* 歷史紀錄列表樣式 */
         #logs-view {
-            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; z-index: 2500; padding: 24px 20px; overflow-y: auto;
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 2500; padding: 24px 20px; overflow-y: auto;
         }
         .log-card {
-            background: rgba(44, 44, 46, 0.65); border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 14px; padding: 14px; margin-bottom: 10px; font-size: 13px;
+            background: rgba(44, 44, 46, 0.65); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 14px; margin-bottom: 10px; font-size: 13px;
         }
         .log-header { display: flex; justify-content: space-between; margin-bottom: 6px; font-weight: 600; }
         .log-time { font-size: 11px; color: #8e8e93; font-weight: normal; }
@@ -262,20 +212,14 @@
 
         .items-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; max-height: 280px; overflow-y: auto; margin-bottom: 16px; padding: 4px; }
         .grid-item-card {
-            background: rgba(44, 44, 46, 0.7); border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 14px; padding: 10px; display: flex; flex-direction: column;
-            align-items: center; text-align: center; position: relative; cursor: pointer; min-height: 110px; justify-content: center;
+            background: rgba(44, 44, 46, 0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 10px; display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; cursor: pointer; min-height: 110px; justify-content: center;
         }
-        .grid-item-card.empty-slot {
-            background: rgba(255, 255, 255, 0.02); border: 1px dashed rgba(255, 255, 255, 0.2); color: #8e8e93;
-        }
+        .grid-item-card.empty-slot { background: rgba(255, 255, 255, 0.02); border: 1px dashed rgba(255, 255, 255, 0.2); color: #8e8e93; }
         .grid-item-card img { width: 100%; height: 60px; object-fit: contain; border-radius: 8px; background: #1c1c1e; margin-bottom: 4px; }
         .grid-item-name { font-size: 11px; font-weight: 600; color: #fff; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
         .grid-item-qty { font-size: 11px; color: #ff9500; font-weight: 600; }
         .grid-item-del {
-            position: absolute; top: 6px; right: 6px; background: rgba(255, 59, 48, 0.9);
-            color: white; border: none; border-radius: 50%; width: 22px; height: 22px;
-            font-size: 11px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 5;
+            position: absolute; top: 6px; right: 6px; background: rgba(255, 59, 48, 0.9); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 11px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 5;
         }
     </style>
 </head>
@@ -300,7 +244,7 @@
             <div class="menu-header">
                 <div>
                     <div style="font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">倉儲中樞</div>
-                    <div style="font-size: 13px; color: #8e8e93;">Apple 智慧倉儲管理</div>
+                    <div style="font-size: 13px; color: #8e8e93;" id="preload-status">系統就緒 (背景已預載)</div>
                 </div>
                 <button onclick="logout()" class="apple-btn secondary" style="padding: 8px 14px; font-size: 13px;">登出</button>
             </div>
@@ -309,45 +253,73 @@
                 <div class="menu-card" onclick="openScanner('locate')">
                     <div class="menu-card-icon">🔍</div>
                     <div class="menu-card-title">掃 QR 找位置</div>
-                    <div class="menu-card-desc">尋找箱子與物品</div>
+                    <div class="menu-card-desc">尋找箱子與借出狀態</div>
                 </div>
                 <div class="menu-card" onclick="openScanner('in')">
                     <div class="menu-card-icon">📥</div>
                     <div class="menu-card-title">快速進貨 (還回)</div>
                     <div class="menu-card-desc">掃碼入庫、紀錄時間</div>
                 </div>
-                <div class="menu-card" onclick="openScanner('out')">
+                <div class="menu-card" onclick="openBorrowerModal()">
                     <div class="menu-card-icon">📤</div>
                     <div class="menu-card-title">快速出貨 (領用)</div>
-                    <div class="menu-card-desc">掃碼出庫、指定對象</div>
+                    <div class="menu-card-desc">選擇群組/細項、連掃出庫</div>
                 </div>
                 <div class="menu-card" onclick="openLogsView()">
                     <div class="menu-card-icon">📜</div>
                     <div class="menu-card-title">進出貨紀錄</div>
-                    <div class="menu-card-desc">檢視時間與領用對象</div>
+                    <div class="menu-card-desc">檢視時間與對象</div>
                 </div>
                 <div class="menu-card" onclick="openMapQuery()" style="grid-column: span 2;">
                     <div class="menu-card-icon">🗺️</div>
                     <div class="menu-card-title">平面圖與全庫存總覽</div>
-                    <div class="menu-card-desc">地圖檢視、編輯與 QR 生成</div>
+                    <div class="menu-card-desc">極速載入、檢視與編輯</div>
                 </div>
             </div>
         </div>
 
-        <!-- 3. 掃描 QR 視窗 -->
+        <!-- 3. 領用對象選擇與編輯視窗 -->
+        <div id="borrower-backdrop" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:3500;" onclick="closeBorrowerModal()"></div>
+        <div id="borrower-modal" class="modal" style="z-index: 3600; max-height:85%;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h2 style="margin:0; font-size:18px; font-weight:600; color:#0a84ff;" id="borrower-modal-title">📂 選擇領用群組</h2>
+                <button class="apple-btn secondary" style="padding:6px 10px; font-size:11px;" onclick="toggleBorrowerEditMode()" id="btn-edit-groups">✏️ 管理群組</button>
+            </div>
+            
+            <div style="font-size: 13px; color:#8e8e93; margin-bottom: 14px;" id="borrower-modal-desc">請點擊群組以展開細項：</div>
+            
+            <div id="borrower-selector-container" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; max-height: 250px; overflow-y: auto;"></div>
+
+            <div id="borrower-manage-container" style="display:none; margin-bottom:16px; background:rgba(255,255,255,0.04); padding:12px; border-radius:12px; max-height:250px; overflow-y:auto;">
+                <div style="font-size:12px; color:#ff9500; font-weight:600; margin-bottom:8px;">雲端群組與細項設定：</div>
+                <div id="borrower-manage-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+                <button class="apple-btn success" style="width:100%; margin-top:10px; padding:8px; font-size:12px;" onclick="addGroupToCloud()">＋ 新增主群組</button>
+            </div>
+
+            <div style="font-size: 13px; color: #34c759; font-weight: 600; margin-bottom: 12px; text-align: center;" id="selected-target-preview">
+                尚未選擇對象
+            </div>
+
+            <div style="display:flex; gap:10px;">
+                <button class="apple-btn secondary" style="flex:1;" onclick="closeBorrowerModal()">取消</button>
+                <button class="apple-btn success" style="flex:1;" id="btn-confirm-borrow" disabled onclick="confirmBorrowerAndScan()">確認並開始掃描</button>
+            </div>
+        </div>
+
+        <!-- 4. 掃描 QR 視窗 -->
         <div id="scanner-modal">
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0;">
                 <div id="scanner-title" style="font-size: 17px; font-weight: 600;">掃描 QR Code</div>
-                <button onclick="closeScanner()" class="apple-btn secondary" style="padding: 6px 14px; font-size: 13px;">取消</button>
+                <button onclick="closeScanner()" class="apple-btn secondary" style="padding: 6px 14px; font-size: 13px;">結束掃描</button>
             </div>
             
             <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative;">
                 <div id="reader"></div>
-                <div style="margin-top: 15px; font-size: 13px; color: #8e8e93; text-align: center;" id="scanner-hint">請對準 QR Code</div>
+                <div style="margin-top: 15px; font-size: 13px; color: #ff9500; font-weight: 600; text-align: center;" id="scanner-hint">請將鏡頭對準 QR Code</div>
             </div>
         </div>
 
-        <!-- 4. 歷史紀錄面板 -->
+        <!-- 5. 歷史紀錄面板 -->
         <div id="logs-view">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-top: 10px;">
                 <div style="font-size: 20px; font-weight: 700;">📜 進出貨稽核紀錄</div>
@@ -358,7 +330,7 @@
             </div>
         </div>
 
-        <!-- 5. 倉儲地圖主介面 -->
+        <!-- 6. 倉儲地圖主介面 -->
         <div id="warehouse-system-view" style="display: none; position: absolute; top:0; left:0; width:100%; height:100%;">
             <header>
                 <button onclick="backToMainMenu()" class="apple-btn secondary" style="padding: 8px 12px; font-size: 12px;">〈 主選單</button>
@@ -409,8 +381,9 @@
             </div>
             
             <div id="box-image-edit-section" style="text-align: center; display:none; margin-bottom: 14px; background: rgba(255,255,255,0.04); padding: 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08);">
-                <input type="file" id="box-img-upload" style="display:none;" accept="image/*" onchange="uploadBoxImage(event)">
+                <input type="file" id="box-img-upload" style="display:none;" accept="image/*" onchange="uploadBoxImageWithProgress(event)">
                 <button class="apple-btn secondary" style="font-size:12px; padding:10px; width:100%;" onclick="document.getElementById('box-img-upload').click()">📷 更換箱子外觀照片</button>
+                <div class="progress-bar-container" id="box-progress-container"><div class="progress-bar-fill" id="box-progress-fill"></div></div>
             </div>
 
             <div style="font-size: 13px; color:#8e8e93; margin-bottom:8px; font-weight: 500;">📦 箱內物品清單：</div>
@@ -430,28 +403,32 @@
             <button class="apple-btn secondary" style="width:100%; padding: 14px; font-weight: 600;" onclick="closeModal()">關閉視窗</button>
         </div>
 
-        <!-- 物品編輯視窗 (支援編輯名稱、數量、圖片，自動重產 QR) -->
+        <!-- 物品編輯視窗 -->
         <div id="item-edit-modal" class="modal" style="z-index: 2500;">
             <h2 id="edit-modal-title" style="margin:0 0 14px 0; font-size:18px; font-weight:600; color:#ff9500;">🏷️ 物品資訊與專屬 QR Code</h2>
             
+            <div id="item-status-banner" style="background: rgba(52, 199, 89, 0.15); border: 1px solid rgba(52, 199, 89, 0.3); border-radius: 12px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; font-weight: 600; text-align: center; color: #34c759;">
+                🟢 在庫中
+            </div>
+
             <div style="text-align: center; margin-bottom: 14px; background: rgba(255,255,255,0.06); padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1);">
                 <div id="qrcode-container" style="display: inline-block; background: #fff; padding: 10px; border-radius: 8px; margin-bottom: 6px;"></div>
                 <div id="item-qr-code-text" style="font-size: 11px; color: #8e8e93; word-break: break-all;"></div>
             </div>
 
-            <!-- 檢視模式 -->
             <div id="view-item-container" style="text-align: center; margin-bottom: 14px; background: rgba(255,255,255,0.04); padding: 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08);">
                 <img id="view-item-img" src="" style="width: 70px; height: 70px; object-fit: contain; border-radius: 10px; background: #1c1c1e; margin-bottom: 8px; display:block; margin-left:auto; margin-right:auto;">
                 <div id="view-item-name" style="font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 4px;"></div>
                 <div id="view-item-qty" style="font-size: 13px; color: #ff9500; font-weight: 600;"></div>
             </div>
 
-            <!-- 編輯模式表單 -->
             <div id="edit-item-form-container" style="display: none; margin-bottom: 14px;">
                 <div style="text-align: center; margin-bottom: 10px; background: rgba(255,255,255,0.04); padding: 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
                     <img id="edit-item-preview-img" src="" style="width: 60px; height: 60px; object-fit: contain; border-radius: 8px; background: #1c1c1e; margin-bottom: 6px; display:block; margin-left:auto; margin-right:auto;">
-                    <input type="file" id="edit-item-img-input" style="display:none;" accept="image/*" onchange="uploadNewItemImage(event)">
+                    <input type="file" id="edit-item-img-input" style="display:none;" accept="image/*" onchange="uploadNewItemImageWithProgress(event)">
                     <button class="apple-btn secondary" style="padding:6px 12px; font-size:11px;" onclick="document.getElementById('edit-item-img-input').click()">📷 更換圖片</button>
+                    <!-- 上傳進度條 -->
+                    <div class="progress-bar-container" id="item-progress-container"><div class="progress-bar-fill" id="item-progress-fill"></div></div>
                 </div>
                 <div style="font-size: 13px; color:#8e8e93; margin-bottom:4px;">物品名稱：</div>
                 <input type="text" id="edit-item-name-input" class="apple-input" style="margin-bottom:10px; font-size:13px; padding:10px;">
@@ -496,7 +473,8 @@
     let isOverviewActive = false;
     let currentBoxId = null;
     let editingItemIndex = null;
-    let scannerMode = 'locate'; // 'locate', 'in', 'out'
+    let scannerMode = 'locate'; 
+    let currentBorrowTarget = ''; 
     let html5QrCode = null;
 
     let scale = 1, panX = 0, panY = 0;
@@ -504,15 +482,50 @@
     let currentPageIndex = 0;
     let boxesCache = null;
 
+    let borrowerGroupsCache = [
+        { groupName: "車輛", items: ["物資車 1", "物資車 2"] },
+        { groupName: "人員 / 部門", items: ["急診室", "手術室", "護理站", "劉奕昕"] }
+    ];
+    let selectedGroupIndex = null; 
+
     window.handleLogin = function() {
         const pin = document.getElementById('login-pin-input').value;
         if (pin === '8888' || pin === 'admin') {
             document.getElementById('login-view').style.display = 'none';
             document.getElementById('main-menu-view').style.display = 'flex';
+            preloadAllData();
         } else {
             alert('金鑰錯誤，預設為 8888');
         }
     };
+
+    async function preloadAllData() {
+        document.getElementById('preload-status').innerText = "正在背景預載資料庫…";
+        try {
+            await Promise.all([loadPages(), loadBoxes(true), loadBorrowerGroupsFromCloud()]);
+            document.getElementById('preload-status').innerText = "系統就緒 (已同步雲端)";
+        } catch (e) {
+            document.getElementById('preload-status').innerText = "系統就緒";
+        }
+    }
+
+    async function loadBorrowerGroupsFromCloud() {
+        try {
+            const snap = await getDoc(doc(db, "settings", "borrower_groups"));
+            if (snap.exists() && snap.data().groups) {
+                borrowerGroupsCache = snap.data().groups;
+            } else {
+                await setDoc(doc(db, "settings", "borrower_groups"), { groups: borrowerGroupsCache });
+            }
+        } catch (e) {}
+    }
+
+    async function saveBorrowerGroupsToCloud() {
+        try {
+            await setDoc(doc(db, "settings", "borrower_groups"), { groups: borrowerGroupsCache });
+        } catch (e) { alert('同步至雲端失敗'); }
+    }
+
     window.logout = function() {
         document.getElementById('main-menu-view').style.display = 'none';
         document.getElementById('login-view').style.display = 'flex';
@@ -528,7 +541,174 @@
         if (!boxesCache) await initApp();
     };
 
-    // 開啟歷史紀錄面板
+    let isBorrowerEditMode = false;
+    window.openBorrowerModal = function() {
+        isBorrowerEditMode = false;
+        selectedGroupIndex = null;
+        renderBorrowerSelectorUI();
+        document.getElementById('borrower-backdrop').style.display = 'block';
+        document.getElementById('borrower-modal').style.display = 'block';
+    };
+
+    window.closeBorrowerModal = function() {
+        document.getElementById('borrower-backdrop').style.display = 'none';
+        document.getElementById('borrower-modal').style.display = 'none';
+    };
+
+    window.toggleBorrowerEditMode = function() {
+        isBorrowerEditMode = !isBorrowerEditMode;
+        document.getElementById('btn-edit-groups').innerText = isBorrowerEditMode ? "✓ 完成" : "✏️ 管理群組";
+        renderBorrowerSelectorUI();
+    };
+
+    function renderBorrowerSelectorUI() {
+        const selectorContainer = document.getElementById('borrower-selector-container');
+        const manageContainer = document.getElementById('borrower-manage-container');
+        const manageList = document.getElementById('borrower-manage-list');
+        
+        selectorContainer.innerHTML = '';
+        manageList.innerHTML = '';
+
+        if (isBorrowerEditMode) {
+            selectorContainer.style.display = 'none';
+            manageContainer.style.display = 'block';
+            document.getElementById('borrower-modal-title').innerText = '✏️ 管理群組與細項';
+            document.getElementById('borrower-modal-desc').innerText = '在此新增、修改主群組與底下細項：';
+            document.getElementById('btn-confirm-borrow').style.display = 'none';
+
+            borrowerGroupsCache.forEach((group, gIdx) => {
+                const groupCard = document.createElement('div');
+                groupCard.style.cssText = 'background:rgba(255,255,255,0.06); padding:10px; border-radius:10px; margin-bottom:8px;';
+                
+                let itemsHtml = '';
+                group.items.forEach((item, iIdx) => {
+                    itemsHtml += `
+                        <div style="display:flex; gap:6px; margin-top:4px;">
+                            <input type="text" class="apple-input" value="${escapeHtml(item)}" id="edit-item-${gIdx}-${iIdx}" style="padding:4px 8px; font-size:12px; flex:1;">
+                            <button class="apple-btn success" style="padding:4px 8px; font-size:11px;" onclick="saveGroupItem(${gIdx}, ${iIdx})">儲存</button>
+                            <button class="apple-btn danger" style="padding:4px 8px; font-size:11px;" onclick="deleteGroupItem(${gIdx}, ${iIdx})">刪</button>
+                        </div>
+                    `;
+                });
+
+                groupCard.innerHTML = `
+                    <div style="display:flex; gap:6px; margin-bottom:6px;">
+                        <input type="text" class="apple-input" value="${escapeHtml(group.groupName)}" id="edit-group-${gIdx}" style="padding:6px 8px; font-size:13px; font-weight:600; flex:1;">
+                        <button class="apple-btn success" style="padding:4px 10px; font-size:11px;" onclick="saveGroupName(${gIdx})">改名</button>
+                        <button class="apple-btn danger" style="padding:4px 10px; font-size:11px;" onclick="deleteGroup(${gIdx})">刪除群組</button>
+                    </div>
+                    <div style="padding-left:12px; border-left:2px solid #0a84ff;">
+                        ${itemsHtml}
+                        <button class="apple-btn secondary" style="width:100%; margin-top:6px; padding:4px; font-size:11px;" onclick="addGroupItem(${gIdx})">＋ 在此群組新增細項</button>
+                    </div>
+                `;
+                manageList.appendChild(groupCard);
+            });
+        } else {
+            selectorContainer.style.display = 'flex';
+            manageContainer.style.display = 'none';
+            document.getElementById('borrower-modal-title').innerText = selectedGroupIndex === null ? '📂 選擇領用群組' : `📁 [${borrowerGroupsCache[selectedGroupIndex].groupName}] 選擇細項`;
+            document.getElementById('borrower-modal-desc').innerText = selectedGroupIndex === null ? '請點擊群組以展開細項：' : '請選擇具體領用對象：';
+            document.getElementById('btn-confirm-borrow').style.display = 'inline-flex';
+
+            if (selectedGroupIndex === null) {
+                borrowerGroupsCache.forEach((group, idx) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'apple-btn secondary';
+                    btn.style.cssText = 'padding: 14px; font-size: 15px; font-weight:600; justify-content:space-between; border-radius:14px;';
+                    btn.innerHTML = `<span>📁 ${escapeHtml(group.groupName)}</span> <span style="font-size:12px; color:#8e8e93;">${group.items.length} 項 ›</span>`;
+                    btn.onclick = () => {
+                        selectedGroupIndex = idx;
+                        renderBorrowerSelectorUI();
+                    };
+                    selectorContainer.appendChild(btn);
+                });
+            } else {
+                const currentGroup = borrowerGroupsCache[selectedGroupIndex];
+                
+                const backBtn = document.createElement('button');
+                backBtn.className = 'apple-btn secondary';
+                backBtn.style.cssText = 'padding: 8px; font-size: 12px; margin-bottom: 6px;';
+                backBtn.innerHTML = '‹ 返回上一層群組';
+                backBtn.onclick = () => {
+                    selectedGroupIndex = null;
+                    document.getElementById('selected-target-preview').innerText = '尚未選擇對象';
+                    document.getElementById('btn-confirm-borrow').disabled = true;
+                    renderBorrowerSelectorUI();
+                };
+                selectorContainer.appendChild(backBtn);
+
+                currentGroup.items.forEach(itemName => {
+                    const btn = document.createElement('button');
+                    btn.className = 'apple-btn secondary';
+                    btn.style.cssText = 'padding: 12px; font-size: 14px; justify-content:flex-start; border-radius:12px;';
+                    btn.innerHTML = `👤 ${escapeHtml(itemName)}`;
+                    btn.onclick = () => {
+                        currentBorrowTarget = `${currentGroup.groupName} - ${itemName}`;
+                        document.getElementById('selected-target-preview').innerText = `已選擇: [ ${currentBorrowTarget} ]`;
+                        document.getElementById('btn-confirm-borrow').disabled = false;
+                        
+                        selectorContainer.querySelectorAll('button').forEach(b => b.style.borderColor = 'rgba(255,255,255,0.12)');
+                        btn.style.borderColor = '#34c759';
+                    };
+                    selectorContainer.appendChild(btn);
+                });
+            }
+        }
+    }
+
+    window.addGroupToCloud = async function() {
+        const name = prompt('請輸入新主群組名稱 (例: 醫療儀器)：');
+        if (!name) return;
+        borrowerGroupsCache.push({ groupName: name.trim(), items: ["預設項目 1"] });
+        await saveBorrowerGroupsToCloud();
+        renderBorrowerSelectorUI();
+    };
+
+    window.saveGroupName = async function(gIdx) {
+        const val = document.getElementById(`edit-group-${gIdx}`).value.trim();
+        if (!val) return;
+        borrowerGroupsCache[gIdx].groupName = val;
+        await saveBorrowerGroupsToCloud();
+        renderBorrowerSelectorUI();
+    };
+
+    window.deleteGroup = async function(gIdx) {
+        if (!confirm('確定刪除此群組嗎？')) return;
+        borrowerGroupsCache.splice(gIdx, 1);
+        await saveBorrowerGroupsToCloud();
+        renderBorrowerSelectorUI();
+    };
+
+    window.addGroupItem = async function(gIdx) {
+        const name = prompt('請輸入細項名稱 (例: AED 電擊器)：');
+        if (!name) return;
+        borrowerGroupsCache[gIdx].items.push(name.trim());
+        await saveBorrowerGroupsToCloud();
+        renderBorrowerSelectorUI();
+    };
+
+    window.saveGroupItem = async function(gIdx, iIdx) {
+        const val = document.getElementById(`edit-item-${gIdx}-${iIdx}`).value.trim();
+        if (!val) return;
+        borrowerGroupsCache[gIdx].items[iIdx] = val;
+        await saveBorrowerGroupsToCloud();
+        renderBorrowerSelectorUI();
+    };
+
+    window.deleteGroupItem = async function(gIdx, iIdx) {
+        if (borrowerGroupsCache[gIdx].items.length <= 1) return alert('群組內至少需保留一個細項');
+        borrowerGroupsCache[gIdx].items.splice(iIdx, 1);
+        await saveBorrowerGroupsToCloud();
+        renderBorrowerSelectorUI();
+    };
+
+    window.confirmBorrowerAndScan = function() {
+        if (!currentBorrowTarget) return alert('請選擇領用對象');
+        closeBorrowerModal();
+        openScanner('out');
+    };
+
     window.openLogsView = async function() {
         document.getElementById('main-menu-view').style.display = 'none';
         document.getElementById('logs-view').style.display = 'block';
@@ -539,7 +719,7 @@
             const snap = await getDocs(collection(db, "warehouse_logs"));
             let logs = [];
             snap.forEach(d => logs.push(d.data()));
-            logs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)); // 最新在前
+            logs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
             if (logs.length === 0) {
                 container.innerHTML = '<div style="color: #8e8e93; text-align: center; padding: 30px;">尚無進出貨紀錄</div>';
@@ -556,7 +736,7 @@
                             <span class="log-time">${l.timeStr}</span>
                         </div>
                         <div style="color: #d1d1d6; margin-top: 4px;">📦 箱子位置：${escapeHtml(l.boxName)}</div>
-                        <div style="color: #0a84ff; margin-top: 2px;">👤 領用/歸還對象：${escapeHtml(l.target || '未指定')}</div>
+                        <div style="color: #0a84ff; margin-top: 2px;">👤 對象/來源：${escapeHtml(l.target || '未指定')}</div>
                     </div>
                 `;
             });
@@ -571,14 +751,13 @@
         document.getElementById('main-menu-view').style.display = 'flex';
     };
 
-    // 統一掃描入口
     window.openScanner = function(mode) {
         scannerMode = mode;
         let title = '掃描 QR Code';
         let hint = '請將鏡頭對準 QR Code';
         if (mode === 'locate') { title = '🔍 掃 QR 找位置'; hint = '對準箱子或物品 QR Code 尋找位置'; }
-        else if (mode === 'in') { title = '📥 快速進貨 (還回)'; hint = '對準物品 QR Code 進行進貨 (還回)'; }
-        else if (mode === 'out') { title = '📤 快速出貨 (領用)'; hint = '對準物品 QR Code 進行出貨 (領用)'; }
+        else if (mode === 'in') { title = '📥 快速進貨 (還回)'; hint = '連續掃描物品 QR Code 進行還回/補貨'; }
+        else if (mode === 'out') { title = `📤 出庫 [對象: ${currentBorrowTarget}]`; hint = '連續掃描物品 QR Code 進行快速出庫'; }
 
         document.getElementById('scanner-title').innerText = title;
         document.getElementById('scanner-hint').innerText = hint;
@@ -601,7 +780,6 @@
     };
 
     async function handleGlobalScan(scannedText) {
-        closeScanner();
         if (!boxesCache) {
             const snap = await getDocs(collection(db, "warehouse_boxes"));
             boxesCache = [];
@@ -620,39 +798,39 @@
                 if (box && box.items && box.items[itemIndex]) {
                     const item = box.items[itemIndex];
                     let currentQty = Number(item.qty) || 0;
-                    let targetName = '一般';
+                    let actionType = '';
+                    let recordTarget = '';
 
                     if (scannerMode === 'out') {
                         if (currentQty <= 0) {
                             alert(`⚠️【出貨失敗】\n物品「${item.name}」庫存已為 0！`);
                             return;
                         }
-                        targetName = prompt('請輸入領用對象 (例: 物資車 A、張三、急診室)：', '物資車 1');
-                        if (targetName === null) return; // 點取消
-
                         item.qty = currentQty - 1;
-                        alert(`✅【出貨成功 (-1)】\n物品：${item.name}\n對象：${targetName}\n剩餘：${item.qty}`);
+                        item.borrower = currentBorrowTarget; 
+                        actionType = '出庫';
+                        recordTarget = currentBorrowTarget;
+                        alert(`✅【出貨成功 (-1)】\n物品：${item.name}\n對象：${currentBorrowTarget}\n(可繼續掃描下一件)`);
                     } else {
-                        targetName = prompt('請輸入還回/進貨來源 (例: 採購補貨、物資車歸還)：', '物資車歸還');
-                        if (targetName === null) return;
-
                         item.qty = currentQty + 1;
-                        alert(`✅【進貨成功 (+1)】\n物品：${item.name}\n來源：${targetName}\n數量：${item.qty}`);
+                        const oldBorrower = item.borrower || '不詳';
+                        item.borrower = ''; 
+                        actionType = '進貨';
+                        recordTarget = `還回 (原借用: ${oldBorrower})`;
+                        alert(`✅【進貨/還回成功 (+1)】\n物品：${item.name}\n(可繼續掃描下一件)`);
                     }
 
-                    // 儲存異動
                     await updateDoc(doc(db, "warehouse_boxes", targetBoxId), { items: box.items });
 
-                    // 寫入進出貨稽核紀錄 Log
                     try {
                         const now = new Date();
                         const timeStr = `${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
                         await addDoc(collection(db, "warehouse_logs"), {
-                            type: scannerMode === 'out' ? '出庫' : '進貨',
+                            type: actionType,
                             itemName: item.name,
                             qty: 1,
                             boxName: box.name,
-                            target: targetName || '未指定',
+                            target: recordTarget,
                             timestamp: Date.now(),
                             timeStr: timeStr
                         });
@@ -661,9 +839,10 @@
                 return;
             }
         } else {
-            targetBoxId = scannedText; // 直接當作箱子 ID
+            targetBoxId = scannedText;
         }
 
+        closeScanner();
         const box = boxesCache.find(b => b.id === targetBoxId);
         if (box) {
             document.getElementById('main-menu-view').style.display = 'none';
@@ -713,6 +892,7 @@
         });
     }
 
+    // 💡 結束編輯模式 (點擊🔒鎖定時全面關閉並回到大畫面，絕對不自動跳進箱子)
     window.toggleContentEditMode = function() {
         isContentEditActive = !isContentEditActive;
         const btn = document.getElementById('mode-btn-edit');
@@ -722,8 +902,15 @@
         document.getElementById('btn-change-bg').style.display = isContentEditActive ? 'block' : 'none';
         document.getElementById('btn-move-mode').style.display = isContentEditActive ? 'block' : 'none';
         document.getElementById('edit-toolbar').style.display = (isContentEditActive && !isOverviewActive) ? 'flex' : 'none';
+        
+        // 關閉所有可能開啟的彈窗與檢視模式
+        closeModal();
+        closeEditItemModal();
+        if (isOverviewActive) setOverviewMode(false);
+        if (isLayoutMode) toggleLayoutMode();
+
         renderPageNav();
-        if (currentBoxId) renderBoxModal(boxesCache.find(b => b.id === currentBoxId));
+        renderBoxes();
     };
 
     window.toggleLayoutMode = function() {
@@ -732,7 +919,7 @@
         document.getElementById('mode-indicator').innerText = isLayoutMode ? "📐 佈局模式" : "✏️ 編輯模式";
         const hint = document.getElementById('mode-hint');
         hint.style.display = isLayoutMode ? 'block' : 'none';
-        hint.innerText = "💡 拖動箱子、拉黃點縮放；拉藍點縮放底圖";
+        hint.innerText = "💡 佈局模式下可拖動箱子與拉黃點縮放；拉藍點縮放底圖";
         document.querySelectorAll('.bg-resize-handle').forEach(h => h.classList.toggle('visible', isLayoutMode));
         if (isLayoutMode) updateBgHandles();
         renderBoxes();
@@ -818,6 +1005,7 @@
         renderBoxes();
     }
 
+    // 💡 只有在「佈局模式」下才能拖動箱子位置
     function renderBoxes() {
         const layer = document.getElementById('boxes-layer');
         const frag = document.createDocumentFragment();
@@ -825,18 +1013,94 @@
         (boxesCache || []).filter(b => b.pageId === pid).forEach(b => {
             const wrap = document.createElement('div');
             wrap.className = 'box-wrapper';
+            if (isLayoutMode) {
+                wrap.classList.add('selected');
+                wrap.classList.add('layout-active');
+            }
             wrap.style.left = (b.x || 50) + '%';
             wrap.style.top = (b.y || 50) + '%';
             wrap.style.width = (b.width || 100) + 'px';
             wrap.style.height = (b.height || 80) + 'px';
-            if (isLayoutMode) wrap.classList.add('selected');
 
             const img = document.createElement('img');
             img.className = 'box-image-hotspot';
             img.src = b.imageUrl || "https://via.placeholder.com/100?text=BOX";
             wrap.appendChild(img);
 
-            wrap.onclick = (e) => { e.stopPropagation(); if (!isLayoutMode) openBoxModal(b.id); };
+            if (isLayoutMode) {
+                ['tl', 'tr', 'bl', 'br'].forEach(pos => {
+                    const handle = document.createElement('div');
+                    handle.className = `resize-handle handle-${pos}`;
+                    wrap.appendChild(handle);
+
+                    handle.onpointerdown = (e) => {
+                        e.stopPropagation();
+                        handle.setPointerCapture(e.pointerId);
+                        const startX = e.clientX, startY = e.clientY;
+                        const startW = wrap.offsetWidth, startH = wrap.offsetHeight;
+
+                        const onMove = (me) => {
+                            const dx = me.clientX - startX;
+                            const dy = me.clientY - startY;
+                            let newW = startW, newH = startH;
+                            if (pos.includes('r')) newW = Math.max(30, startW + dx);
+                            if (pos.includes('l')) newW = Math.max(30, startW - dx);
+                            if (pos.includes('b')) newH = Math.max(30, startH + dy);
+                            if (pos.includes('t')) newH = Math.max(30, startH - dy);
+                            wrap.style.width = newW + 'px';
+                            wrap.style.height = newH + 'px';
+                        };
+                        const onUp = async () => {
+                            handle.removeEventListener('pointermove', onMove);
+                            handle.removeEventListener('pointerup', onUp);
+                            b.width = wrap.offsetWidth;
+                            b.height = wrap.offsetHeight;
+                            await updateDoc(doc(db, "warehouse_boxes", b.id), { width: b.width, height: b.height });
+                        };
+                        handle.addEventListener('pointermove', onMove);
+                        handle.addEventListener('pointerup', onUp);
+                    };
+                });
+            }
+
+            wrap.onclick = (e) => { 
+                e.stopPropagation(); 
+                if (!isLayoutMode && !wrap.dataset.moved) openBoxModal(b.id); 
+            };
+
+            let isDragging = false, startX = 0, startY = 0;
+            wrap.onpointerdown = (e) => {
+                if (!isLayoutMode || e.target.classList.contains('resize-handle')) return;
+                isDragging = true;
+                wrap.dataset.moved = "";
+                startX = e.clientX; startY = e.clientY;
+                wrap.setPointerCapture(e.pointerId);
+                e.stopPropagation();
+            };
+            wrap.onpointermove = (e) => {
+                if (!isDragging || !isLayoutMode) return;
+                const dx = Math.abs(e.clientX - startX), dy = Math.abs(e.clientY - startY);
+                if (dx > 4 || dy > 4) wrap.dataset.moved = "true";
+
+                const container = document.getElementById('map-canvas').getBoundingClientRect();
+                let newX = ((e.clientX - container.left) / container.width) * 100;
+                let newY = ((e.clientY - container.top) / container.height) * 100;
+                newX = Math.max(2, Math.min(98, newX));
+                newY = Math.max(2, Math.min(98, newY));
+                wrap.style.left = newX + '%';
+                wrap.style.top = newY + '%';
+            };
+            wrap.onpointerup = async (e) => {
+                if (!isDragging || !isLayoutMode) return;
+                isDragging = false;
+                const container = document.getElementById('map-canvas').getBoundingClientRect();
+                let finalX = Math.round(((e.clientX - container.left) / container.width) * 100);
+                let finalY = Math.round(((e.clientY - container.top) / container.height) * 100);
+                
+                b.x = finalX; b.y = finalY;
+                await updateDoc(doc(db, "warehouse_boxes", b.id), { x: finalX, y: finalY });
+            };
+
             frag.appendChild(wrap);
         });
         layer.replaceChildren(frag);
@@ -899,7 +1163,7 @@
         if (!name) return alert('請輸入名稱');
         const b = boxesCache.find(x => x.id === currentBoxId);
         b.items = b.items || [];
-        b.items.push({ name, qty: Number(qty), imageUrl: "" });
+        b.items.push({ name, qty: Number(qty), borrower: "", imageUrl: "" });
         await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
         document.getElementById('new-item-name').value = '';
         renderBoxModal(b);
@@ -913,11 +1177,23 @@
         renderBoxModal(b);
     };
 
-    // 💡 智慧物品視窗：支援編輯模式下更改名稱、數量、圖片，並同步重產 QR
     window.openEditItemModal = function(idx) {
         editingItemIndex = idx;
         const b = boxesCache.find(x => x.id === currentBoxId);
         const it = b.items[idx];
+
+        const statusBanner = document.getElementById('item-status-banner');
+        if (it.borrower && it.borrower.trim() !== '') {
+            statusBanner.style.background = 'rgba(255, 59, 48, 0.15)';
+            statusBanner.style.borderColor = 'rgba(255, 59, 48, 0.3)';
+            statusBanner.style.color = '#ff3b30';
+            statusBanner.innerText = `⚠️ 目前狀態：已出庫給 [ ${it.borrower} ]`;
+        } else {
+            statusBanner.style.background = 'rgba(52, 199, 89, 0.15)';
+            statusBanner.style.borderColor = 'rgba(52, 199, 89, 0.3)';
+            statusBanner.style.color = '#34c759';
+            statusBanner.innerText = `🟢 在庫中 (無外借)`;
+        }
 
         const qrCodeContainer = document.getElementById('qrcode-container');
         qrCodeContainer.innerHTML = '';
@@ -960,14 +1236,63 @@
 
     window.closeEditItemModal = function() { document.getElementById('item-edit-modal').style.display = 'none'; };
 
-    window.uploadNewItemImage = async function(e) {
+    // 💡 具備進度條的物品圖片上傳
+    window.uploadNewItemImageWithProgress = async function(e) {
         const file = e.target.files[0];
         if (!file || editingItemIndex === null) return;
-        const snap = await uploadBytes(ref(storage, 'items/item_' + Date.now() + '.jpg'), file);
-        const url = await getDownloadURL(snap.ref);
-        const b = boxesCache.find(x => x.id === currentBoxId);
-        b.items[editingItemIndex].imageUrl = url;
-        document.getElementById('edit-item-preview-img').src = url;
+
+        const pContainer = document.getElementById('item-progress-container');
+        const pFill = document.getElementById('item-progress-fill');
+        pContainer.style.display = 'block';
+        pFill.style.width = '20%';
+
+        try {
+            document.getElementById('edit-item-preview-img').src = URL.createObjectURL(file);
+            pFill.style.width = '60%';
+
+            const snap = await uploadBytes(ref(storage, 'items/item_' + Date.now() + '.jpg'), file);
+            pFill.style.width = '90%';
+
+            const url = await getDownloadURL(snap.ref);
+            const b = boxesCache.find(x => x.id === currentBoxId);
+            b.items[editingItemIndex].imageUrl = url;
+            pFill.style.width = '100%';
+
+            setTimeout(() => { pContainer.style.display = 'none'; pFill.style.width = '0%'; }, 500);
+            alert('✅ 物品圖片上傳完成！');
+        } catch (err) {
+            pContainer.style.display = 'none';
+            alert('❌ 圖片上傳失敗');
+        }
+    };
+
+    // 💡 具備進度條的箱子圖片上傳
+    window.uploadBoxImageWithProgress = async function(e) {
+        const file = e.target.files[0];
+        if (!file || !currentBoxId) return;
+
+        const pContainer = document.getElementById('box-progress-container');
+        const pFill = document.getElementById('box-progress-fill');
+        pContainer.style.display = 'block';
+        pFill.style.width = '30%';
+
+        try {
+            const snap = await uploadBytes(ref(storage, 'boxes/box_' + Date.now() + '.jpg'), file);
+            pFill.style.width = '80%';
+
+            const url = await getDownloadURL(snap.ref);
+            await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { imageUrl: url });
+            const b = boxesCache.find(x => x.id === currentBoxId);
+            b.imageUrl = url;
+            pFill.style.width = '100%';
+
+            setTimeout(() => { pContainer.style.display = 'none'; pFill.style.width = '0%'; }, 500);
+            renderBoxes();
+            alert('✅ 箱子外觀照片上傳完成！');
+        } catch (err) {
+            pContainer.style.display = 'none';
+            alert('❌ 箱子照片上傳失敗');
+        }
     };
 
     window.saveEditingItem = async function() {
@@ -984,21 +1309,10 @@
         await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
         closeEditItemModal();
         renderBoxModal(b);
-        alert('💾 儲存成功！QR Code 已自動同步更新。');
+        alert('💾 儲存成功！');
     };
 
     window.confirmDeleteEditingItem = function() { deleteItem(editingItemIndex); closeEditItemModal(); };
-
-    window.uploadBoxImage = async function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const snap = await uploadBytes(ref(storage, 'boxes/box_' + Date.now() + '.jpg'), file);
-        const url = await getDownloadURL(snap.ref);
-        await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { imageUrl: url });
-        const b = boxesCache.find(x => x.id === currentBoxId);
-        b.imageUrl = url;
-        renderBoxes();
-    };
 
     window.deleteCurrentBox = async function() {
         if (!confirm('確定刪除此箱子？')) return;
