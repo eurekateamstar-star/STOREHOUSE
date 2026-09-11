@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -117,14 +116,14 @@
         .menu-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 16px;
+            gap: 14px;
             margin-bottom: 20px;
         }
         .menu-card {
             background: rgba(28, 28, 30, 0.8);
             border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 20px;
-            padding: 24px 16px;
+            padding: 20px 14px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -134,9 +133,9 @@
             transition: transform 0.2s, background 0.2s;
         }
         .menu-card:active { transform: scale(0.95); background: rgba(44, 44, 46, 0.9); }
-        .menu-card-icon { font-size: 34px; margin-bottom: 10px; }
+        .menu-card-icon { font-size: 32px; margin-bottom: 8px; }
         .menu-card-title { font-size: 14px; font-weight: 600; color: #fff; }
-        .menu-card-desc { font-size: 11px; color: #8e8e93; margin-top: 4px; }
+        .menu-card-desc { font-size: 11px; color: #8e8e93; margin-top: 3px; }
 
         /* 3. 掃描 QR 視窗 */
         #scanner-modal {
@@ -241,6 +240,18 @@
         .ov-box-count { font-size: 12px; color: #8e8e93; font-weight: normal; }
         .ov-item { font-size: 13px; color: #d1d1d6; padding: 4px 0 4px 10px; border-left: 2px solid #0a84ff; margin-bottom: 4px; }
 
+        /* 歷史紀錄列表樣式 */
+        #logs-view {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 2500; padding: 24px 20px; overflow-y: auto;
+        }
+        .log-card {
+            background: rgba(44, 44, 46, 0.65); border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px; padding: 14px; margin-bottom: 10px; font-size: 13px;
+        }
+        .log-header { display: flex; justify-content: space-between; margin-bottom: 6px; font-weight: 600; }
+        .log-time { font-size: 11px; color: #8e8e93; font-weight: normal; }
+
         .modal {
             display: none; position: absolute; bottom: 0; left: 0; width: 100%; max-height: 90%;
             background: rgba(30, 30, 32, 0.92); backdrop-filter: blur(40px); color: #fff;
@@ -256,9 +267,7 @@
             align-items: center; text-align: center; position: relative; cursor: pointer; min-height: 110px; justify-content: center;
         }
         .grid-item-card.empty-slot {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px dashed rgba(255, 255, 255, 0.2);
-            color: #8e8e93;
+            background: rgba(255, 255, 255, 0.02); border: 1px dashed rgba(255, 255, 255, 0.2); color: #8e8e93;
         }
         .grid-item-card img { width: 100%; height: 60px; object-fit: contain; border-radius: 8px; background: #1c1c1e; margin-bottom: 4px; }
         .grid-item-name { font-size: 11px; font-weight: 600; color: #fff; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
@@ -300,22 +309,27 @@
                 <div class="menu-card" onclick="openScanner('locate')">
                     <div class="menu-card-icon">🔍</div>
                     <div class="menu-card-title">掃 QR 找位置</div>
-                    <div class="menu-card-desc">掃碼定位箱子與物品</div>
+                    <div class="menu-card-desc">尋找箱子與物品</div>
                 </div>
                 <div class="menu-card" onclick="openScanner('in')">
                     <div class="menu-card-icon">📥</div>
-                    <div class="menu-card-title">快速進貨</div>
-                    <div class="menu-card-desc">掃碼入庫、庫存+1</div>
+                    <div class="menu-card-title">快速進貨 (還回)</div>
+                    <div class="menu-card-desc">掃碼入庫、紀錄時間</div>
                 </div>
                 <div class="menu-card" onclick="openScanner('out')">
                     <div class="menu-card-icon">📤</div>
-                    <div class="menu-card-title">快速出貨</div>
-                    <div class="menu-card-desc">掃碼出庫、庫存-1</div>
+                    <div class="menu-card-title">快速出貨 (領用)</div>
+                    <div class="menu-card-desc">掃碼出庫、指定對象</div>
                 </div>
-                <div class="menu-card" onclick="openMapQuery()">
+                <div class="menu-card" onclick="openLogsView()">
+                    <div class="menu-card-icon">📜</div>
+                    <div class="menu-card-title">進出貨紀錄</div>
+                    <div class="menu-card-desc">檢視時間與領用對象</div>
+                </div>
+                <div class="menu-card" onclick="openMapQuery()" style="grid-column: span 2;">
                     <div class="menu-card-icon">🗺️</div>
-                    <div class="menu-card-title">平面圖總覽</div>
-                    <div class="menu-card-desc">檢視倉儲地圖</div>
+                    <div class="menu-card-title">平面圖與全庫存總覽</div>
+                    <div class="menu-card-desc">地圖檢視、編輯與 QR 生成</div>
                 </div>
             </div>
         </div>
@@ -329,11 +343,22 @@
             
             <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative;">
                 <div id="reader"></div>
-                <div style="margin-top: 15px; font-size: 13px; color: #8e8e93; text-align: center;" id="scanner-hint">請將鏡頭對準 QR Code</div>
+                <div style="margin-top: 15px; font-size: 13px; color: #8e8e93; text-align: center;" id="scanner-hint">請對準 QR Code</div>
             </div>
         </div>
 
-        <!-- 4. 倉儲地圖主介面 -->
+        <!-- 4. 歷史紀錄面板 -->
+        <div id="logs-view">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-top: 10px;">
+                <div style="font-size: 20px; font-weight: 700;">📜 進出貨稽核紀錄</div>
+                <button onclick="closeLogsView()" class="apple-btn secondary" style="padding: 8px 14px; font-size: 13px;">返回</button>
+            </div>
+            <div id="logs-container">
+                <div style="color: #8e8e93; text-align: center; padding: 20px;">載入中…</div>
+            </div>
+        </div>
+
+        <!-- 5. 倉儲地圖主介面 -->
         <div id="warehouse-system-view" style="display: none; position: absolute; top:0; left:0; width:100%; height:100%;">
             <header>
                 <button onclick="backToMainMenu()" class="apple-btn secondary" style="padding: 8px 12px; font-size: 12px;">〈 主選單</button>
@@ -405,7 +430,7 @@
             <button class="apple-btn secondary" style="width:100%; padding: 14px; font-weight: 600;" onclick="closeModal()">關閉視窗</button>
         </div>
 
-        <!-- 物品編輯視窗 (編輯模式下可改名、數量、圖片，並會自動重新生成 QR Code) -->
+        <!-- 物品編輯視窗 (支援編輯名稱、數量、圖片，自動重產 QR) -->
         <div id="item-edit-modal" class="modal" style="z-index: 2500;">
             <h2 id="edit-modal-title" style="margin:0 0 14px 0; font-size:18px; font-weight:600; color:#ff9500;">🏷️ 物品資訊與專屬 QR Code</h2>
             
@@ -414,14 +439,14 @@
                 <div id="item-qr-code-text" style="font-size: 11px; color: #8e8e93; word-break: break-all;"></div>
             </div>
 
-            <!-- 檢視模式內容 -->
+            <!-- 檢視模式 -->
             <div id="view-item-container" style="text-align: center; margin-bottom: 14px; background: rgba(255,255,255,0.04); padding: 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08);">
                 <img id="view-item-img" src="" style="width: 70px; height: 70px; object-fit: contain; border-radius: 10px; background: #1c1c1e; margin-bottom: 8px; display:block; margin-left:auto; margin-right:auto;">
                 <div id="view-item-name" style="font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 4px;"></div>
                 <div id="view-item-qty" style="font-size: 13px; color: #ff9500; font-weight: 600;"></div>
             </div>
 
-            <!-- 編輯模式表單 (預設隱藏，切換編輯模式時開啟) -->
+            <!-- 編輯模式表單 -->
             <div id="edit-item-form-container" style="display: none; margin-bottom: 14px;">
                 <div style="text-align: center; margin-bottom: 10px; background: rgba(255,255,255,0.04); padding: 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
                     <img id="edit-item-preview-img" src="" style="width: 60px; height: 60px; object-fit: contain; border-radius: 8px; background: #1c1c1e; margin-bottom: 6px; display:block; margin-left:auto; margin-right:auto;">
@@ -471,7 +496,7 @@
     let isOverviewActive = false;
     let currentBoxId = null;
     let editingItemIndex = null;
-    let scannerMode = 'in'; // 'locate', 'in', 'out'
+    let scannerMode = 'locate'; // 'locate', 'in', 'out'
     let html5QrCode = null;
 
     let scale = 1, panX = 0, panY = 0;
@@ -503,14 +528,57 @@
         if (!boxesCache) await initApp();
     };
 
+    // 開啟歷史紀錄面板
+    window.openLogsView = async function() {
+        document.getElementById('main-menu-view').style.display = 'none';
+        document.getElementById('logs-view').style.display = 'block';
+        const container = document.getElementById('logs-container');
+        container.innerHTML = '<div style="color: #8e8e93; text-align: center; padding: 20px;">載入中…</div>';
+
+        try {
+            const snap = await getDocs(collection(db, "warehouse_logs"));
+            let logs = [];
+            snap.forEach(d => logs.push(d.data()));
+            logs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)); // 最新在前
+
+            if (logs.length === 0) {
+                container.innerHTML = '<div style="color: #8e8e93; text-align: center; padding: 30px;">尚無進出貨紀錄</div>';
+                return;
+            }
+
+            let html = '';
+            logs.forEach(l => {
+                const badgeColor = l.type === '出庫' ? '#ff3b30' : '#34c759';
+                html += `
+                    <div class="log-card">
+                        <div class="log-header">
+                            <span style="color: ${badgeColor};">● ${l.type}：${escapeHtml(l.itemName)} (x${l.qty})</span>
+                            <span class="log-time">${l.timeStr}</span>
+                        </div>
+                        <div style="color: #d1d1d6; margin-top: 4px;">📦 箱子位置：${escapeHtml(l.boxName)}</div>
+                        <div style="color: #0a84ff; margin-top: 2px;">👤 領用/歸還對象：${escapeHtml(l.target || '未指定')}</div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        } catch (e) {
+            container.innerHTML = '<div style="color: #ff3b30; text-align: center; padding: 20px;">載入紀錄失敗</div>';
+        }
+    };
+
+    window.closeLogsView = function() {
+        document.getElementById('logs-view').style.display = 'none';
+        document.getElementById('main-menu-view').style.display = 'flex';
+    };
+
     // 統一掃描入口
     window.openScanner = function(mode) {
         scannerMode = mode;
         let title = '掃描 QR Code';
         let hint = '請將鏡頭對準 QR Code';
-        if (mode === 'locate') { title = '🔍 掃碼找位置'; hint = '對準箱子或物品 QR Code 尋找所在位置'; }
-        else if (mode === 'in') { title = '📥 快速進貨 (+1)'; hint = '對準物品 QR Code 進行進貨'; }
-        else if (mode === 'out') { title = '📤 快速出貨 (-1)'; hint = '對準物品 QR Code 進行出貨'; }
+        if (mode === 'locate') { title = '🔍 掃 QR 找位置'; hint = '對準箱子或物品 QR Code 尋找位置'; }
+        else if (mode === 'in') { title = '📥 快速進貨 (還回)'; hint = '對準物品 QR Code 進行進貨 (還回)'; }
+        else if (mode === 'out') { title = '📤 快速出貨 (領用)'; hint = '對準物品 QR Code 進行出貨 (領用)'; }
 
         document.getElementById('scanner-title').innerText = title;
         document.getElementById('scanner-hint').innerText = hint;
@@ -552,18 +620,43 @@
                 if (box && box.items && box.items[itemIndex]) {
                     const item = box.items[itemIndex];
                     let currentQty = Number(item.qty) || 0;
+                    let targetName = '一般';
+
                     if (scannerMode === 'out') {
                         if (currentQty <= 0) {
                             alert(`⚠️【出貨失敗】\n物品「${item.name}」庫存已為 0！`);
                             return;
                         }
+                        targetName = prompt('請輸入領用對象 (例: 物資車 A、張三、急診室)：', '物資車 1');
+                        if (targetName === null) return; // 點取消
+
                         item.qty = currentQty - 1;
-                        alert(`✅【出貨成功 (-1)】\n物品：${item.name}\n剩餘：${item.qty}`);
+                        alert(`✅【出貨成功 (-1)】\n物品：${item.name}\n對象：${targetName}\n剩餘：${item.qty}`);
                     } else {
+                        targetName = prompt('請輸入還回/進貨來源 (例: 採購補貨、物資車歸還)：', '物資車歸還');
+                        if (targetName === null) return;
+
                         item.qty = currentQty + 1;
-                        alert(`✅【進貨成功 (+1)】\n物品：${item.name}\n數量：${item.qty}`);
+                        alert(`✅【進貨成功 (+1)】\n物品：${item.name}\n來源：${targetName}\n數量：${item.qty}`);
                     }
+
+                    // 儲存異動
                     await updateDoc(doc(db, "warehouse_boxes", targetBoxId), { items: box.items });
+
+                    // 寫入進出貨稽核紀錄 Log
+                    try {
+                        const now = new Date();
+                        const timeStr = `${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+                        await addDoc(collection(db, "warehouse_logs"), {
+                            type: scannerMode === 'out' ? '出庫' : '進貨',
+                            itemName: item.name,
+                            qty: 1,
+                            boxName: box.name,
+                            target: targetName || '未指定',
+                            timestamp: Date.now(),
+                            timeStr: timeStr
+                        });
+                    } catch (e) {}
                 }
                 return;
             }
@@ -573,14 +666,10 @@
 
         const box = boxesCache.find(b => b.id === targetBoxId);
         if (box) {
-            // 切換至地圖檢視並自動開啟該箱子位置
             document.getElementById('main-menu-view').style.display = 'none';
             document.getElementById('warehouse-system-view').style.display = 'block';
-            
-            // 自動跳轉到該箱子所在的頁面
             const pageIndex = pages.findIndex(p => p.id === box.pageId);
             if (pageIndex !== -1) await switchToPage(pageIndex);
-
             openBoxModal(box.id);
             alert(`📍 成功找到位置！\n箱子名稱：${box.name}`);
         } else {
@@ -824,13 +913,12 @@
         renderBoxModal(b);
     };
 
-    // 💡 智慧物品視窗：根據是否為「編輯模式」自動切換為檢視 QR Code 或是修改內容
+    // 💡 智慧物品視窗：支援編輯模式下更改名稱、數量、圖片，並同步重產 QR
     window.openEditItemModal = function(idx) {
         editingItemIndex = idx;
         const b = boxesCache.find(x => x.id === currentBoxId);
         const it = b.items[idx];
 
-        // 產生 QR Code
         const qrCodeContainer = document.getElementById('qrcode-container');
         qrCodeContainer.innerHTML = '';
         const itemQrText = `ITEM_${b.id}_${idx}`;
@@ -841,7 +929,6 @@
         });
 
         if (isContentEditActive) {
-            // 編輯模式：開放更改名稱、數量、圖片
             document.getElementById('edit-modal-title').innerText = '✏️ 編輯物品資料與 QR Code';
             document.getElementById('view-item-container').style.display = 'none';
             document.getElementById('edit-item-form-container').style.display = 'block';
@@ -855,934 +942,6 @@
             document.getElementById('btn-modal-del').style.display = 'block';
             document.getElementById('btn-modal-save').style.display = 'block';
         } else {
-            // 檢視模式：唯讀檢視
-            document.getElementById('edit-modal-title').innerText = '🏷️ 物品資訊與專屬 QR Code';
-            document.getElementById('view-item-container').style.display = 'block';
-            document.getElementById('edit-item-form-container').style.display = 'none';
-            document.getElementById('edit-mode-hint').style.display = 'block';
-
-            document.getElementById('view-item-name').innerText = it.name || '未命名';
-            document.getElementById('view-item-qty').innerText = `目前庫存數量: ${it.qty || 0} 個`;
-            document.getElementById('view-item-img').src = it.imageUrl || 'https://via.placeholder.com/70?text=No+Img';
-
-            document.getElementById('btn-modal-del').style.display = 'none';
-            document.getElementById('btn-modal-save').style.display = 'none';
-        }
-
-        document.getElementById('item-edit-modal').style.display = 'block';
-    };
-
-    window.closeEditItemModal = function() { document.getElementById('item-edit-modal').style.display = 'none'; };
-
-    window.uploadNewItemImage = async function(e) {
-        const file = e.target.files[0];
-        if (!file || editingItemIndex === null) return;
-        const snap = await uploadBytes(ref(storage, 'items/item_' + Date.now() + '.jpg'), file);
-        const url = await getDownloadURL(snap.ref);
-        const b = boxesCache.find(x => x.id === currentBoxId);
-        b.items[editingItemIndex].imageUrl = url;
-        document.getElementById('edit-item-preview-img').src = url;
-    };
-
-    window.saveEditingItem = async function() {
-        const b = boxesCache.find(x => x.id === currentBoxId);
-        const newName = document.getElementById('edit-item-name-input').value.trim();
-        const newQty = parseInt(document.getElementById('edit-item-qty-input').value, 10);
-
-        if (!newName) return alert('請輸入物品名稱');
-        if (isNaN(newQty) || newQty < 0) return alert('數量必須為 0 或正整數');
-
-        b.items[editingItemIndex].name = newName;
-        b.items[editingItemIndex].qty = newQty;
-
-        await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
-        closeEditItemModal();
-        renderBoxModal(b);
-        alert('💾 儲存成功！QR Code 已自動同步更新。');
-    };
-
-    window.confirmDeleteEditingItem = function() { deleteItem(editingItemIndex); closeEditItemModal(); };
-
-    window.uploadBoxImage = async function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const snap = await uploadBytes(ref(storage, 'boxes/box_' + Date.now() + '.jpg'), file);
-        const url = await getDownloadURL(snap.ref);
-        await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { imageUrl: url });
-        const b = boxesCache.find(x => x.id === currentBoxId);
-        b.imageUrl = url;
-        renderBoxes();
-    };
-
-    window.deleteCurrentBox = async function() {
-        if (!confirm('確定刪除此箱子？')) return;
-        await deleteDoc(doc(db, "warehouse_boxes", currentBoxId));
-        boxesCache = boxesCache.filter(b => b.id !== currentBoxId);
-        closeModal();
-        renderBoxes();
-    };
-</script>
-
-</body>
-</html>--- START OF FILE Paste September 11, 2026 - 4:15PM ---
-
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>智慧行動倉儲管理 App</title>
-    <!-- 引入 html5-qrcode 掃描庫與 qrcode.js 產生庫 -->
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <style>
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        html, body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, sans-serif;
-            margin: 0; padding: 0;
-            background-color: #000;
-            color: #fff;
-            height: 100%;
-            width: 100%;
-            overflow: hidden;
-        }
-
-        .phone-frame {
-            width: 100%;
-            max-width: 480px;
-            height: 100%;
-            margin: 0 auto;
-            background-color: #000;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .apple-card {
-            background: rgba(28, 28, 30, 0.75);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            padding: 20px;
-        }
-
-        .apple-btn {
-            background: #0071e3;
-            color: white;
-            border: none;
-            border-radius: 12px;
-            padding: 12px 16px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            box-shadow: 0 4px 12px rgba(0, 113, 227, 0.3);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-        .apple-btn:active { transform: scale(0.97); background: #0077ed; }
-        .apple-btn.secondary {
-            background: rgba(255, 255, 255, 0.08);
-            color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            box-shadow: none;
-        }
-        .apple-btn.danger { background: #ff3b30; box-shadow: 0 4px 12px rgba(255, 59, 48, 0.3); }
-        .apple-btn.success { background: #34c759; box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3); }
-
-        .apple-input {
-            width: 100%;
-            padding: 12px 16px;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            color: white;
-            border-radius: 12px;
-            font-size: 15px;
-            outline: none;
-            transition: all 0.3s;
-        }
-        .apple-input:focus { border-color: #0071e3; background: rgba(255, 255, 255, 0.12); }
-
-        /* 1. 登入畫面 */
-        #login-view {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(135deg, #050505 0%, #1c1c1e 100%);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 30px;
-            z-index: 3000;
-        }
-        .login-logo { font-size: 54px; margin-bottom: 10px; }
-        .login-title { font-size: 24px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 6px; }
-        .login-subtitle { font-size: 14px; color: #8e8e93; margin-bottom: 30px; text-align: center; }
-
-        /* 2. 主選單儀表板 */
-        #main-menu-view {
-            display: none;
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: #000;
-            padding: 24px 20px;
-            flex-direction: column;
-            z-index: 2000;
-            overflow-y: auto;
-        }
-        .menu-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-            padding-top: 10px;
-        }
-        .menu-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            margin-bottom: 20px;
-        }
-        .menu-card {
-            background: rgba(28, 28, 30, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 20px;
-            padding: 24px 16px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            cursor: pointer;
-            transition: transform 0.2s, background 0.2s;
-        }
-        .menu-card:active { transform: scale(0.95); background: rgba(44, 44, 46, 0.9); }
-        .menu-card-icon { font-size: 34px; margin-bottom: 10px; }
-        .menu-card-title { font-size: 14px; font-weight: 600; color: #fff; }
-        .menu-card-desc { font-size: 11px; color: #8e8e93; margin-top: 4px; }
-
-        /* 3. 掃描 QR 視窗 */
-        #scanner-modal {
-            display: none;
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95);
-            z-index: 4000;
-            flex-direction: column;
-            padding: 20px;
-            justify-content: space-between;
-        }
-        #reader { width: 100%; border-radius: 16px; overflow: hidden; background: #111; }
-
-        /* 4. Apple 風格倉儲地圖介面 */
-        header {
-            position: absolute;
-            top: 12px; left: 16px; right: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 100;
-            pointer-events: none;
-        }
-        header > * { pointer-events: auto; }
-
-        .header-title {
-            font-size: 13px; font-weight: 600;
-            background: rgba(28, 28, 30, 0.75);
-            backdrop-filter: blur(20px);
-            padding: 8px 14px; border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        }
-
-        .header-btns { display: flex; gap: 8px; align-items: center; }
-        .header-btns button {
-            background: rgba(28, 28, 30, 0.75); backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1); color: white;
-            padding: 8px 14px; border-radius: 14px; font-size: 12px; font-weight: 500;
-            cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: all 0.2s;
-        }
-        .header-btns button:active { transform: scale(0.95); }
-        .header-btns button.active { background: #34c759; border-color: transparent; }
-
-        .page-nav {
-            position: absolute; top: 68px; left: 50%; transform: translateX(-50%);
-            display: flex; align-items: center; gap: 6px;
-            background: rgba(28, 28, 30, 0.75); backdrop-filter: blur(20px);
-            padding: 5px 8px; border-radius: 24px; z-index: 95;
-            border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-        }
-        .page-nav-btn {
-            background: rgba(255, 255, 255, 0.08); border: none; color: #fff;
-            width: 30px; height: 30px; border-radius: 50%; font-size: 13px;
-            cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-        }
-        .page-nav-btn:disabled { opacity: 0.25; cursor: default; }
-        .page-nav-title { font-size: 13px; font-weight: 600; padding: 0 8px; max-width: 140px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .page-nav-add { background: #34c759 !important; }
-        .page-nav-del { background: #ff3b30 !important; }
-
-        .image-map-container { position: relative; width: 100%; height: 100%; background: #000; overflow: hidden; touch-action: none; }
-        #map-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform-origin: 0 0; }
-        #warehouse-img { width: 100%; height: 100%; object-fit: contain; display: block; }
-
-        .box-wrapper { position: absolute; transform: translate(-50%, -50%); touch-action: none; z-index: 50; }
-        .box-image-hotspot { width: 100%; height: 100%; object-fit: contain; background: transparent !important; border: none !important; cursor: pointer; display: block; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.8)); }
-        .box-wrapper.selected .box-image-hotspot { outline: 2px dashed #ff9500; background: rgba(255, 149, 0, 0.15) !important; border-radius: 8px; }
-
-        .resize-handle { display: none; position: absolute; width: 26px; height: 26px; background: #ff9500; border: 3px solid #fff; border-radius: 50%; z-index: 60; }
-        .box-wrapper.selected .resize-handle { display: block; }
-        .handle-tl { top: -13px; left: -13px; cursor: nwse-resize; }
-        .handle-tr { top: -13px; right: -13px; cursor: nesw-resize; }
-        .handle-bl { bottom: -13px; left: -13px; cursor: nesw-resize; }
-        .handle-br { bottom: -13px; right: -13px; cursor: nwse-resize; }
-
-        .bg-resize-handle { display: none; position: absolute; width: 30px; height: 30px; background: #0a84ff; border: 3px solid #fff; border-radius: 50%; z-index: 70; touch-action: none; transform: translate(-50%, -50%); }
-        .bg-resize-handle.visible { display: block; }
-
-        .mode-hint {
-            position: absolute; top: 116px; left: 50%; transform: translateX(-50%);
-            background: rgba(28, 28, 30, 0.85); backdrop-filter: blur(20px); color: #ff9500;
-            padding: 8px 16px; border-radius: 14px; font-size: 12px; z-index: 90;
-            pointer-events: none; border: 1px solid rgba(255,149,0,0.3); display: none; text-align: center; width: 90%;
-        }
-
-        .edit-toolbar {
-            display: none; position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
-            background: rgba(28, 28, 30, 0.85); backdrop-filter: blur(25px); padding: 12px 16px;
-            border-radius: 22px; border: 1px solid rgba(255, 255, 255, 0.15); z-index: 100;
-            box-shadow: 0 12px 40px rgba(0,0,0,0.8); width: 92%; max-width: 420px; gap: 10px; align-items: center;
-        }
-
-        #overview-view {
-            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; overflow-y: auto; padding: 110px 20px 40px 20px; z-index: 10;
-        }
-        .ov-page-title { font-size: 16px; font-weight: 600; color: #0a84ff; margin: 24px 0 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .ov-box { background: rgba(44, 44, 46, 0.65); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px; margin-bottom: 12px; cursor: pointer; }
-        .ov-box-title { font-weight: 600; font-size: 15px; margin-bottom: 8px; display: flex; justify-content: space-between; }
-        .ov-box-count { font-size: 12px; color: #8e8e93; font-weight: normal; }
-        .ov-item { font-size: 13px; color: #d1d1d6; padding: 4px 0 4px 10px; border-left: 2px solid #0a84ff; margin-bottom: 4px; }
-
-        .modal {
-            display: none; position: absolute; bottom: 0; left: 0; width: 100%; max-height: 90%;
-            background: rgba(30, 30, 32, 0.92); backdrop-filter: blur(40px); color: #fff;
-            border-top-left-radius: 28px; border-top-right-radius: 28px; box-shadow: 0 -20px 50px rgba(0,0,0,0.9);
-            padding: 24px; z-index: 2000; overflow-y: auto; border-top: 1px solid rgba(255,255,255,0.15);
-        }
-        #backdrop { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); z-index: 1500; }
-
-        .items-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; max-height: 280px; overflow-y: auto; margin-bottom: 16px; padding: 4px; }
-        .grid-item-card {
-            background: rgba(44, 44, 46, 0.7); border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 14px; padding: 10px; display: flex; flex-direction: column;
-            align-items: center; text-align: center; position: relative; cursor: pointer; min-height: 110px; justify-content: center;
-        }
-        .grid-item-card.empty-slot {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px dashed rgba(255, 255, 255, 0.2);
-            color: #8e8e93;
-        }
-        .grid-item-card img { width: 100%; height: 60px; object-fit: contain; border-radius: 8px; background: #1c1c1e; margin-bottom: 4px; }
-        .grid-item-name { font-size: 11px; font-weight: 600; color: #fff; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
-        .grid-item-qty { font-size: 11px; color: #ff9500; font-weight: 600; }
-        .grid-item-del {
-            position: absolute; top: 6px; right: 6px; background: rgba(255, 59, 48, 0.9);
-            color: white; border: none; border-radius: 50%; width: 22px; height: 22px;
-            font-size: 11px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 5;
-        }
-    </style>
-</head>
-<body>
-
-    <div class="phone-frame">
-
-        <!-- 1. 登入畫面 -->
-        <div id="login-view">
-            <div class="login-logo">📦</div>
-            <div class="login-title">行動倉儲管理</div>
-            <div class="login-subtitle">請輸入授權 PIN 碼進入系統</div>
-            
-            <div class="apple-card" style="width: 100%;">
-                <input type="password" id="login-pin-input" class="apple-input" placeholder="預設 PIN: 8888" style="margin-bottom: 16px; text-align: center; letter-spacing: 4px;">
-                <button class="apple-btn" onclick="handleLogin()" style="width: 100%;">登入系統</button>
-            </div>
-        </div>
-
-        <!-- 2. 主選單儀表板 -->
-        <div id="main-menu-view">
-            <div class="menu-header">
-                <div>
-                    <div style="font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">倉儲中樞</div>
-                    <div style="font-size: 13px; color: #8e8e93;">Apple 智慧倉儲管理</div>
-                </div>
-                <button onclick="logout()" class="apple-btn secondary" style="padding: 8px 14px; font-size: 13px;">登出</button>
-            </div>
-
-            <div class="menu-grid">
-                <div class="menu-card" onclick="openScanner('locate')">
-                    <div class="menu-card-icon">🔍</div>
-                    <div class="menu-card-title">掃 QR 找位置</div>
-                    <div class="menu-card-desc">掃碼定位箱子與物品</div>
-                </div>
-                <div class="menu-card" onclick="openScanner('in')">
-                    <div class="menu-card-icon">📥</div>
-                    <div class="menu-card-title">快速進貨</div>
-                    <div class="menu-card-desc">掃碼入庫、庫存+1</div>
-                </div>
-                <div class="menu-card" onclick="openScanner('out')">
-                    <div class="menu-card-icon">📤</div>
-                    <div class="menu-card-title">快速出貨</div>
-                    <div class="menu-card-desc">掃碼出庫、庫存-1</div>
-                </div>
-                <div class="menu-card" onclick="openMapQuery()">
-                    <div class="menu-card-icon">🗺️</div>
-                    <div class="menu-card-title">平面圖總覽</div>
-                    <div class="menu-card-desc">檢視倉儲地圖</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 3. 掃描 QR 視窗 -->
-        <div id="scanner-modal">
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0;">
-                <div id="scanner-title" style="font-size: 17px; font-weight: 600;">掃描 QR Code</div>
-                <button onclick="closeScanner()" class="apple-btn secondary" style="padding: 6px 14px; font-size: 13px;">取消</button>
-            </div>
-            
-            <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative;">
-                <div id="reader"></div>
-                <div style="margin-top: 15px; font-size: 13px; color: #8e8e93; text-align: center;" id="scanner-hint">請將鏡頭對準 QR Code</div>
-            </div>
-        </div>
-
-        <!-- 4. 倉儲地圖主介面 -->
-        <div id="warehouse-system-view" style="display: none; position: absolute; top:0; left:0; width:100%; height:100%;">
-            <header>
-                <button onclick="backToMainMenu()" class="apple-btn secondary" style="padding: 8px 12px; font-size: 12px;">〈 主選單</button>
-                <div class="header-title" id="mode-indicator">🔍 檢視模式</div>
-                <div class="header-btns">
-                    <button id="btn-toggle-overview" onclick="toggleOverview()">📋 總覽</button>
-                    <input type="file" id="bg-upload" style="display: none;" accept="image/*" onchange="uploadBackgroundImage(event)">
-                    <button id="btn-change-bg" style="display:none;" onclick="document.getElementById('bg-upload').click()">📁 底圖</button>
-                    <button id="btn-move-mode" style="display:none;" onclick="toggleLayoutMode()">📐 佈局</button>
-                    <button id="mode-btn-edit" onclick="toggleContentEditMode()">✏️ 編輯</button>
-                </div>
-            </header>
-
-            <div class="page-nav" id="page-nav">
-                <button class="page-nav-btn" id="page-nav-prev" onclick="goToPage(-1)">‹</button>
-                <div class="page-nav-title" id="page-nav-title">載入中…</div>
-                <button class="page-nav-btn" id="page-nav-next" onclick="goToPage(1)">›</button>
-                <button class="page-nav-btn page-nav-add" id="btn-add-page" style="display:none;" onclick="addNewPage()">＋</button>
-                <button class="page-nav-btn page-nav-del" id="btn-del-page" style="display:none;" onclick="deleteCurrentPage()">✕</button>
-            </div>
-
-            <div class="image-map-container" id="map-container">
-                <div id="map-canvas">
-                    <img id="warehouse-img" src="" alt="請點擊換底圖">
-                    <div id="boxes-layer"></div>
-                </div>
-                <div class="bg-resize-handle" id="bg-handle-tl"></div>
-                <div class="bg-resize-handle" id="bg-handle-tr"></div>
-                <div class="bg-resize-handle" id="bg-handle-bl"></div>
-                <div class="bg-resize-handle" id="bg-handle-br"></div>
-                <div id="mode-hint" class="mode-hint">提示</div>
-            </div>
-
-            <div id="overview-view"></div>
-
-            <div class="edit-toolbar" id="edit-toolbar">
-                <input type="text" id="new-box-name" class="apple-input" placeholder="新箱子名稱 (例: 救護箱)" style="padding: 10px 14px; font-size: 13px;">
-                <button class="apple-btn success" onclick="addNewBox()" style="padding: 10px 16px; font-size: 13px;">+ 新增箱子</button>
-            </div>
-        </div>
-
-        <!-- 箱子詳情視窗 -->
-        <div id="backdrop" onclick="closeModal()"></div>
-        <div id="item-modal" class="modal">
-            <div style="overflow:hidden; margin-bottom:14px;">
-                <h2 id="modal-box-title" style="margin:0; font-size:18px; font-weight:600; display:inline-block;">箱子詳情</h2>
-                <button id="delete-box-btn" class="delete-box-btn" style="display:none;" onclick="deleteCurrentBox()">🗑️ 刪除箱子</button>
-            </div>
-            
-            <div id="box-image-edit-section" style="text-align: center; display:none; margin-bottom: 14px; background: rgba(255,255,255,0.04); padding: 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08);">
-                <input type="file" id="box-img-upload" style="display:none;" accept="image/*" onchange="uploadBoxImage(event)">
-                <button class="apple-btn secondary" style="font-size:12px; padding:10px; width:100%;" onclick="document.getElementById('box-img-upload').click()">📷 更換箱子外觀照片</button>
-            </div>
-
-            <div style="font-size: 13px; color:#8e8e93; margin-bottom:8px; font-weight: 500;">📦 箱內物品清單：</div>
-            <div id="item-list-container" class="items-grid"></div>
-            
-            <div id="add-item-section" style="background: rgba(255,255,255,0.04); padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08); display:none; margin-bottom: 15px;">
-                <div style="font-size: 13px; color: #ff9500; font-weight:600; margin-bottom: 8px;">➕ 新增庫存物品 (進貨)</div>
-                <input type="text" id="new-item-name" class="apple-input" placeholder="物品名稱 (例: N95口罩)" style="margin-bottom:8px; font-size:13px; padding:10px;">
-                <input type="number" id="new-item-qty" class="apple-input" placeholder="數量" value="1" min="1" style="margin-bottom:8px; font-size:13px; padding:10px;">
-                
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <input type="file" id="item-img-file" accept="image/*" style="font-size:11px; flex:1; color:#aaa;">
-                    <button class="apple-btn success" style="padding:10px 16px; font-size:13px;" onclick="addItemWithImage()">加入</button>
-                </div>
-            </div>
-
-            <button class="apple-btn secondary" style="width:100%; padding: 14px; font-weight: 600;" onclick="closeModal()">關閉視窗</button>
-        </div>
-
-        <!-- 物品編輯視窗 (編輯模式下可改名、數量、圖片，並會自動重新生成 QR Code) -->
-        <div id="item-edit-modal" class="modal" style="z-index: 2500;">
-            <h2 id="edit-modal-title" style="margin:0 0 14px 0; font-size:18px; font-weight:600; color:#ff9500;">🏷️ 物品資訊與專屬 QR Code</h2>
-            
-            <div style="text-align: center; margin-bottom: 14px; background: rgba(255,255,255,0.06); padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1);">
-                <div id="qrcode-container" style="display: inline-block; background: #fff; padding: 10px; border-radius: 8px; margin-bottom: 6px;"></div>
-                <div id="item-qr-code-text" style="font-size: 11px; color: #8e8e93; word-break: break-all;"></div>
-            </div>
-
-            <!-- 檢視模式內容 -->
-            <div id="view-item-container" style="text-align: center; margin-bottom: 14px; background: rgba(255,255,255,0.04); padding: 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08);">
-                <img id="view-item-img" src="" style="width: 70px; height: 70px; object-fit: contain; border-radius: 10px; background: #1c1c1e; margin-bottom: 8px; display:block; margin-left:auto; margin-right:auto;">
-                <div id="view-item-name" style="font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 4px;"></div>
-                <div id="view-item-qty" style="font-size: 13px; color: #ff9500; font-weight: 600;"></div>
-            </div>
-
-            <!-- 編輯模式表單 (預設隱藏，切換編輯模式時開啟) -->
-            <div id="edit-item-form-container" style="display: none; margin-bottom: 14px;">
-                <div style="text-align: center; margin-bottom: 10px; background: rgba(255,255,255,0.04); padding: 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
-                    <img id="edit-item-preview-img" src="" style="width: 60px; height: 60px; object-fit: contain; border-radius: 8px; background: #1c1c1e; margin-bottom: 6px; display:block; margin-left:auto; margin-right:auto;">
-                    <input type="file" id="edit-item-img-input" style="display:none;" accept="image/*" onchange="uploadNewItemImage(event)">
-                    <button class="apple-btn secondary" style="padding:6px 12px; font-size:11px;" onclick="document.getElementById('edit-item-img-input').click()">📷 更換圖片</button>
-                </div>
-                <div style="font-size: 13px; color:#8e8e93; margin-bottom:4px;">物品名稱：</div>
-                <input type="text" id="edit-item-name-input" class="apple-input" style="margin-bottom:10px; font-size:13px; padding:10px;">
-                <div style="font-size: 13px; color:#8e8e93; margin-bottom:4px;">數量：</div>
-                <input type="number" id="edit-item-qty-input" class="apple-input" min="0" style="margin-bottom:10px; font-size:13px; padding:10px;">
-            </div>
-
-            <div style="font-size: 12px; color: #8e8e93; text-align: center; margin-bottom: 15px;" id="edit-mode-hint">
-                💡 提示：若需修改資料，請至右上角進入「✏️ 編輯模式」。
-            </div>
-
-            <div style="display:flex; gap:10px; margin-bottom:10px;" id="edit-mode-action-btns">
-                <button class="apple-btn danger" style="flex:1; padding:12px; font-size:13px; display:none;" id="btn-modal-del" onclick="confirmDeleteEditingItem()">🗑️ 刪除</button>
-                <button class="apple-btn success" style="flex:1; padding:12px; font-size:13px; display:none;" id="btn-modal-save" onclick="saveEditingItem()">💾 儲存修改</button>
-            </div>
-            <button class="apple-btn secondary" style="width:100%; padding:12px; font-size:13px;" onclick="closeEditItemModal()">返回</button>
-        </div>
-
-    </div>
-
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, getDocs, addDoc, doc, updateDoc, getDoc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyD9oJirgoJCTU7h-ODfSpfwC80E5fqze2A",
-      authDomain: "clawone-6445c.firebaseapp.com",
-      projectId: "clawone-6445c",
-      storageBucket: "clawone-6445c.firebasestorage.app",
-      messagingSenderId: "945236029933",
-      appId: "1:945236029933:web:f93ffb9e6f8b41aebd37e4",
-      measurementId: "G-JEB18KRCXS"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const storage = getStorage(app);
-
-    let isLayoutMode = false;
-    let isContentEditActive = false;
-    let isOverviewActive = false;
-    let currentBoxId = null;
-    let editingItemIndex = null;
-    let scannerMode = 'in'; // 'locate', 'in', 'out'
-    let html5QrCode = null;
-
-    let scale = 1, panX = 0, panY = 0;
-    let pages = [];
-    let currentPageIndex = 0;
-    let boxesCache = null;
-
-    window.handleLogin = function() {
-        const pin = document.getElementById('login-pin-input').value;
-        if (pin === '8888' || pin === 'admin') {
-            document.getElementById('login-view').style.display = 'none';
-            document.getElementById('main-menu-view').style.display = 'flex';
-        } else {
-            alert('金鑰錯誤，預設為 8888');
-        }
-    };
-    window.logout = function() {
-        document.getElementById('main-menu-view').style.display = 'none';
-        document.getElementById('login-view').style.display = 'flex';
-        document.getElementById('login-pin-input').value = '';
-    };
-    window.backToMainMenu = function() {
-        document.getElementById('warehouse-system-view').style.display = 'none';
-        document.getElementById('main-menu-view').style.display = 'flex';
-    };
-    window.openMapQuery = async function() {
-        document.getElementById('main-menu-view').style.display = 'none';
-        document.getElementById('warehouse-system-view').style.display = 'block';
-        if (!boxesCache) await initApp();
-    };
-
-    // 統一掃描入口
-    window.openScanner = function(mode) {
-        scannerMode = mode;
-        let title = '掃描 QR Code';
-        let hint = '請將鏡頭對準 QR Code';
-        if (mode === 'locate') { title = '🔍 掃碼找位置'; hint = '對準箱子或物品 QR Code 尋找所在位置'; }
-        else if (mode === 'in') { title = '📥 快速進貨 (+1)'; hint = '對準物品 QR Code 進行進貨'; }
-        else if (mode === 'out') { title = '📤 快速出貨 (-1)'; hint = '對準物品 QR Code 進行出貨'; }
-
-        document.getElementById('scanner-title').innerText = title;
-        document.getElementById('scanner-hint').innerText = hint;
-        document.getElementById('scanner-modal').style.display = 'flex';
-
-        setTimeout(() => {
-            if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } },
-                (text) => handleGlobalScan(text), () => {}
-            ).catch((err) => { alert("無法啟動相機：" + err); });
-        }, 300);
-    };
-
-    window.closeScanner = function() {
-        if (html5QrCode && html5QrCode.isScanning) {
-            html5QrCode.stop().then(() => { document.getElementById('scanner-modal').style.display = 'none'; }).catch(() => { document.getElementById('scanner-modal').style.display = 'none'; });
-        } else {
-            document.getElementById('scanner-modal').style.display = 'none';
-        }
-    };
-
-    async function handleGlobalScan(scannedText) {
-        closeScanner();
-        if (!boxesCache) {
-            const snap = await getDocs(collection(db, "warehouse_boxes"));
-            boxesCache = [];
-            snap.forEach(d => boxesCache.push({ id: d.id, ...d.data() }));
-        }
-
-        let targetBoxId = null;
-
-        if (scannedText.startsWith('ITEM_')) {
-            const parts = scannedText.split('_');
-            targetBoxId = parts[1];
-            const itemIndex = parseInt(parts[2], 10);
-
-            if (scannerMode === 'in' || scannerMode === 'out') {
-                const box = boxesCache.find(b => b.id === targetBoxId);
-                if (box && box.items && box.items[itemIndex]) {
-                    const item = box.items[itemIndex];
-                    let currentQty = Number(item.qty) || 0;
-                    if (scannerMode === 'out') {
-                        if (currentQty <= 0) {
-                            alert(`⚠️【出貨失敗】\n物品「${item.name}」庫存已為 0！`);
-                            return;
-                        }
-                        item.qty = currentQty - 1;
-                        alert(`✅【出貨成功 (-1)】\n物品：${item.name}\n剩餘：${item.qty}`);
-                    } else {
-                        item.qty = currentQty + 1;
-                        alert(`✅【進貨成功 (+1)】\n物品：${item.name}\n數量：${item.qty}`);
-                    }
-                    await updateDoc(doc(db, "warehouse_boxes", targetBoxId), { items: box.items });
-                }
-                return;
-            }
-        } else {
-            targetBoxId = scannedText; // 直接當作箱子 ID
-        }
-
-        const box = boxesCache.find(b => b.id === targetBoxId);
-        if (box) {
-            // 切換至地圖檢視並自動開啟該箱子位置
-            document.getElementById('main-menu-view').style.display = 'none';
-            document.getElementById('warehouse-system-view').style.display = 'block';
-            
-            // 自動跳轉到該箱子所在的頁面
-            const pageIndex = pages.findIndex(p => p.id === box.pageId);
-            if (pageIndex !== -1) await switchToPage(pageIndex);
-
-            openBoxModal(box.id);
-            alert(`📍 成功找到位置！\n箱子名稱：${box.name}`);
-        } else {
-            alert('❌ 查無此 QR Code 對應的倉儲位置');
-        }
-    }
-
-    async function initApp() {
-        await loadPages();
-        await loadBoxes(true);
-        await switchToPage(currentPageIndex, true);
-    }
-    async function loadPages() {
-        try {
-            const snap = await getDocs(collection(db, "warehouse_pages"));
-            pages = [];
-            snap.forEach(d => pages.push({ id: d.id, ...d.data() }));
-            pages.sort((a, b) => (a.order || 0) - (b.order || 0));
-        } catch (e) { pages = []; }
-        if (pages.length === 0) {
-            const p = { name: '第 1 排', imageUrl: '', scale: 1, panX: 0, panY: 0, order: Date.now() };
-            const ref = await addDoc(collection(db, "warehouse_pages"), p);
-            pages = [{ id: ref.id, ...p }];
-        }
-        currentPageIndex = 0;
-    }
-    function updateCanvasTransform() {
-        const canvas = document.getElementById('map-canvas');
-        canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
-        updateBgHandles();
-    }
-    function updateBgHandles() {
-        const container = document.getElementById('map-container').getBoundingClientRect();
-        const corners = {
-            tl: { x: panX, y: panY }, tr: { x: panX + container.width * scale, y: panY },
-            bl: { x: panX, y: panY + container.height * scale }, br: { x: panX + container.width * scale, y: panY + container.height * scale }
-        };
-        Object.entries(corners).forEach(([pos, pt]) => {
-            const el = document.getElementById('bg-handle-' + pos);
-            if (el) { el.style.left = pt.x + 'px'; el.style.top = pt.y + 'px'; }
-        });
-    }
-
-    window.toggleContentEditMode = function() {
-        isContentEditActive = !isContentEditActive;
-        const btn = document.getElementById('mode-btn-edit');
-        btn.innerText = isContentEditActive ? "🔒 鎖定" : "✏️ 編輯";
-        btn.classList.toggle('active', isContentEditActive);
-        document.getElementById('mode-indicator').innerText = isContentEditActive ? "✏️ 編輯模式" : "🔍 檢視模式";
-        document.getElementById('btn-change-bg').style.display = isContentEditActive ? 'block' : 'none';
-        document.getElementById('btn-move-mode').style.display = isContentEditActive ? 'block' : 'none';
-        document.getElementById('edit-toolbar').style.display = (isContentEditActive && !isOverviewActive) ? 'flex' : 'none';
-        renderPageNav();
-        if (currentBoxId) renderBoxModal(boxesCache.find(b => b.id === currentBoxId));
-    };
-
-    window.toggleLayoutMode = function() {
-        isLayoutMode = !isLayoutMode;
-        document.getElementById('btn-move-mode').classList.toggle('active', isLayoutMode);
-        document.getElementById('mode-indicator').innerText = isLayoutMode ? "📐 佈局模式" : "✏️ 編輯模式";
-        const hint = document.getElementById('mode-hint');
-        hint.style.display = isLayoutMode ? 'block' : 'none';
-        hint.innerText = "💡 拖動箱子、拉黃點縮放；拉藍點縮放底圖";
-        document.querySelectorAll('.bg-resize-handle').forEach(h => h.classList.toggle('visible', isLayoutMode));
-        if (isLayoutMode) updateBgHandles();
-        renderBoxes();
-    };
-
-    window.goToPage = async function(dir) {
-        if (isLayoutMode) return;
-        await switchToPage(currentPageIndex + dir);
-    };
-
-    async function switchToPage(idx, init = false) {
-        if (!pages.length) return;
-        currentPageIndex = Math.max(0, Math.min(idx, pages.length - 1));
-        const p = pages[currentPageIndex];
-        scale = p.scale || 1; panX = p.panX || 0; panY = p.panY || 0;
-        updateCanvasTransform();
-        document.getElementById('warehouse-img').src = p.imageUrl || '';
-        renderPageNav();
-        renderBoxes();
-    }
-
-    function renderPageNav() {
-        const p = pages[currentPageIndex];
-        document.getElementById('page-nav-title').innerText = p ? `${p.name} (${currentPageIndex + 1}/${pages.length})` : '';
-        document.getElementById('page-nav-prev').disabled = currentPageIndex <= 0;
-        document.getElementById('page-nav-next').disabled = currentPageIndex >= pages.length - 1;
-        document.getElementById('btn-add-page').style.display = isContentEditActive ? 'flex' : 'none';
-        document.getElementById('btn-del-page').style.display = (isContentEditActive && pages.length > 1) ? 'flex' : 'none';
-    }
-
-    window.addNewPage = async function() {
-        const name = prompt('新頁面名稱', `第 ${pages.length + 1} 排`);
-        if (!name) return;
-        const p = { name: name.trim(), imageUrl: '', scale: 1, panX: 0, panY: 0, order: Date.now() };
-        const ref = await addDoc(collection(db, "warehouse_pages"), p);
-        pages.push({ id: ref.id, ...p });
-        await switchToPage(pages.length - 1);
-    };
-
-    window.deleteCurrentPage = async function() {
-        if (pages.length <= 1) return alert('必須保留至少一個頁面');
-        if (!confirm('確定刪除此頁面？')) return;
-        await deleteDoc(doc(db, "warehouse_pages", pages[currentPageIndex].id));
-        pages.splice(currentPageIndex, 1);
-        await switchToPage(Math.max(0, currentPageIndex - 1));
-    };
-
-    function escapeHtml(str) {
-        return String(str == null ? '' : str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-    }
-
-    window.toggleOverview = function() { setOverviewMode(!isOverviewActive); };
-    function setOverviewMode(active) {
-        isOverviewActive = active;
-        document.getElementById('map-container').style.display = active ? 'none' : 'block';
-        document.getElementById('page-nav').style.display = active ? 'none' : 'flex';
-        document.getElementById('edit-toolbar').style.display = (active || !isContentEditActive) ? 'none' : 'flex';
-        document.getElementById('overview-view').style.display = active ? 'block' : 'none';
-        const btn = document.getElementById('btn-toggle-overview');
-        btn.innerText = active ? '🗺 地圖' : '📋 總覽';
-        btn.classList.toggle('active', active);
-        if (active) {
-            let html = '';
-            pages.forEach(p => {
-                html += `<div class="ov-page-title">📍 ${escapeHtml(p.name)}</div>`;
-                const boxes = (boxesCache || []).filter(b => b.pageId === p.id);
-                if (boxes.length === 0) html += `<div class="ov-empty-page">（無箱子）</div>`;
-                boxes.forEach(b => {
-                    html += `<div class="ov-box" onclick="openBoxModal('${b.id}')"><div class="ov-box-title"><span>📦 ${escapeHtml(b.name)}</span><span class="ov-box-count">${(b.items||[]).length} 項</span></div>`;
-                    (b.items || []).forEach(it => { html += `<div class="ov-item">• ${escapeHtml(it.name)} x${it.qty||1}</div>`; });
-                    html += `</div>`;
-                });
-            });
-            document.getElementById('overview-view').innerHTML = html;
-        }
-    }
-
-    async function loadBoxes(force = false) {
-        if (!force && boxesCache) { renderBoxes(); return; }
-        const snap = await getDocs(collection(db, "warehouse_boxes"));
-        boxesCache = [];
-        snap.forEach(d => boxesCache.push({ id: d.id, ...d.data() }));
-        renderBoxes();
-    }
-
-    function renderBoxes() {
-        const layer = document.getElementById('boxes-layer');
-        const frag = document.createDocumentFragment();
-        const pid = pages[currentPageIndex]?.id;
-        (boxesCache || []).filter(b => b.pageId === pid).forEach(b => {
-            const wrap = document.createElement('div');
-            wrap.className = 'box-wrapper';
-            wrap.style.left = (b.x || 50) + '%';
-            wrap.style.top = (b.y || 50) + '%';
-            wrap.style.width = (b.width || 100) + 'px';
-            wrap.style.height = (b.height || 80) + 'px';
-            if (isLayoutMode) wrap.classList.add('selected');
-
-            const img = document.createElement('img');
-            img.className = 'box-image-hotspot';
-            img.src = b.imageUrl || "https://via.placeholder.com/100?text=BOX";
-            wrap.appendChild(img);
-
-            wrap.onclick = (e) => { e.stopPropagation(); if (!isLayoutMode) openBoxModal(b.id); };
-            frag.appendChild(wrap);
-        });
-        layer.replaceChildren(frag);
-    }
-
-    window.addNewBox = async function() {
-        const name = document.getElementById('new-box-name').value;
-        if (!name) return alert('請輸入箱子名稱');
-        const b = { name, x: 50, y: 50, width: 100, height: 80, items: [], imageUrl: "", pageId: pages[currentPageIndex].id };
-        const ref = await addDoc(collection(db, "warehouse_boxes"), b);
-        document.getElementById('new-box-name').value = '';
-        boxesCache.push({ id: ref.id, ...b });
-        renderBoxes();
-    };
-
-    window.openBoxModal = async function(id) {
-        currentBoxId = id;
-        renderBoxModal(boxesCache.find(b => b.id === id));
-    };
-
-    function renderBoxModal(b) {
-        document.getElementById('modal-box-title').innerText = `📦 ${b.name}`;
-        document.getElementById('delete-box-btn').style.display = isContentEditActive ? 'block' : 'none';
-        document.getElementById('box-image-edit-section').style.display = isContentEditActive ? 'block' : 'none';
-        document.getElementById('add-item-section').style.display = isContentEditActive ? 'block' : 'none';
-
-        const container = document.getElementById('item-list-container');
-        container.innerHTML = '';
-        if (b.items && b.items.length > 0) {
-            b.items.forEach((it, idx) => {
-                const card = document.createElement('div');
-                const isQtyZero = (Number(it.qty) || 0) === 0;
-                
-                card.className = `grid-item-card ${isQtyZero ? 'empty-slot' : ''}`;
-                card.innerHTML = `
-                    ${isContentEditActive ? `<button class="grid-item-del" onclick="event.stopPropagation(); deleteItem(${idx})">✕</button>` : ''}
-                    <img src="${it.imageUrl || 'https://via.placeholder.com/100?text=No+Img'}" alt="" style="${isQtyZero ? 'opacity: 0.3;' : ''}">
-                    <div class="grid-item-name">${escapeHtml(it.name)}</div>
-                    <div class="grid-item-qty" style="${isQtyZero ? 'color: #ff3b30;' : ''}">${isQtyZero ? '已清空' : (it.qty + ' 個')}</div>
-                `;
-                card.onclick = () => openEditItemModal(idx);
-                container.appendChild(card);
-            });
-        } else {
-            container.innerHTML = '<div style="color: #8e8e93; text-align:center; padding:20px; grid-column: span 3;">箱內尚無物品</div>';
-        }
-        document.getElementById('item-modal').style.display = 'block';
-        document.getElementById('backdrop').style.display = 'block';
-    }
-
-    window.closeModal = function() {
-        document.getElementById('item-modal').style.display = 'none';
-        document.getElementById('backdrop').style.display = 'none';
-        if (isOverviewActive) renderOverview();
-    };
-
-    window.addItemWithImage = async function() {
-        const name = document.getElementById('new-item-name').value;
-        const qty = document.getElementById('new-item-qty').value || 1;
-        if (!name) return alert('請輸入名稱');
-        const b = boxesCache.find(x => x.id === currentBoxId);
-        b.items = b.items || [];
-        b.items.push({ name, qty: Number(qty), imageUrl: "" });
-        await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
-        document.getElementById('new-item-name').value = '';
-        renderBoxModal(b);
-    };
-
-    window.deleteItem = async function(idx) {
-        if (!confirm('確定刪除？')) return;
-        const b = boxesCache.find(x => x.id === currentBoxId);
-        b.items.splice(idx, 1);
-        await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
-        renderBoxModal(b);
-    };
-
-    // 💡 智慧物品視窗：根據是否為「編輯模式」自動切換為檢視 QR Code 或是修改內容
-    window.openEditItemModal = function(idx) {
-        editingItemIndex = idx;
-        const b = boxesCache.find(x => x.id === currentBoxId);
-        const it = b.items[idx];
-
-        // 產生 QR Code
-        const qrCodeContainer = document.getElementById('qrcode-container');
-        qrCodeContainer.innerHTML = '';
-        const itemQrText = `ITEM_${b.id}_${idx}`;
-        document.getElementById('item-qr-code-text').innerText = `掃碼代碼: ${itemQrText}`;
-        new QRCode(qrCodeContainer, {
-            text: itemQrText, width: 120, height: 120,
-            colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H
-        });
-
-        if (isContentEditActive) {
-            // 編輯模式：開放更改名稱、數量、圖片
-            document.getElementById('edit-modal-title').innerText = '✏️ 編輯物品資料與 QR Code';
-            document.getElementById('view-item-container').style.display = 'none';
-            document.getElementById('edit-item-form-container').style.display = 'block';
-            document.getElementById('edit-mode-hint').style.display = 'none';
-            
-            document.getElementById('edit-item-name-input').value = it.name || '';
-            document.getElementById('edit-item-qty-input').value = it.qty || 0;
-            document.getElementById('edit-item-preview-img').src = it.imageUrl || 'https://via.placeholder.com/60?text=No+Img';
-            document.getElementById('edit-item-img-input').value = '';
-
-            document.getElementById('btn-modal-del').style.display = 'block';
-            document.getElementById('btn-modal-save').style.display = 'block';
-        } else {
-            // 檢視模式：唯讀檢視
             document.getElementById('edit-modal-title').innerText = '🏷️ 物品資訊與專屬 QR Code';
             document.getElementById('view-item-container').style.display = 'block';
             document.getElementById('edit-item-form-container').style.display = 'none';
