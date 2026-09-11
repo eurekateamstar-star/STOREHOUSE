@@ -1,13 +1,18 @@
+--- START OF FILE Paste September 11, 2026 - 3:30PM ---
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>行動倉儲管理 App</title>
+    <title>智慧行動倉儲管理 App</title>
+    <!-- 引入 html5-qrcode 掃描庫與 qrcode.js 產生庫 -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         html, body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, sans-serif;
             margin: 0; padding: 0;
             background-color: #000;
             color: #fff;
@@ -28,58 +33,191 @@
             overflow: hidden;
         }
 
-        header {
-            position: absolute;
-            top: 0; left: 0; width: 100%;
+        /* Apple 風格共用樣式 */
+        .apple-card {
+            background: rgba(28, 28, 30, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 20px;
+        }
+
+        .apple-btn {
+            background: #0071e3;
+            color: white;
+            border: none;
+            border-radius: 12px;
             padding: 12px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0, 113, 227, 0.3);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .apple-btn:active { transform: scale(0.97); background: #0077ed; }
+        .apple-btn.secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: none;
+        }
+        .apple-btn.secondary:active { background: rgba(255, 255, 255, 0.15); }
+        .apple-btn.danger { background: #ff3b30; box-shadow: 0 4px 12px rgba(255, 59, 48, 0.3); }
+        .apple-btn.success { background: #34c759; box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3); }
+
+        .apple-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: white;
+            border-radius: 12px;
+            font-size: 15px;
+            outline: none;
+            transition: all 0.3s;
+        }
+        .apple-input:focus { border-color: #0071e3; background: rgba(255, 255, 255, 0.12); }
+
+        /* 1. 登入畫面 */
+        #login-view {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #050505 0%, #1c1c1e 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 30px;
+            z-index: 3000;
+        }
+        .login-logo { font-size: 54px; margin-bottom: 10px; }
+        .login-title { font-size: 24px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 6px; }
+        .login-subtitle { font-size: 14px; color: #8e8e93; margin-bottom: 30px; text-align: center; }
+
+        /* 2. 主選單儀表板 */
+        #main-menu-view {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            padding: 24px 20px;
+            flex-direction: column;
+            z-index: 2000;
+            overflow-y: auto;
+        }
+        .menu-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.85), rgba(0,0,0,0));
-            z-index: 100;
+            margin-bottom: 24px;
+            padding-top: 10px;
         }
+        .menu-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .menu-card {
+            background: rgba(28, 28, 30, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+        }
+        .menu-card:active { transform: scale(0.95); background: rgba(44, 44, 46, 0.9); }
+        .menu-card-icon { font-size: 36px; margin-bottom: 12px; }
+        .menu-card-title { font-size: 15px; font-weight: 600; color: #fff; }
+        .menu-card-desc { font-size: 12px; color: #8e8e93; margin-top: 4px; }
+
+        /* 3. 掃描 QR 視窗 */
+        #scanner-modal {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 4000;
+            flex-direction: column;
+            padding: 20px;
+            justify-content: space-between;
+        }
+        #reader { width: 100%; border-radius: 16px; overflow: hidden; background: #111; }
+
+        /* 4. Apple 風格倉儲地圖介面 */
+        header {
+            position: absolute;
+            top: 12px; left: 16px; right: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            pointer-events: none;
+        }
+        header > * { pointer-events: auto; }
 
         .header-title {
-            font-size: 12px;
-            font-weight: bold;
-            background: rgba(0,0,0,0.6);
-            padding: 4px 10px;
+            font-size: 13px;
+            font-weight: 600;
+            background: rgba(28, 28, 30, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 8px 14px;
             border-radius: 20px;
-            border: 1px solid rgba(255,255,255,0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         }
 
-        .header-btns { display: flex; gap: 4px; align-items: center; }
+        .header-btns { display: flex; gap: 8px; align-items: center; }
         .header-btns button {
-            background: rgba(0, 123, 255, 0.85);
-            border: none;
+            background: rgba(28, 28, 30, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             color: white;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 11px;
+            padding: 8px 14px;
+            border-radius: 14px;
+            font-size: 12px;
+            font-weight: 500;
             cursor: pointer;
-            backdrop-filter: blur(4px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: all 0.2s;
         }
-        .header-btns button.active { background: rgba(40, 167, 69, 0.9); }
+        .header-btns button:active { transform: scale(0.95); }
+        .header-btns button.active { background: #34c759; border-color: transparent; }
 
         .page-nav {
             position: absolute;
-            top: 52px; left: 50%;
+            top: 68px; left: 50%;
             transform: translateX(-50%);
             display: flex;
             align-items: center;
             gap: 6px;
-            background: rgba(0,0,0,0.65);
-            padding: 5px 6px;
-            border-radius: 20px;
+            background: rgba(28, 28, 30, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 5px 8px;
+            border-radius: 24px;
             z-index: 95;
-            border: 1px solid rgba(255,255,255,0.15);
-            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
         }
         .page-nav-btn {
-            background: rgba(255,255,255,0.15);
+            background: rgba(255, 255, 255, 0.08);
             border: none;
             color: #fff;
-            width: 26px; height: 26px;
+            width: 30px; height: 30px;
             border-radius: 50%;
             font-size: 13px;
             cursor: pointer;
@@ -88,23 +226,23 @@
         }
         .page-nav-btn:disabled { opacity: 0.25; cursor: default; }
         .page-nav-title {
-            font-size: 12px;
-            font-weight: bold;
-            padding: 0 6px;
-            max-width: 130px;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 0 8px;
+            max-width: 140px;
             text-align: center;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .page-nav-add { background: rgba(40,167,69,0.9) !important; }
-        .page-nav-del { background: rgba(220,53,69,0.9) !important; }
+        .page-nav-add { background: #34c759 !important; }
+        .page-nav-del { background: #ff3b30 !important; }
 
         .image-map-container {
             position: relative;
             width: 100%;
             height: 100%;
-            background: #111;
+            background: #000;
             overflow: hidden;
             touch-action: none;
         }
@@ -139,332 +277,323 @@
             border: none !important;
             cursor: pointer;
             display: block;
-            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.6));
+            filter: drop-shadow(0 6px 12px rgba(0,0,0,0.8));
         }
 
         .box-wrapper.selected .box-image-hotspot {
-            outline: 2px dashed #ffc107;
-            background: rgba(255, 193, 7, 0.1) !important;
-            border-radius: 4px;
+            outline: 2px dashed #ff9500;
+            background: rgba(255, 149, 0, 0.15) !important;
+            border-radius: 8px;
         }
 
         .resize-handle {
             display: none;
             position: absolute;
-            width: 24px;
-            height: 24px;
-            background: #ffc107;
-            border: 2px solid #fff;
+            width: 26px; height: 26px;
+            background: #ff9500;
+            border: 3px solid #fff;
             border-radius: 50%;
             z-index: 60;
         }
         .box-wrapper.selected .resize-handle { display: block; }
-        .handle-tl { top: -12px; left: -12px; cursor: nwse-resize; }
-        .handle-tr { top: -12px; right: -12px; cursor: nesw-resize; }
-        .handle-bl { bottom: -12px; left: -12px; cursor: nesw-resize; }
-        .handle-br { bottom: -12px; right: -12px; cursor: nwse-resize; }
+        .handle-tl { top: -13px; left: -13px; cursor: nwse-resize; }
+        .handle-tr { top: -13px; right: -13px; cursor: nesw-resize; }
+        .handle-bl { bottom: -13px; left: -13px; cursor: nesw-resize; }
+        .handle-br { bottom: -13px; right: -13px; cursor: nwse-resize; }
 
         .bg-resize-handle {
             display: none;
             position: absolute;
-            width: 28px;
-            height: 28px;
-            background: #17a2b8;
+            width: 30px; height: 30px;
+            background: #0a84ff;
             border: 3px solid #fff;
             border-radius: 50%;
             z-index: 70;
             touch-action: none;
             transform: translate(-50%, -50%);
-            box-shadow: 0 2px 6px rgba(0,0,0,0.6);
         }
         .bg-resize-handle.visible { display: block; }
-        #bg-handle-tl { cursor: nwse-resize; }
-        #bg-handle-br { cursor: nwse-resize; }
-        #bg-handle-tr { cursor: nesw-resize; }
-        #bg-handle-bl { cursor: nesw-resize; }
 
         .mode-hint {
             position: absolute;
-            top: 92px; left: 50%;
+            top: 116px; left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.75);
-            color: #ffc107;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 11px;
+            background: rgba(28, 28, 30, 0.85);
+            backdrop-filter: blur(20px);
+            color: #ff9500;
+            padding: 8px 16px;
+            border-radius: 14px;
+            font-size: 12px;
             z-index: 90;
             pointer-events: none;
-            backdrop-filter: blur(4px);
-            border: 1px solid rgba(255,193,7,0.3);
+            border: 1px solid rgba(255,149,0,0.3);
             display: none;
             text-align: center;
-            width: 85%;
+            width: 90%;
         }
 
         .edit-toolbar {
             display: none;
             position: absolute;
-            bottom: 15px; left: 50%;
+            bottom: 24px; left: 50%;
             transform: translateX(-50%);
-            background: rgba(20, 20, 20, 0.95);
-            padding: 10px 15px;
-            border-radius: 20px;
-            border: 1px solid #444;
+            background: rgba(28, 28, 30, 0.85);
+            backdrop-filter: blur(25px);
+            padding: 12px 16px;
+            border-radius: 22px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
             z-index: 100;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.6);
-            width: 90%;
-            max-width: 400px;
-            gap: 8px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.8);
+            width: 92%;
+            max-width: 420px;
+            gap: 10px;
             align-items: center;
         }
-        .edit-toolbar input {
-            flex: 1;
-            padding: 8px 12px;
-            background: #333;
-            border: 1px solid #555;
-            color: white;
-            border-radius: 20px;
-            font-size: 13px;
-            outline: none;
+
+        #overview-view {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            overflow-y: auto;
+            padding: 110px 20px 40px 20px;
+            z-index: 10;
         }
-        .edit-toolbar button {
-            background: #28a745;
-            border: none;
-            color: white;
-            padding: 8px 14px;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: bold;
+        .ov-page-title {
+            font-size: 16px; font-weight: 600; color: #0a84ff;
+            margin: 24px 0 12px; padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .ov-box {
+            background: rgba(44, 44, 46, 0.65);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px; padding: 16px; margin-bottom: 12px;
             cursor: pointer;
         }
+        .ov-box-title { font-weight: 600; font-size: 15px; margin-bottom: 8px; display: flex; justify-content: space-between; }
+        .ov-box-count { font-size: 12px; color: #8e8e93; font-weight: normal; }
+        .ov-item { font-size: 13px; color: #d1d1d6; padding: 4px 0 4px 10px; border-left: 2px solid #0a84ff; margin-bottom: 4px; }
 
         .modal {
             display: none;
             position: absolute;
             bottom: 0; left: 0; width: 100%;
             max-height: 90%;
-            background: #1e1e1e;
+            background: rgba(30, 30, 32, 0.92);
+            backdrop-filter: blur(40px);
             color: #fff;
-            border-top-left-radius: 20px;
-            border-top-right-radius: 20px;
-            box-shadow: 0 -5px 20px rgba(0,0,0,0.9);
-            padding: 20px;
+            border-top-left-radius: 28px;
+            border-top-right-radius: 28px;
+            box-shadow: 0 -20px 50px rgba(0,0,0,0.9);
+            padding: 24px;
             z-index: 2000;
             overflow-y: auto;
+            border-top: 1px solid rgba(255,255,255,0.15);
         }
         #backdrop {
             display: none;
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(10px);
             z-index: 1500;
         }
-        .close-btn { background: #6c757d !important; margin-top: 15px; width: 100%; padding: 12px; border:none; color:white; border-radius:8px; font-weight:bold; cursor:pointer; }
-        .delete-box-btn { background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; float: right; cursor: pointer; }
-
-        #overview-view {
-            display: none;
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: #0d0d0d;
-            overflow-y: auto;
-            box-sizing: border-box;
-            padding: 100px 14px 30px 14px;
-            z-index: 10;
-        }
-        .ov-page-title {
-            font-size: 14px;
-            font-weight: bold;
-            color: #4da3ff;
-            margin: 18px 0 8px;
-            padding-bottom: 6px;
-            border-bottom: 1px solid #2a2a2a;
-        }
-        .ov-page-title:first-child { margin-top: 0; }
-        .ov-box {
-            background: #1c1c1c;
-            border: 1px solid #333;
-            border-radius: 10px;
-            padding: 10px 12px;
-            margin-bottom: 10px;
-            cursor: pointer;
-        }
-        .ov-box:active { background: #262626; }
-        .ov-box-title {
-            font-weight: bold;
-            font-size: 14px;
-            margin-bottom: 6px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .ov-box-count { font-size: 11px; color: #888; font-weight: normal; }
-        .ov-item {
-            font-size: 13px;
-            color: #ddd;
-            padding: 3px 0 3px 8px;
-            border-left: 2px solid #444;
-            margin-bottom: 2px;
-        }
-        .ov-empty { font-size: 12px; color: #666; font-style: italic; padding-left: 6px; }
-        .ov-empty-page { font-size: 12px; color: #666; padding: 4px 0 4px 2px; }
 
         .items-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            max-height: 250px;
+            gap: 12px;
+            max-height: 280px;
             overflow-y: auto;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
             padding: 4px;
         }
         .grid-item-card {
-            background: #282828;
-            border: 1px solid #383838;
-            border-radius: 10px;
-            padding: 8px;
+            background: rgba(44, 44, 46, 0.7);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            padding: 10px;
             display: flex;
             flex-direction: column;
             align-items: center;
             text-align: center;
             position: relative;
             cursor: pointer;
-            transition: transform 0.1s;
         }
-        .grid-item-card:active { transform: scale(0.96); background: #333; }
         .grid-item-card img {
-            width: 100%;
-            height: 75px;
-            object-fit: contain;
-            border-radius: 6px;
-            background: #1a1a1a;
-            margin-bottom: 6px;
+            width: 100%; height: 75px; object-fit: contain;
+            border-radius: 10px; background: #1c1c1e; margin-bottom: 6px;
         }
-        .grid-item-name {
-            font-size: 12px;
-            font-weight: bold;
-            color: #fff;
-            width: 100%;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-bottom: 2px;
-        }
-        .grid-item-qty {
-            font-size: 11px;
-            color: #ffc107;
-            font-weight: bold;
-        }
+        .grid-item-name { font-size: 12px; font-weight: 600; color: #fff; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+        .grid-item-qty { font-size: 11px; color: #ff9500; font-weight: 600; }
         .grid-item-del {
-            position: absolute;
-            top: 4px; right: 4px;
-            background: rgba(220, 53, 69, 0.9);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 22px; height: 22px;
-            font-size: 11px;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-            z-index: 5;
+            position: absolute; top: 6px; right: 6px;
+            background: rgba(255, 59, 48, 0.9); color: white; border: none;
+            border-radius: 50%; width: 22px; height: 22px; font-size: 11px;
+            display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 5;
         }
     </style>
 </head>
 <body>
 
     <div class="phone-frame">
-        <header>
-            <div class="header-title" id="mode-indicator">🔍 檢視模式</div>
-            <div class="header-btns">
-                <button id="btn-toggle-overview" onclick="toggleOverview()">📋 總覽</button>
-                <input type="file" id="bg-upload" style="display: none;" accept="image/*" onchange="uploadBackgroundImage(event)">
-                <button id="btn-change-bg" style="display:none;" onclick="document.getElementById('bg-upload').click()">📁 換底圖</button>
-                <button id="btn-move-mode" style="display:none;" onclick="toggleLayoutMode()">📐 移動/縮放</button>
-                <button id="mode-btn-edit" onclick="toggleContentEditMode()">✏️ 編輯內容</button>
-            </div>
-        </header>
 
-        <div class="page-nav" id="page-nav">
-            <button class="page-nav-btn" id="page-nav-prev" onclick="goToPage(-1)">◀</button>
-            <div class="page-nav-title" id="page-nav-title">載入中…</div>
-            <button class="page-nav-btn" id="page-nav-next" onclick="goToPage(1)">▶</button>
-            <button class="page-nav-btn page-nav-add" id="btn-add-page" style="display:none;" onclick="addNewPage()">＋</button>
-            <button class="page-nav-btn page-nav-del" id="btn-del-page" style="display:none;" onclick="deleteCurrentPage()">🗑</button>
+        <!-- 1. 登入畫面 -->
+        <div id="login-view">
+            <div class="login-logo">📦</div>
+            <div class="login-title">行動倉儲管理</div>
+            <div class="login-subtitle">請輸入授權 PIN 碼進入系統</div>
+            
+            <div class="apple-card" style="width: 100%;">
+                <input type="password" id="login-pin-input" class="apple-input" placeholder="預設 PIN: 8888" style="margin-bottom: 16px; text-align: center; letter-spacing: 4px;">
+                <button class="apple-btn" onclick="handleLogin()" style="width: 100%;">登入系統</button>
+            </div>
         </div>
 
-        <div class="image-map-container" id="map-container">
-            <div id="map-canvas">
-                <img id="warehouse-img" src="" alt="請點擊換底圖">
-                <div id="boxes-layer"></div>
+        <!-- 2. 主選單儀表板 -->
+        <div id="main-menu-view">
+            <div class="menu-header">
+                <div>
+                    <div style="font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">倉儲中樞</div>
+                    <div style="font-size: 13px; color: #8e8e93;">Apple 智慧倉儲管理</div>
+                </div>
+                <button onclick="logout()" class="apple-btn secondary" style="padding: 8px 14px; font-size: 13px;">登出</button>
             </div>
-            <div class="bg-resize-handle" id="bg-handle-tl"></div>
-            <div class="bg-resize-handle" id="bg-handle-tr"></div>
-            <div class="bg-resize-handle" id="bg-handle-bl"></div>
-            <div class="bg-resize-handle" id="bg-handle-br"></div>
-            <div id="mode-hint" class="mode-hint">提示</div>
+
+            <div class="menu-grid">
+                <div class="menu-card" onclick="openScanner('in')">
+                    <div class="menu-card-icon">📥</div>
+                    <div class="menu-card-title">快速進貨</div>
+                    <div class="menu-card-desc">掃碼入庫、點收物資</div>
+                </div>
+                <div class="menu-card" onclick="openScanner('out')">
+                    <div class="menu-card-icon">📤</div>
+                    <div class="menu-card-title">快速出貨</div>
+                    <div class="menu-card-desc">掃碼出庫、扣減庫存</div>
+                </div>
+                <div class="menu-card" onclick="openMapQuery()" style="grid-column: span 2;">
+                    <div class="menu-card-icon">🗺️</div>
+                    <div class="menu-card-title">位置查詢與平面圖</div>
+                    <div class="menu-card-desc">即時檢視箱內物品、編輯倉儲地圖</div>
+                </div>
+            </div>
         </div>
 
-        <div id="overview-view"></div>
+        <!-- 3. QR Code 掃描視窗 (無模擬按鈕) -->
+        <div id="scanner-modal">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0;">
+                <div id="scanner-title" style="font-size: 17px; font-weight: 600;">掃描 QR Code</div>
+                <button onclick="closeScanner()" class="apple-btn secondary" style="padding: 6px 14px; font-size: 13px;">取消</button>
+            </div>
+            
+            <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative;">
+                <div id="reader"></div>
+                <div style="margin-top: 15px; font-size: 13px; color: #8e8e93; text-align: center;">請將鏡頭對準物品或箱子之 QR Code</div>
+            </div>
+        </div>
 
-        <div class="edit-toolbar" id="edit-toolbar">
-            <input type="text" id="new-box-name" placeholder="新箱子名稱 (例: 救護箱)">
-            <button onclick="addNewBox()">+ 新增箱子</button>
+        <!-- 4. 倉儲地圖主介面 -->
+        <div id="warehouse-system-view" style="display: none; position: absolute; top:0; left:0; width:100%; height:100%;">
+            <header>
+                <button onclick="backToMainMenu()" class="apple-btn secondary" style="padding: 8px 12px; font-size: 12px;">〈 主選單</button>
+                <div class="header-title" id="mode-indicator">🔍 檢視模式</div>
+                <div class="header-btns">
+                    <button id="btn-toggle-overview" onclick="toggleOverview()">📋 總覽</button>
+                    <input type="file" id="bg-upload" style="display: none;" accept="image/*" onchange="uploadBackgroundImage(event)">
+                    <button id="btn-change-bg" style="display:none;" onclick="document.getElementById('bg-upload').click()">📁 底圖</button>
+                    <button id="btn-move-mode" style="display:none;" onclick="toggleLayoutMode()">📐 佈局</button>
+                    <button id="mode-btn-edit" onclick="toggleContentEditMode()">✏️ 編輯</button>
+                </div>
+            </header>
+
+            <div class="page-nav" id="page-nav">
+                <button class="page-nav-btn" id="page-nav-prev" onclick="goToPage(-1)">‹</button>
+                <div class="page-nav-title" id="page-nav-title">載入中…</div>
+                <button class="page-nav-btn" id="page-nav-next" onclick="goToPage(1)">›</button>
+                <button class="page-nav-btn page-nav-add" id="btn-add-page" style="display:none;" onclick="addNewPage()">＋</button>
+                <button class="page-nav-btn page-nav-del" id="btn-del-page" style="display:none;" onclick="deleteCurrentPage()">✕</button>
+            </div>
+
+            <div class="image-map-container" id="map-container">
+                <div id="map-canvas">
+                    <img id="warehouse-img" src="" alt="請點擊換底圖">
+                    <div id="boxes-layer"></div>
+                </div>
+                <div class="bg-resize-handle" id="bg-handle-tl"></div>
+                <div class="bg-resize-handle" id="bg-handle-tr"></div>
+                <div class="bg-resize-handle" id="bg-handle-bl"></div>
+                <div class="bg-resize-handle" id="bg-handle-br"></div>
+                <div id="mode-hint" class="mode-hint">提示</div>
+            </div>
+
+            <div id="overview-view"></div>
+
+            <div class="edit-toolbar" id="edit-toolbar">
+                <input type="text" id="new-box-name" class="apple-input" placeholder="新箱子名稱 (例: 救護箱)" style="padding: 10px 14px; font-size: 13px;">
+                <button class="apple-btn success" onclick="addNewBox()" style="padding: 10px 16px; font-size: 13px;">+ 新願箱子</button>
+            </div>
         </div>
 
         <!-- 箱子詳情視窗 -->
         <div id="backdrop" onclick="closeModal()"></div>
         <div id="item-modal" class="modal">
-            <div style="overflow:hidden; margin-bottom:12px;">
-                <h2 id="modal-box-title" style="margin:0; font-size:18px; display:inline-block;">箱子詳情</h2>
+            <div style="overflow:hidden; margin-bottom:14px;">
+                <h2 id="modal-box-title" style="margin:0; font-size:18px; font-weight:600; display:inline-block;">箱子詳情</h2>
                 <button id="delete-box-btn" class="delete-box-btn" style="display:none;" onclick="deleteCurrentBox()">🗑️ 刪除箱子</button>
             </div>
             
-            <div id="box-image-edit-section" style="text-align: center; display:none; margin-bottom: 12px; background: #252525; padding: 10px; border-radius: 8px; border: 1px solid #444;">
+            <div id="box-image-edit-section" style="text-align: center; display:none; margin-bottom: 14px; background: rgba(255,255,255,0.04); padding: 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08);">
                 <input type="file" id="box-img-upload" style="display:none;" accept="image/*" onchange="uploadBoxImage(event)">
-                <button style="background:#ffc107; color:#000; padding:8px 14px; font-size:12px; border:none; border-radius:6px; font-weight:bold; cursor:pointer; width:100%;" onclick="document.getElementById('box-img-upload').click()">📷 更換箱子外觀照片 (支援去背 PNG)</button>
+                <button class="apple-btn secondary" style="font-size:12px; padding:10px; width:100%;" onclick="document.getElementById('box-img-upload').click()">📷 更換箱子外觀照片</button>
             </div>
 
-            <div style="font-size: 13px; color:#aaa; margin-bottom:6px;">📦 箱內物品清單 (九宮格)：</div>
+            <div style="font-size: 13px; color:#8e8e93; margin-bottom:8px; font-weight: 500;">📦 箱內物品清單 (點擊可查看 QR Code)：</div>
             <div id="item-list-container" class="items-grid"></div>
             
-            <div id="add-item-section" style="background: #252525; padding: 12px; border-radius: 8px; border: 1px solid #444; display:none;">
-                <div style="font-size: 13px; color: #ffc107; font-weight:bold; margin-bottom: 8px;">➕ 新增庫存物品</div>
-                <input type="text" id="new-item-name" placeholder="物品名稱 (例: N95口罩)" style="width:100%; padding:8px; background:#1a1a1a; border:1px solid #444; color:white; border-radius:6px; margin-bottom:8px; font-size:13px;">
-                <input type="number" id="new-item-qty" placeholder="數量 (例: 50)" value="1" min="1" style="width:100%; padding:8px; background:#1a1a1a; border:1px solid #444; color:white; border-radius:6px; margin-bottom:8px; font-size:13px;">
+            <div id="add-item-section" style="background: rgba(255,255,255,0.04); padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08); display:none; margin-bottom: 15px;">
+                <div style="font-size: 13px; color: #ff9500; font-weight:600; margin-bottom: 8px;">➕ 新增庫存物品 (進貨)</div>
+                <input type="text" id="new-item-name" class="apple-input" placeholder="物品名稱 (例: N95口罩)" style="margin-bottom:8px; font-size:13px; padding:10px;">
+                <input type="number" id="new-item-qty" class="apple-input" placeholder="數量" value="1" min="1" style="margin-bottom:8px; font-size:13px; padding:10px;">
                 
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <input type="file" id="item-img-file" accept="image/*" style="font-size:11px; flex:1;">
-                    <button style="background:#28a745; border:none; color:white; padding:8px 14px; border-radius:6px; font-weight:bold; cursor:pointer; font-size:13px;" onclick="addItemWithImage()">加入物品</button>
+                    <input type="file" id="item-img-file" accept="image/*" style="font-size:11px; flex:1; color:#aaa;">
+                    <button class="apple-btn success" style="padding:10px 16px; font-size:13px;" onclick="addItemWithImage()">加入</button>
                 </div>
             </div>
 
-            <button class="close-btn" onclick="closeModal()">關閉視窗</button>
+            <button class="apple-btn secondary" style="width:100%; padding: 14px; font-weight: 600;" onclick="closeModal()">關閉視窗</button>
         </div>
 
-        <!-- 💡 物品編輯獨立彈跳視窗 (App 風格) -->
+        <!-- 物品編輯與 QR Code 視窗 -->
         <div id="item-edit-modal" class="modal" style="z-index: 2500;">
-            <h2 style="margin:0 0 12px 0; font-size:18px; color:#ffc107;">✏️ 編輯物品資料</h2>
+            <h2 style="margin:0 0 14px 0; font-size:18px; font-weight:600; color:#ff9500;">✏️ 物品管理與 QR Code</h2>
             
-            <div style="text-align: center; margin-bottom: 12px; background: #252525; padding: 10px; border-radius: 8px; border: 1px solid #444;">
-                <img id="edit-item-preview-img" src="" style="width: 80px; height: 80px; object-fit: contain; border-radius: 6px; background: #1a1a1a; margin-bottom: 8px; display:block; margin-left:auto; margin-right:auto;">
-                <input type="file" id="edit-item-img-input" style="display:none;" accept="image/*" onchange="uploadNewItemImage(event)">
-                <button style="background:#17a2b8; color:#fff; padding:6px 12px; font-size:11px; border:none; border-radius:6px; font-weight:bold; cursor:pointer;" onclick="document.getElementById('edit-item-img-input').click()">📷 更換物品圖片</button>
+            <!-- 專屬 QR Code 顯示區 -->
+            <div style="text-align: center; margin-bottom: 14px; background: rgba(255,255,255,0.06); padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1);">
+                <div style="font-size: 12px; color: #0a84ff; font-weight: 600; margin-bottom: 8px;">🏷️ 物品專屬 QR Code (可供掃描辨識)</div>
+                <div id="qrcode-container" style="display: inline-block; background: #fff; padding: 10px; border-radius: 8px; margin-bottom: 6px;"></div>
+                <div id="item-qr-code-text" style="font-size: 11px; color: #8e8e93; word-break: break-all;"></div>
             </div>
 
-            <div style="font-size: 13px; color:#aaa; margin-bottom:4px;">物品名稱：</div>
-            <input type="text" id="edit-item-name-input" style="width:100%; padding:9px; background:#1a1a1a; border:1px solid #444; color:white; border-radius:6px; margin-bottom:10px; font-size:13px;">
+            <div style="text-align: center; margin-bottom: 14px; background: rgba(255,255,255,0.04); padding: 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08);">
+                <img id="edit-item-preview-img" src="" style="width: 70px; height: 70px; object-fit: contain; border-radius: 10px; background: #1c1c1e; margin-bottom: 8px; display:block; margin-left:auto; margin-right:auto;">
+                <input type="file" id="edit-item-img-input" style="display:none;" accept="image/*" onchange="uploadNewItemImage(event)">
+                <button class="apple-btn secondary" style="padding:6px 12px; font-size:11px;" onclick="document.getElementById('edit-item-img-input').click()">📷 更換物品圖片</button>
+            </div>
 
-            <div style="font-size: 13px; color:#aaa; margin-bottom:4px;">數量：</div>
-            <input type="number" id="edit-item-qty-input" min="1" style="width:100%; padding:9px; background:#1a1a1a; border:1px solid #444; color:white; border-radius:6px; margin-bottom:15px; font-size:13px;">
+            <div style="font-size: 13px; color:#8e8e93; margin-bottom:4px;">物品名稱：</div>
+            <input type="text" id="edit-item-name-input" class="apple-input" style="margin-bottom:10px; font-size:13px; padding:10px;">
+
+            <div style="font-size: 13px; color:#8e8e93; margin-bottom:4px;">數量：</div>
+            <input type="number" id="edit-item-qty-input" class="apple-input" min="1" style="margin-bottom:16px; font-size:13px; padding:10px;">
 
             <div style="display:flex; gap:10px; margin-bottom:10px;">
-                <button style="flex:1; background:#dc3545; color:white; border:none; padding:10px; border-radius:8px; font-weight:bold; cursor:pointer;" onclick="confirmDeleteEditingItem()">🗑️ 刪除物品</button>
-                <button style="flex:1; background:#28a745; color:white; border:none; padding:10px; border-radius:8px; font-weight:bold; cursor:pointer;" onclick="saveEditingItem()">💾 儲存修改</button>
+                <button class="apple-btn danger" style="flex:1; padding:12px; font-size:13px;" onclick="confirmDeleteEditingItem()">🗑️ 刪除</button>
+                <button class="apple-btn success" style="flex:1; padding:12px; font-size:13px;" onclick="saveEditingItem()">💾 儲存</button>
             </div>
-            <button class="close-btn" style="margin-top:0;" onclick="closeEditItemModal()">取消返回</button>
+            <button class="apple-btn secondary" style="width:100%; padding:12px; font-size:13px;" onclick="closeEditItemModal()">返回</button>
         </div>
+
     </div>
 
 <script type="module">
@@ -490,7 +619,9 @@
     let isContentEditActive = false;
     let isOverviewActive = false;
     let currentBoxId = null;
-    let editingItemIndex = null; // 記錄目前正在編輯的物品索引
+    let editingItemIndex = null;
+    let scannerMode = 'in';
+    let html5QrCode = null;
 
     let scale = 1, panX = 0, panY = 0;
     let pages = [];
@@ -498,55 +629,77 @@
     let boxesCache = null;
     const imageMemoryCache = new Map();
 
-    async function deleteImageFromStorage(fileUrl) {
-        if (!fileUrl || !fileUrl.includes('firebasestorage.googleapis.com')) return;
-        try {
-            const decodedUrl = decodeURIComponent(fileUrl);
-            const startIndex = decodedUrl.indexOf('/o/') + 3;
-            const endIndex = decodedUrl.indexOf('?');
-            if (startIndex !== -1 && endIndex !== -1) {
-                const filePath = decodedUrl.substring(startIndex, endIndex);
-                const fileRef = ref(storage, filePath);
-                await deleteObject(fileRef);
+    window.handleLogin = function() {
+        const pin = document.getElementById('login-pin-input').value;
+        if (pin === '8888' || pin === 'admin') {
+            document.getElementById('login-view').style.display = 'none';
+            document.getElementById('main-menu-view').style.display = 'flex';
+        } else {
+            alert('金鑰錯誤，預設為 8888');
+        }
+    };
+    window.logout = function() {
+        document.getElementById('main-menu-view').style.display = 'none';
+        document.getElementById('login-view').style.display = 'flex';
+        document.getElementById('login-pin-input').value = '';
+    };
+    window.backToMainMenu = function() {
+        document.getElementById('warehouse-system-view').style.display = 'none';
+        document.getElementById('main-menu-view').style.display = 'flex';
+    };
+    window.openMapQuery = async function() {
+        document.getElementById('main-menu-view').style.display = 'none';
+        document.getElementById('warehouse-system-view').style.display = 'block';
+        if (!boxesCache) await initApp();
+    };
+
+    // 掃描 (已移除模擬按鈕)
+    window.openScanner = function(mode) {
+        scannerMode = mode;
+        document.getElementById('scanner-title').innerText = mode === 'in' ? '📥 掃描 QR (進貨)' : '📤 掃描 QR (出貨)';
+        document.getElementById('scanner-modal').style.display = 'flex';
+        setTimeout(() => {
+            if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } },
+                (text) => handleScanResult(text), () => {}
+            ).catch((err) => { alert("無法啟動相機：" + err); });
+        }, 300);
+    };
+    window.closeScanner = function() {
+        if (html5QrCode && html5QrCode.isScanning) {
+            html5QrCode.stop().then(() => { document.getElementById('scanner-modal').style.display = 'none'; }).catch(() => { document.getElementById('scanner-modal').style.display = 'none'; });
+        } else {
+            document.getElementById('scanner-modal').style.display = 'none';
+        }
+    };
+
+    async function handleScanResult(scannedText) {
+        closeScanner();
+        if (!boxesCache) {
+            const snap = await getDocs(collection(db, "warehouse_boxes"));
+            boxesCache = [];
+            snap.forEach(d => boxesCache.push({ id: d.id, ...d.data() }));
+        }
+
+        // 支援辨識箱子 ID 或 物品專屬代碼 (ITEM_boxId_index)
+        if (scannedText.startsWith('ITEM_')) {
+            const parts = scannedText.split('_');
+            const boxId = parts[1];
+            const box = boxesCache.find(b => b.id === boxId);
+            if (box) {
+                await openBoxModal(box.id);
+                alert(`✅ 成功掃描定位物品所在箱子：${box.name}`);
+                return;
             }
-        } catch (e) {}
-    }
+        }
 
-    async function processImageFile(file, maxWidth = 900) {
-        if (file.type === 'image/png') return file;
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = (event) => {
-                const img = new Image();
-                img.src = event.target.result;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    let width = img.width;
-                    let height = img.height;
-                    if (width > maxWidth) {
-                        height = Math.round((height * maxWidth) / width);
-                        width = maxWidth;
-                    }
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-                    canvas.toBlob((blob) => { resolve(blob); }, 'image/jpeg', 0.75);
-                };
-            };
-        });
-    }
-
-    function preloadImage(src) {
-        if (!src) return Promise.resolve(src);
-        if (imageMemoryCache.has(src)) return Promise.resolve(src);
-        return new Promise((resolve) => {
-            const img = new Image();
-            img.onload = () => { imageMemoryCache.set(src, true); resolve(src); };
-            img.onerror = () => resolve(src);
-            img.src = src;
-        });
+        let box = boxesCache.find(b => b.id === scannedText);
+        if (box) {
+            await openBoxModal(box.id);
+            alert(`✅ 成功掃描定位箱子：${box.name}`);
+        } else {
+            alert('查無對應的箱子或物品條碼: ' + scannedText);
+        }
     }
 
     async function initApp() {
@@ -554,8 +707,6 @@
         await loadBoxes(true);
         await switchToPage(currentPageIndex, true);
     }
-    initApp();
-
     async function loadPages() {
         try {
             const snap = await getDocs(collection(db, "warehouse_pages"));
@@ -563,675 +714,199 @@
             snap.forEach(d => pages.push({ id: d.id, ...d.data() }));
             pages.sort((a, b) => (a.order || 0) - (b.order || 0));
         } catch (e) { pages = []; }
-
         if (pages.length === 0) {
-            const migrated = { name: '第 1 排', imageUrl: '', scale: 1, panX: 0, panY: 0, order: Date.now() };
-            try {
-                const oldDoc = await getDoc(doc(db, "settings", "warehouse_layout"));
-                if (oldDoc.exists()) {
-                    const d = oldDoc.data();
-                    migrated.imageUrl = d.imageUrl || '';
-                    migrated.scale = d.scale || 1;
-                    migrated.panX = d.panX || 0;
-                    migrated.panY = d.panY || 0;
-                }
-            } catch (e) {}
-
-            let newPageId = null;
-            try {
-                const docRef = await addDoc(collection(db, "warehouse_pages"), migrated);
-                newPageId = docRef.id;
-                pages = [{ id: newPageId, ...migrated }];
-            } catch (e) {
-                pages = [{ id: 'local-fallback', ...migrated }];
-            }
-
-            if (newPageId) {
-                try {
-                    const boxSnap = await getDocs(collection(db, "warehouse_boxes"));
-                    const updates = [];
-                    boxSnap.forEach(d => {
-                        if (!d.data().pageId) {
-                            updates.push(updateDoc(doc(db, "warehouse_boxes", d.id), { pageId: newPageId }));
-                        }
-                    });
-                    await Promise.all(updates);
-                } catch (e) {}
-            }
+            const p = { name: '第 1 排', imageUrl: '', scale: 1, panX: 0, panY: 0, order: Date.now() };
+            const ref = await addDoc(collection(db, "warehouse_pages"), p);
+            pages = [{ id: ref.id, ...p }];
         }
         currentPageIndex = 0;
     }
-
     function updateCanvasTransform() {
         const canvas = document.getElementById('map-canvas');
         canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
         updateBgHandles();
     }
-
     function updateBgHandles() {
-        const mapContainerEl = document.getElementById('map-container');
-        const rect = mapContainerEl.getBoundingClientRect();
-        const cw = rect.width, ch = rect.height;
+        const container = document.getElementById('map-container').getBoundingClientRect();
         const corners = {
-            tl: { x: panX, y: panY },
-            tr: { x: panX + cw * scale, y: panY },
-            bl: { x: panX, y: panY + ch * scale },
-            br: { x: panX + cw * scale, y: panY + ch * scale }
+            tl: { x: panX, y: panY }, tr: { x: panX + container.width * scale, y: panY },
+            bl: { x: panX, y: panY + container.height * scale }, br: { x: panX + container.width * scale, y: panY + container.height * scale }
         };
         Object.entries(corners).forEach(([pos, pt]) => {
             const el = document.getElementById('bg-handle-' + pos);
-            if (!el) return;
-            el.style.left = pt.x + 'px';
-            el.style.top = pt.y + 'px';
+            if (el) { el.style.left = pt.x + 'px'; el.style.top = pt.y + 'px'; }
         });
     }
 
     window.toggleContentEditMode = function() {
         isContentEditActive = !isContentEditActive;
-        const btnEdit = document.getElementById('mode-btn-edit');
-        const btnChangeBg = document.getElementById('btn-change-bg');
-        const btnMoveMode = document.getElementById('btn-move-mode');
-        const indicator = document.getElementById('mode-indicator');
-        const toolbar = document.getElementById('edit-toolbar');
-
-        if (isContentEditActive) {
-            btnEdit.innerText = "🔒 關閉編輯";
-            btnEdit.classList.add('active');
-            indicator.innerText = "✏️ 編輯內容模式";
-            if (!isOverviewActive) {
-                btnChangeBg.style.display = 'block';
-                btnMoveMode.style.display = 'block';
-                toolbar.style.display = 'flex';
-            }
-        } else {
-            btnEdit.innerText = "✏️ 編輯內容";
-            btnEdit.classList.remove('active');
-            indicator.innerText = "🔍 檢視模式";
-            btnChangeBg.style.display = 'none';
-            btnMoveMode.style.display = 'none';
-            toolbar.style.display = 'none';
-            if (isLayoutMode) toggleLayoutMode();
-        }
+        const btn = document.getElementById('mode-btn-edit');
+        btn.innerText = isContentEditActive ? "🔒 鎖定" : "✏️ 編輯";
+        btn.classList.toggle('active', isContentEditActive);
+        document.getElementById('mode-indicator').innerText = isContentEditActive ? "✏️ 編輯模式" : "🔍 檢視模式";
+        document.getElementById('btn-change-bg').style.display = isContentEditActive ? 'block' : 'none';
+        document.getElementById('btn-move-mode').style.display = isContentEditActive ? 'block' : 'none';
+        document.getElementById('edit-toolbar').style.display = (isContentEditActive && !isOverviewActive) ? 'flex' : 'none';
         renderPageNav();
-        if (currentBoxId) {
-            const data = (boxesCache || []).find(b => b.id === currentBoxId);
-            if (data) renderBoxModal(data);
-        }
-    }
+        if (currentBoxId) renderBoxModal(boxesCache.find(b => b.id === currentBoxId));
+    };
 
     window.toggleLayoutMode = function() {
         isLayoutMode = !isLayoutMode;
-        const btnMove = document.getElementById('btn-move-mode');
-        const indicator = document.getElementById('mode-indicator');
+        document.getElementById('btn-move-mode').classList.toggle('active', isLayoutMode);
+        document.getElementById('mode-indicator').innerText = isLayoutMode ? "📐 佈局模式" : "✏️ 編輯模式";
         const hint = document.getElementById('mode-hint');
-
-        if (isLayoutMode) {
-            btnMove.classList.add('active');
-            indicator.innerText = "📐 移動與縮放模式";
-            hint.style.display = 'block';
-            hint.innerText = "💡 拖動箱子、拉黃點縮放；拉青色圓點縮放整張底圖；雙指或滑輪也可縮放/平移";
-        } else {
-            btnMove.classList.remove('active');
-            indicator.innerText = "✏️ 編輯內容模式";
-            hint.style.display = 'none';
-        }
+        hint.style.display = isLayoutMode ? 'block' : 'none';
+        hint.innerText = "💡 拖動箱子、拉黃點縮放；拉藍點縮放底圖";
         document.querySelectorAll('.bg-resize-handle').forEach(h => h.classList.toggle('visible', isLayoutMode));
         if (isLayoutMode) updateBgHandles();
         renderBoxes();
-    }
+    };
 
-    window.goToPage = async function(direction) {
+    window.goToPage = async function(dir) {
         if (isLayoutMode) return;
-        const newIndex = currentPageIndex + direction;
-        if (newIndex < 0 || newIndex >= pages.length) return;
-        await switchToPage(newIndex);
-    }
+        await switchToPage(currentPageIndex + dir);
+    };
 
-    async function switchToPage(index, isInitialLoad = false) {
-        if (!pages.length) {
-            renderPageNav();
-            return;
-        }
-        currentPageIndex = Math.max(0, Math.min(index, pages.length - 1));
-        const page = pages[currentPageIndex];
-
-        scale = page.scale || 1;
-        panX = page.panX || 0;
-        panY = page.panY || 0;
+    async function switchToPage(idx, init = false) {
+        if (!pages.length) return;
+        currentPageIndex = Math.max(0, Math.min(idx, pages.length - 1));
+        const p = pages[currentPageIndex];
+        scale = p.scale || 1; panX = p.panX || 0; panY = p.panY || 0;
         updateCanvasTransform();
-
-        const imgEl = document.getElementById('warehouse-img');
-        if (page.imageUrl) {
-            if (!isInitialLoad) await preloadImage(page.imageUrl);
-            imgEl.src = page.imageUrl;
-        } else {
-            imgEl.src = '';
-        }
-
+        document.getElementById('warehouse-img').src = p.imageUrl || '';
         renderPageNav();
         renderBoxes();
     }
 
     function renderPageNav() {
-        const title = document.getElementById('page-nav-title');
-        const prevBtn = document.getElementById('page-nav-prev');
-        const nextBtn = document.getElementById('page-nav-next');
-        const addBtn = document.getElementById('btn-add-page');
-        const delBtn = document.getElementById('btn-del-page');
-        const page = pages[currentPageIndex];
-
-        title.innerText = page ? `${page.name} (${currentPageIndex + 1}/${pages.length})` : '尚無頁面';
-        prevBtn.disabled = currentPageIndex <= 0;
-        nextBtn.disabled = currentPageIndex >= pages.length - 1;
-        addBtn.style.display = isContentEditActive ? 'flex' : 'none';
-        delBtn.style.display = (isContentEditActive && pages.length > 1) ? 'flex' : 'none';
+        const p = pages[currentPageIndex];
+        document.getElementById('page-nav-title').innerText = p ? `${p.name} (${currentPageIndex + 1}/${pages.length})` : '';
+        document.getElementById('page-nav-prev').disabled = currentPageIndex <= 0;
+        document.getElementById('page-nav-next').disabled = currentPageIndex >= pages.length - 1;
+        document.getElementById('btn-add-page').style.display = isContentEditActive ? 'flex' : 'none';
+        document.getElementById('btn-del-page').style.display = (isContentEditActive && pages.length > 1) ? 'flex' : 'none';
     }
 
     window.addNewPage = async function() {
-        const defaultName = `第 ${pages.length + 1} 排`;
-        const name = prompt('新頁面名稱 (例: 第二排、B區貨架)', defaultName);
-        if (name === null) return;
-        const finalName = name.trim() || defaultName;
-        const newPage = { name: finalName, imageUrl: '', scale: 1, panX: 0, panY: 0, order: Date.now() };
-        try {
-            const docRef = await addDoc(collection(db, "warehouse_pages"), newPage);
-            pages.push({ id: docRef.id, ...newPage });
-            await switchToPage(pages.length - 1);
-        } catch (e) { alert('新增頁面失敗'); }
-    }
+        const name = prompt('新頁面名稱', `第 ${pages.length + 1} 排`);
+        if (!name) return;
+        const p = { name: name.trim(), imageUrl: '', scale: 1, panX: 0, panY: 0, order: Date.now() };
+        const ref = await addDoc(collection(db, "warehouse_pages"), p);
+        pages.push({ id: ref.id, ...p });
+        await switchToPage(pages.length - 1);
+    };
 
     window.deleteCurrentPage = async function() {
-        if (pages.length <= 1) return alert('至少要保留一個頁面');
-        const page = pages[currentPageIndex];
-        if (!confirm(`確定要刪除「${page.name}」嗎？裡面的箱子也會一併刪除。`)) return;
-        try {
-            const boxesToDelete = (boxesCache || []).filter(b => b.pageId === page.id);
-            for (const b of boxesToDelete) {
-                if (b.imageUrl) await deleteImageFromStorage(b.imageUrl);
-                if (b.items) {
-                    for (const item of b.items) {
-                        if (item.imageUrl) await deleteImageFromStorage(item.imageUrl);
-                    }
-                }
-            }
-            await Promise.all(boxesToDelete.map(b => deleteDoc(doc(db, "warehouse_boxes", b.id))));
-            if (page.imageUrl) await deleteImageFromStorage(page.imageUrl);
-            await deleteDoc(doc(db, "warehouse_pages", page.id));
-            boxesCache = (boxesCache || []).filter(b => b.pageId !== page.id);
-            pages.splice(currentPageIndex, 1);
-            await switchToPage(Math.max(0, currentPageIndex - 1));
-        } catch (e) { alert('刪除頁面失敗'); }
-    }
+        if (pages.length <= 1) return alert('必須保留至少一個頁面');
+        if (!confirm('確定刪除此頁面？')) return;
+        await deleteDoc(doc(db, "warehouse_pages", pages[currentPageIndex].id));
+        pages.splice(currentPageIndex, 1);
+        await switchToPage(Math.max(0, currentPageIndex - 1));
+    };
 
     function escapeHtml(str) {
-        return String(str == null ? '' : str).replace(/[&<>"']/g, (m) => ({
-            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
-        }[m]));
+        return String(str == null ? '' : str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
     }
 
-    window.toggleOverview = function() {
-        setOverviewMode(!isOverviewActive);
-    }
-
+    window.toggleOverview = function() { setOverviewMode(!isOverviewActive); };
     function setOverviewMode(active) {
         isOverviewActive = active;
-        const mapContainer = document.getElementById('map-container');
-        const overviewView = document.getElementById('overview-view');
-        const pageNav = document.getElementById('page-nav');
-        const editToolbar = document.getElementById('edit-toolbar');
-        const btnChangeBg = document.getElementById('btn-change-bg');
-        const btnMoveMode = document.getElementById('btn-move-mode');
-        const btnToggleOverview = document.getElementById('btn-toggle-overview');
-        const modeHint = document.getElementById('mode-hint');
-
+        document.getElementById('map-container').style.display = active ? 'none' : 'block';
+        document.getElementById('page-nav').style.display = active ? 'none' : 'flex';
+        document.getElementById('edit-toolbar').style.display = (active || !isContentEditActive) ? 'none' : 'flex';
+        document.getElementById('overview-view').style.display = active ? 'block' : 'none';
+        const btn = document.getElementById('btn-toggle-overview');
+        btn.innerText = active ? '🗺 地圖' : '📋 總覽';
+        btn.classList.toggle('active', active);
         if (active) {
-            mapContainer.style.display = 'none';
-            pageNav.style.display = 'none';
-            editToolbar.style.display = 'none';
-            modeHint.style.display = 'none';
-            btnChangeBg.style.display = 'none';
-            btnMoveMode.style.display = 'none';
-            overviewView.style.display = 'block';
-            btnToggleOverview.innerText = '🗺 地圖檢視';
-            btnToggleOverview.classList.add('active');
-            renderOverview();
-        } else {
-            overviewView.style.display = 'none';
-            mapContainer.style.display = 'block';
-            pageNav.style.display = 'flex';
-            btnToggleOverview.innerText = '📋 總覽';
-            btnToggleOverview.classList.remove('active');
-            if (isContentEditActive) {
-                editToolbar.style.display = 'flex';
-                btnChangeBg.style.display = 'block';
-                btnMoveMode.style.display = 'block';
-            }
-        }
-    }
-
-    function renderOverview() {
-        const container = document.getElementById('overview-view');
-        if (!pages.length) {
-            container.innerHTML = '<div class="ov-empty-page">尚無任何頁面資料</div>';
-            return;
-        }
-        let html = '';
-        pages.forEach((page) => {
-            html += `<div class="ov-page-title">📍 ${escapeHtml(page.name)}</div>`;
-            const boxes = (boxesCache || []).filter(b => b.pageId === page.id);
-            if (boxes.length === 0) {
-                html += `<div class="ov-empty-page">（這一排還沒有箱子）</div>`;
-            } else {
-                boxes.forEach((box) => {
-                    const items = box.items || [];
-                    html += `<div class="ov-box" onclick="openBoxModal('${box.id}')">`;
-                    html += `<div class="ov-box-title"><span>📦 ${escapeHtml(box.name || '未命名箱子')}</span><span class="ov-box-count">${items.length} 項物品</span></div>`;
-                    if (items.length === 0) {
-                        html += `<div class="ov-empty">（箱內尚無物品）</div>`;
-                    } else {
-                        items.forEach((it) => {
-                            html += `<div class="ov-item">• ${escapeHtml(it.name)} x${it.qty || 1}</div>`;
-                        });
-                    }
+            let html = '';
+            pages.forEach(p => {
+                html += `<div class="ov-page-title">📍 ${escapeHtml(p.name)}</div>`;
+                const boxes = (boxesCache || []).filter(b => b.pageId === p.id);
+                if (boxes.length === 0) html += `<div class="ov-empty-page">（無箱子）</div>`;
+                boxes.forEach(b => {
+                    html += `<div class="ov-box" onclick="openBoxModal('${b.id}')"><div class="ov-box-title"><span>📦 ${escapeHtml(b.name)}</span><span class="ov-box-count">${(b.items||[]).length} 項</span></div>`;
+                    (b.items || []).forEach(it => { html += `<div class="ov-item">• ${escapeHtml(it.name)} x${it.qty||1}</div>`; });
                     html += `</div>`;
                 });
-            }
-        });
-        container.innerHTML = html;
+            });
+            document.getElementById('overview-view').innerHTML = html;
+        }
     }
 
-    async function loadBoxes(forceFetch = false) {
-        if (!forceFetch && boxesCache) {
-            renderBoxes();
-            return;
-        }
-        try {
-            const querySnapshot = await getDocs(collection(db, "warehouse_boxes"));
-            const newCache = [];
-            querySnapshot.forEach((docSnap) => {
-                newCache.push({ id: docSnap.id, ...docSnap.data() });
-            });
-            await Promise.all(newCache.map(b => preloadImage(b.imageUrl)));
-            boxesCache = newCache;
-        } catch (e) {
-            if (!boxesCache) boxesCache = [];
-        }
+    async function loadBoxes(force = false) {
+        if (!force && boxesCache) { renderBoxes(); return; }
+        const snap = await getDocs(collection(db, "warehouse_boxes"));
+        boxesCache = [];
+        snap.forEach(d => boxesCache.push({ id: d.id, ...d.data() }));
         renderBoxes();
     }
 
     function renderBoxes() {
         const layer = document.getElementById('boxes-layer');
-        const fragment = document.createDocumentFragment();
-        const currentPage = pages[currentPageIndex];
-        const pageId = currentPage ? currentPage.id : null;
-        (boxesCache || [])
-            .filter(b => b.pageId === pageId)
-            .forEach((data) => {
-                const el = buildBoxElement(data.id, data.imageUrl, data.x || 50, data.y || 50, data.width || 100, data.height || 80);
-                fragment.appendChild(el);
-            });
-        layer.replaceChildren(fragment);
-    }
+        const frag = document.createDocumentFragment();
+        const pid = pages[currentPageIndex]?.id;
+        (boxesCache || []).filter(b => b.pageId === pid).forEach(b => {
+            const wrap = document.createElement('div');
+            wrap.className = 'box-wrapper';
+            wrap.style.left = (b.x || 50) + '%';
+            wrap.style.top = (b.y || 50) + '%';
+            wrap.style.width = (b.width || 100) + 'px';
+            wrap.style.height = (b.height || 80) + 'px';
+            if (isLayoutMode) wrap.classList.add('selected');
 
-    function buildBoxElement(id, imageUrl, x, y, width, height) {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'box-wrapper';
-        wrapper.style.left = x + '%';
-        wrapper.style.top = y + '%';
-        wrapper.style.width = width + 'px';
-        wrapper.style.height = height + 'px';
+            const img = document.createElement('img');
+            img.className = 'box-image-hotspot';
+            img.src = b.imageUrl || "https://via.placeholder.com/100?text=BOX";
+            wrap.appendChild(img);
 
-        if (isLayoutMode) wrapper.classList.add('selected');
-
-        const img = document.createElement('img');
-        img.className = 'box-image-hotspot';
-        img.src = imageUrl || "https://via.placeholder.com/100?text=BOX";
-        wrapper.appendChild(img);
-
-        if (isLayoutMode) {
-            ['tl', 'tr', 'bl', 'br'].forEach(pos => {
-                const handle = document.createElement('div');
-                handle.className = `resize-handle handle-${pos}`;
-                wrapper.appendChild(handle);
-
-                handle.onpointerdown = (e) => {
-                    e.stopPropagation();
-                    handle.setPointerCapture(e.pointerId);
-                    const startX = e.clientX, startY = e.clientY;
-                    const startW = wrapper.offsetWidth, startH = wrapper.offsetHeight;
-
-                    const onPointerMove = (moveEvent) => {
-                        const dx = moveEvent.clientX - startX;
-                        const dy = moveEvent.clientY - startY;
-                        let newW = startW, newH = startH;
-                        if (pos.includes('r')) newW = Math.max(30, startW + dx);
-                        if (pos.includes('l')) newW = Math.max(30, startW - dx);
-                        if (pos.includes('b')) newH = Math.max(30, startH + dy);
-                        if (pos.includes('t')) newH = Math.max(30, startH - dy);
-                        wrapper.style.width = newW + 'px';
-                        wrapper.style.height = newH + 'px';
-                    };
-
-                    const onPointerUp = async () => {
-                        handle.removeEventListener('pointermove', onPointerMove);
-                        handle.removeEventListener('pointerup', onPointerUp);
-                        const finalW = wrapper.offsetWidth, finalH = wrapper.offsetHeight;
-                        updateCachedBox(id, { width: finalW, height: finalH });
-                        await updateDoc(doc(db, "warehouse_boxes", id), {
-                            width: finalW,
-                            height: finalH
-                        });
-                    };
-                    handle.addEventListener('pointermove', onPointerMove);
-                    handle.addEventListener('pointerup', onPointerUp);
-                };
-            });
-        }
-
-        wrapper.onclick = (e) => {
-            e.stopPropagation();
-            if (justSwiped) return;
-            if (!isLayoutMode) {
-                openBoxModal(id);
-            }
-        };
-
-        let isDragging = false;
-        wrapper.onpointerdown = (e) => {
-            if (!isLayoutMode || e.target.classList.contains('resize-handle')) return;
-            isDragging = true;
-            wrapper.setPointerCapture(e.pointerId);
-            e.stopPropagation();
-        };
-
-        wrapper.onpointermove = (e) => {
-            if (!isDragging || !isLayoutMode) return;
-            const container = document.getElementById('map-canvas').getBoundingClientRect();
-            let newX = ((e.clientX - container.left) / container.width) * 100;
-            let newY = ((e.clientY - container.top) / container.height) * 100;
-            newX = Math.max(2, Math.min(98, newX));
-            newY = Math.max(2, Math.min(98, newY));
-            wrapper.style.left = newX + '%';
-            wrapper.style.top = newY + '%';
-        };
-
-        wrapper.onpointerup = async (e) => {
-            if (!isDragging) return;
-            isDragging = false;
-            const container = document.getElementById('map-canvas').getBoundingClientRect();
-            let finalX = ((e.clientX - container.left) / container.width) * 100;
-            let finalY = ((e.clientY - container.top) / container.height) * 100;
-            finalX = Math.round(finalX);
-            finalY = Math.round(finalY);
-            updateCachedBox(id, { x: finalX, y: finalY });
-            await updateDoc(doc(db, "warehouse_boxes", id), { x: finalX, y: finalY });
-        };
-
-        return wrapper;
-    }
-
-    function updateCachedBox(id, patch) {
-        if (!boxesCache) return;
-        const idx = boxesCache.findIndex(b => b.id === id);
-        if (idx !== -1) boxesCache[idx] = { ...boxesCache[idx], ...patch };
-    }
-
-    const container = document.getElementById('map-container');
-    let isPanning = false, startPanX = 0, startPanY = 0;
-    let swipeStartX = 0, swipeStartY = 0, swipeActive = false;
-    let justSwiped = false;
-
-    function zoomAtPoint(newScale, clientX, clientY) {
-        newScale = Math.max(0.5, Math.min(5, newScale));
-        const rect = container.getBoundingClientRect();
-        const px = clientX - rect.left;
-        const py = clientY - rect.top;
-        const canvasX = (px - panX) / scale;
-        const canvasY = (py - panY) / scale;
-        scale = newScale;
-        panX = px - canvasX * scale;
-        panY = py - canvasY * scale;
-        updateCanvasTransform();
-    }
-
-    container.onwheel = (e) => {
-        if (!isLayoutMode) return;
-        e.preventDefault();
-        const zoomIntensity = 0.1;
-        const newScale = e.deltaY < 0 ? scale + zoomIntensity : scale - zoomIntensity;
-        zoomAtPoint(newScale, e.clientX, e.clientY);
-        saveCanvasLayout();
-    };
-
-    const oppositeCorner = { tl: 'br', tr: 'bl', bl: 'tr', br: 'tl' };
-    ['tl', 'tr', 'bl', 'br'].forEach((pos) => {
-        const handle = document.getElementById('bg-handle-' + pos);
-        if (!handle) return;
-        handle.onpointerdown = (e) => {
-            if (!isLayoutMode) return;
-            e.stopPropagation();
-            handle.setPointerCapture(e.pointerId);
-
-            const rect = container.getBoundingClientRect();
-            const cw = rect.width, ch = rect.height;
-            const anchorCanvas = {
-                tl: { x: 0, y: 0 }, tr: { x: cw, y: 0 },
-                bl: { x: 0, y: ch }, br: { x: cw, y: ch }
-            }[oppositeCorner[pos]];
-
-            const startScale = scale;
-            const anchorScreen = { x: panX + anchorCanvas.x * startScale, y: panY + anchorCanvas.y * startScale };
-            const startDist = Math.hypot(e.clientX - anchorScreen.x, e.clientY - anchorScreen.y) || 1;
-
-            const onMove = (moveEvent) => {
-                const curDist = Math.hypot(moveEvent.clientX - anchorScreen.x, moveEvent.clientY - anchorScreen.y);
-                let newScale = startScale * (curDist / startDist);
-                newScale = Math.max(0.5, Math.min(5, newScale));
-                scale = newScale;
-                panX = anchorScreen.x - anchorCanvas.x * scale;
-                panY = anchorScreen.y - anchorCanvas.y * scale;
-                updateCanvasTransform();
-            };
-            const onUp = () => {
-                handle.removeEventListener('pointermove', onMove);
-                handle.removeEventListener('pointerup', onUp);
-                saveCanvasLayout();
-            };
-            handle.addEventListener('pointermove', onMove);
-            handle.addEventListener('pointerup', onUp);
-        };
-    });
-
-    const activePointers = new Map();
-    let pinchPrevDist = null;
-
-    function pointDistance(p1, p2) {
-        return Math.hypot(p1.x - p2.x, p1.y - p2.y);
-    }
-
-    container.onpointerdown = (e) => {
-        if (isLayoutMode) {
-            activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-            try { container.setPointerCapture(e.pointerId); } catch (err) {}
-
-            if (activePointers.size >= 2) {
-                isPanning = false;
-                const pts = [...activePointers.values()];
-                pinchPrevDist = pointDistance(pts[0], pts[1]);
-            } else if (e.target.id === 'map-container' || e.target.id === 'warehouse-img' || e.target.id === 'map-canvas') {
-                isPanning = true;
-                startPanX = e.clientX - panX;
-                startPanY = e.clientY - panY;
-            }
-        } else {
-            swipeActive = true;
-            swipeStartX = e.clientX;
-            swipeStartY = e.clientY;
-        }
-    };
-
-    container.onpointermove = (e) => {
-        if (isLayoutMode) {
-            if (activePointers.has(e.pointerId)) {
-                activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-            }
-
-            if (activePointers.size >= 2) {
-                const pts = [...activePointers.values()];
-                const newDist = pointDistance(pts[0], pts[1]);
-                if (pinchPrevDist) {
-                    const ratio = newDist / pinchPrevDist;
-                    const midX = (pts[0].x + pts[1].x) / 2;
-                    const midY = (pts[0].y + pts[1].y) / 2;
-                    zoomAtPoint(scale * ratio, midX, midY);
-                }
-                pinchPrevDist = newDist;
-                return;
-            }
-
-            if (!isPanning) return;
-            panX = e.clientX - startPanX;
-            panY = e.clientY - startPanY;
-            updateCanvasTransform();
-        }
-    };
-
-    function endLayoutPointer(e) {
-        activePointers.delete(e.pointerId);
-        if (activePointers.size >= 2) {
-            const pts = [...activePointers.values()];
-            pinchPrevDist = pointDistance(pts[0], pts[1]);
-            isPanning = false;
-        } else if (activePointers.size === 1) {
-            pinchPrevDist = null;
-            const p = [...activePointers.values()][0];
-            startPanX = p.x - panX;
-            startPanY = p.y - panY;
-            isPanning = true;
-        } else {
-            pinchPrevDist = null;
-            if (isPanning) saveCanvasLayout();
-            isPanning = false;
-        }
-    }
-
-    container.onpointerup = (e) => {
-        if (isLayoutMode) {
-            endLayoutPointer(e);
-            return;
-        }
-        if (!swipeActive) return;
-        swipeActive = false;
-        const dx = e.clientX - swipeStartX;
-        const dy = e.clientY - swipeStartY;
-        if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-            justSwiped = true;
-            if (dx < 0) goToPage(1); else goToPage(-1);
-            setTimeout(() => { justSwiped = false; }, 80);
-        }
-    };
-
-    container.onpointercancel = (e) => {
-        if (isLayoutMode) endLayoutPointer(e);
-    };
-
-    async function saveCanvasLayout() {
-        const page = pages[currentPageIndex];
-        if (!page) return;
-        page.scale = scale; page.panX = panX; page.panY = panY;
-        try {
-            await setDoc(doc(db, "warehouse_pages", page.id), { scale, panX, panY }, { merge: true });
-        } catch (e) {}
+            wrap.onclick = (e) => { e.stopPropagation(); if (!isLayoutMode) openBoxModal(b.id); };
+            frag.appendChild(wrap);
+        });
+        layer.replaceChildren(frag);
     }
 
     window.addNewBox = async function() {
         const name = document.getElementById('new-box-name').value;
         if (!name) return alert('請輸入箱子名稱');
-        const page = pages[currentPageIndex];
-        if (!page) return alert('請先選擇/建立頁面');
-        try {
-            const newBox = { name: name, x: 50, y: 50, width: 100, height: 80, items: [], imageUrl: "", pageId: page.id };
-            const docRef = await addDoc(collection(db, "warehouse_boxes"), newBox);
-            document.getElementById('new-box-name').value = '';
-            if (!boxesCache) boxesCache = [];
-            boxesCache.push({ id: docRef.id, ...newBox });
-            renderBoxes();
-        } catch (e) { alert('新增失敗'); }
-    }
+        const b = { name, x: 50, y: 50, width: 100, height: 80, items: [], imageUrl: "", pageId: pages[currentPageIndex].id };
+        const ref = await addDoc(collection(db, "warehouse_boxes"), b);
+        document.getElementById('new-box-name').value = '';
+        boxesCache.push({ id: ref.id, ...b });
+        renderBoxes();
+    };
 
-    window.uploadBackgroundImage = async function(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        const page = pages[currentPageIndex];
-        if (!page) return;
-        try {
-            if (page.imageUrl) await deleteImageFromStorage(page.imageUrl);
-            const processedFile = await processImageFile(file, 1000);
-            const storageRef = ref(storage, 'inv/bg_' + Date.now() + (file.type === 'image/png' ? '.png' : '.jpg'));
-            const snapshot = await uploadBytes(storageRef, processedFile);
-            const url = await getDownloadURL(snapshot.ref);
-            await preloadImage(url);
-            await setDoc(doc(db, "warehouse_pages", page.id), { imageUrl: url }, { merge: true });
-            page.imageUrl = url;
-            document.getElementById('warehouse-img').src = url;
-        } catch (e) { alert('上傳失敗'); }
-    }
+    window.openBoxModal = async function(id) {
+        currentBoxId = id;
+        renderBoxModal(boxesCache.find(b => b.id === id));
+    };
 
-    window.openBoxModal = async function(boxId) {
-        currentBoxId = boxId;
-        let data = (boxesCache || []).find(b => b.id === boxId);
-        if (!data) {
-            const docSnap = await getDoc(doc(db, "warehouse_boxes", boxId));
-            if (!docSnap.exists()) return;
-            data = { id: boxId, ...docSnap.data() };
-        }
-        renderBoxModal(data);
-    }
-
-    function renderBoxModal(data) {
-        document.getElementById('modal-box-title').innerText = `箱子: ${data.name}`;
-
-        if (isContentEditActive) {
-            document.getElementById('delete-box-btn').style.display = 'block';
-            document.getElementById('box-image-edit-section').style.display = 'block';
-            document.getElementById('add-item-section').style.display = 'block';
-        } else {
-            document.getElementById('delete-box-btn').style.display = 'none';
-            document.getElementById('box-image-edit-section').style.display = 'none';
-            document.getElementById('add-item-section').style.display = 'none';
-        }
+    function renderBoxModal(b) {
+        document.getElementById('modal-box-title').innerText = `📦 ${b.name}`;
+        document.getElementById('delete-box-btn').style.display = isContentEditActive ? 'block' : 'none';
+        document.getElementById('box-image-edit-section').style.display = isContentEditActive ? 'block' : 'none';
+        document.getElementById('add-item-section').style.display = isContentEditActive ? 'block' : 'none';
 
         const container = document.getElementById('item-list-container');
         container.innerHTML = '';
-
-        if (data.items && data.items.length > 0) {
-            data.items.forEach((item, index) => {
+        if (b.items && b.items.length > 0) {
+            b.items.forEach((it, idx) => {
                 const card = document.createElement('div');
                 card.className = 'grid-item-card';
-
-                let deleteBtnHtml = '';
-                if (isContentEditActive) {
-                    deleteBtnHtml = `<button class="grid-item-del" onclick="event.stopPropagation(); deleteItem(${index})">✕</button>`;
-                }
-
                 card.innerHTML = `
-                    ${deleteBtnHtml}
-                    <img src="${item.imageUrl || 'https://via.placeholder.com/100?text=No+Img'}" alt="物品">
-                    <div class="grid-item-name">${escapeHtml(item.name)}</div>
-                    <div class="grid-item-qty">數量: ${item.qty || 1}</div>
+                    ${isContentEditActive ? `<button class="grid-item-del" onclick="event.stopPropagation(); deleteItem(${idx})">✕</button>` : ''}
+                    <img src="${it.imageUrl || 'https://via.placeholder.com/100?text=No+Img'}" alt="">
+                    <div class="grid-item-name">${escapeHtml(it.name)}</div>
+                    <div class="grid-item-qty">${it.qty || 1} 個</div>
                 `;
-
-                // 💡 編輯內容模式下，點擊卡片開啟 App 風格編輯物品視窗
-                if (isContentEditActive) {
-                    card.onclick = () => openEditItemModal(index);
-                }
-
+                // 點擊任一物品即可開啟編輯並產生專屬 QR Code
+                card.onclick = () => openEditItemModal(idx);
                 container.appendChild(card);
             });
         } else {
-            container.innerHTML = '<div style="color: #777; text-align:center; padding:15px; font-size:13px; grid-column: span 3;">箱內尚無物品</div>';
+            container.innerHTML = '<div style="color: #8e8e93; text-align:center; padding:20px; grid-column: span 3;">箱內尚無物品</div>';
         }
-
         document.getElementById('item-modal').style.display = 'block';
         document.getElementById('backdrop').style.display = 'block';
     }
@@ -1239,198 +914,86 @@
     window.closeModal = function() {
         document.getElementById('item-modal').style.display = 'none';
         document.getElementById('backdrop').style.display = 'none';
-        if (isOverviewActive) renderOverview();
-    }
+    };
 
     window.addItemWithImage = async function() {
         const name = document.getElementById('new-item-name').value;
         const qty = document.getElementById('new-item-qty').value || 1;
-        const fileInput = document.getElementById('item-img-file');
-        const file = fileInput.files[0];
+        if (!name) return alert('請輸入名稱');
+        const b = boxesCache.find(x => x.id === currentBoxId);
+        b.items = b.items || [];
+        b.items.push({ name, qty: Number(qty), imageUrl: "" });
+        await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
+        document.getElementById('new-item-name').value = '';
+        renderBoxModal(b);
+    };
 
-        if (!name || !currentBoxId) return alert('請輸入物品名稱');
+    window.deleteItem = async function(idx) {
+        if (!confirm('確定刪除？')) return;
+        const b = boxesCache.find(x => x.id === currentBoxId);
+        b.items.splice(idx, 1);
+        await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
+        renderBoxModal(b);
+    };
 
-        let imageUrl = "";
-        if (file) {
-            try {
-                const isPng = file.type === 'image/png';
-                const processedFile = await processImageFile(file, 500);
-                const storageRef = ref(storage, 'items/item_' + Date.now() + (isPng ? '.png' : '.jpg'));
-                const snapshot = await uploadBytes(storageRef, processedFile);
-                imageUrl = await getDownloadURL(snapshot.ref);
-                await preloadImage(imageUrl);
-            } catch (e) {}
-        }
+    // 物品編輯與 QR Code 生成
+    window.openEditItemModal = function(idx) {
+        editingItemIndex = idx;
+        const b = boxesCache.find(x => x.id === currentBoxId);
+        const it = b.items[idx];
+        document.getElementById('edit-item-name-input').value = it.name;
+        document.getElementById('edit-item-qty-input').value = it.qty;
+        document.getElementById('edit-item-preview-img').src = it.imageUrl || '';
 
-        try {
-            const boxRef = doc(db, "warehouse_boxes", currentBoxId);
-            const docSnap = await getDoc(boxRef);
-            let items = docSnap.data().items || [];
-            items.push({ name: name, qty: Number(qty), imageUrl: imageUrl });
-            await updateDoc(boxRef, { items: items });
-
-            updateCachedBox(currentBoxId, { items });
-
-            document.getElementById('new-item-name').value = '';
-            document.getElementById('new-item-qty').value = '1';
-            fileInput.value = '';
-            const data = (boxesCache || []).find(b => b.id === currentBoxId) || { id: currentBoxId, name: '', items };
-            renderBoxModal(data);
-        } catch (e) { alert('新增物品失敗'); }
-    }
-
-    window.deleteItem = async function(index) {
-        if (!confirm('確定要刪除這個物品嗎？')) return;
-        try {
-            const boxRef = doc(db, "warehouse_boxes", currentBoxId);
-            const docSnap = await getDoc(boxRef);
-            let items = docSnap.data().items || [];
-            
-            const targetItem = items[index];
-            if (targetItem && targetItem.imageUrl) {
-                await deleteImageFromStorage(targetItem.imageUrl);
-            }
-
-            items.splice(index, 1);
-            await updateDoc(boxRef, { items: items });
-
-            updateCachedBox(currentBoxId, { items });
-            const data = (boxesCache || []).find(b => b.id === currentBoxId);
-            renderBoxModal(data);
-        } catch (e) { alert('刪除物品失敗'); }
-    }
-
-    // ============ App 風格物品編輯視窗邏輯 ============
-
-    window.openEditItemModal = function(index) {
-        editingItemIndex = index;
-        const boxData = (boxesCache || []).find(b => b.id === currentBoxId);
-        if (!boxData || !boxData.items || !boxData.items[index]) return;
-        const item = boxData.items[index];
-
-        document.getElementById('edit-item-name-input').value = item.name || '';
-        document.getElementById('edit-item-qty-input').value = item.qty || 1;
-        document.getElementById('edit-item-preview-img').src = item.imageUrl || 'https://via.placeholder.com/80?text=No+Img';
-        document.getElementById('edit-item-img-input').value = '';
+        // 動態產生專屬 QR Code (格式: ITEM_boxId_index)
+        const qrCodeContainer = document.getElementById('qrcode-container');
+        qrCodeContainer.innerHTML = '';
+        const itemQrText = `ITEM_${b.id}_${idx}`;
+        document.getElementById('item-qr-code-text').innerText = `代碼: ${itemQrText}`;
+        
+        new QRCode(qrCodeContainer, {
+            text: itemQrText,
+            width: 120,
+            height: 120,
+            colorDark : "#000000",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.H
+        });
 
         document.getElementById('item-edit-modal').style.display = 'block';
-    }
+    };
 
-    window.closeEditItemModal = function() {
-        document.getElementById('item-edit-modal').style.display = 'none';
-        editingItemIndex = null;
-    }
-
-    window.uploadNewItemImage = async function(event) {
-        const file = event.target.files[0];
-        if (!file || editingItemIndex === null) return;
-        const boxData = (boxesCache || []).find(b => b.id === currentBoxId);
-        if (!boxData || !boxData.items[editingItemIndex]) return;
-
-        const item = boxData.items[editingItemIndex];
-        try {
-            if (item.imageUrl) await deleteImageFromStorage(item.imageUrl);
-            const isPng = file.type === 'image/png';
-            const processedFile = await processImageFile(file, 500);
-            const storageRef = ref(storage, 'items/item_' + Date.now() + (isPng ? '.png' : '.jpg'));
-            const snapshot = await uploadBytes(storageRef, processedFile);
-            item.imageUrl = await getDownloadURL(snapshot.ref);
-            await preloadImage(item.imageUrl);
-
-            document.getElementById('edit-item-preview-img').src = item.imageUrl;
-        } catch (e) { alert('更換圖片失敗'); }
-    }
+    window.closeEditItemModal = function() { document.getElementById('item-edit-modal').style.display = 'none'; };
 
     window.saveEditingItem = async function() {
-        if (editingItemIndex === null) return;
-        const boxData = (boxesCache || []).find(b => b.id === currentBoxId);
-        if (!boxData || !boxData.items[editingItemIndex]) return;
+        const b = boxesCache.find(x => x.id === currentBoxId);
+        b.items[editingItemIndex].name = document.getElementById('edit-item-name-input').value;
+        b.items[editingItemIndex].qty = Number(document.getElementById('edit-item-qty-input').value);
+        await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
+        closeEditItemModal();
+        renderBoxModal(b);
+    };
 
-        const newName = document.getElementById('edit-item-name-input').value.trim();
-        const newQty = parseInt(document.getElementById('edit-item-qty-input').value, 10);
+    window.confirmDeleteEditingItem = function() { deleteItem(editingItemIndex); closeEditItemModal(); };
 
-        if (!newName) return alert('請輸入物品名稱');
-        if (isNaN(newQty) || newQty < 1) return alert('數量必須為大於 0 的數字');
-
-        const item = boxData.items[editingItemIndex];
-        item.name = newName;
-        item.qty = newQty;
-
-        try {
-            const boxRef = doc(db, "warehouse_boxes", currentBoxId);
-            await updateDoc(boxRef, { items: boxData.items });
-            updateCachedBox(currentBoxId, { items: boxData.items });
-            
-            closeEditItemModal();
-            renderBoxModal(boxData);
-        } catch (e) { alert('儲存修改失敗'); }
-    }
-
-    window.confirmDeleteEditingItem = async function() {
-        if (editingItemIndex === null) return;
-        if (!confirm('確定要刪除這個物品嗎？')) return;
-
-        const boxData = (boxesCache || []).find(b => b.id === currentBoxId);
-        if (!boxData || !boxData.items[editingItemIndex]) return;
-
-        try {
-            const targetItem = boxData.items[editingItemIndex];
-            if (targetItem.imageUrl) {
-                await deleteImageFromStorage(targetItem.imageUrl);
-            }
-
-            boxData.items.splice(editingItemIndex, 1);
-            const boxRef = doc(db, "warehouse_boxes", currentBoxId);
-            await updateDoc(boxRef, { items: boxData.items });
-            updateCachedBox(currentBoxId, { items: boxData.items });
-
-            closeEditItemModal();
-            renderBoxModal(boxData);
-        } catch (e) { alert('刪除物品失敗'); }
-    }
-
-    window.uploadBoxImage = async function(event) {
-        const file = event.target.files[0];
-        if (!file || !currentBoxId) return;
-        try {
-            const boxData = (boxesCache || []).find(b => b.id === currentBoxId);
-            if (boxData && boxData.imageUrl) {
-                await deleteImageFromStorage(boxData.imageUrl);
-            }
-
-            const isPng = file.type === 'image/png';
-            const processedFile = await processImageFile(file, 600);
-            const storageRef = ref(storage, 'boxes/box_' + Date.now() + (isPng ? '.png' : '.jpg'));
-            const snapshot = await uploadBytes(storageRef, processedFile);
-            const url = await getDownloadURL(snapshot.ref);
-            await preloadImage(url);
-
-            await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { imageUrl: url });
-            updateCachedBox(currentBoxId, { imageUrl: url });
-            renderBoxes();
-        } catch (e) { alert('照片上傳失敗'); }
-    }
+    window.uploadBoxImage = async function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const snap = await uploadBytes(ref(storage, 'boxes/box_' + Date.now() + '.jpg'), file);
+        const url = await getDownloadURL(snap.ref);
+        await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { imageUrl: url });
+        const b = boxesCache.find(x => x.id === currentBoxId);
+        b.imageUrl = url;
+        renderBoxes();
+    };
 
     window.deleteCurrentBox = async function() {
-        if (!currentBoxId) return;
-        if (confirm('確定要刪除這個箱子嗎？')) {
-            try {
-                const boxData = (boxesCache || []).find(b => b.id === currentBoxId);
-                if (boxData) {
-                    if (boxData.imageUrl) await deleteImageFromStorage(boxData.imageUrl);
-                    if (boxData.items) {
-                        for (const item of boxData.items) {
-                            if (item.imageUrl) await deleteImageFromStorage(item.imageUrl);
-                        }
-                    }
-                }
-                await deleteDoc(doc(db, "warehouse_boxes", currentBoxId));
-                if (boxesCache) boxesCache = boxesCache.filter(b => b.id !== currentBoxId);
-                closeModal();
-                renderBoxes();
-            } catch (e) { alert('刪除失敗'); }
-        }
-    }
+        if (!confirm('確定刪除此箱子？')) return;
+        await deleteDoc(doc(db, "warehouse_boxes", currentBoxId));
+        boxesCache = boxesCache.filter(b => b.id !== currentBoxId);
+        closeModal();
+        renderBoxes();
+    };
 </script>
 
 </body>
