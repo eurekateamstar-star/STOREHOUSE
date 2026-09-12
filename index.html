@@ -426,9 +426,11 @@
                 
                 <div style="display:flex; align-items:center; gap:10px;">
                     <input type="file" id="item-img-file" accept="image/*" style="font-size:11px; flex:1; color:#aaa;">
-                    <button class="apple-btn success" style="padding:10px 16px; font-size:13px;" onclick="addItemWithImage()">加入</button>
+                    <button class="apple-btn success" id="btn-add-item" style="padding:10px 16px; font-size:13px; min-width:64px;" onclick="addItemWithImage()">加入</button>
                 </div>
+                <div class="progress-bar-container" id="new-item-progress-container"><div class="progress-bar-fill" id="new-item-progress-fill"></div></div>
             </div>
+
 
             <button class="apple-btn secondary" style="width:100%; padding: 14px; font-weight: 600;" onclick="closeModal()">關閉視窗</button>
         </div>
@@ -588,22 +590,51 @@
         });
     }
 
-    // ============ 📦 入庫貨號產生器 (每次新增都給獨立編號，即使同名也能分辨) ============
-    async function generateStockCode() {
-        const counterRef = doc(db, "settings", "stock_counter");
-        let newCode = '';
+    // ============ 📦 入庫貨號產生器 (區域數字 + 分類英文字母 + 流水號，方便一眼看出物品位置與分類) ============
+    function getPageNumber(pageId) {
+        const idx = pages.findIndex(p => p.id === pageId);
+        return idx === -1 ? 1 : idx + 1;
+    }
+
+    // 箱子的編號只在第一次需要時分配一次，之後固定不變（用交易確保不會分配到重複編號）
+    async function getOrAssignBoxNumber(box) {
+        if (box.boxNumber) return box.boxNumber;
+        const counterRef = doc(db, "settings", "box_counter_" + box.pageId);
+        let num = 0;
         try {
             await runTransaction(db, async (transaction) => {
                 const counterDoc = await transaction.get(counterRef);
                 const current = counterDoc.exists() ? (counterDoc.data().value || 0) : 0;
-                const next = current + 1;
-                transaction.set(counterRef, { value: next });
-                newCode = 'NO-' + String(next).padStart(6, '0');
+                num = current + 1;
+                transaction.set(counterRef, { value: num });
             });
         } catch (e) {
-            newCode = 'NO-' + Date.now();
+            num = (box.width || 0) + Date.now() % 1000; // 極端狀況下的備援，避免整個流程卡住
         }
-        return newCode;
+        box.boxNumber = num;
+        try { await updateDoc(doc(db, "warehouse_boxes", box.id), { boxNumber: num }); } catch (e) {}
+        return num;
+    }
+
+    // 箱子編號轉英文字母 (1→A, 2→B ... 26→Z, 27→AA ...)，用字母代表「分類」
+    function numberToLetters(num) {
+        let letters = '';
+        while (num > 0) {
+            const rem = (num - 1) % 26;
+            letters = String.fromCharCode(65 + rem) + letters;
+            num = Math.floor((num - 1) / 26);
+        }
+        return letters;
+    }
+
+    // 貨號格式：{區域頁碼數字}{分類英文字母}{流水號}，例如 1A0001 = 第1頁區域、A分類(箱子)、流水號0001
+    // 同一個分類(箱子)裡的流水號會各自從 0001 開始跳號，不會跟別的箱子混在一起
+    async function generateStockCode(box, itemIndex) {
+        const pageNum = getPageNumber(box.pageId);
+        const boxNum = await getOrAssignBoxNumber(box);
+        const boxLetter = numberToLetters(boxNum);
+        const itemNum = itemIndex + 1;
+        return `${pageNum}${boxLetter}${String(itemNum).padStart(4, '0')}`;
     }
 
     // ============ 🖼️ 圖片預先載入 (加速開啟地圖與箱子時的顯示速度) ============
@@ -1368,8 +1399,10 @@
         if (!name) return showToast('請輸入箱子名稱', 'error');
         const b = { name, x: 50, y: 50, width: 100, height: 80, items: [], imageUrl: "", pageId: pages[currentPageIndex].id };
         const ref = await addDoc(collection(db, "warehouse_boxes"), b);
+        const newBox = { id: ref.id, ...b };
+        await getOrAssignBoxNumber(newBox); // 立即編號，之後貨號才能正確組成
         document.getElementById('new-box-name').value = '';
-        boxesCache.push({ id: ref.id, ...b });
+        boxesCache.push(newBox);
         renderBoxes();
     };
 
@@ -1419,14 +1452,50 @@
         const name = document.getElementById('new-item-name').value;
         const qty = document.getElementById('new-item-qty').value || 1;
         if (!name) return showToast('請輸入名稱', 'error');
-        const b = boxesCache.find(x => x.id === currentBoxId);
-        b.items = b.items || [];
-        const stockCode = await generateStockCode();
-        b.items.push({ name, qty: Number(qty), borrower: "", imageUrl: "", stockCode, checkedOutCount: 0 });
-        await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
-        document.getElementById('new-item-name').value = '';
-        renderBoxModal(b);
-        showToast(`✅ 已新增「${name}」\n貨號：${stockCode}`, 'success');
+
+        const addBtn = document.getElementById('btn-add-item');
+        const pContainer = document.getElementById('new-item-progress-container');
+        const pFill = document.getElementById('new-item-progress-fill');
+        if (addBtn.disabled) return; // 防止手快連點造成重複新增
+        addBtn.disabled = true;
+        addBtn.innerText = '處理中…';
+        pContainer.style.display = 'block';
+        pFill.style.width = '15%';
+
+        try {
+            const b = boxesCache.find(x => x.id === currentBoxId);
+            b.items = b.items || [];
+            const newItemIndex = b.items.length;
+            const stockCode = await generateStockCode(b, newItemIndex);
+            pFill.style.width = '35%';
+
+            // 💡 修正：原本這裡完全沒有讀取使用者選擇的照片，導致新增後照片永遠是空的
+            let imageUrl = "";
+            const fileInput = document.getElementById('item-img-file');
+            const file = fileInput.files[0];
+            if (file) {
+                pFill.style.width = '55%';
+                const snap = await uploadBytes(ref(storage, 'items/item_' + Date.now() + '.jpg'), file);
+                pFill.style.width = '85%';
+                imageUrl = await getDownloadURL(snap.ref);
+            }
+
+            b.items.push({ name, qty: Number(qty), borrower: "", imageUrl, stockCode, checkedOutCount: 0 });
+            await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
+            pFill.style.width = '100%';
+
+            document.getElementById('new-item-name').value = '';
+            document.getElementById('new-item-qty').value = '1';
+            fileInput.value = '';
+            renderBoxModal(b);
+            showToast(`✅ 已新增「${name}」\n貨號：${stockCode}`, 'success');
+        } catch (err) {
+            showToast('❌ 新增失敗，照片可能上傳不成功，請重試', 'error');
+        } finally {
+            setTimeout(() => { pContainer.style.display = 'none'; pFill.style.width = '0%'; }, 400);
+            addBtn.disabled = false;
+            addBtn.innerText = '加入';
+        }
     };
 
     window.deleteItem = async function(idx) {
@@ -1444,7 +1513,7 @@
 
         // 舊資料若尚無貨號，補發一個並存回雲端
         if (!it.stockCode) {
-            it.stockCode = await generateStockCode();
+            it.stockCode = await generateStockCode(b, idx);
             await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
         }
         document.getElementById('item-stock-code-text').innerText = `貨號: ${it.stockCode}`;
@@ -1603,7 +1672,17 @@
             colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H
         });
 
-        const qrSize = 400, padding = 30, textBlockHeight = 110;
+        const qrSize = 400, padding = 30, textBlockHeight = 190;
+
+        function fitFontSize(ctx, text, maxWidth, startPx) {
+            let size = startPx;
+            ctx.font = `bold ${size}px sans-serif`;
+            while (ctx.measureText(text).width > maxWidth && size > 22) {
+                size -= 2;
+                ctx.font = `bold ${size}px sans-serif`;
+            }
+            return size;
+        }
 
         const renderLabel = (qrSourceEl) => {
             const canvas = document.createElement('canvas');
@@ -1616,10 +1695,14 @@
 
             ctx.fillStyle = '#000000';
             ctx.textAlign = 'center';
-            ctx.font = 'bold 34px sans-serif';
-            ctx.fillText(`貨號: ${stockCode}`, canvas.width / 2, qrSize + padding + 45);
-            ctx.font = '30px sans-serif';
-            ctx.fillText(it.name, canvas.width / 2, qrSize + padding + 90);
+            const maxTextWidth = canvas.width - 40;
+
+            const codeText = `貨號: ${stockCode}`;
+            fitFontSize(ctx, codeText, maxTextWidth, 52);
+            ctx.fillText(codeText, canvas.width / 2, qrSize + padding + 68);
+
+            fitFontSize(ctx, it.name, maxTextWidth, 46);
+            ctx.fillText(it.name, canvas.width / 2, qrSize + padding + 140);
 
             const link = document.createElement('a');
             link.download = `${stockCode}_${it.name}.png`;
