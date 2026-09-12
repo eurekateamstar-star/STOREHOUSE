@@ -680,20 +680,41 @@
     const SCAN_GATE_MS = 200; // 每次成功處理後，至少間隔這麼久才會處理下一次掃描
 
     let audioCtx = null;
-    function playBeep(freq = 880, duration = 130) {
+    // 條碼機風格的「逼」聲：方波、頻率較高、時間短促
+    function playBeep(freq = 2700, duration = 90) {
         try {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.type = 'sine';
+            osc.type = 'square';
             osc.frequency.value = freq;
-            gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
             osc.connect(gain).connect(audioCtx.destination);
             osc.start();
+            gain.gain.setValueAtTime(0.15, audioCtx.currentTime + duration / 1000 - 0.015);
             gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration / 1000);
-            osc.stop(audioCtx.currentTime + duration / 1000 + 0.05);
+            osc.stop(audioCtx.currentTime + duration / 1000 + 0.03);
         } catch (e) {}
+    }
+
+    // 手機震動回饋：就算手機關了音效/靜音，操作的人還是能感覺到震動確認
+    function vibrateFeedback(pattern) {
+        try {
+            if (navigator.vibrate) navigator.vibrate(pattern);
+        } catch (e) {}
+    }
+
+    // 成功/失敗的統一回饋：聲音 + 震動 + 畫面閃現，三種管道同時觸發，確保一定感覺得到
+    function scanSuccessFeedback(icon, text) {
+        playBeep(2700, 90);
+        vibrateFeedback(60);
+        showScanFlash(icon, text, false);
+    }
+    function scanErrorFeedback(icon, text) {
+        playBeep(900, 240);
+        vibrateFeedback([80, 60, 80]);
+        showScanFlash(icon, text, true);
     }
 
     function showScanFlash(icon, text, isError) {
@@ -1066,8 +1087,7 @@
                     if (scannerMode === 'out') {
                         // 庫存有多少只能出多少，超過就不給出
                         if (currentQty <= 0) {
-                            playBeep(220, 260);
-                            showScanFlash('⚠️', `庫存已為 0\n無法出庫`, true);
+                            scanErrorFeedback('⚠️', `庫存已為 0\n無法出庫`);
                             showToast(`⚠️ 出貨失敗\n物品「${item.name}」庫存已為 0！`, 'error');
                             scanGateUntil = now + SCAN_GATE_MS;
                             lastScannedCode = scannedText; lastScannedAt = now;
@@ -1078,14 +1098,12 @@
                         item.borrower = currentBorrowTarget;
                         actionType = '出庫';
                         recordTarget = currentBorrowTarget;
-                        playBeep(880, 120);
-                        showScanFlash('📤', `已出庫\n${item.name}`, false);
+                        scanSuccessFeedback('📤', `已出庫\n${item.name}`);
                         showToast(`✅ 出貨成功 (-1)\n物品：${item.name}\n對象：${currentBorrowTarget}`, 'success');
                     } else {
                         // 沒有出去的東西不能無中生有地入庫，出去多少才能回來多少
                         if (checkedOut <= 0) {
-                            playBeep(220, 260);
-                            showScanFlash('⚠️', `此物品目前沒有\n借出紀錄，無法入庫`, true);
+                            scanErrorFeedback('⚠️', `此物品目前沒有\n借出紀錄，無法入庫`);
                             showToast(`⚠️ 入庫失敗\n物品「${item.name}」目前沒有借出紀錄！`, 'error');
                             scanGateUntil = now + SCAN_GATE_MS;
                             lastScannedCode = scannedText; lastScannedAt = now;
@@ -1097,8 +1115,7 @@
                         if (item.checkedOutCount <= 0) item.borrower = '';
                         actionType = '進貨';
                         recordTarget = `還回 (原借用: ${oldBorrower})`;
-                        playBeep(880, 120);
-                        showScanFlash('📥', `已入庫\n${item.name}`, false);
+                        scanSuccessFeedback('📥', `已入庫\n${item.name}`);
                         showToast(`✅ 進貨/還回成功 (+1)\n物品：${item.name}`, 'success');
                     }
 
@@ -1138,8 +1155,12 @@
             const pageIndex = pages.findIndex(p => p.id === box.pageId);
             if (pageIndex !== -1) await switchToPage(pageIndex);
             openBoxModal(box.id);
+            playBeep(2700, 90);
+            vibrateFeedback(60);
             showToast(`📍 成功找到位置！\n箱子名稱：${box.name}`, 'success');
         } else {
+            playBeep(900, 240);
+            vibrateFeedback([80, 60, 80]);
             showToast('❌ 查無此 QR Code 對應的倉儲位置', 'error');
         }
     }
