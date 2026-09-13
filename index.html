@@ -1030,6 +1030,13 @@
         lastScannedCode = null;
         lastScannedAt = 0;
         scanGateUntil = 0;
+
+        // 在使用者實際點擊的當下就先「解鎖」音效播放權限，iPhone Safari 對這點特別嚴格
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        } catch (e) {}
+
         let title = '掃描 QR Code';
         let hint = '請將鏡頭對準 QR Code';
         if (mode === 'locate') { title = '🔍 掃 QR 找位置'; hint = '對準箱子或物品 QR Code 尋找位置'; }
@@ -1098,7 +1105,7 @@
                         item.borrower = currentBorrowTarget;
                         actionType = '出庫';
                         recordTarget = currentBorrowTarget;
-                        scanSuccessFeedback('📤', `已出庫\n${item.name}`);
+                        scanSuccessFeedback('📤', `已出庫\n${item.name}\n→ ${currentBorrowTarget}`);
                         showToast(`✅ 出貨成功 (-1)\n物品：${item.name}\n對象：${currentBorrowTarget}`, 'success');
                     } else {
                         // 沒有出去的東西不能無中生有地入庫，出去多少才能回來多少
@@ -1115,8 +1122,8 @@
                         if (item.checkedOutCount <= 0) item.borrower = '';
                         actionType = '進貨';
                         recordTarget = `還回 (原借用: ${oldBorrower})`;
-                        scanSuccessFeedback('📥', `已入庫\n${item.name}`);
-                        showToast(`✅ 進貨/還回成功 (+1)\n物品：${item.name}`, 'success');
+                        scanSuccessFeedback('📥', `已入庫\n${item.name}\n→ 回到「${box.name}」`);
+                        showToast(`✅ 進貨/還回成功 (+1)\n物品：${item.name}\n位置：${box.name}`, 'success');
                     }
 
                     scanGateUntil = now + SCAN_GATE_MS;
