@@ -247,10 +247,10 @@
 
     <div class="phone-frame">
 
-        <!-- 🔔 放大、置中、常駐的超大提示訊息容器 -->
+        <!-- 🔔 提示訊息容器 (支援 2.6秒 或 4.5秒 參數設定) -->
         <div id="toast-container" style="position:absolute; top: 50%; left:50%; transform:translate(-50%, -50%); z-index:9999; display:flex; flex-direction:column; gap:12px; align-items:center; width:90%; pointer-events:none;"></div>
 
-        <!-- 🔔 App 樣式確認/輸入視窗 -->
+        <!-- 🔔 確認/輸入視窗 -->
         <div id="dialog-backdrop" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); backdrop-filter:blur(6px); z-index:9000;"></div>
         <div id="dialog-box" class="apple-card" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:84%; max-width:340px; z-index:9100; padding:22px; box-shadow: 0 20px 60px rgba(0,0,0,0.8);">
             <div id="dialog-title" style="font-size:16px; font-weight:600; margin-bottom:8px; text-align:center;"></div>
@@ -429,7 +429,7 @@
                 <div class="progress-bar-container" id="box-progress-container"><div class="progress-bar-fill" id="box-progress-fill"></div></div>
             </div>
 
-            <div style="font-size: 13px; color:#8e8e93; margin-bottom:8px; font-weight: 500;">📦 箱內物品清單：</div>
+            <div style="font-size: 13px; color:#8e8e93; margin-bottom:8px; font-weight: 500;">📦 箱內物品清單 (點擊可看單品歷史)：</div>
             <div id="item-list-container" class="items-grid"></div>
             
             <div id="add-item-section" style="background: rgba(255,255,255,0.04); padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08); display:none; margin-bottom: 15px;">
@@ -486,6 +486,9 @@
                 <div id="view-item-qty" style="font-size: 13px; color: #ff9500; font-weight: 600;"></div>
             </div>
 
+            <!-- 💡 點擊查看該物品歷史出入庫紀錄按鈕 -->
+            <button class="apple-btn secondary" style="width:100%; margin-bottom:14px; background:rgba(10, 132, 255, 0.2); border-color:rgba(10, 132, 255, 0.4);" onclick="openItemHistoryModal()">📜 檢視此物品出入庫歷史紀錄</button>
+
             <div id="edit-item-form-container" style="display: none; margin-bottom: 14px;">
                 <div style="text-align: center; margin-bottom: 10px; background: rgba(255,255,255,0.04); padding: 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
                     <img id="edit-item-preview-img" src="" style="width: 60px; height: 60px; object-fit: contain; border-radius: 8px; background: #1c1c1e; margin-bottom: 6px; display:block; margin-left:auto; margin-right:auto;">
@@ -508,6 +511,17 @@
                 <button class="apple-btn success" style="flex:1; padding:12px; font-size:13px; display:none;" id="btn-modal-save" onclick="saveEditingItem()">💾 儲存修改</button>
             </div>
             <button class="apple-btn secondary" style="width:100%; padding:12px; font-size:13px;" onclick="closeEditItemModal()">返回</button>
+        </div>
+
+        <!-- 物品專屬歷史紀錄視窗 -->
+        <div id="item-history-modal" class="modal" style="z-index: 2800;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h2 id="item-history-title" style="margin:0; font-size:17px; font-weight:600; color:#0a84ff;">📜 物品歷史紀錄</h2>
+                <button onclick="closeItemHistoryModal()" class="apple-btn secondary" style="padding: 6px 12px; font-size: 12px;">關閉</button>
+            </div>
+            <div id="item-history-container" style="max-height: 320px; overflow-y: auto; display:flex; flex-direction:column; gap:8px;">
+                <div style="color: #8e8e93; text-align: center; padding: 20px;">載入中…</div>
+            </div>
         </div>
 
     </div>
@@ -552,14 +566,14 @@
     ];
     let selectedGroupIndex = null; 
 
-    // 💡 提示訊息放大、置中，且持續時間延長至 4.5 秒
-    function showToast(message, type = 'success') {
+    // 💡 訊息停留時間參數：預設 2.6 秒，搜尋定位時可指定 4.5 秒
+    function showToast(message, type = 'success', durationMs = 2600) {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
         
         let bgColor = 'rgba(52, 199, 89, 0.95)'; // 綠色 (在庫)
-        if (type === 'error') bgColor = 'rgba(255, 59, 48, 0.95)'; // 紅色 (錯誤)
-        else if (type === 'out' || type === 'info') bgColor = 'rgba(215, 38, 56, 0.95)'; // 鮮紅色/藍色 (出庫警告/資訊)
+        if (type === 'error') bgColor = 'rgba(255, 59, 48, 0.95)';
+        else if (type === 'out' || type === 'info') bgColor = 'rgba(215, 38, 56, 0.95)';
 
         toast.style.cssText = `background:${bgColor}; color:#fff; padding:20px 24px; border-radius:18px; font-size:16px; font-weight:700; box-shadow:0 12px 40px rgba(0,0,0,0.6); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); width:100%; text-align:center; pointer-events:auto; white-space:pre-line; line-height:1.6; border: 1px solid rgba(255,255,255,0.25);`;
         toast.innerText = message;
@@ -568,7 +582,7 @@
             toast.style.transition = 'opacity 0.4s ease';
             toast.style.opacity = '0';
             setTimeout(() => toast.remove(), 400);
-        }, 4500); // 💡 停留時間延長至 4.5 秒
+        }, durationMs);
     }
     window.showToast = showToast;
 
@@ -1065,7 +1079,7 @@
             if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
             html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } },
                 (text) => handleGlobalScan(text), () => {}
-            ).catch((err) => { showToast("無法啟動相機：" + err, 'error'); });
+            ).catch((err) => { showToast("無法啟動相機：" + err, 'error', 2600); });
         }, 300);
     };
 
@@ -1118,7 +1132,7 @@
                     if (scannerMode === 'out') {
                         if (currentQty <= 0) {
                             scanErrorFeedback('⚠️', `庫存已為 0\n無法出庫`);
-                            showToast(`⚠️ 出貨失敗\n物品「${item.name}」庫存已為 0！`, 'error');
+                            showToast(`⚠️ 出貨失敗\n物品「${item.name}」庫存已為 0！`, 'error', 2600);
                             scanGateUntil = now + SCAN_GATE_MS;
                             lastScannedCode = scannedText; lastScannedAt = now;
                             return;
@@ -1129,11 +1143,12 @@
                         actionType = '出庫';
                         recordTarget = currentBorrowTarget;
                         scanSuccessFeedback('📤', `已出庫\n${item.name}\n→ ${currentBorrowTarget}`);
-                        showToast(`✅ 出貨成功 (-1)\n物品：${item.name}\n去向：${currentBorrowTarget}`, 'success');
+                        // 💡 出入庫訊息停留時間維持 2.6 秒
+                        showToast(`✅ 出貨成功 (-1)\n物品：${item.name}\n去向：${currentBorrowTarget}`, 'success', 2600);
                     } else {
                         if (checkedOut <= 0) {
                             scanErrorFeedback('⚠️', `此物品目前沒有\n借出紀錄，無法入庫`);
-                            showToast(`⚠️ 入庫失敗\n物品「${item.name}」目前沒有借出紀錄！`, 'error');
+                            showToast(`⚠️ 入庫失敗\n物品「${item.name}」目前沒有借出紀錄！`, 'error', 2600);
                             scanGateUntil = now + SCAN_GATE_MS;
                             lastScannedCode = scannedText; lastScannedAt = now;
                             return;
@@ -1145,7 +1160,8 @@
                         actionType = '進貨';
                         recordTarget = `還回 (原借用: ${oldBorrower})`;
                         scanSuccessFeedback('📥', `已入庫\n${item.name}\n→ 回到「${box.name}」`);
-                        showToast(`✅ 進貨/還回成功 (+1)\n物品：${item.name}\n位置：${box.name}`, 'success');
+                        // 💡 出入庫訊息停留時間維持 2.6 秒
+                        showToast(`✅ 進貨/還回成功 (+1)\n物品：${item.name}\n位置：${box.name}`, 'success', 2600);
                     }
 
                     scanGateUntil = now + SCAN_GATE_MS;
@@ -1190,20 +1206,20 @@
             playBeep(2700, 90);
             vibrateFeedback(60);
 
-            // 💡 針對掃描結果判斷顏色與狀態 (已出庫用紅色，在庫用綠色)
+            // 💡 只有搜尋定位的功能訊息保持 4.5 秒長效停留
             if (scannedItemInfo) {
                 if (scannedItemInfo.checkedOutCount > 0) {
-                    showToast(`📍 找到箱子：${box.name}\n\n🚨 【狀態：已出庫】\n物品：${scannedItemInfo.name}\n🔴 已外借未歸還：${scannedItemInfo.checkedOutCount} 件\n👤 出庫去向：${scannedItemInfo.borrower}\n\n💡 可至「進出貨紀錄」查詢詳細出貨單。`, 'out');
+                    showToast(`📍 找到箱子：${box.name}\n\n🚨 【狀態：已出庫】\n物品：${scannedItemInfo.name}\n🔴 已外借未歸還：${scannedItemInfo.checkedOutCount} 件\n👤 出庫去向：${scannedItemInfo.borrower}\n\n💡 可至「進出貨紀錄」查詢詳細出貨單。`, 'out', 4500);
                 } else {
-                    showToast(`📍 找到箱子：${box.name}\n\n🟢 【狀態：在庫中】\n物品：${scannedItemInfo.name}\n📦 目前庫存：${scannedItemInfo.qty} 個\n✨ 無外借紀錄`, 'success');
+                    showToast(`📍 找到箱子：${box.name}\n\n🟢 【狀態：在庫中】\n物品：${scannedItemInfo.name}\n📦 目前庫存：${scannedItemInfo.qty} 個\n✨ 無外借紀錄`, 'success', 4500);
                 }
             } else {
-                showToast(`📍 已找到箱子位置！\n箱子名稱：${box.name}\n請點擊地圖上的紅框檢視內容`, 'success');
+                showToast(`📍 已找到箱子位置！\n箱子名稱：${box.name}\n請點擊地圖上的紅框檢視內容`, 'success', 4500);
             }
         } else {
             playBeep(900, 240);
             vibrateFeedback([80, 60, 80]);
-            showToast('❌ 查無此 QR Code 對應的倉儲位置', 'error');
+            showToast('❌ 查無此 QR Code 對應的倉儲位置', 'error', 2600);
         }
     }
 
@@ -1654,6 +1670,58 @@
 
     window.closeEditItemModal = function() { document.getElementById('item-edit-modal').style.display = 'none'; };
 
+    // 💡 點擊展開該特定物品專屬的出入庫歷史紀錄查詢
+    window.openItemHistoryModal = async function() {
+        const b = boxesCache.find(x => x.id === currentBoxId);
+        if (!b || editingItemIndex === null) return;
+        const it = b.items[editingItemIndex];
+
+        document.getElementById('item-history-title').innerText = `📜 [${it.name}] 歷史出入庫紀錄`;
+        const container = document.getElementById('item-history-container');
+        container.innerHTML = '<div style="color: #8e8e93; text-align: center; padding: 20px;">載入中…</div>';
+        document.getElementById('item-history-modal').style.display = 'block';
+
+        try {
+            const snap = await getDocs(collection(db, "warehouse_logs"));
+            let itemLogs = [];
+            snap.forEach(d => {
+                const data = d.data();
+                // 藉由物品名稱模糊比對或貨號比對抓出該物品的歷史紀錄
+                if (data.itemName === it.name) {
+                    itemLogs.push({ id: d.id, ...data });
+                }
+            });
+            itemLogs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+            if (itemLogs.length === 0) {
+                container.innerHTML = '<div style="color: #8e8e93; text-align: center; padding: 20px;">尚無此物品的出入庫紀錄</div>';
+                return;
+            }
+
+            let html = '';
+            itemLogs.forEach(l => {
+                const badgeColor = l.type === '出庫' ? '#ff3b30' : '#34c759';
+                html += `
+                    <div style="background:rgba(44,44,46,0.65); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:12px; font-size:12px;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-weight:600;">
+                            <span style="color: ${badgeColor};">● ${l.type} (x${l.qty})</span>
+                            <span style="color:#8e8e93;">${l.timeStr}</span>
+                        </div>
+                        <div style="color:#d1d1d6;">📦 所在箱子：${escapeHtml(l.boxName)}</div>
+                        <div style="color:#0a84ff; margin-top:2px;">👤 對象/去向：${escapeHtml(l.target || '未指定')}</div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        } catch (e) {
+            container.innerHTML = '<div style="color: #ff3b30; text-align: center; padding: 20px;">載入紀錄失敗</div>';
+        }
+    };
+
+    window.closeItemHistoryModal = function() {
+        document.getElementById('item-history-modal').style.display = 'none';
+    };
+
     window.uploadBackgroundImage = async function(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -1666,9 +1734,9 @@
             await updateDoc(doc(db, "warehouse_pages", currentPage.id), { imageUrl: url });
             currentPage.imageUrl = url;
             setBackgroundImage(url);
-            showToast('✅ 底圖上傳完成！', 'success');
+            showToast('✅ 底圖上傳完成！', 'success', 2600);
         } catch (err) {
-            showToast('❌ 底圖上傳失敗：' + err.message, 'error');
+            showToast('❌ 底圖上傳失敗：' + err.message, 'error', 2600);
         }
     };
 
@@ -1696,10 +1764,10 @@
             pFill.style.width = '100%';
 
             setTimeout(() => { pContainer.style.display = 'none'; pFill.style.width = '0%'; }, 500);
-            showToast('✅ 物品圖片上傳完成！', 'success');
+            showToast('✅ 物品圖片上傳完成！', 'success', 2600);
         } catch (err) {
             pContainer.style.display = 'none';
-            showToast('❌ 圖片上傳失敗', 'error');
+            showToast('❌ 圖片上傳失敗', 'error', 2600);
         }
     };
 
@@ -1724,10 +1792,10 @@
 
             setTimeout(() => { pContainer.style.display = 'none'; pFill.style.width = '0%'; }, 500);
             renderBoxes();
-            showToast('✅ 箱子外觀照片上傳完成！', 'success');
+            showToast('✅ 箱子外觀照片上傳完成！', 'success', 2600);
         } catch (err) {
             pContainer.style.display = 'none';
-            showToast('❌ 箱子照片上傳失敗', 'error');
+            showToast('❌ 箱子照片上傳失敗', 'error', 2600);
         }
     };
 
@@ -1790,12 +1858,12 @@
 
             const filename = `${stockCode}_${it.name}.png`;
             canvas.toBlob((blob) => {
-                if (!blob) { showToast('❌ 產生標籤圖片失敗，請重試', 'error'); return; }
+                if (!blob) { showToast('❌ 產生標籤圖片失敗，請重試', 'error', 2600); return; }
                 const url = URL.createObjectURL(blob);
 
                 if (isIOS()) {
                     window.open(url, '_blank');
-                    showToast('📱 圖片已在新分頁開啟，請長按圖片並選擇「加入照片」以儲存成圖檔', 'info');
+                    showToast('📱 圖片已在新分頁開啟，請長按圖片並選擇「加入照片」以儲存成圖檔', 'info', 2600);
                 } else {
                     const link = document.createElement('a');
                     link.download = filename;
@@ -1803,7 +1871,7 @@
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
-                    showToast('✅ 標籤圖片已下載，可傳送至標籤機列印', 'success');
+                    showToast('✅ 標籤圖片已下載，可傳送至標籤機列印', 'success', 2600);
                 }
                 setTimeout(() => URL.revokeObjectURL(url), 20000);
             }, 'image/png');
@@ -1811,7 +1879,7 @@
 
         setTimeout(() => {
             const qrEl = tempDiv.querySelector('canvas') || tempDiv.querySelector('img');
-            if (!qrEl) { document.body.removeChild(tempDiv); showToast('❌ 產生標籤失敗，請重試', 'error'); return; }
+            if (!qrEl) { document.body.removeChild(tempDiv); showToast('❌ 產生標籤失敗，請重試', 'error', 2600); return; }
             if (qrEl.tagName === 'CANVAS' || qrEl.complete) {
                 renderLabel(qrEl);
             } else {
@@ -1825,8 +1893,8 @@
         const newName = document.getElementById('edit-item-name-input').value.trim();
         const newQty = parseInt(document.getElementById('edit-item-qty-input').value, 10);
 
-        if (!newName) return showToast('請輸入物品名稱', 'error');
-        if (isNaN(newQty) || newQty < 0) return showToast('數量必須為 0 或正整數', 'error');
+        if (!newName) return showToast('請輸入物品名稱', 'error', 2600);
+        if (isNaN(newQty) || newQty < 0) return showToast('數量必須為 0 或正整數', 'error', 2600);
 
         b.items[editingItemIndex].name = newName;
         b.items[editingItemIndex].qty = newQty;
@@ -1834,7 +1902,7 @@
         await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
         closeEditItemModal();
         renderBoxModal(b);
-        showToast('💾 儲存成功！', 'success');
+        showToast('💾 儲存成功！', 'success', 2600);
     };
 
     window.confirmDeleteEditingItem = async function() {
