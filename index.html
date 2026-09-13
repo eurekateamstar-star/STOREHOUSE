@@ -211,6 +211,7 @@
         .ov-box-title { font-weight: 600; font-size: 15px; margin-bottom: 8px; display: flex; justify-content: space-between; }
         .ov-box-count { font-size: 12px; color: #8e8e93; font-weight: normal; }
         .ov-item { font-size: 13px; color: #d1d1d6; padding: 4px 0 4px 10px; border-left: 2px solid #0a84ff; margin-bottom: 4px; }
+        .ov-item.checked-out { border-left-color: #ff3b30; color: #ff453a; }
 
         #logs-view {
             display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 2500; padding: 24px 20px; overflow-y: auto;
@@ -545,7 +546,7 @@
     let pages = [];
     let currentPageIndex = 0;
     let boxesCache = null;
-    let highlightedBoxId = null; // 搜尋高亮箱子 ID
+    let highlightedBoxId = null;
 
     let borrowerGroupsCache = [
         { groupName: "車輛", items: ["物資車 1", "物資車 2"] },
@@ -553,7 +554,6 @@
     ];
     let selectedGroupIndex = null; 
 
-    // ============ 🔔 App 樣式提示框系統 (取代 alert / confirm / prompt) ============
     function showToast(message, type = 'success') {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
@@ -621,7 +621,6 @@
         });
     }
 
-    // ============ 📦 入庫貨號產生器 ============
     function getPageNumber(pageId) {
         const idx = pages.findIndex(p => p.id === pageId);
         return idx === -1 ? 1 : idx + 1;
@@ -664,7 +663,6 @@
         return `${pageNum}${boxLetter}${String(itemNum).padStart(4, '0')}`;
     }
 
-    // ============ 🖼️ 圖片預先載入 ============
     function preloadImagesAsync(urls) {
         urls.forEach(url => {
             if (url) { const img = new Image(); img.src = url; }
@@ -696,7 +694,6 @@
         imgEl.src = url;
     }
 
-    // ============ 📷 掃描防重複觸發 + 提示音 ============
     let lastScannedCode = null;
     let lastScannedAt = 0;
     let scanGateUntil = 0;
@@ -1089,14 +1086,24 @@
         }
 
         let targetBoxId = null;
+        let scannedItemInfo = null; // 紀錄如果是掃到物品，其出庫狀態與去向
 
         if (scannedText.startsWith('ITEM_')) {
             const parts = scannedText.split('_');
             targetBoxId = parts[1];
             const itemIndex = parseInt(parts[2], 10);
 
+            const box = boxesCache.find(b => b.id === targetBoxId);
+            if (box && box.items && box.items[itemIndex]) {
+                const item = box.items[itemIndex];
+                scannedItemInfo = {
+                    name: item.name,
+                    checkedOutCount: Number(item.checkedOutCount) || 0,
+                    borrower: item.borrower || '不詳'
+                };
+            }
+
             if (scannerMode === 'in' || scannerMode === 'out') {
-                const box = boxesCache.find(b => b.id === targetBoxId);
                 if (box && box.items && box.items[itemIndex]) {
                     const item = box.items[itemIndex];
                     let currentQty = Number(item.qty) || 0;
@@ -1173,13 +1180,18 @@
             const pageIndex = pages.findIndex(p => p.id === box.pageId);
             if (pageIndex !== -1) await switchToPage(pageIndex);
             
-            // 💡 搜尋到箱子後：不直接彈出箱子視窗，改為在平面圖上高亮顯示該箱子（帶紅框脈衝提示）
             highlightedBoxId = box.id;
             renderBoxes();
 
             playBeep(2700, 90);
             vibrateFeedback(60);
-            showToast(`📍 已找到箱子位置！\n箱子名稱：${box.name}\n請點擊地圖上的紅框檢視內容`, 'success');
+
+            // 💡 若是以「找位置」模式掃描到具體物品，且該物品有出庫，加強提示其出庫去向
+            if (scannedItemInfo && scannedItemInfo.checkedOutCount > 0) {
+                showToast(`📍 找到箱子：${box.name}\n⚠️ 物品「${scannedItemInfo.name}」已出庫 ${scannedItemInfo.checkedOutCount} 件\n去向：${scannedItemInfo.borrower}`, 'info');
+            } else {
+                showToast(`📍 已找到箱子位置！\n箱子名稱：${box.name}\n請點擊地圖上的紅框檢視內容`, 'success');
+            }
         } else {
             playBeep(900, 240);
             vibrateFeedback([80, 60, 80]);
@@ -1301,6 +1313,7 @@
     }
 
     window.toggleOverview = function() { setOverviewMode(!isOverviewActive); };
+    
     function setOverviewMode(active) {
         isOverviewActive = active;
         document.getElementById('map-container').style.display = active ? 'none' : 'block';
@@ -1318,7 +1331,16 @@
                 if (boxes.length === 0) html += `<div class="ov-empty-page">（無箱子）</div>`;
                 boxes.forEach(b => {
                     html += `<div class="ov-box" onclick="openBoxModal('${b.id}')"><div class="ov-box-title"><span>📦 ${escapeHtml(b.name)}</span><span class="ov-box-count">${(b.items||[]).length} 項</span></div>`;
-                    (b.items || []).forEach(it => { html += `<div class="ov-item">• ${escapeHtml(it.name)} x${it.qty||1}</div>`; });
+                    
+                    (b.items || []).forEach(it => {
+                        const checkedOut = Number(it.checkedOutCount) || 0;
+                        if (checkedOut > 0) {
+                            const borrowerText = it.borrower ? ` (已出庫${checkedOut}件 → ${it.borrower})` : ` (已出庫${checkedOut}件)`;
+                            html += `<div class="ov-item checked-out">• ${escapeHtml(it.name)} x${it.qty||1} <span style="font-size:11px; font-weight:650;">${escapeHtml(borrowerText)}</span></div>`;
+                        } else {
+                            html += `<div class="ov-item">• ${escapeHtml(it.name)} x${it.qty||1}</div>`;
+                        }
+                    });
                     html += `</div>`;
                 });
             });
@@ -1345,7 +1367,6 @@
                 wrap.classList.add('selected');
                 wrap.classList.add('layout-active');
             }
-            // 如果是被搜尋命中的箱子，加上高亮紅框閃爍類別
             if (highlightedBoxId === b.id) {
                 wrap.classList.add('search-highlight');
             }
@@ -1399,7 +1420,6 @@
             wrap.onclick = (e) => { 
                 e.stopPropagation(); 
                 if (!isLayoutMode && !wrap.dataset.moved) {
-                    // 點擊箱子時清除搜尋高亮紅框，並正常打開箱子詳情
                     if (highlightedBoxId === b.id) {
                         highlightedBoxId = null;
                         wrap.classList.remove('search-highlight');
@@ -1497,7 +1517,7 @@
     window.closeModal = function() {
         document.getElementById('item-modal').style.display = 'none';
         document.getElementById('backdrop').style.display = 'none';
-        if (isOverviewActive) renderOverview();
+        if (isOverviewActive) setOverviewMode(true);
     };
 
     window.addItemWithImage = async function() {
@@ -1591,7 +1611,6 @@
             colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H
         });
 
-        // 💡 根據是否為編輯模式，決定是否顯示標籤字體大小滑桿
         const fontSettingsGroup = document.getElementById('label-font-settings-group');
         fontSettingsGroup.style.display = isContentEditActive ? 'block' : 'none';
 
