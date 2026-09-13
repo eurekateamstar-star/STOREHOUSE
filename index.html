@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -361,10 +360,29 @@
 
         <!-- 5. 歷史紀錄面板 -->
         <div id="logs-view">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-top: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-top: 10px;">
                 <div style="font-size: 20px; font-weight: 700;">📜 進出貨稽核紀錄</div>
-                <button onclick="closeLogsView()" class="apple-btn secondary" style="padding: 8px 14px; font-size: 13px;">返回</button>
+                <div style="display:flex; gap:8px;">
+                    <button onclick="toggleLogsEditMode()" class="apple-btn secondary" id="btn-logs-edit" style="padding: 8px 14px; font-size: 12px;">✏️ 編輯</button>
+                    <button onclick="closeLogsView()" class="apple-btn secondary" style="padding: 8px 14px; font-size: 13px;">返回</button>
+                </div>
             </div>
+
+            <input type="text" id="logs-search-input" class="apple-input" placeholder="🔍 搜尋物品名稱 / 箱子 / 對象…" style="margin-bottom:10px; font-size:13px; padding:10px 14px;" oninput="onLogsFilterChange()">
+
+            <div style="display:flex; gap:6px; margin-bottom:10px;" id="logs-type-tabs">
+                <button class="apple-btn secondary logs-tab" data-type="all" onclick="setLogsTypeFilter('all')" style="flex:1; padding:8px; font-size:12px;">全部</button>
+                <button class="apple-btn secondary logs-tab" data-type="出庫" onclick="setLogsTypeFilter('出庫')" style="flex:1; padding:8px; font-size:12px;">📤 出庫</button>
+                <button class="apple-btn secondary logs-tab" data-type="進貨" onclick="setLogsTypeFilter('進貨')" style="flex:1; padding:8px; font-size:12px;">📥 進貨</button>
+            </div>
+
+            <div style="display:flex; gap:8px; margin-bottom:12px; align-items:center;">
+                <input type="date" id="logs-date-input" class="apple-input" style="flex:1; font-size:13px; padding:8px 12px;" onchange="onLogsFilterChange()">
+                <button class="apple-btn secondary" style="padding:8px 12px; font-size:12px;" onclick="clearLogsDateFilter()">清除日期</button>
+            </div>
+
+            <button id="btn-logs-delete-all" class="apple-btn danger" style="display:none; width:100%; margin-bottom:14px; padding:10px; font-size:13px;" onclick="deleteAllLogs()">🗑️ 全部刪除（目前篩選結果）</button>
+
             <div id="logs-container">
                 <div style="color: #8e8e93; text-align: center; padding: 20px;">載入中…</div>
             </div>
@@ -560,6 +578,12 @@
     let currentPageIndex = 0;
     let boxesCache = null;
     let highlightedBoxId = null;
+
+    let allLogsCache = [];
+    let isLogsEditMode = false;
+    let logsTypeFilter = 'all';
+    let logsSearchQuery = '';
+    let logsDateFilter = '';
 
     let borrowerGroupsCache = [
         { groupName: "車輛", items: ["物資車 1", "物資車 2"] },
@@ -818,6 +842,29 @@
         document.getElementById('login-pin-input').value = '';
     };
     window.backToMainMenu = function() {
+        // 💡 離開地圖畫面時，一律重置回「檢視模式」，避免下次進入時還停留在編輯/佈局模式
+        if (isContentEditActive) {
+            isContentEditActive = false;
+            const editBtn = document.getElementById('mode-btn-edit');
+            editBtn.innerText = "✏️ 編輯";
+            editBtn.classList.remove('active');
+            document.getElementById('btn-change-bg').style.display = 'none';
+            document.getElementById('btn-move-mode').style.display = 'none';
+            document.getElementById('edit-toolbar').style.display = 'none';
+        }
+        if (isLayoutMode) {
+            isLayoutMode = false;
+            document.getElementById('btn-move-mode').classList.remove('active');
+            document.querySelectorAll('.bg-resize-handle').forEach(h => h.classList.remove('visible'));
+        }
+        document.getElementById('mode-hint').style.display = 'none';
+        document.getElementById('mode-indicator').innerText = "🔍 檢視模式";
+        if (isOverviewActive) setOverviewMode(false);
+        closeModal();
+        closeEditItemModal();
+        renderPageNav();
+        renderBoxes();
+
         document.getElementById('warehouse-system-view').style.display = 'none';
         document.getElementById('main-menu-view').style.display = 'flex';
     };
@@ -1002,6 +1049,17 @@
     window.openLogsView = async function() {
         document.getElementById('main-menu-view').style.display = 'none';
         document.getElementById('logs-view').style.display = 'block';
+
+        // 每次打開都重置篩選條件與編輯模式
+        isLogsEditMode = false;
+        logsTypeFilter = 'all';
+        logsSearchQuery = '';
+        logsDateFilter = '';
+        document.getElementById('logs-search-input').value = '';
+        document.getElementById('logs-date-input').value = '';
+        updateLogsEditUI();
+        updateLogsTabsUI();
+
         const container = document.getElementById('logs-container');
         container.innerHTML = '<div style="color: #8e8e93; text-align: center; padding: 20px;">載入中…</div>';
 
@@ -1010,43 +1068,138 @@
             let logs = [];
             snap.forEach(d => logs.push({ id: d.id, ...d.data() }));
             logs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-
-            if (logs.length === 0) {
-                container.innerHTML = '<div style="color: #8e8e93; text-align: center; padding: 30px;">尚無進出貨紀錄</div>';
-                return;
-            }
-
-            let html = '';
-            logs.forEach(l => {
-                const badgeColor = l.type === '出庫' ? '#ff3b30' : '#34c759';
-                html += `
-                    <div class="log-card">
-                        <div class="log-header">
-                            <span style="color: ${badgeColor};">● ${l.type}：${escapeHtml(l.itemName)} (x${l.qty})</span>
-                            <span style="display:flex; align-items:center; gap:8px;">
-                                <span class="log-time">${l.timeStr}</span>
-                                <button onclick="deleteLog('${l.id}')" style="background:rgba(255,59,48,0.15); border:1px solid rgba(255,59,48,0.35); color:#ff3b30; border-radius:8px; width:22px; height:22px; font-size:11px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0;">✕</button>
-                            </span>
-                        </div>
-                        <div style="color: #d1d1d6; margin-top: 4px;">📦 箱子位置：${escapeHtml(l.boxName)}</div>
-                        <div style="color: #0a84ff; margin-top: 2px;">👤 出庫去向 / 來源：${escapeHtml(l.target || '未指定')}</div>
-                    </div>
-                `;
-            });
-            container.innerHTML = html;
+            allLogsCache = logs;
+            renderLogsList();
         } catch (e) {
             container.innerHTML = '<div style="color: #ff3b30; text-align: center; padding: 20px;">載入紀錄失敗</div>';
         }
+    };
+
+    function getLogDateKey(ts) {
+        const d = new Date(ts || Date.now());
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    function getLogDateLabel(ts) {
+        const d = new Date(ts || Date.now());
+        const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+        return `${d.getMonth() + 1}/${d.getDate()}（週${weekDays[d.getDay()]}）`;
+    }
+
+    function getFilteredLogs() {
+        const q = logsSearchQuery.trim().toLowerCase();
+        return allLogsCache.filter(l => {
+            if (logsTypeFilter !== 'all' && l.type !== logsTypeFilter) return false;
+            if (logsDateFilter && getLogDateKey(l.timestamp) !== logsDateFilter) return false;
+            if (q) {
+                const hay = `${l.itemName || ''} ${l.boxName || ''} ${l.target || ''}`.toLowerCase();
+                if (!hay.includes(q)) return false;
+            }
+            return true;
+        });
+    }
+
+    function renderLogsList() {
+        const container = document.getElementById('logs-container');
+        const filtered = getFilteredLogs();
+
+        document.getElementById('btn-logs-delete-all').style.display = (isLogsEditMode && filtered.length > 0) ? 'block' : 'none';
+
+        if (allLogsCache.length === 0) {
+            container.innerHTML = '<div style="color: #8e8e93; text-align: center; padding: 30px;">尚無進出貨紀錄</div>';
+            return;
+        }
+        if (filtered.length === 0) {
+            container.innerHTML = '<div style="color: #8e8e93; text-align: center; padding: 30px;">查無符合篩選條件的紀錄</div>';
+            return;
+        }
+
+        let html = '';
+        let lastDateKey = null;
+        filtered.forEach(l => {
+            const dateKey = getLogDateKey(l.timestamp);
+            if (dateKey !== lastDateKey) {
+                html += `<div style="font-size:12px; color:#0a84ff; font-weight:700; margin:16px 0 8px; padding-bottom:6px; border-bottom:1px solid rgba(255,255,255,0.1);">📅 ${getLogDateLabel(l.timestamp)}</div>`;
+                lastDateKey = dateKey;
+            }
+            const badgeColor = l.type === '出庫' ? '#ff3b30' : '#34c759';
+            html += `
+                <div class="log-card">
+                    <div class="log-header">
+                        <span style="color: ${badgeColor};">● ${l.type}：${escapeHtml(l.itemName)} (x${l.qty})</span>
+                        <span style="display:flex; align-items:center; gap:8px;">
+                            <span class="log-time">${l.timeStr}</span>
+                            ${isLogsEditMode ? `<button onclick="deleteLog('${l.id}')" style="background:rgba(255,59,48,0.15); border:1px solid rgba(255,59,48,0.35); color:#ff3b30; border-radius:8px; width:22px; height:22px; font-size:11px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0;">✕</button>` : ''}
+                        </span>
+                    </div>
+                    <div style="color: #d1d1d6; margin-top: 4px;">📦 箱子位置：${escapeHtml(l.boxName)}</div>
+                    <div style="color: #0a84ff; margin-top: 2px;">👤 出庫去向 / 來源：${escapeHtml(l.target || '未指定')}</div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    window.toggleLogsEditMode = function() {
+        isLogsEditMode = !isLogsEditMode;
+        updateLogsEditUI();
+        renderLogsList();
+    };
+    function updateLogsEditUI() {
+        const btn = document.getElementById('btn-logs-edit');
+        btn.innerText = isLogsEditMode ? '✓ 完成' : '✏️ 編輯';
+        btn.classList.toggle('active', isLogsEditMode);
+    }
+
+    window.setLogsTypeFilter = function(type) {
+        logsTypeFilter = type;
+        updateLogsTabsUI();
+        renderLogsList();
+    };
+    function updateLogsTabsUI() {
+        document.querySelectorAll('.logs-tab').forEach(btn => {
+            const active = btn.dataset.type === logsTypeFilter;
+            btn.style.background = active ? '#0a84ff' : 'rgba(255,255,255,0.08)';
+            btn.style.borderColor = active ? 'transparent' : 'rgba(255,255,255,0.12)';
+            btn.style.color = '#fff';
+        });
+    }
+
+    window.onLogsFilterChange = function() {
+        logsSearchQuery = document.getElementById('logs-search-input').value;
+        logsDateFilter = document.getElementById('logs-date-input').value;
+        renderLogsList();
+    };
+
+    window.clearLogsDateFilter = function() {
+        document.getElementById('logs-date-input').value = '';
+        logsDateFilter = '';
+        renderLogsList();
     };
 
     window.deleteLog = async function(id) {
         if (!(await showConfirmDialog('確定刪除這筆進出貨紀錄？此動作無法復原。', '刪除紀錄'))) return;
         try {
             await deleteDoc(doc(db, "warehouse_logs", id));
+            allLogsCache = allLogsCache.filter(l => l.id !== id);
             showToast('🗑️ 已刪除紀錄', 'success', 900);
-            openLogsView();
+            renderLogsList();
         } catch (e) {
             showToast('❌ 刪除紀錄失敗', 'error', 900);
+        }
+    };
+
+    window.deleteAllLogs = async function() {
+        const filtered = getFilteredLogs();
+        if (filtered.length === 0) return;
+        if (!(await showConfirmDialog(`確定要刪除目前篩選出的 ${filtered.length} 筆紀錄嗎？此動作無法復原。`, '全部刪除紀錄'))) return;
+        try {
+            await Promise.all(filtered.map(l => deleteDoc(doc(db, "warehouse_logs", l.id))));
+            const deletedIds = new Set(filtered.map(l => l.id));
+            allLogsCache = allLogsCache.filter(l => !deletedIds.has(l.id));
+            showToast(`🗑️ 已刪除 ${filtered.length} 筆紀錄`, 'success', 900);
+            renderLogsList();
+        } catch (e) {
+            showToast('❌ 刪除失敗，請重試', 'error', 900);
         }
     };
 
