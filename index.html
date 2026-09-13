@@ -1206,15 +1206,15 @@
             playBeep(2700, 90);
             vibrateFeedback(60);
 
-            // 💡 QR 尋找位置的功能訊息縮短為 2 秒停留
+            // 💡 QR 尋找位置的功能訊息維持 4 秒停留
             if (scannedItemInfo) {
                 if (scannedItemInfo.checkedOutCount > 0) {
-                    showToast(`📍 找到箱子：${box.name}\n\n🚨 【狀態：已出庫】\n物品：${scannedItemInfo.name}\n🔴 已外借未歸還：${scannedItemInfo.checkedOutCount} 件\n👤 出庫去向：${scannedItemInfo.borrower}\n\n💡 可至「進出貨紀錄」查詢詳細出貨單。`, 'out', 2000);
+                    showToast(`📍 找到箱子：${box.name}\n\n🚨 【狀態：已出庫】\n物品：${scannedItemInfo.name}\n🔴 已外借未歸還：${scannedItemInfo.checkedOutCount} 件\n👤 出庫去向：${scannedItemInfo.borrower}\n\n💡 可至「進出貨紀錄」查詢詳細出貨單。`, 'out', 4000);
                 } else {
-                    showToast(`📍 找到箱子：${box.name}\n\n🟢 【狀態：在庫中】\n物品：${scannedItemInfo.name}\n📦 目前庫存：${scannedItemInfo.qty} 個\n✨ 無外借紀錄`, 'success', 2000);
+                    showToast(`📍 找到箱子：${box.name}\n\n🟢 【狀態：在庫中】\n物品：${scannedItemInfo.name}\n📦 目前庫存：${scannedItemInfo.qty} 個\n✨ 無外借紀錄`, 'success', 4000);
                 }
             } else {
-                showToast(`📍 已找到箱子位置！\n箱子名稱：${box.name}\n請點擊地圖上的紅框檢視內容`, 'success', 2000);
+                showToast(`📍 已找到箱子位置！\n箱子名稱：${box.name}\n請點擊地圖上的紅框檢視內容`, 'success', 4000);
             }
         } else {
             playBeep(900, 240);
