@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -247,7 +248,7 @@
 
     <div class="phone-frame">
 
-        <!-- 🔔 提示訊息容器 (支援 2.6秒 或 4.5秒 參數設定) -->
+        <!-- 🔔 提示訊息容器 -->
         <div id="toast-container" style="position:absolute; top: 50%; left:50%; transform:translate(-50%, -50%); z-index:9999; display:flex; flex-direction:column; gap:12px; align-items:center; width:90%; pointer-events:none;"></div>
 
         <!-- 🔔 確認/輸入視窗 -->
@@ -566,8 +567,8 @@
     ];
     let selectedGroupIndex = null; 
 
-    // 💡 訊息停留時間參數：預設 2.6 秒，搜尋定位時可指定 4.5 秒
-    function showToast(message, type = 'success', durationMs = 2600) {
+    // 💡 提示訊息顯示函式：出庫入庫預設 1200ms (1.2 秒) 快速關閉；搜尋定位則維持 4500ms (4.5 秒)
+    function showToast(message, type = 'success', durationMs = 1200) {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
         
@@ -579,9 +580,9 @@
         toast.innerText = message;
         container.appendChild(toast);
         setTimeout(() => {
-            toast.style.transition = 'opacity 0.4s ease';
+            toast.style.transition = 'opacity 0.3s ease';
             toast.style.opacity = '0';
-            setTimeout(() => toast.remove(), 400);
+            setTimeout(() => toast.remove(), 300);
         }, durationMs);
     }
     window.showToast = showToast;
@@ -771,7 +772,7 @@
             document.getElementById('main-menu-view').style.display = 'flex';
             preloadAllData();
         } else {
-            showToast('金鑰錯誤，預設為 8888', 'error');
+            showToast('金鑰錯誤，預設為 8888', 'error', 1200);
         }
     };
 
@@ -808,7 +809,7 @@
     async function saveBorrowerGroupsToCloud() {
         try {
             await setDoc(doc(db, "settings", "borrower_groups"), { groups: borrowerGroupsCache });
-        } catch (e) { showToast('同步至雲端失敗', 'error'); }
+        } catch (e) { showToast('同步至雲端失敗', 'error', 1200); }
     }
 
     window.logout = function() {
@@ -986,14 +987,14 @@
     };
 
     window.deleteGroupItem = async function(gIdx, iIdx) {
-        if (borrowerGroupsCache[gIdx].items.length <= 1) return showToast('群組內至少需保留一個細項', 'error');
+        if (borrowerGroupsCache[gIdx].items.length <= 1) return showToast('群組內至少需保留一個細項', 'error', 1200);
         borrowerGroupsCache[gIdx].items.splice(iIdx, 1);
         await saveBorrowerGroupsToCloud();
         renderBorrowerSelectorUI();
     };
 
     window.confirmBorrowerAndScan = function() {
-        if (!currentBorrowTarget) return showToast('請選擇領用對象', 'error');
+        if (!currentBorrowTarget) return showToast('請選擇領用對象', 'error', 1200);
         closeBorrowerModal();
         openScanner('out');
     };
@@ -1042,10 +1043,10 @@
         if (!(await showConfirmDialog('確定刪除這筆進出貨紀錄？此動作無法復原。', '刪除紀錄'))) return;
         try {
             await deleteDoc(doc(db, "warehouse_logs", id));
-            showToast('🗑️ 已刪除紀錄', 'success');
+            showToast('🗑️ 已刪除紀錄', 'success', 1200);
             openLogsView();
         } catch (e) {
-            showToast('❌ 刪除紀錄失敗', 'error');
+            showToast('❌ 刪除紀錄失敗', 'error', 1200);
         }
     };
 
@@ -1079,7 +1080,7 @@
             if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
             html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } },
                 (text) => handleGlobalScan(text), () => {}
-            ).catch((err) => { showToast("無法啟動相機：" + err, 'error', 2600); });
+            ).catch((err) => { showToast("無法啟動相機：" + err, 'error', 1200); });
         }, 300);
     };
 
@@ -1132,7 +1133,7 @@
                     if (scannerMode === 'out') {
                         if (currentQty <= 0) {
                             scanErrorFeedback('⚠️', `庫存已為 0\n無法出庫`);
-                            showToast(`⚠️ 出貨失敗\n物品「${item.name}」庫存已為 0！`, 'error', 2600);
+                            showToast(`⚠️ 出貨失敗\n物品「${item.name}」庫存已為 0！`, 'error', 1200);
                             scanGateUntil = now + SCAN_GATE_MS;
                             lastScannedCode = scannedText; lastScannedAt = now;
                             return;
@@ -1143,12 +1144,12 @@
                         actionType = '出庫';
                         recordTarget = currentBorrowTarget;
                         scanSuccessFeedback('📤', `已出庫\n${item.name}\n→ ${currentBorrowTarget}`);
-                        // 💡 出入庫訊息停留時間維持 2.6 秒
-                        showToast(`✅ 出貨成功 (-1)\n物品：${item.name}\n去向：${currentBorrowTarget}`, 'success', 2600);
+                        // 💡 快速出庫訊息停留時間改回 1.2 秒（超快）
+                        showToast(`✅ 出貨成功 (-1)\n物品：${item.name}\n去向：${currentBorrowTarget}`, 'success', 1200);
                     } else {
                         if (checkedOut <= 0) {
                             scanErrorFeedback('⚠️', `此物品目前沒有\n借出紀錄，無法入庫`);
-                            showToast(`⚠️ 入庫失敗\n物品「${item.name}」目前沒有借出紀錄！`, 'error', 2600);
+                            showToast(`⚠️ 入庫失敗\n物品「${item.name}」目前沒有借出紀錄！`, 'error', 1200);
                             scanGateUntil = now + SCAN_GATE_MS;
                             lastScannedCode = scannedText; lastScannedAt = now;
                             return;
@@ -1160,8 +1161,8 @@
                         actionType = '進貨';
                         recordTarget = `還回 (原借用: ${oldBorrower})`;
                         scanSuccessFeedback('📥', `已入庫\n${item.name}\n→ 回到「${box.name}」`);
-                        // 💡 出入庫訊息停留時間維持 2.6 秒
-                        showToast(`✅ 進貨/還回成功 (+1)\n物品：${item.name}\n位置：${box.name}`, 'success', 2600);
+                        // 💡 快速入庫訊息停留時間改回 1.2 秒（超快）
+                        showToast(`✅ 進貨/還回成功 (+1)\n物品：${item.name}\n位置：${box.name}`, 'success', 1200);
                     }
 
                     scanGateUntil = now + SCAN_GATE_MS;
@@ -1206,7 +1207,7 @@
             playBeep(2700, 90);
             vibrateFeedback(60);
 
-            // 💡 只有搜尋定位的功能訊息保持 4.5 秒長效停留
+            // 💡 只有 QR 尋找位置的功能訊息維持 4.5 秒長效停留
             if (scannedItemInfo) {
                 if (scannedItemInfo.checkedOutCount > 0) {
                     showToast(`📍 找到箱子：${box.name}\n\n🚨 【狀態：已出庫】\n物品：${scannedItemInfo.name}\n🔴 已外借未歸還：${scannedItemInfo.checkedOutCount} 件\n👤 出庫去向：${scannedItemInfo.borrower}\n\n💡 可至「進出貨紀錄」查詢詳細出貨單。`, 'out', 4500);
@@ -1219,7 +1220,7 @@
         } else {
             playBeep(900, 240);
             vibrateFeedback([80, 60, 80]);
-            showToast('❌ 查無此 QR Code 對應的倉儲位置', 'error', 2600);
+            showToast('❌ 查無此 QR Code 對應的倉儲位置', 'error', 1200);
         }
     }
 
@@ -1325,7 +1326,7 @@
     };
 
     window.deleteCurrentPage = async function() {
-        if (pages.length <= 1) return showToast('必須保留至少一個頁面', 'error');
+        if (pages.length <= 1) return showToast('必須保留至少一個頁面', 'error', 1200);
         if (!(await showConfirmDialog('確定刪除此頁面？', '刪除頁面'))) return;
         await deleteDoc(doc(db, "warehouse_pages", pages[currentPageIndex].id));
         pages.splice(currentPageIndex, 1);
@@ -1492,7 +1493,7 @@
 
     window.addNewBox = async function() {
         const name = document.getElementById('new-box-name').value;
-        if (!name) return showToast('請輸入箱子名稱', 'error');
+        if (!name) return showToast('請輸入箱子名稱', 'error', 1200);
         const b = { name, x: 50, y: 50, width: 100, height: 80, items: [], imageUrl: "", pageId: pages[currentPageIndex].id };
         const ref = await addDoc(collection(db, "warehouse_boxes"), b);
         const newBox = { id: ref.id, ...b };
@@ -1547,7 +1548,7 @@
     window.addItemWithImage = async function() {
         const name = document.getElementById('new-item-name').value;
         const qty = document.getElementById('new-item-qty').value || 1;
-        if (!name) return showToast('請輸入名稱', 'error');
+        if (!name) return showToast('請輸入名稱', 'error', 1200);
 
         const addBtn = document.getElementById('btn-add-item');
         const pContainer = document.getElementById('new-item-progress-container');
@@ -1583,9 +1584,9 @@
             document.getElementById('new-item-qty').value = '1';
             fileInput.value = '';
             renderBoxModal(b);
-            showToast(`✅ 已新增「${name}」\n貨號：${stockCode}`, 'success');
+            showToast(`✅ 已新增「${name}」\n貨號：${stockCode}`, 'success', 1200);
         } catch (err) {
-            showToast('❌ 新增失敗，照片可能上傳不成功，請重試', 'error');
+            showToast('❌ 新增失敗，照片可能上傳不成功，請重試', 'error', 1200);
         } finally {
             setTimeout(() => { pContainer.style.display = 'none'; pFill.style.width = '0%'; }, 400);
             addBtn.disabled = false;
@@ -1670,7 +1671,6 @@
 
     window.closeEditItemModal = function() { document.getElementById('item-edit-modal').style.display = 'none'; };
 
-    // 💡 點擊展開該特定物品專屬的出入庫歷史紀錄查詢
     window.openItemHistoryModal = async function() {
         const b = boxesCache.find(x => x.id === currentBoxId);
         if (!b || editingItemIndex === null) return;
@@ -1686,7 +1686,6 @@
             let itemLogs = [];
             snap.forEach(d => {
                 const data = d.data();
-                // 藉由物品名稱模糊比對或貨號比對抓出該物品的歷史紀錄
                 if (data.itemName === it.name) {
                     itemLogs.push({ id: d.id, ...data });
                 }
@@ -1734,9 +1733,9 @@
             await updateDoc(doc(db, "warehouse_pages", currentPage.id), { imageUrl: url });
             currentPage.imageUrl = url;
             setBackgroundImage(url);
-            showToast('✅ 底圖上傳完成！', 'success', 2600);
+            showToast('✅ 底圖上傳完成！', 'success', 1200);
         } catch (err) {
-            showToast('❌ 底圖上傳失敗：' + err.message, 'error', 2600);
+            showToast('❌ 底圖上傳失敗：' + err.message, 'error', 1200);
         }
     };
 
@@ -1764,10 +1763,10 @@
             pFill.style.width = '100%';
 
             setTimeout(() => { pContainer.style.display = 'none'; pFill.style.width = '0%'; }, 500);
-            showToast('✅ 物品圖片上傳完成！', 'success', 2600);
+            showToast('✅ 物品圖片上傳完成！', 'success', 1200);
         } catch (err) {
             pContainer.style.display = 'none';
-            showToast('❌ 圖片上傳失敗', 'error', 2600);
+            showToast('❌ 圖片上傳失敗', 'error', 1200);
         }
     };
 
@@ -1792,10 +1791,10 @@
 
             setTimeout(() => { pContainer.style.display = 'none'; pFill.style.width = '0%'; }, 500);
             renderBoxes();
-            showToast('✅ 箱子外觀照片上傳完成！', 'success', 2600);
+            showToast('✅ 箱子外觀照片上傳完成！', 'success', 1200);
         } catch (err) {
             pContainer.style.display = 'none';
-            showToast('❌ 箱子照片上傳失敗', 'error', 2600);
+            showToast('❌ 箱子照片上傳失敗', 'error', 1200);
         }
     };
 
@@ -1858,12 +1857,12 @@
 
             const filename = `${stockCode}_${it.name}.png`;
             canvas.toBlob((blob) => {
-                if (!blob) { showToast('❌ 產生標籤圖片失敗，請重試', 'error', 2600); return; }
+                if (!blob) { showToast('❌ 產生標籤圖片失敗，請重試', 'error', 1200); return; }
                 const url = URL.createObjectURL(blob);
 
                 if (isIOS()) {
                     window.open(url, '_blank');
-                    showToast('📱 圖片已在新分頁開啟，請長按圖片並選擇「加入照片」以儲存成圖檔', 'info', 2600);
+                    showToast('📱 圖片已在新分頁開啟，請長按圖片並選擇「加入照片」以儲存成圖檔', 'info', 1200);
                 } else {
                     const link = document.createElement('a');
                     link.download = filename;
@@ -1871,7 +1870,7 @@
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
-                    showToast('✅ 標籤圖片已下載，可傳送至標籤機列印', 'success', 2600);
+                    showToast('✅ 標籤圖片已下載，可傳送至標籤機列印', 'success', 1200);
                 }
                 setTimeout(() => URL.revokeObjectURL(url), 20000);
             }, 'image/png');
@@ -1879,7 +1878,7 @@
 
         setTimeout(() => {
             const qrEl = tempDiv.querySelector('canvas') || tempDiv.querySelector('img');
-            if (!qrEl) { document.body.removeChild(tempDiv); showToast('❌ 產生標籤失敗，請重試', 'error', 2600); return; }
+            if (!qrEl) { document.body.removeChild(tempDiv); showToast('❌ 產生標籤失敗，請重試', 'error', 1200); return; }
             if (qrEl.tagName === 'CANVAS' || qrEl.complete) {
                 renderLabel(qrEl);
             } else {
@@ -1893,8 +1892,8 @@
         const newName = document.getElementById('edit-item-name-input').value.trim();
         const newQty = parseInt(document.getElementById('edit-item-qty-input').value, 10);
 
-        if (!newName) return showToast('請輸入物品名稱', 'error', 2600);
-        if (isNaN(newQty) || newQty < 0) return showToast('數量必須為 0 或正整數', 'error', 2600);
+        if (!newName) return showToast('請輸入物品名稱', 'error', 1200);
+        if (isNaN(newQty) || newQty < 0) return showToast('數量必須為 0 或正整數', 'error', 1200);
 
         b.items[editingItemIndex].name = newName;
         b.items[editingItemIndex].qty = newQty;
@@ -1902,7 +1901,7 @@
         await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
         closeEditItemModal();
         renderBoxModal(b);
-        showToast('💾 儲存成功！', 'success', 2600);
+        showToast('💾 儲存成功！', 'success', 1200);
     };
 
     window.confirmDeleteEditingItem = async function() {
