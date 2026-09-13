@@ -171,6 +171,18 @@
             outline: 2px dashed #ff9500; background: rgba(255, 149, 0, 0.15) !important; border-radius: 8px;
         }
 
+        /* 搜尋命中時的紅色閃爍光圈效果 */
+        @keyframes targetPulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.9); outline: 3px solid #ff3b30; }
+            70% { box-shadow: 0 0 0 16px rgba(255, 59, 48, 0); outline: 3px solid rgba(255, 59, 48, 0.5); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); outline: 3px solid #ff3b30; }
+        }
+        .box-wrapper.search-highlight .box-image-hotspot {
+            animation: targetPulse 1.5s infinite;
+            background: rgba(255, 59, 48, 0.25) !important;
+            border-radius: 10px;
+        }
+
         .resize-handle {
             display: none; position: absolute; width: 26px; height: 26px; background: #ff9500; border: 3px solid #fff; border-radius: 50%; z-index: 60; box-shadow: 0 2px 6px rgba(0,0,0,0.5);
         }
@@ -447,8 +459,26 @@
                 <div id="qrcode-container" style="display: inline-block; background: #fff; padding: 10px; border-radius: 8px; margin-bottom: 6px;"></div>
                 <div id="item-qr-code-text" style="font-size: 11px; color: #8e8e93; word-break: break-all;"></div>
                 <div id="item-stock-code-text" style="font-size: 14px; color: #ffd60a; font-weight: 700; margin-top: 6px;"></div>
+
+                <!-- 💡 字體大小調整：只在編輯模式下顯示 -->
+                <div id="label-font-settings-group" style="display: none;">
+                    <div style="text-align:left; margin-top:14px;">
+                        <div style="display:flex; justify-content:space-between; font-size:11px; color:#8e8e93; margin-bottom:4px;">
+                            <span>標籤－貨號字體大小</span><span id="label-code-font-size-val">52px</span>
+                        </div>
+                        <input type="range" id="label-code-font-size" min="24" max="90" value="52" step="2" style="width:100%;" oninput="document.getElementById('label-code-font-size-val').innerText = this.value + 'px'">
+                    </div>
+                    <div style="text-align:left; margin-top:10px;">
+                        <div style="display:flex; justify-content:space-between; font-size:11px; color:#8e8e93; margin-bottom:4px;">
+                            <span>標籤－名稱字體大小</span><span id="label-name-font-size-val">46px</span>
+                        </div>
+                        <input type="range" id="label-name-font-size" min="20" max="80" value="46" step="2" style="width:100%;" oninput="document.getElementById('label-name-font-size-val').innerText = this.value + 'px'">
+                    </div>
+                </div>
+
                 <button class="apple-btn secondary" style="margin-top:12px; font-size:12px; padding:10px 14px; width:100%;" onclick="downloadItemLabel()">🖨️ 下載標籤圖片 (QR + 貨號 + 名稱)</button>
             </div>
+
 
             <div id="view-item-container" style="text-align: center; margin-bottom: 14px; background: rgba(255,255,255,0.04); padding: 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08);">
                 <img id="view-item-img" src="" style="width: 70px; height: 70px; object-fit: contain; border-radius: 10px; background: #1c1c1e; margin-bottom: 8px; display:block; margin-left:auto; margin-right:auto;">
@@ -515,6 +545,7 @@
     let pages = [];
     let currentPageIndex = 0;
     let boxesCache = null;
+    let highlightedBoxId = null; // 搜尋高亮箱子 ID
 
     let borrowerGroupsCache = [
         { groupName: "車輛", items: ["物資車 1", "物資車 2"] },
@@ -590,13 +621,12 @@
         });
     }
 
-    // ============ 📦 入庫貨號產生器 (區域數字 + 分類英文字母 + 流水號，方便一眼看出物品位置與分類) ============
+    // ============ 📦 入庫貨號產生器 ============
     function getPageNumber(pageId) {
         const idx = pages.findIndex(p => p.id === pageId);
         return idx === -1 ? 1 : idx + 1;
     }
 
-    // 箱子的編號只在第一次需要時分配一次，之後固定不變（用交易確保不會分配到重複編號）
     async function getOrAssignBoxNumber(box) {
         if (box.boxNumber) return box.boxNumber;
         const counterRef = doc(db, "settings", "box_counter_" + box.pageId);
@@ -609,14 +639,13 @@
                 transaction.set(counterRef, { value: num });
             });
         } catch (e) {
-            num = (box.width || 0) + Date.now() % 1000; // 極端狀況下的備援，避免整個流程卡住
+            num = (box.width || 0) + Date.now() % 1000;
         }
         box.boxNumber = num;
         try { await updateDoc(doc(db, "warehouse_boxes", box.id), { boxNumber: num }); } catch (e) {}
         return num;
     }
 
-    // 箱子編號轉英文字母 (1→A, 2→B ... 26→Z, 27→AA ...)，用字母代表「分類」
     function numberToLetters(num) {
         let letters = '';
         while (num > 0) {
@@ -627,8 +656,6 @@
         return letters;
     }
 
-    // 貨號格式：{區域頁碼數字}{分類英文字母}{流水號}，例如 1A0001 = 第1頁區域、A分類(箱子)、流水號0001
-    // 同一個分類(箱子)裡的流水號會各自從 0001 開始跳號，不會跟別的箱子混在一起
     async function generateStockCode(box, itemIndex) {
         const pageNum = getPageNumber(box.pageId);
         const boxNum = await getOrAssignBoxNumber(box);
@@ -637,14 +664,12 @@
         return `${pageNum}${boxLetter}${String(itemNum).padStart(4, '0')}`;
     }
 
-    // ============ 🖼️ 圖片預先載入 (加速開啟地圖與箱子時的顯示速度) ============
-    // 背景慢慢下載，不等待完成 (適合數量多、非一進畫面就要看到的箱子/物品照片)
+    // ============ 🖼️ 圖片預先載入 ============
     function preloadImagesAsync(urls) {
         urls.forEach(url => {
             if (url) { const img = new Image(); img.src = url; }
         });
     }
-    // 真正等待下載完成 (適合一進地圖畫面就必須馬上顯示的底圖)
     function preloadImagesAwait(urls) {
         return Promise.all(urls.filter(Boolean).map(url => new Promise((resolve) => {
             const img = new Image();
@@ -653,7 +678,6 @@
             img.src = url;
         })));
     }
-    // 設定底圖：若圖片已預先下載完成則瞬間顯示，否則短暫顯示載入動畫直到下載完成
     function setBackgroundImage(url) {
         const imgEl = document.getElementById('warehouse-img');
         const overlay = document.getElementById('map-loading-overlay');
@@ -672,15 +696,14 @@
         imgEl.src = url;
     }
 
-    // ============ 📷 掃描防重複觸發 + 提示音 + 畫面閃現 ============
+    // ============ 📷 掃描防重複觸發 + 提示音 ============
     let lastScannedCode = null;
     let lastScannedAt = 0;
     let scanGateUntil = 0;
-    const SAME_CODE_COOLDOWN_MS = 1500; // 同一組 QR 在這段時間內視為同一次掃描，避免鏡頭停留時被重複計算
-    const SCAN_GATE_MS = 200; // 每次成功處理後，至少間隔這麼久才會處理下一次掃描
+    const SAME_CODE_COOLDOWN_MS = 1500;
+    const SCAN_GATE_MS = 200;
 
     let audioCtx = null;
-    // 條碼機風格的「逼」聲：方波、頻率較高、時間短促
     function playBeep(freq = 2700, duration = 90) {
         try {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -698,14 +721,12 @@
         } catch (e) {}
     }
 
-    // 手機震動回饋：就算手機關了音效/靜音，操作的人還是能感覺到震動確認
     function vibrateFeedback(pattern) {
         try {
             if (navigator.vibrate) navigator.vibrate(pattern);
         } catch (e) {}
     }
 
-    // 成功/失敗的統一回饋：聲音 + 震動 + 畫面閃現，三種管道同時觸發，確保一定感覺得到
     function scanSuccessFeedback(icon, text) {
         playBeep(2700, 90);
         vibrateFeedback(60);
@@ -744,20 +765,15 @@
         document.getElementById('preload-status').innerText = "正在背景預載資料庫…";
         try {
             await Promise.all([loadPages(), loadBoxes(true), loadBorrowerGroupsFromCloud()]);
-
-            // 底圖是一進地圖畫面就要看到的東西，這裡真正「等」它下載完，之後點進去才會秒開不用等
             document.getElementById('preload-status').innerText = "正在預先下載底圖…";
             const pageImgUrls = pages.map(p => p.imageUrl);
             await preloadImagesAwait(pageImgUrls);
-
-            // 箱子與物品照片數量多，背景慢慢下載即可，不會拖慢開機時間
             const otherImgUrls = [];
             (boxesCache || []).forEach(b => {
                 otherImgUrls.push(b.imageUrl);
                 (b.items || []).forEach(it => otherImgUrls.push(it.imageUrl));
             });
             preloadImagesAsync(otherImgUrls);
-
             document.getElementById('preload-status').innerText = "系統就緒 (已同步雲端)";
         } catch (e) {
             document.getElementById('preload-status').innerText = "系統就緒";
@@ -796,7 +812,6 @@
         if (!boxesCache) {
             await initApp();
         } else {
-            // 箱子資料雖已預載，但底圖／縮放／頁面狀態一定要在這裡套用，否則底圖不會顯示
             await switchToPage(currentPageIndex, true);
         }
     };
@@ -999,7 +1014,7 @@
                             </span>
                         </div>
                         <div style="color: #d1d1d6; margin-top: 4px;">📦 箱子位置：${escapeHtml(l.boxName)}</div>
-                        <div style="color: #0a84ff; margin-top: 2px;">👤 對象/來源：${escapeHtml(l.target || '未指定')}</div>
+                        <div style="color: #0a84ff; margin-top: 2px;">👤 出庫去向 / 來源：${escapeHtml(l.target || '未指定')}</div>
                     </div>
                 `;
             });
@@ -1031,7 +1046,6 @@
         lastScannedAt = 0;
         scanGateUntil = 0;
 
-        // 在使用者實際點擊的當下就先「解鎖」音效播放權限，iPhone Safari 對這點特別嚴格
         try {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -1064,7 +1078,6 @@
     };
 
     async function handleGlobalScan(scannedText) {
-        // 防止同一次實體掃描因鏡頭連續偵測同一個 QR 而被重複計算
         const now = Date.now();
         if (now < scanGateUntil) return;
         if (scannedText === lastScannedCode && (now - lastScannedAt) < SAME_CODE_COOLDOWN_MS) return;
@@ -1092,7 +1105,6 @@
                     let recordTarget = '';
 
                     if (scannerMode === 'out') {
-                        // 庫存有多少只能出多少，超過就不給出
                         if (currentQty <= 0) {
                             scanErrorFeedback('⚠️', `庫存已為 0\n無法出庫`);
                             showToast(`⚠️ 出貨失敗\n物品「${item.name}」庫存已為 0！`, 'error');
@@ -1106,9 +1118,8 @@
                         actionType = '出庫';
                         recordTarget = currentBorrowTarget;
                         scanSuccessFeedback('📤', `已出庫\n${item.name}\n→ ${currentBorrowTarget}`);
-                        showToast(`✅ 出貨成功 (-1)\n物品：${item.name}\n對象：${currentBorrowTarget}`, 'success');
+                        showToast(`✅ 出貨成功 (-1)\n物品：${item.name}\n去向：${currentBorrowTarget}`, 'success');
                     } else {
-                        // 沒有出去的東西不能無中生有地入庫，出去多少才能回來多少
                         if (checkedOut <= 0) {
                             scanErrorFeedback('⚠️', `此物品目前沒有\n借出紀錄，無法入庫`);
                             showToast(`⚠️ 入庫失敗\n物品「${item.name}」目前沒有借出紀錄！`, 'error');
@@ -1161,10 +1172,14 @@
             document.getElementById('warehouse-system-view').style.display = 'block';
             const pageIndex = pages.findIndex(p => p.id === box.pageId);
             if (pageIndex !== -1) await switchToPage(pageIndex);
-            openBoxModal(box.id);
+            
+            // 💡 搜尋到箱子後：不直接彈出箱子視窗，改為在平面圖上高亮顯示該箱子（帶紅框脈衝提示）
+            highlightedBoxId = box.id;
+            renderBoxes();
+
             playBeep(2700, 90);
             vibrateFeedback(60);
-            showToast(`📍 成功找到位置！\n箱子名稱：${box.name}`, 'success');
+            showToast(`📍 已找到箱子位置！\n箱子名稱：${box.name}\n請點擊地圖上的紅框檢視內容`, 'success');
         } else {
             playBeep(900, 240);
             vibrateFeedback([80, 60, 80]);
@@ -1208,7 +1223,6 @@
         });
     }
 
-    // 💡 結束編輯模式 (點擊🔒鎖定時全面關閉並回到大畫面，絕對不自動跳進箱子)
     window.toggleContentEditMode = function() {
         isContentEditActive = !isContentEditActive;
         const btn = document.getElementById('mode-btn-edit');
@@ -1219,7 +1233,6 @@
         document.getElementById('btn-move-mode').style.display = isContentEditActive ? 'block' : 'none';
         document.getElementById('edit-toolbar').style.display = (isContentEditActive && !isOverviewActive) ? 'flex' : 'none';
         
-        // 關閉所有可能開啟的彈窗與檢視模式
         closeModal();
         closeEditItemModal();
         if (isOverviewActive) setOverviewMode(false);
@@ -1321,7 +1334,6 @@
         renderBoxes();
     }
 
-    // 💡 只有在「佈局模式」下才能拖動箱子位置
     function renderBoxes() {
         const layer = document.getElementById('boxes-layer');
         const frag = document.createDocumentFragment();
@@ -1333,6 +1345,11 @@
                 wrap.classList.add('selected');
                 wrap.classList.add('layout-active');
             }
+            // 如果是被搜尋命中的箱子，加上高亮紅框閃爍類別
+            if (highlightedBoxId === b.id) {
+                wrap.classList.add('search-highlight');
+            }
+
             wrap.style.left = (b.x || 50) + '%';
             wrap.style.top = (b.y || 50) + '%';
             wrap.style.width = (b.width || 100) + 'px';
@@ -1381,7 +1398,14 @@
 
             wrap.onclick = (e) => { 
                 e.stopPropagation(); 
-                if (!isLayoutMode && !wrap.dataset.moved) openBoxModal(b.id); 
+                if (!isLayoutMode && !wrap.dataset.moved) {
+                    // 點擊箱子時清除搜尋高亮紅框，並正常打開箱子詳情
+                    if (highlightedBoxId === b.id) {
+                        highlightedBoxId = null;
+                        wrap.classList.remove('search-highlight');
+                    }
+                    openBoxModal(b.id); 
+                }
             };
 
             let isDragging = false, startX = 0, startY = 0;
@@ -1428,7 +1452,7 @@
         const b = { name, x: 50, y: 50, width: 100, height: 80, items: [], imageUrl: "", pageId: pages[currentPageIndex].id };
         const ref = await addDoc(collection(db, "warehouse_boxes"), b);
         const newBox = { id: ref.id, ...b };
-        await getOrAssignBoxNumber(newBox); // 立即編號，之後貨號才能正確組成
+        await getOrAssignBoxNumber(newBox);
         document.getElementById('new-box-name').value = '';
         boxesCache.push(newBox);
         renderBoxes();
@@ -1484,7 +1508,7 @@
         const addBtn = document.getElementById('btn-add-item');
         const pContainer = document.getElementById('new-item-progress-container');
         const pFill = document.getElementById('new-item-progress-fill');
-        if (addBtn.disabled) return; // 防止手快連點造成重複新增
+        if (addBtn.disabled) return;
         addBtn.disabled = true;
         addBtn.innerText = '處理中…';
         pContainer.style.display = 'block';
@@ -1497,7 +1521,6 @@
             const stockCode = await generateStockCode(b, newItemIndex);
             pFill.style.width = '35%';
 
-            // 💡 修正：原本這裡完全沒有讀取使用者選擇的照片，導致新增後照片永遠是空的
             let imageUrl = "";
             const fileInput = document.getElementById('item-img-file');
             const file = fileInput.files[0];
@@ -1539,7 +1562,6 @@
         const b = boxesCache.find(x => x.id === currentBoxId);
         const it = b.items[idx];
 
-        // 舊資料若尚無貨號，補發一個並存回雲端
         if (!it.stockCode) {
             it.stockCode = await generateStockCode(b, idx);
             await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
@@ -1552,7 +1574,7 @@
             statusBanner.style.background = 'rgba(255, 59, 48, 0.15)';
             statusBanner.style.borderColor = 'rgba(255, 59, 48, 0.3)';
             statusBanner.style.color = '#ff3b30';
-            statusBanner.innerText = `⚠️ 已出庫 ${checkedOutNow} 件尚未歸還 (最近對象: ${it.borrower || '不詳'})`;
+            statusBanner.innerText = `⚠️ 已出庫 ${checkedOutNow} 件尚未歸還 (去向: ${it.borrower || '不詳'})`;
         } else {
             statusBanner.style.background = 'rgba(52, 199, 89, 0.15)';
             statusBanner.style.borderColor = 'rgba(52, 199, 89, 0.3)';
@@ -1568,6 +1590,10 @@
             text: itemQrText, width: 120, height: 120,
             colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H
         });
+
+        // 💡 根據是否為編輯模式，決定是否顯示標籤字體大小滑桿
+        const fontSettingsGroup = document.getElementById('label-font-settings-group');
+        fontSettingsGroup.style.display = isContentEditActive ? 'block' : 'none';
 
         if (isContentEditActive) {
             document.getElementById('edit-modal-title').innerText = '✏️ 編輯物品資料與 QR Code';
@@ -1601,7 +1627,6 @@
 
     window.closeEditItemModal = function() { document.getElementById('item-edit-modal').style.display = 'none'; };
 
-    // 💡 底圖上傳功能 (原本缺少的函式)
     window.uploadBackgroundImage = async function(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -1620,7 +1645,6 @@
         }
     };
 
-    // 💡 具備進度條的物品圖片上傳
     window.uploadNewItemImageWithProgress = async function(e) {
         const file = e.target.files[0];
         if (!file || editingItemIndex === null) return;
@@ -1641,9 +1665,7 @@
             const b = boxesCache.find(x => x.id === currentBoxId);
             b.items[editingItemIndex].imageUrl = url;
 
-            // 💡 修正：把更新後的物品清單寫回 Firestore，否則重整頁面後圖片會消失
             await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
-
             pFill.style.width = '100%';
 
             setTimeout(() => { pContainer.style.display = 'none'; pFill.style.width = '0%'; }, 500);
@@ -1654,7 +1676,6 @@
         }
     };
 
-    // 💡 具備進度條的箱子圖片上傳
     window.uploadBoxImageWithProgress = async function(e) {
         const file = e.target.files[0];
         if (!file || !currentBoxId) return;
@@ -1683,7 +1704,6 @@
         }
     };
 
-    // 💡 產生「QR + 貨號 + 名稱」標籤圖片，供精臣等標籤機列印使用
     window.downloadItemLabel = function() {
         const b = boxesCache.find(x => x.id === currentBoxId);
         if (!b || editingItemIndex === null) return;
@@ -1691,7 +1711,9 @@
         const itemQrText = `ITEM_${b.id}_${editingItemIndex}`;
         const stockCode = it.stockCode || '未編號';
 
-        // 用一個隱藏的容器產生高解析度的 QR code，避免畫面上小尺寸的 QR 印出來模糊
+        const codeFontStart = parseInt(document.getElementById('label-code-font-size').value, 10) || 52;
+        const nameFontStart = parseInt(document.getElementById('label-name-font-size').value, 10) || 46;
+
         const tempDiv = document.createElement('div');
         tempDiv.style.cssText = 'position:absolute; left:-9999px; top:-9999px;';
         document.body.appendChild(tempDiv);
@@ -1700,16 +1722,21 @@
             colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H
         });
 
-        const qrSize = 400, padding = 30, textBlockHeight = 190;
+        const qrSize = 400, padding = 30;
+        const textBlockHeight = Math.max(190, codeFontStart + nameFontStart + 100);
 
         function fitFontSize(ctx, text, maxWidth, startPx) {
             let size = startPx;
             ctx.font = `bold ${size}px sans-serif`;
-            while (ctx.measureText(text).width > maxWidth && size > 22) {
+            while (ctx.measureText(text).width > maxWidth && size > 18) {
                 size -= 2;
                 ctx.font = `bold ${size}px sans-serif`;
             }
             return size;
+        }
+
+        function isIOS() {
+            return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
         }
 
         const renderLabel = (qrSourceEl) => {
@@ -1726,18 +1753,33 @@
             const maxTextWidth = canvas.width - 40;
 
             const codeText = `貨號: ${stockCode}`;
-            fitFontSize(ctx, codeText, maxTextWidth, 52);
-            ctx.fillText(codeText, canvas.width / 2, qrSize + padding + 68);
+            const codeSize = fitFontSize(ctx, codeText, maxTextWidth, codeFontStart);
+            ctx.fillText(codeText, canvas.width / 2, qrSize + padding + codeSize + 15);
 
-            fitFontSize(ctx, it.name, maxTextWidth, 46);
-            ctx.fillText(it.name, canvas.width / 2, qrSize + padding + 140);
+            const nameSize = fitFontSize(ctx, it.name, maxTextWidth, nameFontStart);
+            ctx.fillText(it.name, canvas.width / 2, qrSize + padding + codeSize + nameSize + 50);
 
-            const link = document.createElement('a');
-            link.download = `${stockCode}_${it.name}.png`;
-            link.href = canvas.toDataURL('image/png');
-            link.click();
             document.body.removeChild(tempDiv);
-            showToast('✅ 標籤圖片已下載，可傳送至標籤機列印', 'success');
+
+            const filename = `${stockCode}_${it.name}.png`;
+            canvas.toBlob((blob) => {
+                if (!blob) { showToast('❌ 產生標籤圖片失敗，請重試', 'error'); return; }
+                const url = URL.createObjectURL(blob);
+
+                if (isIOS()) {
+                    window.open(url, '_blank');
+                    showToast('📱 圖片已在新分頁開啟，請長按圖片並選擇「加入照片」以儲存成圖檔', 'info');
+                } else {
+                    const link = document.createElement('a');
+                    link.download = filename;
+                    link.href = url;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    showToast('✅ 標籤圖片已下載，可傳送至標籤機列印', 'success');
+                }
+                setTimeout(() => URL.revokeObjectURL(url), 20000);
+            }, 'image/png');
         };
 
         setTimeout(() => {
