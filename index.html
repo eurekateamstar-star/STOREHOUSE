@@ -247,10 +247,10 @@
 
     <div class="phone-frame">
 
-        <!-- 🔔 App 樣式提示訊息 (取代瀏覽器 alert) -->
-        <div id="toast-container" style="position:absolute; top: 16px; left:50%; transform:translateX(-50%); z-index:9999; display:flex; flex-direction:column; gap:8px; align-items:center; width:92%; pointer-events:none;"></div>
+        <!-- 🔔 放大、置中、常駐的超大提示訊息容器 -->
+        <div id="toast-container" style="position:absolute; top: 50%; left:50%; transform:translate(-50%, -50%); z-index:9999; display:flex; flex-direction:column; gap:12px; align-items:center; width:90%; pointer-events:none;"></div>
 
-        <!-- 🔔 App 樣式確認/輸入視窗 (取代瀏覽器 confirm/prompt) -->
+        <!-- 🔔 App 樣式確認/輸入視窗 -->
         <div id="dialog-backdrop" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); backdrop-filter:blur(6px); z-index:9000;"></div>
         <div id="dialog-box" class="apple-card" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:84%; max-width:340px; z-index:9100; padding:22px; box-shadow: 0 20px 60px rgba(0,0,0,0.8);">
             <div id="dialog-title" style="font-size:16px; font-weight:600; margin-bottom:8px; text-align:center;"></div>
@@ -461,7 +461,6 @@
                 <div id="item-qr-code-text" style="font-size: 11px; color: #8e8e93; word-break: break-all;"></div>
                 <div id="item-stock-code-text" style="font-size: 14px; color: #ffd60a; font-weight: 700; margin-top: 6px;"></div>
 
-                <!-- 💡 字體大小調整：只在編輯模式下顯示 -->
                 <div id="label-font-settings-group" style="display: none;">
                     <div style="text-align:left; margin-top:14px;">
                         <div style="display:flex; justify-content:space-between; font-size:11px; color:#8e8e93; margin-bottom:4px;">
@@ -492,7 +491,6 @@
                     <img id="edit-item-preview-img" src="" style="width: 60px; height: 60px; object-fit: contain; border-radius: 8px; background: #1c1c1e; margin-bottom: 6px; display:block; margin-left:auto; margin-right:auto;">
                     <input type="file" id="edit-item-img-input" style="display:none;" accept="image/*" onchange="uploadNewItemImageWithProgress(event)">
                     <button class="apple-btn secondary" style="padding:6px 12px; font-size:11px;" onclick="document.getElementById('edit-item-img-input').click()">📷 更換圖片</button>
-                    <!-- 上傳進度條 -->
                     <div class="progress-bar-container" id="item-progress-container"><div class="progress-bar-fill" id="item-progress-fill"></div></div>
                 </div>
                 <div style="font-size: 13px; color:#8e8e93; margin-bottom:4px;">物品名稱：</div>
@@ -554,18 +552,23 @@
     ];
     let selectedGroupIndex = null; 
 
+    // 💡 提示訊息放大、置中，且持續時間延長至 4.5 秒
     function showToast(message, type = 'success') {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
-        const bgColor = type === 'error' ? 'rgba(255, 59, 48, 0.94)' : (type === 'info' ? 'rgba(10, 132, 255, 0.94)' : 'rgba(52, 199, 89, 0.94)');
-        toast.style.cssText = `background:${bgColor}; color:#fff; padding:12px 18px; border-radius:14px; font-size:13px; font-weight:600; box-shadow:0 8px 24px rgba(0,0,0,0.4); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); max-width:100%; text-align:center; pointer-events:auto; white-space:pre-line; line-height:1.5;`;
+        
+        let bgColor = 'rgba(52, 199, 89, 0.95)'; // 綠色 (在庫)
+        if (type === 'error') bgColor = 'rgba(255, 59, 48, 0.95)'; // 紅色 (錯誤)
+        else if (type === 'out' || type === 'info') bgColor = 'rgba(215, 38, 56, 0.95)'; // 鮮紅色/藍色 (出庫警告/資訊)
+
+        toast.style.cssText = `background:${bgColor}; color:#fff; padding:20px 24px; border-radius:18px; font-size:16px; font-weight:700; box-shadow:0 12px 40px rgba(0,0,0,0.6); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); width:100%; text-align:center; pointer-events:auto; white-space:pre-line; line-height:1.6; border: 1px solid rgba(255,255,255,0.25);`;
         toast.innerText = message;
         container.appendChild(toast);
         setTimeout(() => {
-            toast.style.transition = 'opacity 0.3s ease';
+            toast.style.transition = 'opacity 0.4s ease';
             toast.style.opacity = '0';
-            setTimeout(() => toast.remove(), 300);
-        }, 2600);
+            setTimeout(() => toast.remove(), 400);
+        }, 4500); // 💡 停留時間延長至 4.5 秒
     }
     window.showToast = showToast;
 
@@ -1086,7 +1089,7 @@
         }
 
         let targetBoxId = null;
-        let scannedItemInfo = null; // 紀錄如果是掃到物品，其出庫狀態與去向
+        let scannedItemInfo = null;
 
         if (scannedText.startsWith('ITEM_')) {
             const parts = scannedText.split('_');
@@ -1099,7 +1102,8 @@
                 scannedItemInfo = {
                     name: item.name,
                     checkedOutCount: Number(item.checkedOutCount) || 0,
-                    borrower: item.borrower || '不詳'
+                    borrower: item.borrower || '不詳',
+                    qty: Number(item.qty) || 0
                 };
             }
 
@@ -1186,9 +1190,13 @@
             playBeep(2700, 90);
             vibrateFeedback(60);
 
-            // 💡 若是以「找位置」模式掃描到具體物品，且該物品有出庫，加強提示其出庫去向
-            if (scannedItemInfo && scannedItemInfo.checkedOutCount > 0) {
-                showToast(`📍 找到箱子：${box.name}\n⚠️ 物品「${scannedItemInfo.name}」已出庫 ${scannedItemInfo.checkedOutCount} 件\n去向：${scannedItemInfo.borrower}`, 'info');
+            // 💡 針對掃描結果判斷顏色與狀態 (已出庫用紅色，在庫用綠色)
+            if (scannedItemInfo) {
+                if (scannedItemInfo.checkedOutCount > 0) {
+                    showToast(`📍 找到箱子：${box.name}\n\n🚨 【狀態：已出庫】\n物品：${scannedItemInfo.name}\n🔴 已外借未歸還：${scannedItemInfo.checkedOutCount} 件\n👤 出庫去向：${scannedItemInfo.borrower}\n\n💡 可至「進出貨紀錄」查詢詳細出貨單。`, 'out');
+                } else {
+                    showToast(`📍 找到箱子：${box.name}\n\n🟢 【狀態：在庫中】\n物品：${scannedItemInfo.name}\n📦 目前庫存：${scannedItemInfo.qty} 個\n✨ 無外借紀錄`, 'success');
+                }
             } else {
                 showToast(`📍 已找到箱子位置！\n箱子名稱：${box.name}\n請點擊地圖上的紅框檢視內容`, 'success');
             }
