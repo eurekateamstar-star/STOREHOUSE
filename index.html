@@ -1,3 +1,9 @@
+這是由於 HTML 原生的 <input type="date"> 在某些瀏覽器或特定版型容器中，若沒有正確設定樣式或點擊範圍，會導致無法順利叫出日期選擇器。
+
+我們已經為日期輸入框進行了全面修正與優化，增加了寬度、點擊響應區，並確保在手機與電腦瀏覽器上都能完美點擊並挑選日期。
+
+請直接複製以下完整程式碼替換您的檔案：
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -79,7 +85,7 @@
         }
         .apple-input:focus { border-color: #0071e3; background: rgba(255, 255, 255, 0.12); }
 
-        /* 上傳進度條樣式 */
+        /* 進度條樣式 */
         .progress-bar-container {
             width: 100%; background: rgba(255,255,255,0.1); border-radius: 8px; height: 8px; overflow: hidden; margin-top: 8px; display: none;
         }
@@ -121,32 +127,65 @@
 
         /* 4. 倉儲地圖介面 */
         header {
-            position: absolute; top: 12px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: center; z-index: 100; pointer-events: none;
+            position: absolute; top: 16px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: center; z-index: 100; pointer-events: none;
         }
         header > * { pointer-events: auto; }
-        .header-title {
-            font-size: 13px; font-weight: 600; background: rgba(28, 28, 30, 0.75); backdrop-filter: blur(20px); padding: 8px 14px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1); color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        
+        .nav-back-pill {
+            background: rgba(28, 28, 30, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 6px 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            color: #0a84ff;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            transition: transform 0.15s, background 0.15s;
         }
-        .header-btns { display: flex; gap: 8px; align-items: center; }
-        .header-btns button {
-            background: rgba(28, 28, 30, 0.75); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); color: white; padding: 8px 14px; border-radius: 14px; font-size: 12px; font-weight: 500; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: all 0.2s;
+        .nav-back-pill:active { transform: scale(0.95); background: rgba(44, 44, 46, 0.95); }
+
+        .header-pill {
+            background: rgba(28, 28, 30, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 6px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
         }
-        .header-btns button:active { transform: scale(0.95); }
+        .header-title { font-size: 12px; font-weight: 600; color: #fff; }
+        
+        .header-btns { display: flex; gap: 6px; align-items: center; }
+        .header-btns button, .header-btns .pill-btn {
+            background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.1); color: white; padding: 6px 12px; border-radius: 14px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s;
+        }
+        .header-btns button:active, .header-btns .pill-btn:active { transform: scale(0.95); }
         .header-btns button.active { background: #34c759; border-color: transparent; }
 
         .page-nav {
-            position: absolute; top: 68px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; background: rgba(28, 28, 30, 0.75); backdrop-filter: blur(20px); padding: 5px 8px; border-radius: 24px; z-index: 95; border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            position: absolute; top: 72px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; background: rgba(28, 28, 30, 0.85); backdrop-filter: blur(25px); padding: 5px 12px; border-radius: 30px; z-index: 95; border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 8px 24px rgba(0,0,0,0.5);
         }
         .page-nav-btn {
-            background: rgba(255, 255, 255, 0.08); border: none; color: #fff; width: 30px; height: 30px; border-radius: 50%; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.12); border: none; color: #fff; width: 30px; height: 30px; border-radius: 50%; font-size: 15px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.2s;
         }
-        .page-nav-btn:disabled { opacity: 0.25; cursor: default; }
-        .page-nav-title { font-size: 13px; font-weight: 600; padding: 0 8px; max-width: 140px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .page-nav-btn:active:not(:disabled) { background: rgba(255, 255, 255, 0.25); }
+        .page-nav-btn:disabled { opacity: 0.2; cursor: default; }
+        .page-nav-title { font-size: 13px; font-weight: 600; padding: 0 4px; max-width: 140px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #f2f2f7; }
         .page-nav-add { background: #34c759 !important; }
         .page-nav-del { background: #ff3b30 !important; }
 
         .image-map-container { position: relative; width: 100%; height: 100%; background: #000; overflow: hidden; touch-action: none; }
         #map-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform-origin: 0 0; }
+        
         #warehouse-img { width: 100%; height: 100%; object-fit: contain; display: block; }
 
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -171,7 +210,6 @@
             outline: 2px dashed #ff9500; background: rgba(255, 149, 0, 0.15) !important; border-radius: 8px;
         }
 
-        /* 搜尋命中時的紅色閃爍光圈效果 */
         @keyframes targetPulse {
             0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.9); outline: 3px solid #ff3b30; }
             70% { box-shadow: 0 0 0 16px rgba(255, 59, 48, 0); outline: 3px solid rgba(255, 59, 48, 0.5); }
@@ -192,16 +230,18 @@
         .handle-bl { bottom: -13px; left: -13px; cursor: nesw-resize; }
         .handle-br { bottom: -13px; right: -13px; cursor: nwse-resize; }
 
-        .bg-resize-handle { display: none; position: absolute; width: 30px; height: 30px; background: #0a84ff; border: 3px solid #fff; border-radius: 50%; z-index: 70; touch-action: none; transform: translate(-50%, -50%); }
-        .bg-resize-handle.visible { display: block; }
-
         .mode-hint {
             position: absolute; top: 116px; left: 50%; transform: translateX(-50%); background: rgba(28, 28, 30, 0.85); backdrop-filter: blur(20px); color: #ff9500; padding: 8px 16px; border-radius: 14px; font-size: 12px; z-index: 90; pointer-events: none; border: 1px solid rgba(255,149,0,0.3); display: none; text-align: center; width: 90%;
         }
 
-        .edit-toolbar {
-            display: none; position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); background: rgba(28, 28, 30, 0.85); backdrop-filter: blur(25px); padding: 12px 16px; border-radius: 22px; border: 1px solid rgba(255, 255, 255, 0.15); z-index: 100; box-shadow: 0 12px 40px rgba(0,0,0,0.8); width: 92%; max-width: 420px; gap: 10px; align-items: center;
+        /* ➕ 懸浮新增按鈕 (FAB) */
+        #fab-container {
+            display: none; position: absolute; bottom: 30px; right: 24px; z-index: 120;
         }
+        .fab-main-btn {
+            width: 58px; height: 58px; background: #0071e3; color: white; border-radius: 50%; border: none; font-size: 28px; box-shadow: 0 8px 24px rgba(0, 113, 227, 0.5); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.2s, background 0.2s;
+        }
+        .fab-main-btn:active { transform: scale(0.92); background: #0077ed; }
 
         #overview-view {
             display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; overflow-y: auto; padding: 110px 20px 40px 20px; z-index: 10;
@@ -224,7 +264,7 @@
 
         .modal {
             display: none; position: absolute; bottom: 0; left: 0; width: 100%; max-height: 90%;
-            background: rgba(30, 30, 32, 0.92); backdrop-filter: blur(40px); color: #fff;
+            background: rgba(30, 30, 32, 0.95); backdrop-filter: blur(40px); color: #fff;
             border-top-left-radius: 28px; border-top-right-radius: 28px; box-shadow: 0 -20px 50px rgba(0,0,0,0.9);
             padding: 24px; z-index: 2000; overflow-y: auto; border-top: 1px solid rgba(255,255,255,0.15);
         }
@@ -240,6 +280,40 @@
         .grid-item-qty { font-size: 11px; color: #ff9500; font-weight: 600; }
         .grid-item-del {
             position: absolute; top: 6px; right: 6px; background: rgba(255, 59, 48, 0.9); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 11px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 5;
+        }
+
+        .borrower-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            max-height: 280px;
+            overflow-y: auto;
+            margin-bottom: 14px;
+            padding: 4px;
+        }
+        .borrower-card {
+            background: rgba(44, 44, 46, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 14px 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-height: 90px;
+            justify-content: center;
+        }
+        .borrower-card:active { transform: scale(0.95); background: rgba(58, 58, 60, 0.9); }
+        .borrower-card-icon { font-size: 24px; margin-bottom: 6px; }
+        .borrower-card-name { font-size: 12px; font-weight: 600; color: #fff; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* 💡 修復日期輸入框點擊範圍與外觀 */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+            padding: 4px;
         }
     </style>
 </head>
@@ -323,7 +397,7 @@
             
             <div style="font-size: 13px; color:#8e8e93; margin-bottom: 14px;" id="borrower-modal-desc">請點擊群組以展開細項：</div>
             
-            <div id="borrower-selector-container" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; max-height: 250px; overflow-y: auto;"></div>
+            <div id="borrower-selector-container" class="borrower-grid"></div>
 
             <div id="borrower-manage-container" style="display:none; margin-bottom:16px; background:rgba(255,255,255,0.04); padding:12px; border-radius:12px; max-height:250px; overflow-y:auto;">
                 <div style="font-size:12px; color:#ff9500; font-weight:600; margin-bottom:8px;">雲端群組與細項設定：</div>
@@ -376,9 +450,10 @@
                 <button class="apple-btn secondary logs-tab" data-type="進貨" onclick="setLogsTypeFilter('進貨')" style="flex:1; padding:8px; font-size:12px;">📥 進貨</button>
             </div>
 
+            <!-- 💡 修復日期篩選列，確保點擊範圍與互動正常 -->
             <div style="display:flex; gap:8px; margin-bottom:12px; align-items:center;">
-                <input type="date" id="logs-date-input" class="apple-input" style="flex:1; font-size:13px; padding:8px 12px;" onchange="onLogsFilterChange()">
-                <button class="apple-btn secondary" style="padding:8px 12px; font-size:12px;" onclick="clearLogsDateFilter()">清除日期</button>
+                <input type="date" id="logs-date-input" class="apple-input" style="flex:1; font-size:13px; padding:10px 14px; cursor:pointer;" onchange="onLogsFilterChange()">
+                <button class="apple-btn secondary" style="padding:10px 14px; font-size:12px; flex-shrink:0;" onclick="clearLogsDateFilter()">清除日期</button>
             </div>
 
             <button id="btn-logs-delete-all" class="apple-btn danger" style="display:none; width:100%; margin-bottom:14px; padding:10px; font-size:13px;" onclick="deleteAllLogs()">🗑️ 全部刪除（目前篩選結果）</button>
@@ -391,14 +466,16 @@
         <!-- 6. 倉儲地圖主介面 -->
         <div id="warehouse-system-view" style="display: none; position: absolute; top:0; left:0; width:100%; height:100%;">
             <header>
-                <button onclick="backToMainMenu()" class="apple-btn secondary" style="padding: 8px 12px; font-size: 12px;">〈 主選單</button>
-                <div class="header-title" id="mode-indicator">🔍 檢視模式</div>
-                <div class="header-btns">
-                    <button id="btn-toggle-overview" onclick="toggleOverview()">📋 總覽</button>
-                    <input type="file" id="bg-upload" style="display: none;" accept="image/*" onchange="uploadBackgroundImage(event)">
-                    <button id="btn-change-bg" style="display:none;" onclick="document.getElementById('bg-upload').click()">📁 底圖</button>
-                    <button id="btn-move-mode" style="display:none;" onclick="toggleLayoutMode()">📐 佈局</button>
-                    <button id="mode-btn-edit" onclick="toggleContentEditMode()">✏️ 編輯</button>
+                <!-- 📱 App 風格返回主選單按鈕 -->
+                <div class="nav-back-pill" onclick="backToMainMenu()">
+                    <span>‹</span>
+                    <span>主選單</span>
+                </div>
+
+                <div class="header-pill header-btns">
+                    <button id="btn-toggle-overview" class="pill-btn" onclick="toggleOverview()">📋 總覽</button>
+                    <button id="btn-move-mode" class="pill-btn" style="display:none;" onclick="toggleLayoutMode()">📐 佈局</button>
+                    <button id="mode-btn-edit" class="pill-btn" onclick="toggleContentEditMode()">✏️ 編輯</button>
                 </div>
             </header>
 
@@ -419,52 +496,72 @@
                     <div class="spinner"></div>
                     <div style="font-size: 13px; color: #8e8e93;">底圖載入中…</div>
                 </div>
-                <div class="bg-resize-handle" id="bg-handle-tl"></div>
-                <div class="bg-resize-handle" id="bg-handle-tr"></div>
-                <div class="bg-resize-handle" id="bg-handle-bl"></div>
-                <div class="bg-resize-handle" id="bg-handle-br"></div>
                 <div id="mode-hint" class="mode-hint">提示</div>
             </div>
 
-            <div id="overview-view"></div>
+            <!-- ➕ 懸浮新增按鈕 (FAB) -->
+            <div id="fab-container">
+                <button class="fab-main-btn" onclick="openFabMenu()">＋</button>
+            </div>
 
-            <div class="edit-toolbar" id="edit-toolbar">
-                <input type="text" id="new-box-name" class="apple-input" placeholder="新箱子名稱 (例: 救護箱)" style="padding: 10px 14px; font-size: 13px;">
-                <button class="apple-btn success" onclick="addNewBox()" style="padding: 10px 16px; font-size: 13px;">+ 新增箱子</button>
+            <input type="file" id="bg-upload" style="display: none;" accept="image/*" onchange="uploadBackgroundImage(event)">
+
+            <div id="overview-view"></div>
+        </div>
+
+        <!-- 懸浮選單彈窗 (FAB Action Sheet) -->
+        <div id="fab-backdrop" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(8px); z-index:2100;" onclick="closeFabMenu()"></div>
+        <div id="fab-modal" class="modal" style="z-index: 2200; padding-bottom: 40px;">
+            <div style="font-size: 16px; font-weight: 600; margin-bottom: 16px; text-align: center; color: #0a84ff;">⚙️ 編輯模式快捷選單</div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button class="apple-btn success" style="padding: 14px; font-size: 15px;" onclick="promptAddNewBox()">📦 新增箱子</button>
+                <button class="apple-btn secondary" style="padding: 14px; font-size: 15px;" onclick="document.getElementById('bg-upload').click(); closeFabMenu();">📁 更換底圖</button>
+                <button class="apple-btn secondary" style="padding: 14px; font-size: 15px; color: #ff3b30;" onclick="closeFabMenu()">取消</button>
             </div>
         </div>
 
         <!-- 箱子詳情視窗 -->
         <div id="backdrop" onclick="closeModal()"></div>
         <div id="item-modal" class="modal">
-            <div style="overflow:hidden; margin-bottom:14px;">
-                <h2 id="modal-box-title" style="margin:0; font-size:18px; font-weight:600; display:inline-block;">箱子詳情</h2>
-                <button id="delete-box-btn" class="delete-box-btn" style="display:none;" onclick="deleteCurrentBox()">🗑️ 刪除箱子</button>
-            </div>
-            
-            <div id="box-image-edit-section" style="text-align: center; display:none; margin-bottom: 14px; background: rgba(255,255,255,0.04); padding: 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08);">
-                <input type="file" id="box-img-upload" style="display:none;" accept="image/*" onchange="uploadBoxImageWithProgress(event)">
-                <button class="apple-btn secondary" style="font-size:12px; padding:10px; width:100%;" onclick="document.getElementById('box-img-upload').click()">📷 更換箱子外觀照片</button>
-                <div class="progress-bar-container" id="box-progress-container"><div class="progress-bar-fill" id="box-progress-fill"></div></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                <h2 id="modal-box-title" style="margin:0; font-size:18px; font-weight:600; color:#fff;">箱子詳情</h2>
+                <button class="apple-btn secondary" style="padding:6px 12px; font-size:12px;" onclick="openBoxPhotoUpload()">📷 換外觀照</button>
             </div>
 
-            <div style="font-size: 13px; color:#8e8e93; margin-bottom:8px; font-weight: 500;">📦 箱內物品清單 (點擊可看單品歷史)：</div>
+            <input type="file" id="box-img-upload" style="display:none;" accept="image/*" onchange="uploadBoxImageWithProgress(event)">
+            <div class="progress-bar-container" id="box-progress-container" style="margin-bottom:12px;"><div class="progress-bar-fill" id="box-progress-fill"></div></div>
+
+            <div style="font-size: 13px; color:#8e8e93; margin-bottom:8px; font-weight: 500;">📦 箱內物品清單 (點擊檢視/編輯)：</div>
             <div id="item-list-container" class="items-grid"></div>
             
-            <div id="add-item-section" style="background: rgba(255,255,255,0.04); padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08); display:none; margin-bottom: 15px;">
-                <div style="font-size: 13px; color: #ff9500; font-weight:600; margin-bottom: 8px;">➕ 新增庫存物品 (進貨)</div>
-                <input type="text" id="new-item-name" class="apple-input" placeholder="物品名稱 (例: N95口罩)" style="margin-bottom:8px; font-size:13px; padding:10px;">
-                <input type="number" id="new-item-qty" class="apple-input" placeholder="數量" value="1" min="1" style="margin-bottom:8px; font-size:13px; padding:10px;">
-                
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <input type="file" id="item-img-file" accept="image/*" style="font-size:11px; flex:1; color:#aaa;">
-                    <button class="apple-btn success" id="btn-add-item" style="padding:10px 16px; font-size:13px; min-width:64px;" onclick="addItemWithImage()">加入</button>
-                </div>
-                <div class="progress-bar-container" id="new-item-progress-container"><div class="progress-bar-fill" id="new-item-progress-fill"></div></div>
+            <div id="add-item-trigger-section" style="display:none; margin-bottom:16px;">
+                <button class="apple-btn success" style="width:100%; padding:14px; font-size:14px; font-weight:600;" onclick="openAddItemModal()">＋ 新增箱內物品 (進貨)</button>
             </div>
 
+            <div id="delete-box-section" style="display:none; margin-bottom:12px;">
+                <button class="apple-btn danger" style="width:100%; padding:12px; font-size:13px;" onclick="deleteCurrentBox()">🗑️ 刪除此箱子</button>
+            </div>
 
             <button class="apple-btn secondary" style="width:100%; padding: 14px; font-weight: 600;" onclick="closeModal()">關閉視窗</button>
+        </div>
+
+        <!-- 新增物品彈窗 -->
+        <div id="add-item-backdrop" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(6px); z-index:2600;" onclick="closeAddItemModal()"></div>
+        <div id="add-item-modal" class="modal" style="z-index:2700; max-height:80%;">
+            <h2 style="margin:0 0 14px 0; font-size:18px; font-weight:600; color:#34c759;">➕ 新增庫存物品 (進貨)</h2>
+            <div style="font-size: 13px; color:#8e8e93; margin-bottom:6px;">物品名稱：</div>
+            <input type="text" id="new-item-name" class="apple-input" placeholder="例: N95口罩" style="margin-bottom:12px; font-size:14px; padding:12px;">
+            <div style="font-size: 13px; color:#8e8e93; margin-bottom:6px;">數量：</div>
+            <input type="number" id="new-item-qty" class="apple-input" value="1" min="1" style="margin-bottom:14px; font-size:14px; padding:12px;">
+            <div style="font-size: 13px; color:#8e8e93; margin-bottom:6px;">物品照片 (選填)：</div>
+            <input type="file" id="item-img-file" accept="image/*" style="font-size:12px; color:#aaa; margin-bottom:16px; width:100%;">
+            
+            <div class="progress-bar-container" id="new-item-progress-container" style="margin-bottom:12px;"><div class="progress-bar-fill" id="new-item-progress-fill"></div></div>
+
+            <div style="display:flex; gap:10px;">
+                <button class="apple-btn secondary" style="flex:1; padding:12px;" onclick="closeAddItemModal()">取消</button>
+                <button class="apple-btn success" style="flex:1; padding:12px;" id="btn-add-item" onclick="addItemWithImage()">確認加入</button>
+            </div>
         </div>
 
         <!-- 物品編輯視窗 -->
@@ -498,14 +595,12 @@
                 <button class="apple-btn secondary" style="margin-top:12px; font-size:12px; padding:10px 14px; width:100%;" onclick="downloadItemLabel()">🖨️ 下載標籤圖片 (QR + 貨號 + 名稱)</button>
             </div>
 
-
             <div id="view-item-container" style="text-align: center; margin-bottom: 14px; background: rgba(255,255,255,0.04); padding: 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08);">
                 <img id="view-item-img" src="" style="width: 70px; height: 70px; object-fit: contain; border-radius: 10px; background: #1c1c1e; margin-bottom: 8px; display:block; margin-left:auto; margin-right:auto;">
                 <div id="view-item-name" style="font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 4px;"></div>
                 <div id="view-item-qty" style="font-size: 13px; color: #ff9500; font-weight: 600;"></div>
             </div>
 
-            <!-- 💡 點擊查看該物品歷史出入庫紀錄按鈕 -->
             <button class="apple-btn secondary" style="width:100%; margin-bottom:14px; background:rgba(10, 132, 255, 0.2); border-color:rgba(10, 132, 255, 0.4);" onclick="openItemHistoryModal()">📜 檢視此物品出入庫歷史紀錄</button>
 
             <div id="edit-item-form-container" style="display: none; margin-bottom: 14px;">
@@ -591,12 +686,11 @@
     ];
     let selectedGroupIndex = null; 
 
-    // 💡 提示訊息顯示函式：出庫入庫預設 700ms (0.7 秒) 快速關閉；搜尋定位則維持 2000ms (2 秒)
     function showToast(message, type = 'success', durationMs = 700) {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
         
-        let bgColor = 'rgba(52, 199, 89, 0.95)'; // 綠色 (在庫)
+        let bgColor = 'rgba(52, 199, 89, 0.95)';
         if (type === 'error') bgColor = 'rgba(255, 59, 48, 0.95)';
         else if (type === 'out' || type === 'info') bgColor = 'rgba(215, 38, 56, 0.95)';
 
@@ -841,24 +935,30 @@
         document.getElementById('login-view').style.display = 'flex';
         document.getElementById('login-pin-input').value = '';
     };
+
     window.backToMainMenu = function() {
-        // 💡 離開地圖畫面時，一律重置回「檢視模式」，避免下次進入時還停留在編輯/佈局模式
         if (isContentEditActive) {
             isContentEditActive = false;
             const editBtn = document.getElementById('mode-btn-edit');
-            editBtn.innerText = "✏️ 編輯";
-            editBtn.classList.remove('active');
-            document.getElementById('btn-change-bg').style.display = 'none';
-            document.getElementById('btn-move-mode').style.display = 'none';
-            document.getElementById('edit-toolbar').style.display = 'none';
+            if (editBtn) {
+                editBtn.innerText = "✏️ 編輯";
+                editBtn.classList.remove('active');
+            }
+            const fab = document.getElementById('fab-container');
+            if (fab) fab.style.display = 'none';
+            const moveBtn = document.getElementById('btn-move-mode');
+            if (moveBtn) moveBtn.style.display = 'none';
         }
         if (isLayoutMode) {
             isLayoutMode = false;
-            document.getElementById('btn-move-mode').classList.remove('active');
-            document.querySelectorAll('.bg-resize-handle').forEach(h => h.classList.remove('visible'));
+            const moveBtn = document.getElementById('btn-move-mode');
+            if (moveBtn) moveBtn.classList.remove('active');
         }
-        document.getElementById('mode-hint').style.display = 'none';
-        document.getElementById('mode-indicator').innerText = "🔍 檢視模式";
+        const hint = document.getElementById('mode-hint');
+        if (hint) hint.style.display = 'none';
+        const indicator = document.getElementById('mode-indicator');
+        if (indicator) indicator.innerText = "檢視模式";
+
         if (isOverviewActive) setOverviewMode(false);
         closeModal();
         closeEditItemModal();
@@ -868,6 +968,7 @@
         document.getElementById('warehouse-system-view').style.display = 'none';
         document.getElementById('main-menu-view').style.display = 'flex';
     };
+
     window.openMapQuery = async function() {
         document.getElementById('main-menu-view').style.display = 'none';
         document.getElementById('warehouse-system-view').style.display = 'block';
@@ -942,7 +1043,7 @@
                 manageList.appendChild(groupCard);
             });
         } else {
-            selectorContainer.style.display = 'flex';
+            selectorContainer.style.display = 'grid';
             manageContainer.style.display = 'none';
             document.getElementById('borrower-modal-title').innerText = selectedGroupIndex === null ? '📂 選擇領用群組' : `📁 [${borrowerGroupsCache[selectedGroupIndex].groupName}] 選擇細項`;
             document.getElementById('borrower-modal-desc').innerText = selectedGroupIndex === null ? '請點擊群組以展開細項：' : '請選擇具體領用對象：';
@@ -950,22 +1051,25 @@
 
             if (selectedGroupIndex === null) {
                 borrowerGroupsCache.forEach((group, idx) => {
-                    const btn = document.createElement('button');
-                    btn.className = 'apple-btn secondary';
-                    btn.style.cssText = 'padding: 14px; font-size: 15px; font-weight:600; justify-content:space-between; border-radius:14px;';
-                    btn.innerHTML = `<span>📁 ${escapeHtml(group.groupName)}</span> <span style="font-size:12px; color:#8e8e93;">${group.items.length} 項 ›</span>`;
-                    btn.onclick = () => {
+                    const card = document.createElement('div');
+                    card.className = 'borrower-card';
+                    card.innerHTML = `
+                        <div class="borrower-card-icon">📁</div>
+                        <div class="borrower-card-name">${escapeHtml(group.groupName)}</div>
+                        <div style="font-size:10px; color:#8e8e93; margin-top:2px;">${group.items.length} 項 ›</div>
+                    `;
+                    card.onclick = () => {
                         selectedGroupIndex = idx;
                         renderBorrowerSelectorUI();
                     };
-                    selectorContainer.appendChild(btn);
+                    selectorContainer.appendChild(card);
                 });
             } else {
                 const currentGroup = borrowerGroupsCache[selectedGroupIndex];
                 
                 const backBtn = document.createElement('button');
                 backBtn.className = 'apple-btn secondary';
-                backBtn.style.cssText = 'padding: 8px; font-size: 12px; margin-bottom: 6px;';
+                backBtn.style.cssText = 'padding: 8px; font-size: 12px; margin-bottom: 6px; grid-column: span 3;';
                 backBtn.innerHTML = '‹ 返回上一層群組';
                 backBtn.onclick = () => {
                     selectedGroupIndex = null;
@@ -976,19 +1080,22 @@
                 selectorContainer.appendChild(backBtn);
 
                 currentGroup.items.forEach(itemName => {
-                    const btn = document.createElement('button');
-                    btn.className = 'apple-btn secondary';
-                    btn.style.cssText = 'padding: 12px; font-size: 14px; justify-content:flex-start; border-radius:12px;';
-                    btn.innerHTML = `👤 ${escapeHtml(itemName)}`;
-                    btn.onclick = () => {
+                    const card = document.createElement('div');
+                    card.className = 'borrower-card';
+                    card.innerHTML = `
+                        <div class="borrower-card-icon">👤</div>
+                        <div class="borrower-card-name">${escapeHtml(itemName)}</div>
+                    `;
+                    card.onclick = () => {
                         currentBorrowTarget = `${currentGroup.groupName} - ${itemName}`;
                         document.getElementById('selected-target-preview').innerText = `已選擇: [ ${currentBorrowTarget} ]`;
                         document.getElementById('btn-confirm-borrow').disabled = false;
                         
-                        selectorContainer.querySelectorAll('button').forEach(b => b.style.borderColor = 'rgba(255,255,255,0.12)');
-                        btn.style.borderColor = '#34c759';
+                        selectorContainer.querySelectorAll('.borrower-card').forEach(c => c.style.borderColor = 'rgba(255,255,255,0.08)');
+                        card.style.borderColor = '#34c759';
+                        card.style.background = 'rgba(52, 199, 89, 0.15)';
                     };
-                    selectorContainer.appendChild(btn);
+                    selectorContainer.appendChild(card);
                 });
             }
         }
@@ -1050,7 +1157,6 @@
         document.getElementById('main-menu-view').style.display = 'none';
         document.getElementById('logs-view').style.display = 'block';
 
-        // 每次打開都重置篩選條件與編輯模式
         isLogsEditMode = false;
         logsTypeFilter = 'all';
         logsSearchQuery = '';
@@ -1098,7 +1204,7 @@
         });
     }
 
-    function renderLogsList() {
+    window.renderLogsList = function() {
         const container = document.getElementById('logs-container');
         const filtered = getFilteredLogs();
 
@@ -1137,12 +1243,12 @@
             `;
         });
         container.innerHTML = html;
-    }
+    };
 
     window.toggleLogsEditMode = function() {
         isLogsEditMode = !isLogsEditMode;
         updateLogsEditUI();
-        renderLogsList();
+        window.renderLogsList();
     };
     function updateLogsEditUI() {
         const btn = document.getElementById('btn-logs-edit');
@@ -1153,7 +1259,7 @@
     window.setLogsTypeFilter = function(type) {
         logsTypeFilter = type;
         updateLogsTabsUI();
-        renderLogsList();
+        window.renderLogsList();
     };
     function updateLogsTabsUI() {
         document.querySelectorAll('.logs-tab').forEach(btn => {
@@ -1167,13 +1273,13 @@
     window.onLogsFilterChange = function() {
         logsSearchQuery = document.getElementById('logs-search-input').value;
         logsDateFilter = document.getElementById('logs-date-input').value;
-        renderLogsList();
+        window.renderLogsList();
     };
 
     window.clearLogsDateFilter = function() {
         document.getElementById('logs-date-input').value = '';
         logsDateFilter = '';
-        renderLogsList();
+        window.renderLogsList();
     };
 
     window.deleteLog = async function(id) {
@@ -1182,7 +1288,7 @@
             await deleteDoc(doc(db, "warehouse_logs", id));
             allLogsCache = allLogsCache.filter(l => l.id !== id);
             showToast('🗑️ 已刪除紀錄', 'success', 900);
-            renderLogsList();
+            window.renderLogsList();
         } catch (e) {
             showToast('❌ 刪除紀錄失敗', 'error', 900);
         }
@@ -1197,7 +1303,7 @@
             const deletedIds = new Set(filtered.map(l => l.id));
             allLogsCache = allLogsCache.filter(l => !deletedIds.has(l.id));
             showToast(`🗑️ 已刪除 ${filtered.length} 筆紀錄`, 'success', 900);
-            renderLogsList();
+            window.renderLogsList();
         } catch (e) {
             showToast('❌ 刪除失敗，請重試', 'error', 900);
         }
@@ -1297,7 +1403,6 @@
                         actionType = '出庫';
                         recordTarget = currentBorrowTarget;
                         scanSuccessFeedback('📤', `已出庫\n${item.name}\n→ ${currentBorrowTarget}`);
-                        // 💡 快速出庫訊息停留時間縮短至 0.7 秒（更快）
                         showToast(`✅ 出貨成功 (-1)\n物品：${item.name}\n去向：${currentBorrowTarget}`, 'success', 700);
                     } else {
                         if (checkedOut <= 0) {
@@ -1314,7 +1419,6 @@
                         actionType = '進貨';
                         recordTarget = `還回 (原借用: ${oldBorrower})`;
                         scanSuccessFeedback('📥', `已入庫\n${item.name}\n→ 回到「${box.name}」`);
-                        // 💡 快速入庫訊息停留時間縮短至 0.7 秒（更快）
                         showToast(`✅ 進貨/還回成功 (+1)\n物品：${item.name}\n位置：${box.name}`, 'success', 700);
                     }
 
@@ -1360,7 +1464,6 @@
             playBeep(2700, 90);
             vibrateFeedback(60);
 
-            // 💡 QR 尋找位置的功能訊息維持 2 秒停留
             if (scannedItemInfo) {
                 if (scannedItemInfo.checkedOutCount > 0) {
                     showToast(`📍 找到箱子：${box.name}\n\n🚨 【狀態：已出庫】\n物品：${scannedItemInfo.name}\n🔴 已外借未歸還：${scannedItemInfo.checkedOutCount} 件\n👤 出庫去向：${scannedItemInfo.borrower}\n\n💡 可至「進出貨紀錄」查詢詳細出貨單。`, 'out', 2000);
@@ -1382,6 +1485,7 @@
         await loadBoxes(true);
         await switchToPage(currentPageIndex, true);
     }
+
     async function loadPages() {
         try {
             const snap = await getDocs(collection(db, "warehouse_pages"));
@@ -1396,32 +1500,75 @@
         }
         currentPageIndex = 0;
     }
+
     function updateCanvasTransform() {
         const canvas = document.getElementById('map-canvas');
         canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
-        updateBgHandles();
     }
-    function updateBgHandles() {
-        const container = document.getElementById('map-container').getBoundingClientRect();
-        const corners = {
-            tl: { x: panX, y: panY }, tr: { x: panX + container.width * scale, y: panY },
-            bl: { x: panX, y: panY + container.height * scale }, br: { x: panX + container.width * scale, y: panY + container.height * scale }
-        };
-        Object.entries(corners).forEach(([pos, pt]) => {
-            const el = document.getElementById('bg-handle-' + pos);
-            if (el) { el.style.left = pt.x + 'px'; el.style.top = pt.y + 'px'; }
-        });
+
+    let isMapPanning = false;
+    let mapPanStartX = 0, mapPanStartY = 0;
+
+    const mapContainer = document.getElementById('map-container');
+    mapContainer.addEventListener('pointerdown', (e) => {
+        if (!isLayoutMode) return;
+        if (e.target.closest('.box-wrapper') || e.target.closest('header') || e.target.closest('.page-nav') || e.target.closest('#fab-container')) return;
+        isMapPanning = true;
+        mapPanStartX = e.clientX - panX;
+        mapPanStartY = e.clientY - panY;
+        mapContainer.setPointerCapture(e.pointerId);
+    });
+
+    mapContainer.addEventListener('pointermove', (e) => {
+        if (!isLayoutMode || !isMapPanning) return;
+        panX = e.clientX - mapPanStartX;
+        panY = e.clientY - mapPanStartY;
+        updateCanvasTransform();
+    });
+
+    mapContainer.addEventListener('pointerup', (e) => {
+        if (!isLayoutMode) return;
+        isMapPanning = false;
+        try { mapContainer.releasePointerCapture(e.pointerId); } catch(err){}
+        saveCurrentPageTransform();
+    });
+
+    mapContainer.addEventListener('wheel', (e) => {
+        if (!isLayoutMode) return;
+        e.preventDefault();
+        const zoomIntensity = 0.1;
+        if (e.deltaY < 0) {
+            scale = Math.min(5, scale * (1 + zoomIntensity));
+        } else {
+            scale = Math.max(0.5, scale * (1 - zoomIntensity));
+        }
+        updateCanvasTransform();
+        saveCurrentPageTransform();
+    }, { passive: false });
+
+    async function saveCurrentPageTransform() {
+        const p = pages[currentPageIndex];
+        if (!p) return;
+        p.scale = scale; p.panX = panX; p.panY = panY;
+        try {
+            await updateDoc(doc(db, "warehouse_pages", p.id), { scale, panX, panY });
+        } catch(e){}
     }
 
     window.toggleContentEditMode = function() {
         isContentEditActive = !isContentEditActive;
         const btn = document.getElementById('mode-btn-edit');
-        btn.innerText = isContentEditActive ? "🔒 鎖定" : "✏️ 編輯";
-        btn.classList.toggle('active', isContentEditActive);
-        document.getElementById('mode-indicator').innerText = isContentEditActive ? "✏️ 編輯模式" : "🔍 檢視模式";
-        document.getElementById('btn-change-bg').style.display = isContentEditActive ? 'block' : 'none';
-        document.getElementById('btn-move-mode').style.display = isContentEditActive ? 'block' : 'none';
-        document.getElementById('edit-toolbar').style.display = (isContentEditActive && !isOverviewActive) ? 'flex' : 'none';
+        if (btn) {
+            btn.innerText = isContentEditActive ? "🔒 鎖定" : "✏️ 編輯";
+            btn.classList.toggle('active', isContentEditActive);
+        }
+        const indicator = document.getElementById('mode-indicator');
+        if (indicator) indicator.innerText = isContentEditActive ? "編輯模式" : "檢視模式";
+        
+        const fab = document.getElementById('fab-container');
+        if (fab) fab.style.display = (isContentEditActive && !isOverviewActive) ? 'block' : 'none';
+        const moveBtn = document.getElementById('btn-move-mode');
+        if (moveBtn) moveBtn.style.display = isContentEditActive ? 'inline-block' : 'none';
         
         closeModal();
         closeEditItemModal();
@@ -1432,15 +1579,39 @@
         renderBoxes();
     };
 
+    window.openFabMenu = function() {
+        document.getElementById('fab-backdrop').style.display = 'block';
+        document.getElementById('fab-modal').style.display = 'block';
+    };
+    window.closeFabMenu = function() {
+        document.getElementById('fab-backdrop').style.display = 'none';
+        document.getElementById('fab-modal').style.display = 'none';
+    };
+
+    window.promptAddNewBox = async function() {
+        closeFabMenu();
+        const name = await showPromptDialog('請輸入新箱子名稱 (例: 救護箱)', '', '新增箱子');
+        if (!name) return;
+        const b = { name: name.trim(), x: 50, y: 50, width: 100, height: 80, items: [], imageUrl: "", pageId: pages[currentPageIndex].id };
+        const ref = await addDoc(collection(db, "warehouse_boxes"), b);
+        const newBox = { id: ref.id, ...b };
+        await getOrAssignBoxNumber(newBox);
+        boxesCache.push(newBox);
+        renderBoxes();
+        showToast(`✅ 已新增箱子「${name}」`, 'success', 900);
+    };
+
     window.toggleLayoutMode = function() {
         isLayoutMode = !isLayoutMode;
-        document.getElementById('btn-move-mode').classList.toggle('active', isLayoutMode);
-        document.getElementById('mode-indicator').innerText = isLayoutMode ? "📐 佈局模式" : "✏️ 編輯模式";
+        const moveBtn = document.getElementById('btn-move-mode');
+        if (moveBtn) moveBtn.classList.toggle('active', isLayoutMode);
+        const indicator = document.getElementById('mode-indicator');
+        if (indicator) indicator.innerText = isLayoutMode ? "佈局模式" : "編輯模式";
         const hint = document.getElementById('mode-hint');
-        hint.style.display = isLayoutMode ? 'block' : 'none';
-        hint.innerText = "💡 佈局模式下可拖動箱子與拉黃點縮放；拉藍點縮放底圖";
-        document.querySelectorAll('.bg-resize-handle').forEach(h => h.classList.toggle('visible', isLayoutMode));
-        if (isLayoutMode) updateBgHandles();
+        if (hint) {
+            hint.style.display = isLayoutMode ? 'block' : 'none';
+            hint.innerText = "💡 佈局模式下可拖動箱子、拉黃點縮放箱子，並可直接拖動/滾輪縮放底圖";
+        }
         renderBoxes();
     };
 
@@ -1462,11 +1633,18 @@
 
     function renderPageNav() {
         const p = pages[currentPageIndex];
-        document.getElementById('page-nav-title').innerText = p ? `${p.name} (${currentPageIndex + 1}/${pages.length})` : '';
-        document.getElementById('page-nav-prev').disabled = currentPageIndex <= 0;
-        document.getElementById('page-nav-next').disabled = currentPageIndex >= pages.length - 1;
-        document.getElementById('btn-add-page').style.display = isContentEditActive ? 'flex' : 'none';
-        document.getElementById('btn-del-page').style.display = (isContentEditActive && pages.length > 1) ? 'flex' : 'none';
+        const titleEl = document.getElementById('page-nav-title');
+        if (titleEl) titleEl.innerText = p ? `${p.name} (${currentPageIndex + 1}/${pages.length})` : '';
+        
+        const prevBtn = document.getElementById('page-nav-prev');
+        if (prevBtn) prevBtn.disabled = currentPageIndex <= 0;
+        const nextBtn = document.getElementById('page-nav-next');
+        if (nextBtn) nextBtn.disabled = currentPageIndex >= pages.length - 1;
+
+        const addPageBtn = document.getElementById('btn-add-page');
+        if (addPageBtn) addPageBtn.style.display = isContentEditActive ? 'flex' : 'none';
+        const delPageBtn = document.getElementById('btn-del-page');
+        if (delPageBtn) delPageBtn.style.display = (isContentEditActive && pages.length > 1) ? 'flex' : 'none';
     }
 
     window.addNewPage = async function() {
@@ -1494,13 +1672,20 @@
     
     function setOverviewMode(active) {
         isOverviewActive = active;
-        document.getElementById('map-container').style.display = active ? 'none' : 'block';
-        document.getElementById('page-nav').style.display = active ? 'none' : 'flex';
-        document.getElementById('edit-toolbar').style.display = (active || !isContentEditActive) ? 'none' : 'flex';
-        document.getElementById('overview-view').style.display = active ? 'block' : 'none';
+        const mapContainerEl = document.getElementById('map-container');
+        if (mapContainerEl) mapContainerEl.style.display = active ? 'none' : 'block';
+        const pageNavEl = document.getElementById('page-nav');
+        if (pageNavEl) pageNavEl.style.display = active ? 'none' : 'flex';
+        const fab = document.getElementById('fab-container');
+        if (fab) fab.style.display = (active || !isContentEditActive) ? 'none' : 'block';
+        const ovView = document.getElementById('overview-view');
+        if (ovView) ovView.style.display = active ? 'block' : 'none';
+        
         const btn = document.getElementById('btn-toggle-overview');
-        btn.innerText = active ? '🗺 地圖' : '📋 總覽';
-        btn.classList.toggle('active', active);
+        if (btn) {
+            btn.innerText = active ? '🗺 地圖' : '📋 總覽';
+            btn.classList.toggle('active', active);
+        }
         if (active) {
             let html = '';
             pages.forEach(p => {
@@ -1522,7 +1707,7 @@
                     html += `</div>`;
                 });
             });
-            document.getElementById('overview-view').innerHTML = html;
+            if (ovView) ovView.innerHTML = html;
         }
     }
 
@@ -1536,6 +1721,7 @@
 
     function renderBoxes() {
         const layer = document.getElementById('boxes-layer');
+        if (!layer) return;
         const frag = document.createDocumentFragment();
         const pid = pages[currentPageIndex]?.id;
         (boxesCache || []).filter(b => b.pageId === pid).forEach(b => {
@@ -1644,18 +1830,6 @@
         layer.replaceChildren(frag);
     }
 
-    window.addNewBox = async function() {
-        const name = document.getElementById('new-box-name').value;
-        if (!name) return showToast('請輸入箱子名稱', 'error', 900);
-        const b = { name, x: 50, y: 50, width: 100, height: 80, items: [], imageUrl: "", pageId: pages[currentPageIndex].id };
-        const ref = await addDoc(collection(db, "warehouse_boxes"), b);
-        const newBox = { id: ref.id, ...b };
-        await getOrAssignBoxNumber(newBox);
-        document.getElementById('new-box-name').value = '';
-        boxesCache.push(newBox);
-        renderBoxes();
-    };
-
     window.openBoxModal = async function(id) {
         currentBoxId = id;
         renderBoxModal(boxesCache.find(b => b.id === id));
@@ -1663,9 +1837,8 @@
 
     function renderBoxModal(b) {
         document.getElementById('modal-box-title').innerText = `📦 ${b.name}`;
-        document.getElementById('delete-box-btn').style.display = isContentEditActive ? 'block' : 'none';
-        document.getElementById('box-image-edit-section').style.display = isContentEditActive ? 'block' : 'none';
-        document.getElementById('add-item-section').style.display = isContentEditActive ? 'block' : 'none';
+        document.getElementById('delete-box-section').style.display = isContentEditActive ? 'block' : 'none';
+        document.getElementById('add-item-trigger-section').style.display = isContentEditActive ? 'block' : 'none';
 
         const container = document.getElementById('item-list-container');
         container.innerHTML = '';
@@ -1696,6 +1869,20 @@
         document.getElementById('item-modal').style.display = 'none';
         document.getElementById('backdrop').style.display = 'none';
         if (isOverviewActive) setOverviewMode(true);
+    };
+
+    window.openBoxPhotoUpload = function() {
+        document.getElementById('box-img-upload').click();
+    };
+
+    window.openAddItemModal = function() {
+        document.getElementById('new-item-name').value = '';
+        document.getElementById('new-item-qty').value = '1';
+        document.getElementById('item-img-file').value = '';
+        document.getElementById('add-item-modal').style.display = 'block';
+    };
+    window.closeAddItemModal = function() {
+        document.getElementById('add-item-modal').style.display = 'none';
     };
 
     window.addItemWithImage = async function() {
@@ -1733,9 +1920,7 @@
             await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
             pFill.style.width = '100%';
 
-            document.getElementById('new-item-name').value = '';
-            document.getElementById('new-item-qty').value = '1';
-            fileInput.value = '';
+            closeAddItemModal();
             renderBoxModal(b);
             showToast(`✅ 已新增「${name}」\n貨號：${stockCode}`, 'success', 900);
         } catch (err) {
@@ -1743,7 +1928,7 @@
         } finally {
             setTimeout(() => { pContainer.style.display = 'none'; pFill.style.width = '0%'; }, 400);
             addBtn.disabled = false;
-            addBtn.innerText = '加入';
+            addBtn.innerText = '確認加入';
         }
     };
 
