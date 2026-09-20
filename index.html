@@ -1452,6 +1452,7 @@
             if (scannerMode === 'in' || scannerMode === 'out') {
                 if (item) {
                     let unit = unitUid ? item.units.find(u => u.uid === unitUid) : null;
+                    const scannedSpecificUnit = !!unit;
                     // 舊版 QR（無身分碼）：自動挑一件符合狀態的單位頂替
                     if (!unit) unit = item.units.find(u => u.status === (scannerMode === 'out' ? 'in' : 'out'));
 
@@ -1463,6 +1464,14 @@
                         if (!unit) {
                             scanErrorFeedback('⚠️', `庫存已為 0\n無法出庫`);
                             showToast(`⚠️ 出貨失敗\n物品「${item.name}」庫存已為 0！`, 'error', 900);
+                            scanGateUntil = now + SCAN_GATE_MS;
+                            lastScannedCode = scannedText; lastScannedAt = now;
+                            return;
+                        }
+                        // 這件本來就是掃到指定的單位，但它已經是「已出庫」狀態 → 不可重複出庫
+                        if (scannedSpecificUnit && unit.status === 'out') {
+                            scanErrorFeedback('🚫', `${unitLabel}\n已出庫中，無法重複出庫`);
+                            showToast(`🚫 重複掃描\n物品：${item.name} (${unitLabel})\n目前已在「${unit.borrower || '不詳'}」手上，尚未歸還`, 'error', 900);
                             scanGateUntil = now + SCAN_GATE_MS;
                             lastScannedCode = scannedText; lastScannedAt = now;
                             return;
@@ -1482,6 +1491,14 @@
                             lastScannedCode = scannedText; lastScannedAt = now;
                             return;
                         }
+                        // 這件本來就是掃到指定的單位，但它已經是「在庫」狀態 → 不可重複入庫
+                        if (scannedSpecificUnit && unit.status === 'in') {
+                            scanErrorFeedback('🚫', `${unitLabel}\n已在庫中，無法重複入庫`);
+                            showToast(`🚫 重複掃描\n物品：${item.name} (${unitLabel})\n此件本來就在庫中，未曾出庫`, 'error', 900);
+                            scanGateUntil = now + SCAN_GATE_MS;
+                            lastScannedCode = scannedText; lastScannedAt = now;
+                            return;
+                        }
                         const oldBorrower = unit.borrower || '不詳';
                         unit.status = 'in';
                         unit.borrower = '';
@@ -1497,6 +1514,33 @@
                     lastScannedCode = scannedText; lastScannedAt = now;
 
                     await updateDoc(doc(db, "warehouse_boxes", targetBoxId), { items: box.items });
+
+                    // 立即刷新目前畫面上可能開著的箱子清單／物品詳情，不用等重新打開
+                    if (currentBoxId === targetBoxId) {
+                        const boxModalEl = document.getElementById('item-modal');
+                        if (boxModalEl && boxModalEl.style.display === 'block') renderBoxModal(box);
+                        if (editingItemIndex === itemIndex) {
+                            const itemEditModalEl = document.getElementById('item-edit-modal');
+                            if (itemEditModalEl && itemEditModalEl.style.display === 'block') {
+                                renderItemUnitsList(item, box.id, itemIndex);
+                                const statusBanner = document.getElementById('item-status-banner');
+                                const checkedOutNow = Number(item.checkedOutCount) || 0;
+                                const totalUnits = item.units.length;
+                                if (checkedOutNow > 0) {
+                                    statusBanner.style.background = 'rgba(255, 59, 48, 0.15)';
+                                    statusBanner.style.borderColor = 'rgba(255, 59, 48, 0.3)';
+                                    statusBanner.style.color = '#ff3b30';
+                                    statusBanner.innerText = `⚠️ ${item.qty}/${totalUnits} 件在庫，${checkedOutNow} 件已出庫尚未歸還`;
+                                } else {
+                                    statusBanner.style.background = 'rgba(52, 199, 89, 0.15)';
+                                    statusBanner.style.borderColor = 'rgba(52, 199, 89, 0.3)';
+                                    statusBanner.style.color = '#34c759';
+                                    statusBanner.innerText = `🟢 ${totalUnits} 件全數在庫 (無外借)`;
+                                }
+                            }
+                        }
+                    }
+                    if (document.getElementById('overview-view')?.style.display === 'block') setOverviewMode(true);
 
                     try {
                         const nowDate = new Date();
@@ -2356,11 +2400,14 @@
         const listEl = document.getElementById('item-units-list');
         listEl.innerHTML = '';
         it.units.forEach((u, uIdx) => {
+            const isOut = u.status === 'out';
             const row = document.createElement('div');
-            row.style.cssText = 'background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:8px; display:flex; align-items:center; gap:10px;';
+            row.style.cssText = isOut
+                ? 'background:rgba(255,255,255,0.02); border:1px dashed rgba(255,255,255,0.18); border-radius:12px; padding:8px; display:flex; align-items:center; gap:10px; opacity:0.55;'
+                : 'background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:8px; display:flex; align-items:center; gap:10px;';
 
             const qrBox = document.createElement('div');
-            qrBox.style.cssText = 'background:#fff; border-radius:6px; padding:4px; flex-shrink:0; width:56px; height:56px; display:flex; align-items:center; justify-content:center;';
+            qrBox.style.cssText = `background:#fff; border-radius:6px; padding:4px; flex-shrink:0; width:56px; height:56px; display:flex; align-items:center; justify-content:center;${isOut ? ' filter:grayscale(1);' : ''}`;
             row.appendChild(qrBox);
             new QRCode(qrBox, {
                 text: `ITEM_${boxId}_${idx}_${u.uid}`, width: 48, height: 48,
