@@ -1421,10 +1421,13 @@
         if (now < scanGateUntil) return;
         if (scannedText === lastScannedCode && (now - lastScannedAt) < SAME_CODE_COOLDOWN_MS) return;
 
-        if (!boxesCache) {
+        try {
             const snap = await getDocs(collection(db, "warehouse_boxes"));
-            boxesCache = [];
-            snap.forEach(d => boxesCache.push({ id: d.id, ...d.data() }));
+            const fresh = [];
+            snap.forEach(d => fresh.push({ id: d.id, ...d.data() }));
+            boxesCache = fresh;
+        } catch (e) {
+            if (!boxesCache) boxesCache = [];
         }
 
         let targetBoxId = null;
@@ -1432,15 +1435,31 @@
 
         if (scannedText.startsWith('ITEM_')) {
             const parts = scannedText.split('_');
-            targetBoxId = parts[1];
-            const itemIndex = parseInt(parts[2], 10);
+            let itemIndex = parseInt(parts[2], 10);
             const unitUid = parts[3]; // 每一件的專屬身分碼 (舊 QR 沒有此段，會自動 fallback)
 
-            const box = boxesCache.find(b => b.id === targetBoxId);
-            let item = null;
-            if (box && box.items && box.items[itemIndex]) {
-                item = box.items[itemIndex];
-                ensureUnits(item);
+            let box = boxesCache.find(b => b.id === parts[1]);
+            let item = (box && box.items) ? box.items[itemIndex] : null;
+            if (item) ensureUnits(item);
+
+            // 若在原本記錄的箱子/位置找不到這個身分碼 (物品已被搬移到別的箱子)，就全倉庫重新搜尋一次該身分碼
+            if (unitUid && (!item || !item.units.find(u => u.uid === unitUid))) {
+                outerSearch:
+                for (const bx of boxesCache) {
+                    const items = bx.items || [];
+                    for (let i = 0; i < items.length; i++) {
+                        const cand = items[i];
+                        ensureUnits(cand);
+                        if (cand.units.find(u => u.uid === unitUid)) {
+                            box = bx; item = cand; itemIndex = i;
+                            break outerSearch;
+                        }
+                    }
+                }
+            }
+            targetBoxId = box ? box.id : parts[1];
+
+            if (item) {
                 scannedItemInfo = {
                     name: item.name,
                     checkedOutCount: Number(item.checkedOutCount) || 0,
@@ -1821,9 +1840,10 @@
                     
                     (b.items || []).forEach(it => {
                         const checkedOut = Number(it.checkedOutCount) || 0;
+                        const totalUnits = Array.isArray(it.units) && it.units.length ? it.units.length : (Number(it.qty) || 0) + checkedOut;
                         if (checkedOut > 0) {
                             const borrowerText = it.borrower ? ` (已出庫${checkedOut}件 → ${it.borrower})` : ` (已出庫${checkedOut}件)`;
-                            html += `<div class="ov-item checked-out">• ${escapeHtml(it.name)} x${it.qty||1} <span style="font-size:11px; font-weight:650;">${escapeHtml(borrowerText)}</span></div>`;
+                            html += `<div class="ov-item checked-out">• ${escapeHtml(it.name)} ${it.qty||0}/${totalUnits} <span style="font-size:11px; font-weight:650;">${escapeHtml(borrowerText)}</span></div>`;
                         } else {
                             html += `<div class="ov-item">• ${escapeHtml(it.name)} x${it.qty||1}</div>`;
                         }
