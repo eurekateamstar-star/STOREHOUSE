@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -214,6 +213,25 @@
             animation: targetPulse 1.5s infinite;
             background: rgba(255, 59, 48, 0.25) !important;
             border-radius: 10px;
+        }
+
+        .box-name-label {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-top: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.72);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 2px 8px;
+            border-radius: 8px;
+            white-space: nowrap;
+            pointer-events: none;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+            z-index: 55;
         }
 
         .resize-handle {
@@ -469,6 +487,7 @@
 
                 <div class="header-pill header-btns">
                     <button id="btn-toggle-overview" class="pill-btn" onclick="toggleOverview()">📋 總覽</button>
+                    <button id="btn-toggle-box-labels" class="pill-btn" onclick="toggleBoxLabels()">🏷️ 箱名</button>
                     <button id="btn-move-mode" class="pill-btn" style="display:none;" onclick="toggleLayoutMode()">📐 佈局</button>
                     <button id="mode-btn-edit" class="pill-btn" onclick="toggleContentEditMode()">✏️ 編輯</button>
                 </div>
@@ -581,9 +600,9 @@
                     </div>
                     <div style="text-align:left; margin-top:10px;">
                         <div style="display:flex; justify-content:space-between; font-size:11px; color:#8e8e93; margin-bottom:4px;">
-                            <span>標籤－名稱字體大小</span><span id="label-name-font-size-val">46px</span>
+                            <span>標籤－名稱字體大小</span><span id="label-name-font-size-val">80px</span>
                         </div>
-                        <input type="range" id="label-name-font-size" min="20" max="80" value="46" step="2" style="width:100%;" oninput="document.getElementById('label-name-font-size-val').innerText = this.value + 'px'">
+                        <input type="range" id="label-name-font-size" min="20" max="80" value="80" step="2" style="width:100%;" oninput="document.getElementById('label-name-font-size-val').innerText = this.value + 'px'">
                     </div>
                 </div>
 
@@ -619,7 +638,29 @@
                 <button class="apple-btn danger" style="flex:1; padding:12px; font-size:13px; display:none;" id="btn-modal-del" onclick="confirmDeleteEditingItem()">🗑️ 刪除</button>
                 <button class="apple-btn success" style="flex:1; padding:12px; font-size:13px; display:none;" id="btn-modal-save" onclick="saveEditingItem()">💾 儲存修改</button>
             </div>
+            <button class="apple-btn secondary" style="width:100%; padding:12px; font-size:13px; margin-bottom:10px; display:none; background:rgba(10,132,255,0.18); border-color:rgba(10,132,255,0.4);" id="btn-modal-move" onclick="openMoveItemModal()">🔀 搬移至其他箱子</button>
             <button class="apple-btn secondary" style="width:100%; padding:12px; font-size:13px;" onclick="closeEditItemModal()">返回</button>
+        </div>
+
+        <!-- 搬移物品至其他箱子視窗 -->
+        <div id="move-item-backdrop" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:2900;" onclick="closeMoveItemModal()"></div>
+        <div id="move-item-modal" class="modal" style="z-index: 3000; max-height:85%;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <h2 style="margin:0; font-size:18px; font-weight:600; color:#0a84ff;">🔀 搬移物品至其他箱子</h2>
+                <button class="apple-btn secondary" style="padding:6px 12px; font-size:12px;" onclick="closeMoveItemModal()">取消</button>
+            </div>
+            <div style="font-size: 13px; color:#8e8e93; margin-bottom: 14px;" id="move-item-desc">正在搬移「<span id="move-item-name-label"></span>」，請選擇目標箱子：</div>
+
+            <div id="move-item-box-list" style="max-height: 320px; overflow-y: auto; margin-bottom:14px; display:flex; flex-direction:column; gap:14px;"></div>
+
+            <div style="font-size: 13px; color: #34c759; font-weight: 600; margin-bottom: 12px; text-align: center;" id="move-item-target-preview">
+                尚未選擇目標箱子
+            </div>
+
+            <div style="display:flex; gap:10px;">
+                <button class="apple-btn secondary" style="flex:1;" onclick="closeMoveItemModal()">取消</button>
+                <button class="apple-btn success" style="flex:1;" id="btn-confirm-move-item" disabled onclick="confirmMoveItem()">確認搬移</button>
+            </div>
         </div>
 
         <!-- 物品專屬歷史紀錄視窗 -->
@@ -657,6 +698,7 @@
     let isLayoutMode = false;
     let isContentEditActive = false;
     let isOverviewActive = false;
+    let showBoxLabels = false;
     let currentBoxId = null;
     let editingItemIndex = null;
     let scannerMode = 'locate'; 
@@ -1663,6 +1705,13 @@
         return String(str == null ? '' : str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
     }
 
+    window.toggleBoxLabels = function() {
+        showBoxLabels = !showBoxLabels;
+        const btn = document.getElementById('btn-toggle-box-labels');
+        if (btn) btn.classList.toggle('active', showBoxLabels);
+        renderBoxes();
+    };
+
     window.toggleOverview = function() { setOverviewMode(!isOverviewActive); };
     
     function setOverviewMode(active) {
@@ -1739,6 +1788,13 @@
             img.className = 'box-image-hotspot';
             img.src = b.imageUrl || "https://via.placeholder.com/100?text=BOX";
             wrap.appendChild(img);
+
+            if (showBoxLabels) {
+                const label = document.createElement('div');
+                label.className = 'box-name-label';
+                label.innerText = b.name || '未命名箱子';
+                wrap.appendChild(label);
+            }
 
             if (isLayoutMode) {
                 ['tl', 'tr', 'bl', 'br'].forEach(pos => {
@@ -1985,6 +2041,7 @@
 
             document.getElementById('btn-modal-del').style.display = 'block';
             document.getElementById('btn-modal-save').style.display = 'block';
+            document.getElementById('btn-modal-move').style.display = 'block';
         } else {
             document.getElementById('edit-modal-title').innerText = '🏷️ 物品資訊與專屬 QR Code';
             document.getElementById('view-item-container').style.display = 'block';
@@ -1997,12 +2054,137 @@
 
             document.getElementById('btn-modal-del').style.display = 'none';
             document.getElementById('btn-modal-save').style.display = 'none';
+            document.getElementById('btn-modal-move').style.display = 'none';
         }
 
         document.getElementById('item-edit-modal').style.display = 'block';
     };
 
     window.closeEditItemModal = function() { document.getElementById('item-edit-modal').style.display = 'none'; };
+
+    let moveTargetBoxId = null;
+
+    window.openMoveItemModal = function() {
+        const b = boxesCache.find(x => x.id === currentBoxId);
+        if (!b || editingItemIndex === null) return;
+        const it = b.items[editingItemIndex];
+
+        moveTargetBoxId = null;
+        document.getElementById('move-item-name-label').innerText = it.name || '未命名';
+        document.getElementById('move-item-target-preview').innerText = '尚未選擇目標箱子';
+        document.getElementById('btn-confirm-move-item').disabled = true;
+
+        const listEl = document.getElementById('move-item-box-list');
+        listEl.innerHTML = '';
+
+        pages.forEach(p => {
+            const otherBoxesOnPage = (boxesCache || []).filter(bx => bx.pageId === p.id && bx.id !== currentBoxId);
+            if (otherBoxesOnPage.length === 0) return;
+
+            const pageTitle = document.createElement('div');
+            pageTitle.style.cssText = 'font-size:12px; color:#0a84ff; font-weight:700; padding-bottom:6px; border-bottom:1px solid rgba(255,255,255,0.1);';
+            pageTitle.innerText = `📍 ${p.name}`;
+            listEl.appendChild(pageTitle);
+
+            const grid = document.createElement('div');
+            grid.className = 'borrower-grid';
+            grid.style.marginBottom = '0';
+
+            otherBoxesOnPage.forEach(bx => {
+                const card = document.createElement('div');
+                card.className = 'borrower-card';
+                card.dataset.boxId = bx.id;
+                card.innerHTML = `
+                    <div class="borrower-card-icon">📦</div>
+                    <div class="borrower-card-name">${escapeHtml(bx.name)}</div>
+                    <div style="font-size:10px; color:#8e8e93; margin-top:2px;">${(bx.items||[]).length} 項</div>
+                `;
+                card.onclick = () => {
+                    moveTargetBoxId = bx.id;
+                    document.getElementById('move-item-target-preview').innerText = `已選擇目標箱子: [ ${p.name} - ${bx.name} ]`;
+                    document.getElementById('btn-confirm-move-item').disabled = false;
+
+                    listEl.querySelectorAll('.borrower-card').forEach(c => {
+                        c.style.borderColor = 'rgba(255,255,255,0.08)';
+                        c.style.background = 'rgba(44, 44, 46, 0.7)';
+                    });
+                    card.style.borderColor = '#34c759';
+                    card.style.background = 'rgba(52, 199, 89, 0.15)';
+                };
+                grid.appendChild(card);
+            });
+
+            listEl.appendChild(grid);
+        });
+
+        if (!listEl.children.length) {
+            listEl.innerHTML = '<div style="color:#8e8e93; text-align:center; padding:20px;">找不到其他可搬移的箱子</div>';
+        }
+
+        document.getElementById('move-item-backdrop').style.display = 'block';
+        document.getElementById('move-item-modal').style.display = 'block';
+    };
+
+    window.closeMoveItemModal = function() {
+        document.getElementById('move-item-backdrop').style.display = 'none';
+        document.getElementById('move-item-modal').style.display = 'none';
+    };
+
+    window.confirmMoveItem = async function() {
+        if (!moveTargetBoxId) return showToast('請選擇目標箱子', 'error', 900);
+
+        const sourceBox = boxesCache.find(x => x.id === currentBoxId);
+        const targetBox = boxesCache.find(x => x.id === moveTargetBoxId);
+        if (!sourceBox || !targetBox || editingItemIndex === null) return;
+
+        const item = sourceBox.items[editingItemIndex];
+        if (!item) return;
+
+        if (!(await showConfirmDialog(`確定要將「${item.name}」搬移到箱子「${targetBox.name}」嗎？`, '搬移物品'))) return;
+
+        const btn = document.getElementById('btn-confirm-move-item');
+        btn.disabled = true;
+        btn.innerText = '搬移中…';
+
+        try {
+            // 從來源箱子移除
+            sourceBox.items.splice(editingItemIndex, 1);
+            await updateDoc(doc(db, "warehouse_boxes", sourceBox.id), { items: sourceBox.items });
+
+            // 加入目標箱子，並依目標箱子重新產生貨號 (QR code 位置對應目標箱子)
+            targetBox.items = targetBox.items || [];
+            const newIndex = targetBox.items.length;
+            const movedItem = { ...item };
+            movedItem.stockCode = await generateStockCode(targetBox, newIndex);
+            targetBox.items.push(movedItem);
+            await updateDoc(doc(db, "warehouse_boxes", targetBox.id), { items: targetBox.items });
+
+            try {
+                const nowDate = new Date();
+                const timeStr = `${nowDate.getMonth()+1}/${nowDate.getDate()} ${String(nowDate.getHours()).padStart(2,'0')}:${String(nowDate.getMinutes()).padStart(2,'0')}`;
+                await addDoc(collection(db, "warehouse_logs"), {
+                    type: '進貨',
+                    itemName: movedItem.name,
+                    qty: 0,
+                    boxName: targetBox.name,
+                    target: `箱內搬移 (原箱: ${sourceBox.name})`,
+                    timestamp: Date.now(),
+                    timeStr: timeStr
+                });
+            } catch (e) {}
+
+            closeMoveItemModal();
+            closeEditItemModal();
+            renderBoxModal(sourceBox);
+            renderBoxes();
+            showToast(`✅ 已將「${movedItem.name}」搬移至「${targetBox.name}」\n新貨號：${movedItem.stockCode}`, 'success', 1200);
+        } catch (err) {
+            showToast('❌ 搬移失敗，請重試', 'error', 900);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = '確認搬移';
+        }
+    };
 
     window.openItemHistoryModal = async function() {
         const b = boxesCache.find(x => x.id === currentBoxId);
@@ -2139,7 +2321,7 @@
         const stockCode = it.stockCode || '未編號';
 
         const codeFontStart = parseInt(document.getElementById('label-code-font-size').value, 10) || 52;
-        const nameFontStart = parseInt(document.getElementById('label-name-font-size').value, 10) || 46;
+        const nameFontStart = parseInt(document.getElementById('label-name-font-size').value, 10) || 80;
 
         const tempDiv = document.createElement('div');
         tempDiv.style.cssText = 'position:absolute; left:-9999px; top:-9999px;';
