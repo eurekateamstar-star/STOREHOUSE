@@ -217,10 +217,10 @@
 
         .box-name-label {
             position: absolute;
-            top: 100%;
+            bottom: 4%;
             left: 50%;
             transform: translateX(-50%);
-            margin-top: 4px;
+            max-width: 92%;
             font-size: 11px;
             font-weight: 700;
             color: #fff;
@@ -229,6 +229,8 @@
             padding: 2px 8px;
             border-radius: 8px;
             white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
             pointer-events: none;
             text-shadow: 0 1px 2px rgba(0,0,0,0.8);
             z-index: 55;
@@ -587,9 +589,9 @@
             </div>
 
             <div style="text-align: center; margin-bottom: 14px; background: rgba(255,255,255,0.06); padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1);">
-                <div id="qrcode-container" style="display: inline-block; background: #fff; padding: 10px; border-radius: 8px; margin-bottom: 6px;"></div>
-                <div id="item-qr-code-text" style="font-size: 11px; color: #8e8e93; word-break: break-all;"></div>
-                <div id="item-stock-code-text" style="font-size: 14px; color: #ffd60a; font-weight: 700; margin-top: 6px;"></div>
+                <div style="font-size:11px; color:#8e8e93; margin-bottom:10px;">每一件都有自己專屬的 QR Code 身分，可分別掃描出庫／入庫</div>
+                <div id="item-units-list" style="display:flex; flex-direction:column; gap:8px; max-height: 300px; overflow-y:auto; text-align:left;"></div>
+                <div id="item-stock-code-text" style="font-size: 13px; color: #ffd60a; font-weight: 700; margin-top: 10px;"></div>
 
                 <div id="label-font-settings-group" style="display: none;">
                     <div style="text-align:left; margin-top:14px;">
@@ -606,7 +608,7 @@
                     </div>
                 </div>
 
-                <button class="apple-btn secondary" style="margin-top:12px; font-size:12px; padding:10px 14px; width:100%;" onclick="downloadItemLabel()">🖨️ 下載標籤圖片 (QR + 貨號 + 名稱)</button>
+                <button class="apple-btn secondary" style="margin-top:12px; font-size:12px; padding:10px 14px; width:100%;" onclick="downloadAllItemLabels()">🖨️ 下載全部標籤 (每件一張獨立 QR)</button>
             </div>
 
             <div id="view-item-container" style="text-align: center; margin-bottom: 14px; background: rgba(255,255,255,0.04); padding: 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08);">
@@ -703,6 +705,32 @@
     let editingItemIndex = null;
     let scannerMode = 'locate'; 
     let currentBorrowTarget = ''; 
+
+    // ===== 個別物品身分 (每件一組 QR) =====
+    function makeUid() {
+        return (Math.random().toString(36).slice(2, 6) + Date.now().toString(36).slice(-4)).toUpperCase();
+    }
+    // 確保 item.units 存在：每一件實體物品都有自己的 uid、狀態 (in/out) 與借用人
+    function ensureUnits(item) {
+        if (!Array.isArray(item.units) || item.units.length === 0) {
+            const inCount = Math.max(0, Number(item.qty) || 0);
+            const outCount = Math.max(0, Number(item.checkedOutCount) || 0);
+            const units = [];
+            for (let i = 0; i < inCount; i++) units.push({ uid: makeUid(), status: 'in', borrower: '' });
+            for (let i = 0; i < outCount; i++) units.push({ uid: makeUid(), status: 'out', borrower: item.borrower || '不詳' });
+            item.units = units;
+        }
+        syncItemCounts(item);
+        return item.units;
+    }
+    // 依 units 陣列回填 qty / checkedOutCount / borrower，讓其餘沿用舊欄位的畫面自動同步
+    function syncItemCounts(item) {
+        const units = item.units || [];
+        item.qty = units.filter(u => u.status === 'in').length;
+        const outUnits = units.filter(u => u.status === 'out');
+        item.checkedOutCount = outUnits.length;
+        item.borrower = outUnits.length ? outUnits[outUnits.length - 1].borrower : '';
+    }
     let html5QrCode = null;
 
     let scale = 1, panX = 0, panY = 0;
@@ -1406,10 +1434,13 @@
             const parts = scannedText.split('_');
             targetBoxId = parts[1];
             const itemIndex = parseInt(parts[2], 10);
+            const unitUid = parts[3]; // 每一件的專屬身分碼 (舊 QR 沒有此段，會自動 fallback)
 
             const box = boxesCache.find(b => b.id === targetBoxId);
+            let item = null;
             if (box && box.items && box.items[itemIndex]) {
-                const item = box.items[itemIndex];
+                item = box.items[itemIndex];
+                ensureUnits(item);
                 scannedItemInfo = {
                     name: item.name,
                     checkedOutCount: Number(item.checkedOutCount) || 0,
@@ -1419,45 +1450,48 @@
             }
 
             if (scannerMode === 'in' || scannerMode === 'out') {
-                if (box && box.items && box.items[itemIndex]) {
-                    const item = box.items[itemIndex];
-                    let currentQty = Number(item.qty) || 0;
-                    let checkedOut = Number(item.checkedOutCount) || 0;
+                if (item) {
+                    let unit = unitUid ? item.units.find(u => u.uid === unitUid) : null;
+                    // 舊版 QR（無身分碼）：自動挑一件符合狀態的單位頂替
+                    if (!unit) unit = item.units.find(u => u.status === (scannerMode === 'out' ? 'in' : 'out'));
+
                     let actionType = '';
                     let recordTarget = '';
+                    let unitLabel = unit ? `第 ${item.units.indexOf(unit) + 1}/${item.units.length} 件` : '';
 
                     if (scannerMode === 'out') {
-                        if (currentQty <= 0) {
+                        if (!unit) {
                             scanErrorFeedback('⚠️', `庫存已為 0\n無法出庫`);
                             showToast(`⚠️ 出貨失敗\n物品「${item.name}」庫存已為 0！`, 'error', 900);
                             scanGateUntil = now + SCAN_GATE_MS;
                             lastScannedCode = scannedText; lastScannedAt = now;
                             return;
                         }
-                        item.qty = currentQty - 1;
-                        item.checkedOutCount = checkedOut + 1;
-                        item.borrower = currentBorrowTarget;
+                        unit.status = 'out';
+                        unit.borrower = currentBorrowTarget;
+                        unit.outAt = Date.now();
                         actionType = '出庫';
                         recordTarget = currentBorrowTarget;
-                        scanSuccessFeedback('📤', `已出庫\n${item.name}\n→ ${currentBorrowTarget}`);
-                        showToast(`✅ 出貨成功 (-1)\n物品：${item.name}\n去向：${currentBorrowTarget}`, 'success', 700);
+                        scanSuccessFeedback('📤', `已出庫\n${item.name} (${unitLabel})\n→ ${currentBorrowTarget}`);
+                        showToast(`✅ 出貨成功\n物品：${item.name} (${unitLabel})\n去向：${currentBorrowTarget}`, 'success', 700);
                     } else {
-                        if (checkedOut <= 0) {
+                        if (!unit) {
                             scanErrorFeedback('⚠️', `此物品目前沒有\n借出紀錄，無法入庫`);
                             showToast(`⚠️ 入庫失敗\n物品「${item.name}」目前沒有借出紀錄！`, 'error', 900);
                             scanGateUntil = now + SCAN_GATE_MS;
                             lastScannedCode = scannedText; lastScannedAt = now;
                             return;
                         }
-                        item.qty = currentQty + 1;
-                        item.checkedOutCount = checkedOut - 1;
-                        const oldBorrower = item.borrower || '不詳';
-                        if (item.checkedOutCount <= 0) item.borrower = '';
+                        const oldBorrower = unit.borrower || '不詳';
+                        unit.status = 'in';
+                        unit.borrower = '';
+                        unit.outAt = null;
                         actionType = '進貨';
                         recordTarget = `還回 (原借用: ${oldBorrower})`;
-                        scanSuccessFeedback('📥', `已入庫\n${item.name}\n→ 回到「${box.name}」`);
-                        showToast(`✅ 進貨/還回成功 (+1)\n物品：${item.name}\n位置：${box.name}`, 'success', 700);
+                        scanSuccessFeedback('📥', `已入庫\n${item.name} (${unitLabel})\n→ 回到「${box.name}」`);
+                        showToast(`✅ 進貨/還回成功\n物品：${item.name} (${unitLabel})\n位置：${box.name}`, 'success', 700);
                     }
+                    syncItemCounts(item);
 
                     scanGateUntil = now + SCAN_GATE_MS;
                     lastScannedCode = scannedText; lastScannedAt = now;
@@ -1473,6 +1507,8 @@
                             qty: 1,
                             boxName: box.name,
                             target: recordTarget,
+                            unitLabel: unitLabel,
+                            unitUid: unit ? unit.uid : '',
                             timestamp: Date.now(),
                             timeStr: timeStr
                         });
@@ -1895,16 +1931,20 @@
         container.innerHTML = '';
         if (b.items && b.items.length > 0) {
             b.items.forEach((it, idx) => {
+                ensureUnits(it);
                 const card = document.createElement('div');
                 const isQtyZero = (Number(it.qty) || 0) === 0;
-                
+                const totalUnits = it.units.length;
+                const checkedOutNow = Number(it.checkedOutCount) || 0;
+                const qtyLabel = checkedOutNow > 0 ? `${it.qty}/${totalUnits} 個` : `${it.qty} 個`;
+
                 card.className = `grid-item-card ${isQtyZero ? 'empty-slot' : ''}`;
                 card.innerHTML = `
                     ${isContentEditActive ? `<button class="grid-item-del" onclick="event.stopPropagation(); deleteItem(${idx})">✕</button>` : ''}
                     <img src="${it.imageUrl || 'https://via.placeholder.com/100?text=No+Img'}" alt="" style="${isQtyZero ? 'opacity: 0.3;' : ''}">
                     <div class="grid-item-name">${escapeHtml(it.name)}</div>
                     ${it.stockCode ? `<div style="font-size:9px; color:#8e8e93; margin-bottom:2px;">${escapeHtml(it.stockCode)}</div>` : ''}
-                    <div class="grid-item-qty" style="${isQtyZero ? 'color: #ff3b30;' : ''}">${isQtyZero ? '已清空' : (it.qty + ' 個')}</div>
+                    <div class="grid-item-qty" style="${isQtyZero ? 'color: #ff3b30;' : ''}">${isQtyZero ? '已清空' : qtyLabel}</div>
                 `;
                 card.onclick = () => openEditItemModal(idx);
                 container.appendChild(card);
@@ -1967,7 +2007,9 @@
                 imageUrl = await getDownloadURL(snap.ref);
             }
 
-            b.items.push({ name, qty: Number(qty), borrower: "", imageUrl, stockCode, checkedOutCount: 0 });
+            const units = [];
+            for (let i = 0; i < Number(qty); i++) units.push({ uid: makeUid(), status: 'in', borrower: '' });
+            b.items.push({ name, qty: Number(qty), borrower: "", imageUrl, stockCode, checkedOutCount: 0, units });
             await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
             pFill.style.width = '100%';
 
@@ -1995,35 +2037,30 @@
         editingItemIndex = idx;
         const b = boxesCache.find(x => x.id === currentBoxId);
         const it = b.items[idx];
+        ensureUnits(it);
 
         if (!it.stockCode) {
             it.stockCode = await generateStockCode(b, idx);
-            await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
         }
+        await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
         document.getElementById('item-stock-code-text').innerText = `貨號: ${it.stockCode}`;
 
         const statusBanner = document.getElementById('item-status-banner');
         const checkedOutNow = Number(it.checkedOutCount) || 0;
+        const totalUnits = it.units.length;
         if (checkedOutNow > 0) {
             statusBanner.style.background = 'rgba(255, 59, 48, 0.15)';
             statusBanner.style.borderColor = 'rgba(255, 59, 48, 0.3)';
             statusBanner.style.color = '#ff3b30';
-            statusBanner.innerText = `⚠️ 已出庫 ${checkedOutNow} 件尚未歸還 (去向: ${it.borrower || '不詳'})`;
+            statusBanner.innerText = `⚠️ ${it.qty}/${totalUnits} 件在庫，${checkedOutNow} 件已出庫尚未歸還`;
         } else {
             statusBanner.style.background = 'rgba(52, 199, 89, 0.15)';
             statusBanner.style.borderColor = 'rgba(52, 199, 89, 0.3)';
             statusBanner.style.color = '#34c759';
-            statusBanner.innerText = `🟢 在庫中 (無外借)`;
+            statusBanner.innerText = `🟢 ${totalUnits} 件全數在庫 (無外借)`;
         }
 
-        const qrCodeContainer = document.getElementById('qrcode-container');
-        qrCodeContainer.innerHTML = '';
-        const itemQrText = `ITEM_${b.id}_${idx}`;
-        document.getElementById('item-qr-code-text').innerText = `掃碼代碼: ${itemQrText}`;
-        new QRCode(qrCodeContainer, {
-            text: itemQrText, width: 120, height: 120,
-            colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H
-        });
+        renderItemUnitsList(it, b.id, idx);
 
         const fontSettingsGroup = document.getElementById('label-font-settings-group');
         fontSettingsGroup.style.display = isContentEditActive ? 'block' : 'none';
@@ -2049,7 +2086,7 @@
             document.getElementById('edit-mode-hint').style.display = 'block';
 
             document.getElementById('view-item-name').innerText = it.name || '未命名';
-            document.getElementById('view-item-qty').innerText = `目前庫存數量: ${it.qty || 0} 個`;
+            document.getElementById('view-item-qty').innerText = `目前庫存數量: ${it.qty || 0} / ${it.units.length} 個`;
             document.getElementById('view-item-img').src = it.imageUrl || 'https://via.placeholder.com/70?text=No+Img';
 
             document.getElementById('btn-modal-del').style.display = 'none';
@@ -2223,6 +2260,7 @@
                         </div>
                         <div style="color:#d1d1d6;">📦 所在箱子：${escapeHtml(l.boxName)}</div>
                         <div style="color:#0a84ff; margin-top:2px;">👤 對象/去向：${escapeHtml(l.target || '未指定')}</div>
+                        ${l.unitLabel ? `<div style="color:#ff9500; margin-top:2px;">🔖 ${escapeHtml(l.unitLabel)}</div>` : ''}
                     </div>
                 `;
             });
@@ -2313,93 +2351,158 @@
         }
     };
 
-    window.downloadItemLabel = function() {
+    // 畫出「每一件都有獨立 QR」的清單：狀態、借用人、單獨下載標籤
+    window.renderItemUnitsList = function(it, boxId, idx) {
+        const listEl = document.getElementById('item-units-list');
+        listEl.innerHTML = '';
+        it.units.forEach((u, uIdx) => {
+            const row = document.createElement('div');
+            row.style.cssText = 'background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:8px; display:flex; align-items:center; gap:10px;';
+
+            const qrBox = document.createElement('div');
+            qrBox.style.cssText = 'background:#fff; border-radius:6px; padding:4px; flex-shrink:0; width:56px; height:56px; display:flex; align-items:center; justify-content:center;';
+            row.appendChild(qrBox);
+            new QRCode(qrBox, {
+                text: `ITEM_${boxId}_${idx}_${u.uid}`, width: 48, height: 48,
+                colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H
+            });
+
+            const info = document.createElement('div');
+            info.style.cssText = 'flex:1; min-width:0;';
+            const statusColor = u.status === 'out' ? '#ff453a' : '#34c759';
+            const statusText = u.status === 'out' ? `已出庫 → ${escapeHtml(u.borrower || '不詳')}` : '在庫中';
+            info.innerHTML = `
+                <div style="font-size:12px; font-weight:700; color:#fff;">第 ${uIdx + 1} 件 / 共 ${it.units.length} 件</div>
+                <div style="font-size:11px; color:${statusColor}; font-weight:600; margin-top:1px;">${statusText}</div>
+                <div style="font-size:9px; color:#8e8e93; word-break:break-all; margin-top:1px;">身分碼: ${u.uid}</div>
+            `;
+            row.appendChild(info);
+
+            const dlBtn = document.createElement('button');
+            dlBtn.className = 'apple-btn secondary';
+            dlBtn.style.cssText = 'padding:6px 10px; font-size:11px; flex-shrink:0;';
+            dlBtn.innerText = '下載';
+            dlBtn.onclick = () => downloadItemLabel(u.uid);
+            row.appendChild(dlBtn);
+
+            listEl.appendChild(row);
+        });
+    };
+
+    function isIOS() {
+        return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    }
+    function fitFontSize(ctx, text, maxWidth, startPx) {
+        let size = startPx;
+        ctx.font = `bold ${size}px sans-serif`;
+        while (ctx.measureText(text).width > maxWidth && size > 18) {
+            size -= 2;
+            ctx.font = `bold ${size}px sans-serif`;
+        }
+        return size;
+    }
+
+    // 產生並下載「單一件」的專屬標籤 (QR + 貨號 + 名稱 + 件次)，回傳 Promise 方便批次呼叫
+    function generateAndDownloadUnitLabel(uid) {
+        return new Promise((resolve) => {
+            const b = boxesCache.find(x => x.id === currentBoxId);
+            if (!b || editingItemIndex === null) return resolve();
+            const it = b.items[editingItemIndex];
+            const uIdx = it.units.findIndex(u => u.uid === uid);
+            if (uIdx === -1) return resolve();
+
+            const itemQrText = `ITEM_${b.id}_${editingItemIndex}_${uid}`;
+            const stockCode = it.stockCode || '未編號';
+            const unitLabelText = `第 ${uIdx + 1}/${it.units.length} 件`;
+
+            const codeFontStart = parseInt(document.getElementById('label-code-font-size')?.value, 10) || 52;
+            const nameFontStart = parseInt(document.getElementById('label-name-font-size')?.value, 10) || 80;
+
+            const tempDiv = document.createElement('div');
+            tempDiv.style.cssText = 'position:absolute; left:-9999px; top:-9999px;';
+            document.body.appendChild(tempDiv);
+            new QRCode(tempDiv, {
+                text: itemQrText, width: 400, height: 400,
+                colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H
+            });
+
+            const qrSize = 400, padding = 30;
+            const textBlockHeight = Math.max(230, codeFontStart + nameFontStart + 140);
+
+            const renderLabel = (qrSourceEl) => {
+                const canvas = document.createElement('canvas');
+                canvas.width = qrSize + padding * 2;
+                canvas.height = qrSize + padding * 2 + textBlockHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(qrSourceEl, padding, padding, qrSize, qrSize);
+
+                ctx.fillStyle = '#000000';
+                ctx.textAlign = 'center';
+                const maxTextWidth = canvas.width - 40;
+
+                const codeText = `貨號: ${stockCode}`;
+                const codeSize = fitFontSize(ctx, codeText, maxTextWidth, codeFontStart);
+                ctx.fillText(codeText, canvas.width / 2, qrSize + padding + codeSize + 15);
+
+                const nameSize = fitFontSize(ctx, it.name, maxTextWidth, nameFontStart);
+                ctx.fillText(it.name, canvas.width / 2, qrSize + padding + codeSize + nameSize + 50);
+
+                const unitSize = fitFontSize(ctx, unitLabelText, maxTextWidth, Math.round(nameFontStart * 0.5));
+                ctx.fillStyle = '#c0392b';
+                ctx.fillText(unitLabelText, canvas.width / 2, qrSize + padding + codeSize + nameSize + unitSize + 90);
+
+                document.body.removeChild(tempDiv);
+
+                const filename = `${stockCode}_${it.name}_第${uIdx + 1}件.png`;
+                canvas.toBlob((blob) => {
+                    if (!blob) { showToast('❌ 產生標籤圖片失敗，請重試', 'error', 900); return resolve(); }
+                    const url = URL.createObjectURL(blob);
+
+                    if (isIOS()) {
+                        window.open(url, '_blank');
+                    } else {
+                        const link = document.createElement('a');
+                        link.download = filename;
+                        link.href = url;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    }
+                    setTimeout(() => URL.revokeObjectURL(url), 20000);
+                    resolve();
+                }, 'image/png');
+            };
+
+            setTimeout(() => {
+                const qrEl = tempDiv.querySelector('canvas') || tempDiv.querySelector('img');
+                if (!qrEl) { document.body.removeChild(tempDiv); showToast('❌ 產生標籤失敗，請重試', 'error', 900); return resolve(); }
+                if (qrEl.tagName === 'CANVAS' || qrEl.complete) {
+                    renderLabel(qrEl);
+                } else {
+                    qrEl.onload = () => renderLabel(qrEl);
+                }
+            }, 100);
+        });
+    }
+
+    window.downloadItemLabel = async function(uid) {
+        await generateAndDownloadUnitLabel(uid);
+        showToast(isIOS() ? '📱 圖片已在新分頁開啟，請長按圖片並選擇「加入照片」以儲存' : '✅ 標籤圖片已下載，可傳送至標籤機列印', 'success', 900);
+    };
+
+    window.downloadAllItemLabels = async function() {
         const b = boxesCache.find(x => x.id === currentBoxId);
         if (!b || editingItemIndex === null) return;
         const it = b.items[editingItemIndex];
-        const itemQrText = `ITEM_${b.id}_${editingItemIndex}`;
-        const stockCode = it.stockCode || '未編號';
-
-        const codeFontStart = parseInt(document.getElementById('label-code-font-size').value, 10) || 52;
-        const nameFontStart = parseInt(document.getElementById('label-name-font-size').value, 10) || 80;
-
-        const tempDiv = document.createElement('div');
-        tempDiv.style.cssText = 'position:absolute; left:-9999px; top:-9999px;';
-        document.body.appendChild(tempDiv);
-        new QRCode(tempDiv, {
-            text: itemQrText, width: 400, height: 400,
-            colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H
-        });
-
-        const qrSize = 400, padding = 30;
-        const textBlockHeight = Math.max(190, codeFontStart + nameFontStart + 100);
-
-        function fitFontSize(ctx, text, maxWidth, startPx) {
-            let size = startPx;
-            ctx.font = `bold ${size}px sans-serif`;
-            while (ctx.measureText(text).width > maxWidth && size > 18) {
-                size -= 2;
-                ctx.font = `bold ${size}px sans-serif`;
-            }
-            return size;
+        ensureUnits(it);
+        showToast(`⬇️ 開始下載共 ${it.units.length} 張獨立標籤…`, 'info', 900);
+        for (const u of it.units) {
+            await generateAndDownloadUnitLabel(u.uid);
+            await new Promise(r => setTimeout(r, 350));
         }
-
-        function isIOS() {
-            return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-        }
-
-        const renderLabel = (qrSourceEl) => {
-            const canvas = document.createElement('canvas');
-            canvas.width = qrSize + padding * 2;
-            canvas.height = qrSize + padding * 2 + textBlockHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(qrSourceEl, padding, padding, qrSize, qrSize);
-
-            ctx.fillStyle = '#000000';
-            ctx.textAlign = 'center';
-            const maxTextWidth = canvas.width - 40;
-
-            const codeText = `貨號: ${stockCode}`;
-            const codeSize = fitFontSize(ctx, codeText, maxTextWidth, codeFontStart);
-            ctx.fillText(codeText, canvas.width / 2, qrSize + padding + codeSize + 15);
-
-            const nameSize = fitFontSize(ctx, it.name, maxTextWidth, nameFontStart);
-            ctx.fillText(it.name, canvas.width / 2, qrSize + padding + codeSize + nameSize + 50);
-
-            document.body.removeChild(tempDiv);
-
-            const filename = `${stockCode}_${it.name}.png`;
-            canvas.toBlob((blob) => {
-                if (!blob) { showToast('❌ 產生標籤圖片失敗，請重試', 'error', 900); return; }
-                const url = URL.createObjectURL(blob);
-
-                if (isIOS()) {
-                    window.open(url, '_blank');
-                    showToast('📱 圖片已在新分頁開啟，請長按圖片並選擇「加入照片」以儲存成圖檔', 'info', 900);
-                } else {
-                    const link = document.createElement('a');
-                    link.download = filename;
-                    link.href = url;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    showToast('✅ 標籤圖片已下載，可傳送至標籤機列印', 'success', 900);
-                }
-                setTimeout(() => URL.revokeObjectURL(url), 20000);
-            }, 'image/png');
-        };
-
-        setTimeout(() => {
-            const qrEl = tempDiv.querySelector('canvas') || tempDiv.querySelector('img');
-            if (!qrEl) { document.body.removeChild(tempDiv); showToast('❌ 產生標籤失敗，請重試', 'error', 900); return; }
-            if (qrEl.tagName === 'CANVAS' || qrEl.complete) {
-                renderLabel(qrEl);
-            } else {
-                qrEl.onload = () => renderLabel(qrEl);
-            }
-        }, 100);
+        showToast('✅ 全部標籤已下載完成', 'success', 900);
     };
 
     window.saveEditingItem = async function() {
@@ -2410,8 +2513,21 @@
         if (!newName) return showToast('請輸入物品名稱', 'error', 900);
         if (isNaN(newQty) || newQty < 0) return showToast('數量必須為 0 或正整數', 'error', 900);
 
-        b.items[editingItemIndex].name = newName;
-        b.items[editingItemIndex].qty = newQty;
+        const it = b.items[editingItemIndex];
+        ensureUnits(it);
+        it.name = newName;
+
+        // 依新的「在庫數量」增減獨立單位 (每件都有自己的 QR 身分)，已出庫中的單位不受影響
+        const diff = newQty - it.qty;
+        if (diff > 0) {
+            for (let i = 0; i < diff; i++) it.units.push({ uid: makeUid(), status: 'in', borrower: '' });
+        } else if (diff < 0) {
+            let toRemove = -diff;
+            for (let i = it.units.length - 1; i >= 0 && toRemove > 0; i--) {
+                if (it.units[i].status === 'in') { it.units.splice(i, 1); toRemove--; }
+            }
+        }
+        syncItemCounts(it);
 
         await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
         closeEditItemModal();
