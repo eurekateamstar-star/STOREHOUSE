@@ -1557,10 +1557,23 @@
     function renderLookupTargetChips() {
         const el = document.getElementById('lookup-target-chips');
         el.innerHTML = '';
-        let any = false;
+        if (!borrowerGroupsCache.length) {
+            el.innerHTML = `<div style="color:#8e8e93; font-size:12px;">尚未設定領用群組</div>`;
+            return;
+        }
         borrowerGroupsCache.forEach(g => {
+            const groupWrap = document.createElement('div');
+            groupWrap.className = 'lookup-group-wrap';
+            groupWrap.style.cssText = 'margin-bottom:14px;';
+
+            const title = document.createElement('div');
+            title.style.cssText = 'font-size:12px; font-weight:700; color:#0a84ff; margin-bottom:6px;';
+            title.innerText = `📁 ${g.groupName}（${(g.items || []).length}）`;
+            groupWrap.appendChild(title);
+
+            const chipsRow = document.createElement('div');
+            chipsRow.style.cssText = 'display:flex; flex-wrap:wrap;';
             (g.items || []).forEach(itemName => {
-                any = true;
                 const target = `${g.groupName} - ${itemName}`;
                 const btn = document.createElement('button');
                 btn.className = 'apple-btn secondary lookup-chip';
@@ -1572,16 +1585,23 @@
                     btn.classList.add('active-chip');
                     renderLookupTargetResults(target);
                 };
-                el.appendChild(btn);
+                chipsRow.appendChild(btn);
             });
+            groupWrap.appendChild(chipsRow);
+            el.appendChild(groupWrap);
         });
-        if (!any) el.innerHTML = `<div style="color:#8e8e93; font-size:12px;">尚未設定領用群組</div>`;
     }
 
     window.onLookupTargetFilterChange = function() {
         const q = document.getElementById('lookup-target-search-input').value.trim().toLowerCase();
-        document.querySelectorAll('.lookup-chip').forEach(b => {
-            b.style.display = (!q || (b.dataset.name || '').includes(q)) ? '' : 'none';
+        document.querySelectorAll('.lookup-group-wrap').forEach(wrap => {
+            let anyVisible = false;
+            wrap.querySelectorAll('.lookup-chip').forEach(b => {
+                const match = !q || (b.dataset.name || '').includes(q);
+                b.style.display = match ? '' : 'none';
+                if (match) anyVisible = true;
+            });
+            wrap.style.display = anyVisible ? '' : 'none';
         });
     };
 
