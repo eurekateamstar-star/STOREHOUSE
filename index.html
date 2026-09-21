@@ -277,6 +277,13 @@
         .log-header { display: flex; justify-content: space-between; margin-bottom: 6px; font-weight: 600; }
         .log-time { font-size: 11px; color: #8e8e93; font-weight: normal; }
 
+        #lookup-view {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 2500; padding: 24px 20px; overflow-y: auto;
+        }
+        .lookup-section-title { font-size: 13px; font-weight: 700; color: #8e8e93; margin: 18px 0 8px; }
+        .lookup-chip { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: #fff; }
+        .lookup-chip.active-chip { background: #0a84ff !important; border-color: #0a84ff !important; }
+
         .modal {
             display: none; position: absolute; bottom: 0; left: 0; width: 100%; max-height: 90%;
             background: rgba(30, 30, 32, 0.95); backdrop-filter: blur(40px); color: #fff;
@@ -394,6 +401,11 @@
                     <div class="menu-card-title">進出貨紀錄</div>
                     <div class="menu-card-desc">檢視時間與對象</div>
                 </div>
+                <div class="menu-card" onclick="openLookupView()">
+                    <div class="menu-card-icon">🔎</div>
+                    <div class="menu-card-title">物品／去處查詢</div>
+                    <div class="menu-card-desc">搜尋物品在哪、查某去處手上有什麼</div>
+                </div>
                 <div class="menu-card" onclick="openMapQuery()" style="grid-column: span 2;">
                     <div class="menu-card-icon">🗺️</div>
                     <div class="menu-card-title">平面圖與全庫存總覽</div>
@@ -476,6 +488,21 @@
             <div id="logs-container">
                 <div style="color: #8e8e93; text-align: center; padding: 20px;">載入中…</div>
             </div>
+        </div>
+
+        <div id="lookup-view">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-top: 10px;">
+                <div style="font-size: 20px; font-weight: 700;">🔎 物品／去處查詢</div>
+                <button onclick="closeLookupView()" class="apple-btn secondary" style="padding: 8px 14px; font-size: 13px;">返回</button>
+            </div>
+
+            <input type="text" id="lookup-search-input" class="apple-input" placeholder="🔍 輸入物品名稱，例如：止血帶" style="margin-bottom:6px; font-size:13px; padding:10px 14px;" oninput="onLookupSearchInput()">
+            <div id="lookup-item-results"></div>
+
+            <div class="lookup-section-title">📍 依去處查詢（點選查看目前手上有什麼）</div>
+            <div id="lookup-target-chips" style="display:flex; flex-wrap:wrap;"></div>
+            <div id="lookup-target-title" style="font-size:13px; color:#8e8e93; margin:10px 0 8px;">👆 點選上方去處，查看目前手上有哪些物品</div>
+            <div id="lookup-target-results"></div>
         </div>
 
         <!-- 6. 倉儲地圖主介面 -->
@@ -1377,6 +1404,148 @@
     window.closeLogsView = function() {
         document.getElementById('logs-view').style.display = 'none';
         document.getElementById('main-menu-view').style.display = 'flex';
+    };
+
+    // ===== 物品／去處查詢 =====
+    window.openLookupView = function() {
+        document.getElementById('main-menu-view').style.display = 'none';
+        document.getElementById('lookup-view').style.display = 'block';
+        document.getElementById('lookup-search-input').value = '';
+        document.getElementById('lookup-item-results').innerHTML = '';
+        renderLookupTargetChips();
+        renderLookupTargetResults(null);
+    };
+
+    window.closeLookupView = function() {
+        document.getElementById('lookup-view').style.display = 'none';
+        document.getElementById('main-menu-view').style.display = 'flex';
+    };
+
+    window.onLookupSearchInput = function() {
+        const q = document.getElementById('lookup-search-input').value.trim();
+        const resultsEl = document.getElementById('lookup-item-results');
+        resultsEl.innerHTML = '';
+        if (!q) return;
+
+        if (!boxesCache) {
+            resultsEl.innerHTML = `<div style="color:#8e8e93; text-align:center; padding:16px; font-size:13px;">資料載入中，請稍後再試…</div>`;
+            return;
+        }
+
+        const matches = [];
+        boxesCache.forEach(b => {
+            (b.items || []).forEach(it => {
+                if (it.name && it.name.toLowerCase().includes(q.toLowerCase())) {
+                    ensureUnits(it);
+                    matches.push({ box: b, item: it });
+                }
+            });
+        });
+
+        if (matches.length === 0) {
+            resultsEl.innerHTML = `<div style="color:#8e8e93; text-align:center; padding:16px; font-size:13px;">找不到符合「${escapeHtml(q)}」的物品</div>`;
+            return;
+        }
+
+        matches.forEach(m => {
+            const checkedOut = Number(m.item.checkedOutCount) || 0;
+            const total = m.item.units.length;
+            const pageName = pages.find(p => p.id === m.box.pageId)?.name || '未知位置';
+            const statusHtml = checkedOut > 0
+                ? `<div style="font-size:12px; color:#ff453a; margin-top:2px;">🔴 ${m.item.qty}/${total} 在庫，已出庫 → ${escapeHtml(m.item.borrower || '不詳')}</div>`
+                : `<div style="font-size:12px; color:#34c759; margin-top:2px;">🟢 ${total} 個全數在庫</div>`;
+
+            const card = document.createElement('div');
+            card.className = 'log-card';
+            card.style.cursor = 'pointer';
+            card.innerHTML = `
+                <div style="font-weight:700; font-size:14px;">${escapeHtml(m.item.name)}</div>
+                <div style="font-size:12px; color:#8e8e93; margin-top:2px;">📍 ${escapeHtml(pageName)} · 📦 ${escapeHtml(m.box.name)}</div>
+                ${statusHtml}
+            `;
+            card.onclick = () => goToBoxFromLookup(m.box.id);
+            resultsEl.appendChild(card);
+        });
+    };
+
+    function renderLookupTargetChips() {
+        const el = document.getElementById('lookup-target-chips');
+        el.innerHTML = '';
+        let any = false;
+        borrowerGroupsCache.forEach(g => {
+            (g.items || []).forEach(itemName => {
+                any = true;
+                const target = `${g.groupName} - ${itemName}`;
+                const btn = document.createElement('button');
+                btn.className = 'apple-btn secondary lookup-chip';
+                btn.style.cssText = 'padding:8px 12px; font-size:12px; margin:0 6px 6px 0;';
+                btn.innerText = itemName;
+                btn.onclick = () => {
+                    document.querySelectorAll('.lookup-chip').forEach(b => b.classList.remove('active-chip'));
+                    btn.classList.add('active-chip');
+                    renderLookupTargetResults(target);
+                };
+                el.appendChild(btn);
+            });
+        });
+        if (!any) el.innerHTML = `<div style="color:#8e8e93; font-size:12px;">尚未設定領用群組</div>`;
+    }
+
+    function renderLookupTargetResults(target) {
+        const titleEl = document.getElementById('lookup-target-title');
+        const el = document.getElementById('lookup-target-results');
+        el.innerHTML = '';
+
+        if (!target) {
+            titleEl.innerText = '👆 點選上方去處，查看目前手上有哪些物品';
+            return;
+        }
+        titleEl.innerText = `📍「${target}」目前持有：`;
+
+        if (!boxesCache) {
+            el.innerHTML = `<div style="color:#8e8e93; text-align:center; padding:16px; font-size:13px;">資料載入中，請稍後再試…</div>`;
+            return;
+        }
+
+        const holdings = [];
+        boxesCache.forEach(b => {
+            (b.items || []).forEach(it => {
+                ensureUnits(it);
+                const count = it.units.filter(u => u.status === 'out' && u.borrower === target).length;
+                if (count > 0) holdings.push({ box: b, item: it, count });
+            });
+        });
+
+        if (holdings.length === 0) {
+            el.innerHTML = `<div style="color:#8e8e93; text-align:center; padding:16px; font-size:13px;">目前沒有領用中的物品</div>`;
+            return;
+        }
+
+        holdings.forEach(h => {
+            const card = document.createElement('div');
+            card.className = 'log-card';
+            card.style.cursor = 'pointer';
+            card.innerHTML = `
+                <div style="font-weight:700; font-size:14px;">${escapeHtml(h.item.name)} <span style="color:#ff453a;">x${h.count}</span></div>
+                <div style="font-size:12px; color:#8e8e93; margin-top:2px;">原位置：📦 ${escapeHtml(h.box.name)}</div>
+            `;
+            card.onclick = () => goToBoxFromLookup(h.box.id);
+            el.appendChild(card);
+        });
+    }
+
+    window.goToBoxFromLookup = async function(boxId) {
+        document.getElementById('lookup-view').style.display = 'none';
+        document.getElementById('main-menu-view').style.display = 'none';
+        document.getElementById('warehouse-system-view').style.display = 'block';
+        if (!boxesCache) await initApp();
+        const box = boxesCache.find(b => b.id === boxId);
+        if (!box) { showToast('❌ 找不到這個箱子（可能已被刪除或搬移）', 'error', 900); return; }
+        const pageIndex = pages.findIndex(p => p.id === box.pageId);
+        if (pageIndex !== -1) await switchToPage(pageIndex, true);
+        highlightedBoxId = box.id;
+        renderBoxes();
+        openBoxModal(box.id);
     };
 
     window.openScanner = function(mode) {
