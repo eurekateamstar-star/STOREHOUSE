@@ -474,6 +474,7 @@
             <div style="display:flex; gap:6px; margin-bottom:10px;" id="logs-type-tabs">
                 <button class="apple-btn secondary logs-tab" data-type="all" onclick="setLogsTypeFilter('all')" style="flex:1; padding:8px; font-size:12px;">全部</button>
                 <button class="apple-btn secondary logs-tab" data-type="出庫" onclick="setLogsTypeFilter('出庫')" style="flex:1; padding:8px; font-size:12px;">📤 出庫</button>
+                <button class="apple-btn secondary logs-tab" data-type="轉交" onclick="setLogsTypeFilter('轉交')" style="flex:1; padding:8px; font-size:12px;">🔄 轉交</button>
                 <button class="apple-btn secondary logs-tab" data-type="進貨" onclick="setLogsTypeFilter('進貨')" style="flex:1; padding:8px; font-size:12px;">📥 進貨</button>
             </div>
 
@@ -1319,7 +1320,7 @@
                 html += `<div style="font-size:12px; color:#0a84ff; font-weight:700; margin:16px 0 8px; padding-bottom:6px; border-bottom:1px solid rgba(255,255,255,0.1);">📅 ${getLogDateLabel(l.timestamp)}</div>`;
                 lastDateKey = dateKey;
             }
-            const badgeColor = l.type === '出庫' ? '#ff3b30' : '#34c759';
+            const badgeColor = l.type === '出庫' ? '#ff3b30' : (l.type === '轉交' ? '#ff9500' : '#34c759');
             html += `
                 <div class="log-card">
                     <div class="log-header">
@@ -1665,21 +1666,32 @@
                             lastScannedCode = scannedText; lastScannedAt = now;
                             return;
                         }
-                        // 這件本來就是掃到指定的單位，但它已經是「已出庫」狀態 → 不可重複出庫
-                        if (scannedSpecificUnit && unit.status === 'out') {
-                            scanErrorFeedback('🚫', `${unitLabel}\n已出庫中，無法重複出庫`);
-                            showToast(`🚫 重複掃描\n物品：${item.name} (${unitLabel})\n目前已在「${unit.borrower || '不詳'}」手上，尚未歸還`, 'error', 900);
-                            scanGateUntil = now + SCAN_GATE_MS;
-                            lastScannedCode = scannedText; lastScannedAt = now;
-                            return;
+                        if (unit.status === 'in') {
+                            // 從倉庫直接出庫給目前選定的對象 (例如：倉庫 → 物資車，或倉庫 → 人員)
+                            unit.status = 'out';
+                            unit.borrower = currentBorrowTarget;
+                            unit.outAt = Date.now();
+                            actionType = '出庫';
+                            recordTarget = currentBorrowTarget;
+                            scanSuccessFeedback('📤', `已出庫\n${item.name} (${unitLabel})\n→ ${currentBorrowTarget}`);
+                            showToast(`✅ 出貨成功\n物品：${item.name} (${unitLabel})\n去向：${currentBorrowTarget}`, 'success', 700);
+                        } else {
+                            // 這件已經在外面了 (例如已在物資車上)，這次掃描視為「轉交」給新的對象 (物資車 → 人 / 人 → 物資車)
+                            const fromWhom = unit.borrower || '不詳';
+                            if (fromWhom === currentBorrowTarget) {
+                                scanErrorFeedback('🚫', `${unitLabel}\n已經在「${fromWhom}」手上\n無需重複操作`);
+                                showToast(`🚫 重複掃描\n物品：${item.name} (${unitLabel})\n目前已經在「${fromWhom}」手上`, 'error', 900);
+                                scanGateUntil = now + SCAN_GATE_MS;
+                                lastScannedCode = scannedText; lastScannedAt = now;
+                                return;
+                            }
+                            unit.borrower = currentBorrowTarget;
+                            unit.outAt = Date.now();
+                            actionType = '轉交';
+                            recordTarget = `${fromWhom} → ${currentBorrowTarget}`;
+                            scanSuccessFeedback('🔄', `已轉交\n${item.name} (${unitLabel})\n${fromWhom} → ${currentBorrowTarget}`);
+                            showToast(`✅ 轉交成功\n物品：${item.name} (${unitLabel})\n${fromWhom} → ${currentBorrowTarget}`, 'success', 700);
                         }
-                        unit.status = 'out';
-                        unit.borrower = currentBorrowTarget;
-                        unit.outAt = Date.now();
-                        actionType = '出庫';
-                        recordTarget = currentBorrowTarget;
-                        scanSuccessFeedback('📤', `已出庫\n${item.name} (${unitLabel})\n→ ${currentBorrowTarget}`);
-                        showToast(`✅ 出貨成功\n物品：${item.name} (${unitLabel})\n去向：${currentBorrowTarget}`, 'success', 700);
                     } else {
                         if (!unit) {
                             scanErrorFeedback('⚠️', `此物品目前沒有\n借出紀錄，無法入庫`);
@@ -2506,7 +2518,7 @@
 
             let html = '';
             itemLogs.forEach(l => {
-                const badgeColor = l.type === '出庫' ? '#ff3b30' : '#34c759';
+                const badgeColor = l.type === '出庫' ? '#ff3b30' : (l.type === '轉交' ? '#ff9500' : '#34c759');
                 html += `
                     <div style="background:rgba(44,44,46,0.65); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:12px; font-size:12px;">
                         <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-weight:600;">
