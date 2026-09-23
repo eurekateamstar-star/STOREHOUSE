@@ -653,20 +653,9 @@
             <div id="consumable-item-panel" style="display:none; text-align: center; margin-bottom: 14px; background: rgba(255,255,255,0.06); padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1);">
                 <div style="font-size:11px; color:#8e8e93; margin-bottom:10px;">耗材只記錄庫存數量與消耗量，不個別追蹤每一件</div>
                 <div id="consumable-qr-container" style="display:inline-block; background:#fff; border-radius:8px; padding:8px; margin-bottom:10px;"></div>
-                <div style="font-size:11px; color:#8e8e93; margin-bottom:12px;">掃這個 QR：出庫模式＝用掉1個／進貨模式＝補貨1個</div>
-                <div style="display:flex; gap:8px; margin-bottom:8px;">
-                    <button class="apple-btn secondary" style="flex:1; padding:10px; font-size:13px;" onclick="quickAdjustConsumable(-1)">➖ 用掉 1 個</button>
-                    <button class="apple-btn secondary" style="flex:1; padding:10px; font-size:13px;" onclick="quickAdjustConsumable(1)">➕ 補貨 1 個</button>
-                </div>
-                <div style="display:flex; gap:8px;">
-                    <button class="apple-btn danger" style="flex:1; padding:10px; font-size:12px;" onclick="customAdjustConsumable('use')">✏️ 輸入用掉數量</button>
-                    <button class="apple-btn success" style="flex:1; padding:10px; font-size:12px;" onclick="customAdjustConsumable('restock')">✏️ 輸入補貨數量</button>
-                </div>
-                <div style="display:flex; gap:8px; margin-top:8px;">
-                    <button class="apple-btn secondary" style="flex:1; padding:10px; font-size:12px; background:rgba(255,149,0,0.15); border-color:rgba(255,149,0,0.3); color:#ff9500;" onclick="startConsumableBatchOut()">🚚 整批出貨給去處</button>
-                    <button class="apple-btn secondary" style="flex:1; padding:10px; font-size:12px; background:rgba(10,132,255,0.15); border-color:rgba(10,132,255,0.3); color:#0a84ff;" onclick="startConsumableBatchReturn()">↩️ 從去處整批歸還</button>
-                </div>
-                <button class="apple-btn secondary" style="margin-top:10px; font-size:12px; padding:10px 14px; width:100%;" onclick="downloadConsumableLabel()">🖨️ 下載標籤圖片</button>
+                <div style="font-size:11px; color:#8e8e93; margin-bottom:4px;">掃這個 QR 進出貨，會跳出視窗輸入這次的數量</div>
+                <div style="font-size:11px; color:#8e8e93;">出庫模式＝出貨給目前選定的去處／進貨模式＝補貨回倉庫</div>
+                <button class="apple-btn secondary" style="margin-top:12px; font-size:12px; padding:10px 14px; width:100%;" onclick="downloadConsumableLabel()">🖨️ 下載標籤圖片</button>
             </div>
 
             <div id="item-stock-code-text" style="font-size: 13px; color: #ffd60a; font-weight: 700; margin: 0 0 14px; text-align:center;"></div>
