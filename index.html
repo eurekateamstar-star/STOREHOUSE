@@ -416,8 +416,8 @@
         </div>
 
         <!-- 3. 領用對象選擇與編輯視窗 -->
-        <div id="borrower-backdrop" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:3500;" onclick="closeBorrowerModal()"></div>
-        <div id="borrower-modal" class="modal" style="z-index: 3600; max-height:85%;">
+        <div id="borrower-backdrop" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:4500;" onclick="closeBorrowerModal()"></div>
+        <div id="borrower-modal" class="modal" style="z-index: 4600; max-height:85%;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                 <h2 style="margin:0; font-size:18px; font-weight:600; color:#0a84ff;" id="borrower-modal-title">📂 選擇領用群組</h2>
                 <button class="apple-btn secondary" style="padding:6px 10px; font-size:11px;" onclick="toggleBorrowerEditMode()" id="btn-edit-groups">✏️ 管理群組</button>
@@ -448,6 +448,10 @@
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0;">
                 <div id="scanner-title" style="font-size: 17px; font-weight: 600;">掃描 QR Code</div>
                 <button onclick="closeScanner()" class="apple-btn secondary" style="padding: 6px 14px; font-size: 13px;">結束掃描</button>
+            </div>
+            <div id="scanner-target-bar" style="display:none; align-items:center; justify-content:space-between; gap:10px; background:rgba(255,149,0,0.14); border:1px solid rgba(255,149,0,0.35); border-radius:12px; padding:12px 14px; margin-bottom:10px;">
+                <div style="font-size:18px; font-weight:800; color:#ff9500; line-height:1.3;">🎯 對象：<span id="scanner-target-name"></span></div>
+                <button onclick="changeScannerTarget()" class="apple-btn secondary" style="padding:8px 14px; font-size:13px; font-weight:700; flex-shrink:0;">🔄 換對象</button>
             </div>
             
             <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative;">
@@ -498,7 +502,8 @@
                 <button onclick="closeLookupView()" class="apple-btn secondary" style="padding: 8px 14px; font-size: 13px;">返回</button>
             </div>
 
-            <input type="text" id="lookup-search-input" class="apple-input" placeholder="🔍 輸入物品名稱，例如：止血帶" style="margin-bottom:6px; font-size:13px; padding:10px 14px;" oninput="onLookupSearchInput()">
+            <input type="text" id="lookup-search-input" class="apple-input" placeholder="🔍 輸入物品名稱，例如：止血帶" style="margin-bottom:8px; font-size:13px; padding:10px 14px;" oninput="onLookupSearchInput()">
+            <div id="lookup-item-chips" style="display:flex; flex-wrap:wrap; margin-bottom:8px;"></div>
             <div id="lookup-item-results"></div>
 
             <div class="lookup-section-title">📍 依去處查詢（點選查看目前手上有什麼）</div>
@@ -599,6 +604,11 @@
             <input type="text" id="new-item-name" class="apple-input" placeholder="例: N95口罩" style="margin-bottom:12px; font-size:14px; padding:12px;">
             <div style="font-size: 13px; color:#8e8e93; margin-bottom:6px;">數量：</div>
             <input type="number" id="new-item-qty" class="apple-input" value="1" min="1" style="margin-bottom:14px; font-size:14px; padding:12px;">
+            <div style="font-size: 13px; color:#8e8e93; margin-bottom:6px;">物品類型：</div>
+            <div style="display:flex; gap:8px; margin-bottom:14px;">
+                <button type="button" class="apple-btn secondary" id="type-btn-durable" style="flex:1; padding:10px 6px; font-size:12px; line-height:1.5;" onclick="setNewItemType('durable')">🔁 耐久品<br><span style="font-size:10px; font-weight:400; opacity:0.85;">每件專屬QR，可借出歸還</span></button>
+                <button type="button" class="apple-btn secondary" id="type-btn-consumable" style="flex:1; padding:10px 6px; font-size:12px; line-height:1.5;" onclick="setNewItemType('consumable')">📦 耗材<br><span style="font-size:10px; font-weight:400; opacity:0.85;">只記數量，用掉就扣除</span></button>
+            </div>
             <div style="font-size: 13px; color:#8e8e93; margin-bottom:6px;">物品照片 (選填)：</div>
             <input type="file" id="item-img-file" accept="image/*" style="font-size:12px; color:#aaa; margin-bottom:16px; width:100%;">
             
@@ -618,10 +628,9 @@
                 🟢 在庫中
             </div>
 
-            <div style="text-align: center; margin-bottom: 14px; background: rgba(255,255,255,0.06); padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1);">
+            <div id="durable-item-panel" style="text-align: center; margin-bottom: 14px; background: rgba(255,255,255,0.06); padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1);">
                 <div style="font-size:11px; color:#8e8e93; margin-bottom:10px;">每一件都有自己專屬的 QR Code 身分，可分別掃描出庫／入庫</div>
                 <div id="item-units-list" style="display:flex; flex-direction:column; gap:8px; max-height: 300px; overflow-y:auto; text-align:left;"></div>
-                <div id="item-stock-code-text" style="font-size: 13px; color: #ffd60a; font-weight: 700; margin-top: 10px;"></div>
 
                 <div id="label-font-settings-group" style="display: none;">
                     <div style="text-align:left; margin-top:14px;">
@@ -640,6 +649,27 @@
 
                 <button class="apple-btn secondary" style="margin-top:12px; font-size:12px; padding:10px 14px; width:100%;" onclick="downloadAllItemLabels()">🖨️ 下載全部標籤 (每件一張獨立 QR)</button>
             </div>
+
+            <div id="consumable-item-panel" style="display:none; text-align: center; margin-bottom: 14px; background: rgba(255,255,255,0.06); padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1);">
+                <div style="font-size:11px; color:#8e8e93; margin-bottom:10px;">耗材只記錄庫存數量與消耗量，不個別追蹤每一件</div>
+                <div id="consumable-qr-container" style="display:inline-block; background:#fff; border-radius:8px; padding:8px; margin-bottom:10px;"></div>
+                <div style="font-size:11px; color:#8e8e93; margin-bottom:12px;">掃這個 QR：出庫模式＝用掉1個／進貨模式＝補貨1個</div>
+                <div style="display:flex; gap:8px; margin-bottom:8px;">
+                    <button class="apple-btn secondary" style="flex:1; padding:10px; font-size:13px;" onclick="quickAdjustConsumable(-1)">➖ 用掉 1 個</button>
+                    <button class="apple-btn secondary" style="flex:1; padding:10px; font-size:13px;" onclick="quickAdjustConsumable(1)">➕ 補貨 1 個</button>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button class="apple-btn danger" style="flex:1; padding:10px; font-size:12px;" onclick="customAdjustConsumable('use')">✏️ 輸入用掉數量</button>
+                    <button class="apple-btn success" style="flex:1; padding:10px; font-size:12px;" onclick="customAdjustConsumable('restock')">✏️ 輸入補貨數量</button>
+                </div>
+                <div style="display:flex; gap:8px; margin-top:8px;">
+                    <button class="apple-btn secondary" style="flex:1; padding:10px; font-size:12px; background:rgba(255,149,0,0.15); border-color:rgba(255,149,0,0.3); color:#ff9500;" onclick="startConsumableBatchOut()">🚚 整批出貨給去處</button>
+                    <button class="apple-btn secondary" style="flex:1; padding:10px; font-size:12px; background:rgba(10,132,255,0.15); border-color:rgba(10,132,255,0.3); color:#0a84ff;" onclick="startConsumableBatchReturn()">↩️ 從去處整批歸還</button>
+                </div>
+                <button class="apple-btn secondary" style="margin-top:10px; font-size:12px; padding:10px 14px; width:100%;" onclick="downloadConsumableLabel()">🖨️ 下載標籤圖片</button>
+            </div>
+
+            <div id="item-stock-code-text" style="font-size: 13px; color: #ffd60a; font-weight: 700; margin: 0 0 14px; text-align:center;"></div>
 
             <div id="view-item-container" style="text-align: center; margin-bottom: 14px; background: rgba(255,255,255,0.04); padding: 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08);">
                 <img id="view-item-img" src="" style="width: 70px; height: 70px; object-fit: contain; border-radius: 10px; background: #1c1c1e; margin-bottom: 8px; display:block; margin-left:auto; margin-right:auto;">
@@ -742,6 +772,7 @@
     }
     // 確保 item.units 存在：每一件實體物品都有自己的 uid、狀態 (in/out) 與借用人
     function ensureUnits(item) {
+        if (item.itemType === 'consumable') return [];
         if (!Array.isArray(item.units) || item.units.length === 0) {
             const inCount = Math.max(0, Number(item.qty) || 0);
             const outCount = Math.max(0, Number(item.checkedOutCount) || 0);
@@ -755,6 +786,7 @@
     }
     // 依 units 陣列回填 qty / checkedOutCount / borrower，讓其餘沿用舊欄位的畫面自動同步
     function syncItemCounts(item) {
+        if (item.itemType === 'consumable') return;
         const units = item.units || [];
         item.qty = units.filter(u => u.status === 'in').length;
         const outUnits = units.filter(u => u.status === 'out');
@@ -1110,12 +1142,19 @@
     };
 
     let isBorrowerEditMode = false;
-    window.openBorrowerModal = function() {
+    let borrowerModalOnConfirm = null; // 若有設定，確認時改呼叫這個 callback，而不是直接開啟掃描器
+
+    window.openBorrowerModal = function(onConfirm) {
         isBorrowerEditMode = false;
         selectedGroupIndex = null;
+        currentBorrowTarget = '';
+        borrowerModalOnConfirm = typeof onConfirm === 'function' ? onConfirm : null;
         renderBorrowerSelectorUI();
         document.getElementById('borrower-backdrop').style.display = 'block';
         document.getElementById('borrower-modal').style.display = 'block';
+        document.getElementById('selected-target-preview').innerText = '尚未選擇對象';
+        document.getElementById('btn-confirm-borrow').disabled = true;
+        document.getElementById('btn-confirm-borrow').innerText = borrowerModalOnConfirm ? '確認選擇' : '確認並開始掃描';
     };
 
     window.closeBorrowerModal = function() {
@@ -1326,8 +1365,27 @@
 
     window.confirmBorrowerAndScan = function() {
         if (!currentBorrowTarget) return showToast('請選擇領用對象', 'error', 900);
+        const target = currentBorrowTarget;
         closeBorrowerModal();
-        openScanner('out');
+        if (borrowerModalOnConfirm) {
+            const cb = borrowerModalOnConfirm;
+            borrowerModalOnConfirm = null;
+            cb(target);
+        } else {
+            openScanner('out');
+        }
+    };
+
+    // 掃描出庫中途要換對象 (例如物資車1 換成 物資車2)，不用先結束掃描、鏡頭也不用重開
+    window.changeScannerTarget = function() {
+        openBorrowerModal((newTarget) => {
+            currentBorrowTarget = newTarget;
+            document.getElementById('scanner-title').innerText = `📤 快速出貨`;
+            const targetBar = document.getElementById('scanner-target-bar');
+            targetBar.style.display = 'flex';
+            document.getElementById('scanner-target-name').innerText = newTarget;
+            showToast(`✅ 對象已切換為「${newTarget}」`, 'success', 900);
+        });
     };
 
     window.openLogsView = async function() {
@@ -1498,6 +1556,7 @@
         document.getElementById('lookup-search-input').value = '';
         document.getElementById('lookup-item-results').innerHTML = '';
         document.getElementById('lookup-target-search-input').value = '';
+        renderLookupItemChips();
         renderLookupTargetChips();
         renderLookupTargetResults(null);
     };
@@ -1507,10 +1566,45 @@
         document.getElementById('main-menu-view').style.display = 'flex';
     };
 
+    // 讓「物品」也能像「去處」一樣直接點選瀏覽，而不是只能打字搜尋
+    function renderLookupItemChips() {
+        const el = document.getElementById('lookup-item-chips');
+        if (!el) return;
+        el.innerHTML = '';
+        if (!boxesCache) return;
+
+        const namesSet = new Set();
+        boxesCache.forEach(b => (b.items || []).forEach(it => { if (it.name) namesSet.add(it.name); }));
+        const names = Array.from(namesSet).sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+
+        if (names.length === 0) {
+            el.innerHTML = `<div style="color:#8e8e93; font-size:12px;">尚無任何物品資料</div>`;
+            return;
+        }
+        names.forEach(name => {
+            const btn = document.createElement('button');
+            btn.className = 'apple-btn secondary lookup-chip';
+            btn.style.cssText = 'padding:8px 12px; font-size:12px; margin:0 6px 6px 0;';
+            btn.innerText = name;
+            btn.onclick = () => {
+                document.getElementById('lookup-search-input').value = name;
+                document.querySelectorAll('#lookup-item-chips .lookup-chip').forEach(b => b.classList.remove('active-chip'));
+                btn.classList.add('active-chip');
+                onLookupSearchInput();
+            };
+            el.appendChild(btn);
+        });
+    }
+
     window.onLookupSearchInput = function() {
         const q = document.getElementById('lookup-search-input').value.trim();
         const resultsEl = document.getElementById('lookup-item-results');
         resultsEl.innerHTML = '';
+
+        // 若輸入框內容跟某個瀏覽按鈕不完全一致 (代表是自己打字的)，取消按鈕的選取狀態
+        const matchingChip = Array.from(document.querySelectorAll('#lookup-item-chips .lookup-chip')).find(b => b.innerText === q);
+        document.querySelectorAll('#lookup-item-chips .lookup-chip').forEach(b => b.classList.toggle('active-chip', b === matchingChip));
+
         if (!q) return;
 
         if (!boxesCache) {
@@ -1534,12 +1628,15 @@
         }
 
         matches.forEach(m => {
-            const checkedOut = Number(m.item.checkedOutCount) || 0;
-            const total = m.item.units.length;
+            const isConsumable = m.item.itemType === 'consumable';
+            const checkedOut = isConsumable ? 0 : (Number(m.item.checkedOutCount) || 0);
+            const total = isConsumable ? (Number(m.item.qty) || 0) : m.item.units.length;
             const pageName = pages.find(p => p.id === m.box.pageId)?.name || '未知位置';
-            const statusHtml = checkedOut > 0
-                ? `<div style="font-size:12px; color:#ff453a; margin-top:2px;">🔴 ${m.item.qty}/${total} 在庫，已出庫 → ${escapeHtml(m.item.borrower || '不詳')}</div>`
-                : `<div style="font-size:12px; color:#34c759; margin-top:2px;">🟢 ${total} 個全數在庫</div>`;
+            const statusHtml = isConsumable
+                ? `<div style="font-size:12px; color:#0a84ff; margin-top:2px;">📦 耗材／庫存 ${total} 個</div>`
+                : checkedOut > 0
+                    ? `<div style="font-size:12px; color:#ff453a; margin-top:2px;">🔴 ${m.item.qty}/${total} 在庫，已出庫 → ${escapeHtml(m.item.borrower || '不詳')}</div>`
+                    : `<div style="font-size:12px; color:#34c759; margin-top:2px;">🟢 ${total} 個全數在庫</div>`;
 
             const card = document.createElement('div');
             card.className = 'log-card';
@@ -1624,6 +1721,11 @@
         const holdings = [];
         boxesCache.forEach(b => {
             (b.items || []).forEach(it => {
+                if (it.itemType === 'consumable') {
+                    const heldQty = (it.holdings && it.holdings[target]) || 0;
+                    if (heldQty > 0) holdings.push({ box: b, item: it, count: heldQty, isConsumable: true });
+                    return;
+                }
                 ensureUnits(it);
                 const count = it.units.filter(u => u.status === 'out' && u.borrower === target).length;
                 if (count > 0) holdings.push({ box: b, item: it, count });
@@ -1640,7 +1742,7 @@
             card.className = 'log-card';
             card.style.cursor = 'pointer';
             card.innerHTML = `
-                <div style="font-weight:700; font-size:14px;">${escapeHtml(h.item.name)} <span style="color:#ff453a;">x${h.count}</span></div>
+                <div style="font-weight:700; font-size:14px;">${escapeHtml(h.item.name)}${h.isConsumable ? ' <span style="font-size:10px; color:#0a84ff;">📦耗材</span>' : ''} <span style="color:#ff453a;">x${h.count}</span></div>
                 <div style="font-size:12px; color:#8e8e93; margin-top:2px;">原位置：📦 ${escapeHtml(h.box.name)}</div>
             `;
             card.onclick = () => goToBoxFromLookup(h.box.id);
@@ -1677,10 +1779,19 @@
         let hint = '請將鏡頭對準 QR Code';
         if (mode === 'locate') { title = '🔍 掃 QR 找位置'; hint = '對準箱子或物品 QR Code 尋找位置'; }
         else if (mode === 'in') { title = '📥 快速進貨 (還回)'; hint = '連續掃描物品 QR Code 進行還回/補貨'; }
-        else if (mode === 'out') { title = `📤 出庫 [對象: ${currentBorrowTarget}]`; hint = '連續掃描物品 QR Code 進行快速出庫'; }
+        else if (mode === 'out') { title = `📤 快速出貨`; hint = '連續掃描物品 QR Code 進行快速出庫'; }
 
         document.getElementById('scanner-title').innerText = title;
         document.getElementById('scanner-hint').innerText = hint;
+
+        const targetBar = document.getElementById('scanner-target-bar');
+        if (mode === 'out' && currentBorrowTarget) {
+            targetBar.style.display = 'flex';
+            document.getElementById('scanner-target-name').innerText = currentBorrowTarget;
+        } else {
+            targetBar.style.display = 'none';
+        }
+
         document.getElementById('scanner-modal').style.display = 'flex';
 
         setTimeout(() => {
@@ -1761,7 +1872,40 @@
             }
 
             if (scannerMode === 'in' || scannerMode === 'out') {
-                if (item) {
+                if (item && item.itemType === 'consumable') {
+                    const currentQty = Number(item.qty) || 0;
+                    if (!item.holdings) item.holdings = {};
+                    if (scannerMode === 'out') {
+                        if (currentQty <= 0) {
+                            scanErrorFeedback('⚠️', `庫存已為 0\n無法再出貨`);
+                            showToast(`⚠️ 失敗\n耗材「${item.name}」庫存已為 0！`, 'error', 900);
+                            return;
+                        }
+                        item.qty = currentQty - 1;
+                        item.holdings[currentBorrowTarget] = (item.holdings[currentBorrowTarget] || 0) + 1;
+                        scanSuccessFeedback('📤', `已出貨 1 個\n${item.name}\n→ ${currentBorrowTarget}`);
+                        showToast(`✅ 出貨 1 個\n${item.name}\n去向：${currentBorrowTarget}\n倉庫剩餘：${item.qty} 個`, 'success', 700);
+                    } else {
+                        item.qty = currentQty + 1;
+                        scanSuccessFeedback('📥', `已補貨 1 個\n${item.name}\n目前：${item.qty} 個`);
+                        showToast(`✅ 補貨 1 個\n${item.name}\n目前庫存：${item.qty} 個`, 'success', 700);
+                    }
+                    await updateDoc(doc(db, "warehouse_boxes", targetBoxId), { items: box.items });
+                    try {
+                        const nowDate = new Date();
+                        const timeStr = `${nowDate.getMonth()+1}/${nowDate.getDate()} ${String(nowDate.getHours()).padStart(2,'0')}:${String(nowDate.getMinutes()).padStart(2,'0')}`;
+                        await addDoc(collection(db, "warehouse_logs"), {
+                            type: scannerMode === 'out' ? '出庫' : '進貨',
+                            itemName: item.name,
+                            qty: 1,
+                            boxName: box.name,
+                            target: scannerMode === 'out' ? (currentBorrowTarget || '') : '補貨/進貨',
+                            timestamp: Date.now(),
+                            timeStr: timeStr
+                        });
+                    } catch (e) {}
+                }
+                else if (item) {
                     let unit = unitUid ? item.units.find(u => u.uid === unitUid) : null;
                     const scannedSpecificUnit = !!unit;
                     // 舊版 QR（無身分碼）：自動挑一件符合狀態的單位頂替
@@ -1923,6 +2067,7 @@
     // 收到即時更新時，重繪目前畫面上有開著的地圖／箱子清單／物品詳情／總覽
     function refreshLiveViews() {
         renderBoxes();
+        if (document.getElementById('lookup-view')?.style.display === 'block') renderLookupItemChips();
         const b = currentBoxId ? (boxesCache || []).find(x => x.id === currentBoxId) : null;
         if (b) {
             const boxModalEl = document.getElementById('item-modal');
@@ -1932,9 +2077,16 @@
                 const itemEditModalEl = document.getElementById('item-edit-modal');
                 if (itemEditModalEl && itemEditModalEl.style.display === 'block') {
                     const it = b.items[editingItemIndex];
-                    ensureUnits(it);
-                    renderItemUnitsList(it, b.id, editingItemIndex);
+                    if (it.itemType === 'consumable') {
+                        renderConsumablePanel(it, b.id, editingItemIndex);
+                    } else {
+                        ensureUnits(it);
+                        renderItemUnitsList(it, b.id, editingItemIndex);
+                    }
                     updateItemStatusBanner(it);
+                    document.getElementById('view-item-qty').innerText = it.itemType === 'consumable'
+                        ? `目前庫存數量: ${it.qty || 0} 個`
+                        : `目前庫存數量: ${it.qty || 0} / ${it.units.length} 個`;
                 }
             }
         }
@@ -1944,6 +2096,29 @@
     function updateItemStatusBanner(it) {
         const statusBanner = document.getElementById('item-status-banner');
         if (!statusBanner) return;
+        if (it.itemType === 'consumable') {
+            const qty = Number(it.qty) || 0;
+            const holdings = it.holdings || {};
+            const totalHeld = Object.values(holdings).reduce((a, v) => a + (Number(v) || 0), 0);
+            if (totalHeld > 0) {
+                const holdingsText = Object.entries(holdings).map(([t, q]) => `${t} x${q}`).join('、');
+                statusBanner.style.background = 'rgba(255, 149, 0, 0.15)';
+                statusBanner.style.borderColor = 'rgba(255, 149, 0, 0.3)';
+                statusBanner.style.color = '#ff9500';
+                statusBanner.innerText = `📦 倉庫庫存 ${qty} 個，另有 ${totalHeld} 個在外：${holdingsText}`;
+            } else if (qty <= 0) {
+                statusBanner.style.background = 'rgba(255, 59, 48, 0.15)';
+                statusBanner.style.borderColor = 'rgba(255, 59, 48, 0.3)';
+                statusBanner.style.color = '#ff3b30';
+                statusBanner.innerText = `⚠️ 庫存已用罄 (0 個)`;
+            } else {
+                statusBanner.style.background = 'rgba(52, 199, 89, 0.15)';
+                statusBanner.style.borderColor = 'rgba(52, 199, 89, 0.3)';
+                statusBanner.style.color = '#34c759';
+                statusBanner.innerText = `📦 耗材／目前庫存：${qty} 個`;
+            }
+            return;
+        }
         const checkedOutNow = Number(it.checkedOutCount) || 0;
         const totalUnits = it.units.length;
         if (checkedOutNow > 0) {
@@ -2327,15 +2502,16 @@
                 ensureUnits(it);
                 const card = document.createElement('div');
                 const isQtyZero = (Number(it.qty) || 0) === 0;
-                const totalUnits = it.units.length;
-                const checkedOutNow = Number(it.checkedOutCount) || 0;
+                const isConsumable = it.itemType === 'consumable';
+                const totalUnits = isConsumable ? (Number(it.qty) || 0) : it.units.length;
+                const checkedOutNow = isConsumable ? 0 : (Number(it.checkedOutCount) || 0);
                 const qtyLabel = checkedOutNow > 0 ? `${it.qty}/${totalUnits} 個` : `${it.qty} 個`;
 
                 card.className = `grid-item-card ${isQtyZero ? 'empty-slot' : ''}`;
                 card.innerHTML = `
                     ${isContentEditActive ? `<button class="grid-item-del" onclick="event.stopPropagation(); deleteItem(${idx})">✕</button>` : ''}
                     <img src="${it.imageUrl || 'https://via.placeholder.com/100?text=No+Img'}" alt="" style="${isQtyZero ? 'opacity: 0.3;' : ''}">
-                    <div class="grid-item-name">${escapeHtml(it.name)}</div>
+                    <div class="grid-item-name">${escapeHtml(it.name)}${isConsumable ? ' <span style="font-size:9px; color:#0a84ff;">📦耗材</span>' : ''}</div>
                     ${it.stockCode ? `<div style="font-size:9px; color:#8e8e93; margin-bottom:2px;">${escapeHtml(it.stockCode)}</div>` : ''}
                     <div class="grid-item-qty" style="${isQtyZero ? 'color: #ff3b30;' : ''}">${isQtyZero ? '已清空' : qtyLabel}</div>
                 `;
@@ -2359,10 +2535,22 @@
         document.getElementById('box-img-upload').click();
     };
 
+    let newItemType = 'durable';
+    window.setNewItemType = function(t) {
+        newItemType = t;
+        const dBtn = document.getElementById('type-btn-durable');
+        const cBtn = document.getElementById('type-btn-consumable');
+        dBtn.style.background = t === 'durable' ? '#0a84ff' : '';
+        dBtn.style.borderColor = t === 'durable' ? '#0a84ff' : '';
+        cBtn.style.background = t === 'consumable' ? '#0a84ff' : '';
+        cBtn.style.borderColor = t === 'consumable' ? '#0a84ff' : '';
+    };
+
     window.openAddItemModal = function() {
         document.getElementById('new-item-name').value = '';
         document.getElementById('new-item-qty').value = '1';
         document.getElementById('item-img-file').value = '';
+        setNewItemType('durable');
         document.getElementById('add-item-modal').style.display = 'block';
     };
     window.closeAddItemModal = function() {
@@ -2400,9 +2588,13 @@
                 imageUrl = await getDownloadURL(snap.ref);
             }
 
-            const units = [];
-            for (let i = 0; i < Number(qty); i++) units.push({ uid: makeUid(), status: 'in', borrower: '' });
-            b.items.push({ name, qty: Number(qty), borrower: "", imageUrl, stockCode, checkedOutCount: 0, units });
+            if (newItemType === 'consumable') {
+                b.items.push({ name, qty: Number(qty), imageUrl, stockCode, itemType: 'consumable' });
+            } else {
+                const units = [];
+                for (let i = 0; i < Number(qty); i++) units.push({ uid: makeUid(), status: 'in', borrower: '' });
+                b.items.push({ name, qty: Number(qty), borrower: "", imageUrl, stockCode, checkedOutCount: 0, units });
+            }
             await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
             pFill.style.width = '100%';
 
@@ -2430,7 +2622,8 @@
         editingItemIndex = idx;
         const b = boxesCache.find(x => x.id === currentBoxId);
         const it = b.items[idx];
-        ensureUnits(it);
+        const isConsumable = it.itemType === 'consumable';
+        if (!isConsumable) ensureUnits(it);
 
         if (!it.stockCode) {
             it.stockCode = await generateStockCode(b, idx);
@@ -2438,15 +2631,22 @@
         await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
         document.getElementById('item-stock-code-text').innerText = `貨號: ${it.stockCode}`;
 
+        document.getElementById('durable-item-panel').style.display = isConsumable ? 'none' : 'block';
+        document.getElementById('consumable-item-panel').style.display = isConsumable ? 'block' : 'none';
+
         updateItemStatusBanner(it);
 
-        renderItemUnitsList(it, b.id, idx);
+        if (isConsumable) {
+            renderConsumablePanel(it, b.id, idx);
+        } else {
+            renderItemUnitsList(it, b.id, idx);
+        }
 
         const fontSettingsGroup = document.getElementById('label-font-settings-group');
-        fontSettingsGroup.style.display = isContentEditActive ? 'block' : 'none';
+        fontSettingsGroup.style.display = (isContentEditActive && !isConsumable) ? 'block' : 'none';
 
         if (isContentEditActive) {
-            document.getElementById('edit-modal-title').innerText = '✏️ 編輯物品資料與 QR Code';
+            document.getElementById('edit-modal-title').innerText = isConsumable ? '✏️ 編輯耗材資料' : '✏️ 編輯物品資料與 QR Code';
             document.getElementById('view-item-container').style.display = 'none';
             document.getElementById('edit-item-form-container').style.display = 'block';
             document.getElementById('edit-mode-hint').style.display = 'none';
@@ -2460,13 +2660,15 @@
             document.getElementById('btn-modal-save').style.display = 'block';
             document.getElementById('btn-modal-move').style.display = 'block';
         } else {
-            document.getElementById('edit-modal-title').innerText = '🏷️ 物品資訊與專屬 QR Code';
+            document.getElementById('edit-modal-title').innerText = isConsumable ? '🏷️ 物品資訊（耗材／消耗品）' : '🏷️ 物品資訊與專屬 QR Code';
             document.getElementById('view-item-container').style.display = 'block';
             document.getElementById('edit-item-form-container').style.display = 'none';
             document.getElementById('edit-mode-hint').style.display = 'block';
 
             document.getElementById('view-item-name').innerText = it.name || '未命名';
-            document.getElementById('view-item-qty').innerText = `目前庫存數量: ${it.qty || 0} / ${it.units.length} 個`;
+            document.getElementById('view-item-qty').innerText = isConsumable
+                ? `目前庫存數量: ${it.qty || 0} 個`
+                : `目前庫存數量: ${it.qty || 0} / ${it.units.length} 個`;
             document.getElementById('view-item-img').src = it.imageUrl || 'https://via.placeholder.com/70?text=No+Img';
 
             document.getElementById('btn-modal-del').style.display = 'none';
@@ -2732,6 +2934,208 @@
     };
 
     // 畫出「每一件都有獨立 QR」的清單：狀態、借用人、單獨下載標籤
+    // ===== 耗材（消耗品）：只記數量與消耗，不建立個別身分 =====
+    window.renderConsumablePanel = function(it, boxId, idx) {
+        const qrEl = document.getElementById('consumable-qr-container');
+        qrEl.innerHTML = '';
+        new QRCode(qrEl, {
+            text: `ITEM_${boxId}_${idx}`, width: 130, height: 130,
+            colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H
+        });
+    };
+
+    function getCurrentEditingConsumable() {
+        const b = boxesCache.find(x => x.id === currentBoxId);
+        if (!b || editingItemIndex === null) return null;
+        const it = b.items[editingItemIndex];
+        return (it && it.itemType === 'consumable') ? it : null;
+    }
+
+    async function applyConsumableBatchTransfer(n, target, direction) {
+        const b = boxesCache.find(x => x.id === currentBoxId);
+        if (!b || editingItemIndex === null) return;
+        const it = b.items[editingItemIndex];
+        if (!it || it.itemType !== 'consumable') return;
+        if (!it.holdings) it.holdings = {};
+
+        let actualN = n;
+        if (direction === 'out') {
+            const currentQty = Number(it.qty) || 0;
+            actualN = Math.min(n, currentQty);
+            it.qty = currentQty - actualN;
+            it.holdings[target] = (it.holdings[target] || 0) + actualN;
+        } else {
+            const heldQty = it.holdings[target] || 0;
+            actualN = Math.min(n, heldQty);
+            it.holdings[target] = heldQty - actualN;
+            if (it.holdings[target] <= 0) delete it.holdings[target];
+            it.qty = (Number(it.qty) || 0) + actualN;
+        }
+
+        await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
+        updateItemStatusBanner(it);
+        renderConsumablePanel(it, b.id, editingItemIndex);
+        document.getElementById('view-item-qty').innerText = `目前庫存數量: ${it.qty || 0} 個`;
+
+        try {
+            const nowDate = new Date();
+            const timeStr = `${nowDate.getMonth()+1}/${nowDate.getDate()} ${String(nowDate.getHours()).padStart(2,'0')}:${String(nowDate.getMinutes()).padStart(2,'0')}`;
+            await addDoc(collection(db, "warehouse_logs"), {
+                type: direction === 'out' ? '出庫' : '進貨',
+                itemName: it.name,
+                qty: actualN,
+                boxName: b.name,
+                target: direction === 'out' ? target : `還回 (原持有: ${target})`,
+                timestamp: Date.now(),
+                timeStr: timeStr
+            });
+        } catch (e) {}
+
+        showToast(`✅ ${direction === 'out' ? '出貨' : '歸還'}成功\n${it.name} x${actualN}\n${direction === 'out' ? '→ ' + target : '← ' + target}`, 'success', 1200);
+    }
+
+    window.startConsumableBatchOut = function() {
+        const it = getCurrentEditingConsumable();
+        if (!it) return;
+        if ((Number(it.qty) || 0) <= 0) { showToast('倉庫庫存已為 0，無法出貨', 'error', 900); return; }
+        openBorrowerModal(async (target) => {
+            const raw = await showPromptDialog(`倉庫庫存 ${it.qty || 0} 個，要出貨多少個給「${target}」？`, '1', '🚚 整批出貨');
+            if (!raw) return;
+            const n = parseInt(raw, 10);
+            if (!n || n <= 0) { showToast('請輸入大於 0 的整數', 'error', 900); return; }
+            await applyConsumableBatchTransfer(n, target, 'out');
+        });
+    };
+
+    window.startConsumableBatchReturn = function() {
+        const it = getCurrentEditingConsumable();
+        if (!it) return;
+        if (!it.holdings || Object.keys(it.holdings).length === 0) {
+            showToast('目前沒有任何去處持有這個耗材', 'error', 1000);
+            return;
+        }
+        openBorrowerModal(async (target) => {
+            const heldQty = (it.holdings && it.holdings[target]) || 0;
+            if (heldQty <= 0) { showToast(`「${target}」目前沒有持有這個耗材`, 'error', 1200); return; }
+            const raw = await showPromptDialog(`「${target}」目前持有 ${heldQty} 個，要歸還多少個？`, String(heldQty), '↩️ 整批歸還');
+            if (!raw) return;
+            const n = parseInt(raw, 10);
+            if (!n || n <= 0) { showToast('請輸入大於 0 的整數', 'error', 900); return; }
+            if (n > heldQty) { showToast(`最多只能歸還 ${heldQty} 個`, 'error', 1200); return; }
+            await applyConsumableBatchTransfer(n, target, 'in');
+        });
+    };
+
+    async function applyConsumableDelta(delta, logType) {
+        const b = boxesCache.find(x => x.id === currentBoxId);
+        if (!b || editingItemIndex === null) return;
+        const it = b.items[editingItemIndex];
+        if (!it || it.itemType !== 'consumable') return;
+
+        const newQty = Math.max(0, (Number(it.qty) || 0) + delta);
+        const actualDelta = newQty - (Number(it.qty) || 0);
+        if (actualDelta === 0) {
+            showToast(delta < 0 ? '⚠️ 庫存已為 0，無法再扣除' : '沒有變化', 'error', 900);
+            return;
+        }
+        it.qty = newQty;
+        await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
+
+        updateItemStatusBanner(it);
+        document.getElementById('view-item-qty').innerText = `目前庫存數量: ${it.qty || 0} 個`;
+
+        try {
+            const nowDate = new Date();
+            const timeStr = `${nowDate.getMonth()+1}/${nowDate.getDate()} ${String(nowDate.getHours()).padStart(2,'0')}:${String(nowDate.getMinutes()).padStart(2,'0')}`;
+            await addDoc(collection(db, "warehouse_logs"), {
+                type: logType,
+                itemName: it.name,
+                qty: Math.abs(actualDelta),
+                boxName: b.name,
+                target: logType === '消耗' ? (currentBorrowTarget || '') : '補貨/進貨',
+                timestamp: Date.now(),
+                timeStr: timeStr
+            });
+        } catch (e) {}
+
+        showToast(`✅ ${logType}成功\n${it.name}：${delta > 0 ? '+' : ''}${actualDelta}\n目前庫存：${it.qty} 個`, 'success', 900);
+    }
+
+    window.quickAdjustConsumable = async function(delta) {
+        await applyConsumableDelta(delta, delta < 0 ? '消耗' : '進貨');
+    };
+
+    window.customAdjustConsumable = async function(mode) {
+        const b = boxesCache.find(x => x.id === currentBoxId);
+        if (!b || editingItemIndex === null) return;
+        const it = b.items[editingItemIndex];
+        const label = mode === 'use' ? '用掉/消耗' : '補貨/進貨';
+        const raw = await showPromptDialog(`目前庫存 ${it.qty || 0} 個，要${label}多少個？`, '1', label);
+        if (!raw) return;
+        const n = parseInt(raw, 10);
+        if (!n || n <= 0) { showToast('請輸入大於 0 的整數', 'error', 900); return; }
+        await applyConsumableDelta(mode === 'use' ? -n : n, mode === 'use' ? '消耗' : '進貨');
+    };
+
+    window.downloadConsumableLabel = async function() {
+        const b = boxesCache.find(x => x.id === currentBoxId);
+        if (!b || editingItemIndex === null) return;
+        const it = b.items[editingItemIndex];
+        const itemQrText = `ITEM_${b.id}_${editingItemIndex}`;
+        const stockCode = it.stockCode || '未編號';
+
+        const tempDiv = document.createElement('div');
+        tempDiv.style.cssText = 'position:absolute; left:-9999px; top:-9999px;';
+        document.body.appendChild(tempDiv);
+        new QRCode(tempDiv, {
+            text: itemQrText, width: 400, height: 400,
+            colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H
+        });
+
+        setTimeout(() => {
+            const qrEl = tempDiv.querySelector('canvas') || tempDiv.querySelector('img');
+            if (!qrEl) { document.body.removeChild(tempDiv); showToast('❌ 產生標籤失敗，請重試', 'error', 900); return; }
+
+            const render = (el) => {
+                const qrSize = 400, padding = 30, textHeight = 220;
+                const canvas = document.createElement('canvas');
+                canvas.width = qrSize + padding * 2;
+                canvas.height = qrSize + padding * 2 + textHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(el, padding, padding, qrSize, qrSize);
+                ctx.fillStyle = '#000000';
+                ctx.textAlign = 'center';
+                ctx.font = 'bold 46px sans-serif';
+                ctx.fillText(`貨號: ${stockCode}`, canvas.width / 2, qrSize + padding + 60);
+                ctx.font = 'bold 70px sans-serif';
+                ctx.fillText(it.name, canvas.width / 2, qrSize + padding + 150);
+                document.body.removeChild(tempDiv);
+
+                canvas.toBlob((blob) => {
+                    if (!blob) { showToast('❌ 產生標籤圖片失敗，請重試', 'error', 900); return; }
+                    const url = URL.createObjectURL(blob);
+                    if (isIOS()) {
+                        window.open(url, '_blank');
+                        showToast('📱 圖片已在新分頁開啟，請長按圖片並選擇「加入照片」以儲存', 'info', 900);
+                    } else {
+                        const link = document.createElement('a');
+                        link.download = `${stockCode}_${it.name}.png`;
+                        link.href = url;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        showToast('✅ 標籤圖片已下載', 'success', 900);
+                    }
+                    setTimeout(() => URL.revokeObjectURL(url), 20000);
+                }, 'image/png');
+            };
+            if (qrEl.tagName === 'CANVAS' || qrEl.complete) render(qrEl);
+            else qrEl.onload = () => render(qrEl);
+        }, 100);
+    };
+
     window.renderItemUnitsList = function(it, boxId, idx) {
         const listEl = document.getElementById('item-units-list');
         listEl.innerHTML = '';
@@ -2897,20 +3301,24 @@
         if (isNaN(newQty) || newQty < 0) return showToast('數量必須為 0 或正整數', 'error', 900);
 
         const it = b.items[editingItemIndex];
-        ensureUnits(it);
         it.name = newName;
 
-        // 依新的「在庫數量」增減獨立單位 (每件都有自己的 QR 身分)，已出庫中的單位不受影響
-        const diff = newQty - it.qty;
-        if (diff > 0) {
-            for (let i = 0; i < diff; i++) it.units.push({ uid: makeUid(), status: 'in', borrower: '' });
-        } else if (diff < 0) {
-            let toRemove = -diff;
-            for (let i = it.units.length - 1; i >= 0 && toRemove > 0; i--) {
-                if (it.units[i].status === 'in') { it.units.splice(i, 1); toRemove--; }
+        if (it.itemType === 'consumable') {
+            it.qty = newQty;
+        } else {
+            ensureUnits(it);
+            // 依新的「在庫數量」增減獨立單位 (每件都有自己的 QR 身分)，已出庫中的單位不受影響
+            const diff = newQty - it.qty;
+            if (diff > 0) {
+                for (let i = 0; i < diff; i++) it.units.push({ uid: makeUid(), status: 'in', borrower: '' });
+            } else if (diff < 0) {
+                let toRemove = -diff;
+                for (let i = it.units.length - 1; i >= 0 && toRemove > 0; i--) {
+                    if (it.units[i].status === 'in') { it.units.splice(i, 1); toRemove--; }
+                }
             }
+            syncItemCounts(it);
         }
-        syncItemCounts(it);
 
         await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
         closeEditItemModal();
