@@ -1875,35 +1875,56 @@
                 if (item && item.itemType === 'consumable') {
                     const currentQty = Number(item.qty) || 0;
                     if (!item.holdings) item.holdings = {};
+
                     if (scannerMode === 'out') {
                         if (currentQty <= 0) {
                             scanErrorFeedback('⚠️', `庫存已為 0\n無法再出貨`);
                             showToast(`⚠️ 失敗\n耗材「${item.name}」庫存已為 0！`, 'error', 900);
                             return;
                         }
-                        item.qty = currentQty - 1;
-                        item.holdings[currentBorrowTarget] = (item.holdings[currentBorrowTarget] || 0) + 1;
-                        scanSuccessFeedback('📤', `已出貨 1 個\n${item.name}\n→ ${currentBorrowTarget}`);
-                        showToast(`✅ 出貨 1 個\n${item.name}\n去向：${currentBorrowTarget}\n倉庫剩餘：${item.qty} 個`, 'success', 700);
+                        const raw = await showPromptDialog(`倉庫庫存 ${currentQty} 個，這次要出貨多少個給「${currentBorrowTarget}」？`, '1', '📤 掃描出庫數量');
+                        if (!raw) return;
+                        const n = parseInt(raw, 10);
+                        if (!n || n <= 0) { showToast('請輸入大於 0 的整數', 'error', 900); return; }
+                        const actualN = Math.min(n, currentQty);
+
+                        item.qty = currentQty - actualN;
+                        item.holdings[currentBorrowTarget] = (item.holdings[currentBorrowTarget] || 0) + actualN;
+                        scanSuccessFeedback('📤', `已出貨 ${actualN} 個\n${item.name}\n→ ${currentBorrowTarget}`);
+                        showToast(`✅ 出貨 ${actualN} 個\n${item.name}\n去向：${currentBorrowTarget}\n倉庫剩餘：${item.qty} 個`, 'success', 1000);
+
+                        await updateDoc(doc(db, "warehouse_boxes", targetBoxId), { items: box.items });
+                        try {
+                            const nowDate = new Date();
+                            const timeStr = `${nowDate.getMonth()+1}/${nowDate.getDate()} ${String(nowDate.getHours()).padStart(2,'0')}:${String(nowDate.getMinutes()).padStart(2,'0')}`;
+                            await addDoc(collection(db, "warehouse_logs"), {
+                                type: '出庫', itemName: item.name, qty: actualN, boxName: box.name,
+                                target: currentBorrowTarget || '', timestamp: Date.now(), timeStr: timeStr
+                            });
+                        } catch (e) {}
                     } else {
-                        item.qty = currentQty + 1;
-                        scanSuccessFeedback('📥', `已補貨 1 個\n${item.name}\n目前：${item.qty} 個`);
-                        showToast(`✅ 補貨 1 個\n${item.name}\n目前庫存：${item.qty} 個`, 'success', 700);
+                        const raw = await showPromptDialog(`這次「${item.name}」回來／補貨了多少個？`, '1', '📥 掃描入庫數量');
+                        if (!raw) return;
+                        const n = parseInt(raw, 10);
+                        if (!n || n <= 0) { showToast('請輸入大於 0 的整數', 'error', 900); return; }
+
+                        item.qty = currentQty + n;
+                        scanSuccessFeedback('📥', `已入庫 ${n} 個\n${item.name}\n目前：${item.qty} 個`);
+                        showToast(`✅ 入庫 ${n} 個\n${item.name}\n目前庫存：${item.qty} 個`, 'success', 1000);
+
+                        await updateDoc(doc(db, "warehouse_boxes", targetBoxId), { items: box.items });
+                        try {
+                            const nowDate = new Date();
+                            const timeStr = `${nowDate.getMonth()+1}/${nowDate.getDate()} ${String(nowDate.getHours()).padStart(2,'0')}:${String(nowDate.getMinutes()).padStart(2,'0')}`;
+                            await addDoc(collection(db, "warehouse_logs"), {
+                                type: '進貨', itemName: item.name, qty: n, boxName: box.name,
+                                target: '補貨/進貨', timestamp: Date.now(), timeStr: timeStr
+                            });
+                        } catch (e) {}
                     }
-                    await updateDoc(doc(db, "warehouse_boxes", targetBoxId), { items: box.items });
-                    try {
-                        const nowDate = new Date();
-                        const timeStr = `${nowDate.getMonth()+1}/${nowDate.getDate()} ${String(nowDate.getHours()).padStart(2,'0')}:${String(nowDate.getMinutes()).padStart(2,'0')}`;
-                        await addDoc(collection(db, "warehouse_logs"), {
-                            type: scannerMode === 'out' ? '出庫' : '進貨',
-                            itemName: item.name,
-                            qty: 1,
-                            boxName: box.name,
-                            target: scannerMode === 'out' ? (currentBorrowTarget || '') : '補貨/進貨',
-                            timestamp: Date.now(),
-                            timeStr: timeStr
-                        });
-                    } catch (e) {}
+
+                    // 掃描期間跳出的輸入框會暫停一小段時間，這裡刷新畫面上可能開著的物品詳情，確保庫存數字馬上對得上
+                    refreshLiveViews();
                 }
                 else if (item) {
                     let unit = unitUid ? item.units.find(u => u.uid === unitUid) : null;
