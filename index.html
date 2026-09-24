@@ -813,6 +813,35 @@
     ];
     let selectedGroupIndex = null; 
 
+    // ===== 進出貨紀錄：依「去處群組」上色+加圖示，一眼看出流向 (車輛/人員/其他) =====
+    const TARGET_GROUP_ICONS = ['🚗', '👤', '🏥', '📍', '🏷️', '🧰'];
+    const TARGET_GROUP_COLORS = ['#32d1c4', '#ff9f0a', '#ff375f', '#5e5ce6', '#64d2ff', '#ac8e68'];
+    function getTargetGroupIndex(target) {
+        if (!target) return -1;
+        for (let i = 0; i < borrowerGroupsCache.length; i++) {
+            if (target.startsWith(borrowerGroupsCache[i].groupName + ' - ')) return i;
+        }
+        return -1;
+    }
+    function formatSingleTarget(target) {
+        const t = (target || '').trim();
+        if (!t) return '';
+        const idx = getTargetGroupIndex(t);
+        if (idx === -1) return `<span style="color:#0a84ff; font-weight:700;">${escapeHtml(t)}</span>`;
+        const icon = TARGET_GROUP_ICONS[idx % TARGET_GROUP_ICONS.length];
+        const color = TARGET_GROUP_COLORS[idx % TARGET_GROUP_COLORS.length];
+        return `<span style="color:${color}; font-weight:700;">${icon} ${escapeHtml(t)}</span>`;
+    }
+    function formatTargetDisplay(targetStr) {
+        if (!targetStr) return '未指定';
+        if (targetStr.includes(' → ')) {
+            return targetStr.split(' → ').map(p => formatSingleTarget(p)).join(' <span style="color:#8e8e93;">→</span> ');
+        }
+        const m = targetStr.match(/^(還回 \(原(?:借用|持有): )(.+)(\))$/);
+        if (m) return `${escapeHtml(m[1])}${formatSingleTarget(m[2])}${escapeHtml(m[3])}`;
+        return formatSingleTarget(targetStr);
+    }
+
     function showToast(message, type = 'success', durationMs = 700) {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
@@ -1508,7 +1537,7 @@
                         </span>
                     </div>
                     <div style="color: #d1d1d6; margin-top: 4px;">📦 箱子位置：${escapeHtml(l.boxName)}</div>
-                    <div style="color: #0a84ff; margin-top: 2px;">👤 出庫去向 / 來源：${escapeHtml(l.target || '未指定')}</div>
+                    <div style="margin-top: 2px;">👤 出庫去向 / 來源：${formatTargetDisplay(l.target)}</div>
                 </div>
             `;
         });
@@ -2957,7 +2986,7 @@
                             <span style="color:#8e8e93;">${l.timeStr}</span>
                         </div>
                         <div style="color:#d1d1d6;">📦 所在箱子：${escapeHtml(l.boxName)}</div>
-                        <div style="color:#0a84ff; margin-top:2px;">👤 對象/去向：${escapeHtml(l.target || '未指定')}</div>
+                        <div style="margin-top:2px;">👤 對象/去向：${formatTargetDisplay(l.target)}</div>
                         ${l.unitLabel ? `<div style="color:#ff9500; margin-top:2px;">🔖 ${escapeHtml(l.unitLabel)}</div>` : ''}
                     </div>
                 `;
