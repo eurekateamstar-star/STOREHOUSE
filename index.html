@@ -657,7 +657,7 @@
 
             <div id="consumable-item-panel" style="display:none; text-align: center; margin-bottom: 14px; background: rgba(255,255,255,0.06); padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1);">
                 <div style="font-size:11px; color:#8e8e93; margin-bottom:10px;">耗材只記錄庫存數量與消耗量，不個別追蹤每一件</div>
-                <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
+                <div id="consumable-expiry-edit-row" style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
                     <span style="font-size:12px; color:#8e8e93;">📅 有效期限：</span>
                     <input type="date" id="consumable-expiry-input" class="apple-input" style="padding:6px 8px; font-size:12px; width:150px;">
                     <button class="apple-btn secondary" style="padding:6px 10px; font-size:11px;" onclick="saveConsumableExpiry()">儲存</button>
@@ -3060,6 +3060,7 @@
         });
 
         document.getElementById('consumable-expiry-input').value = it.expiryDate || '';
+        document.getElementById('consumable-expiry-edit-row').style.display = isContentEditActive ? 'flex' : 'none';
         const statusEl = document.getElementById('consumable-expiry-status');
         const info = getExpiryInfo(it);
         if (info) {
