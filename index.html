@@ -1875,40 +1875,89 @@
                         if (!raw) return;
                         const n = parseInt(raw, 10);
                         if (!n || n <= 0) { showToast('請輸入大於 0 的整數', 'error', 900); return; }
-                        const actualN = Math.min(n, currentQty);
 
-                        item.qty = currentQty - actualN;
-                        item.holdings[currentBorrowTarget] = (item.holdings[currentBorrowTarget] || 0) + actualN;
-                        scanSuccessFeedback('📤', `已出貨 ${actualN} 個\n${item.name}\n→ ${currentBorrowTarget}`);
-                        showToast(`✅ 出貨 ${actualN} 個\n${item.name}\n去向：${currentBorrowTarget}\n倉庫剩餘：${item.qty} 個`, 'success', 1000);
+                        // 領出數量超過庫存：明確提醒，不要默默截斷
+                        if (n > currentQty) {
+                            scanErrorFeedback('⚠️', `數量不夠！\n倉庫只剩 ${currentQty} 個\n無法出貨 ${n} 個`);
+                            showToast(`⚠️ 數量不夠\n倉庫庫存只有 ${currentQty} 個，無法出貨 ${n} 個\n請重新掃描並輸入不超過庫存的數量`, 'error', 1600);
+                            return;
+                        }
+
+                        item.qty = currentQty - n;
+                        item.holdings[currentBorrowTarget] = (item.holdings[currentBorrowTarget] || 0) + n;
+                        scanSuccessFeedback('📤', `已出貨 ${n} 個\n${item.name}\n→ ${currentBorrowTarget}`);
+                        showToast(`✅ 出貨 ${n} 個\n${item.name}\n去向：${currentBorrowTarget}\n倉庫剩餘：${item.qty} 個`, 'success', 1000);
 
                         await updateDoc(doc(db, "warehouse_boxes", targetBoxId), { items: box.items });
                         try {
                             const nowDate = new Date();
                             const timeStr = `${nowDate.getMonth()+1}/${nowDate.getDate()} ${String(nowDate.getHours()).padStart(2,'0')}:${String(nowDate.getMinutes()).padStart(2,'0')}`;
                             await addDoc(collection(db, "warehouse_logs"), {
-                                type: '出庫', itemName: item.name, qty: actualN, boxName: box.name,
+                                type: '出庫', itemName: item.name, qty: n, boxName: box.name,
                                 target: currentBorrowTarget || '', timestamp: Date.now(), timeStr: timeStr
                             });
                         } catch (e) {}
                     } else {
-                        const raw = await showPromptDialog(`這次「${item.name}」回來／補貨了多少個？`, '1', '📥 掃描入庫數量');
+                        // 找出目前有哪些去處還持有這個耗材，讓使用者選這批是從哪裡回來的
+                        const holdings = item.holdings || {};
+                        const holdingKeys = Object.keys(holdings).filter(k => (holdings[k] || 0) > 0);
+                        let sourceTarget = null;
+
+                        if (holdingKeys.length === 1) {
+                            sourceTarget = holdingKeys[0];
+                        } else if (holdingKeys.length > 1) {
+                            const listText = holdingKeys.map(k => `${k}（${holdings[k]}個）`).join('\n');
+                            const chosen = await showPromptDialog(`「${item.name}」目前這些去處還有持有中：\n${listText}\n\n請輸入這批是從哪個去處回來的（完整名稱）：`, holdingKeys[0], '📥 選擇來源去處');
+                            if (!chosen) return;
+                            if (!holdings[chosen]) {
+                                showToast('找不到這個去處，請確認名稱與清單完全一致', 'error', 1600);
+                                return;
+                            }
+                            sourceTarget = chosen;
+                        }
+
+                        const heldQty = sourceTarget ? (holdings[sourceTarget] || 0) : 0;
+                        const promptMsg = sourceTarget
+                            ? `「${sourceTarget}」原本帶出 ${heldQty} 個，這次實際回來了多少個？\n（沒回來的會自動記為消耗，這個去處會歸零結清）`
+                            : `這次「${item.name}」回來／補貨了多少個？`;
+                        const raw = await showPromptDialog(promptMsg, sourceTarget ? String(heldQty) : '1', '📥 掃描入庫數量');
                         if (!raw) return;
                         const n = parseInt(raw, 10);
-                        if (!n || n <= 0) { showToast('請輸入大於 0 的整數', 'error', 900); return; }
+                        if (!n && n !== 0) { showToast('請輸入數量', 'error', 900); return; }
+                        if (n < 0) { showToast('請輸入大於等於 0 的整數', 'error', 900); return; }
 
-                        item.qty = currentQty + n;
-                        scanSuccessFeedback('📥', `已入庫 ${n} 個\n${item.name}\n目前：${item.qty} 個`);
-                        showToast(`✅ 入庫 ${n} 個\n${item.name}\n目前庫存：${item.qty} 個`, 'success', 1000);
+                        let returned = n;
+                        let consumedQty = 0;
+
+                        if (sourceTarget) {
+                            returned = Math.min(n, heldQty);
+                            consumedQty = Math.max(0, heldQty - returned);
+                            delete item.holdings[sourceTarget]; // 這批結清：回來的算回庫存，沒回來的算消耗，去處歸零
+                            item.qty = currentQty + returned;
+                        } else {
+                            item.qty = currentQty + n;
+                        }
+
+                        const feedbackLines = sourceTarget
+                            ? `${item.name}\n回庫存：${returned} 個${consumedQty > 0 ? `\n消耗：${consumedQty} 個` : ''}\n（${sourceTarget} 已結清歸零）`
+                            : `${item.name}\n目前：${item.qty} 個`;
+                        scanSuccessFeedback('📥', `已入庫\n${feedbackLines}`);
+                        showToast(`✅ 入庫完成\n${item.name}\n回庫存：${returned} 個${consumedQty > 0 ? `\n消耗：${consumedQty} 個（${sourceTarget}）` : ''}\n倉庫現有：${item.qty} 個`, 'success', 1600);
 
                         await updateDoc(doc(db, "warehouse_boxes", targetBoxId), { items: box.items });
                         try {
                             const nowDate = new Date();
                             const timeStr = `${nowDate.getMonth()+1}/${nowDate.getDate()} ${String(nowDate.getHours()).padStart(2,'0')}:${String(nowDate.getMinutes()).padStart(2,'0')}`;
                             await addDoc(collection(db, "warehouse_logs"), {
-                                type: '進貨', itemName: item.name, qty: n, boxName: box.name,
-                                target: '補貨/進貨', timestamp: Date.now(), timeStr: timeStr
+                                type: '進貨', itemName: item.name, qty: returned, boxName: box.name,
+                                target: sourceTarget ? `還回 (原持有: ${sourceTarget})` : '補貨/進貨', timestamp: Date.now(), timeStr: timeStr
                             });
+                            if (consumedQty > 0) {
+                                await addDoc(collection(db, "warehouse_logs"), {
+                                    type: '消耗', itemName: item.name, qty: consumedQty, boxName: box.name,
+                                    target: sourceTarget || '', timestamp: Date.now(), timeStr: timeStr
+                                });
+                            }
                         } catch (e) {}
                     }
 
