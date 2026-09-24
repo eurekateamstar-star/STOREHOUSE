@@ -480,6 +480,7 @@
                 <button class="apple-btn secondary logs-tab" data-type="all" onclick="setLogsTypeFilter('all')" style="flex:1; padding:8px; font-size:12px;">全部</button>
                 <button class="apple-btn secondary logs-tab" data-type="出庫" onclick="setLogsTypeFilter('出庫')" style="flex:1; padding:8px; font-size:12px;">📤 出庫</button>
                 <button class="apple-btn secondary logs-tab" data-type="轉交" onclick="setLogsTypeFilter('轉交')" style="flex:1; padding:8px; font-size:12px;">🔄 轉交</button>
+                <button class="apple-btn secondary logs-tab" data-type="消耗" onclick="setLogsTypeFilter('消耗')" style="flex:1; padding:8px; font-size:12px;">🟣 消耗</button>
                 <button class="apple-btn secondary logs-tab" data-type="進貨" onclick="setLogsTypeFilter('進貨')" style="flex:1; padding:8px; font-size:12px;">📥 進貨</button>
             </div>
 
@@ -609,6 +610,10 @@
                 <button type="button" class="apple-btn secondary" id="type-btn-durable" style="flex:1; padding:10px 6px; font-size:12px; line-height:1.5;" onclick="setNewItemType('durable')">🔁 耐久品<br><span style="font-size:10px; font-weight:400; opacity:0.85;">每件專屬QR，可借出歸還</span></button>
                 <button type="button" class="apple-btn secondary" id="type-btn-consumable" style="flex:1; padding:10px 6px; font-size:12px; line-height:1.5;" onclick="setNewItemType('consumable')">📦 耗材<br><span style="font-size:10px; font-weight:400; opacity:0.85;">只記數量，用掉就扣除</span></button>
             </div>
+            <div id="new-item-expiry-group" style="display:none; margin-bottom:14px;">
+                <div style="font-size: 13px; color:#8e8e93; margin-bottom:6px;">有效期限（選填）：</div>
+                <input type="date" id="new-item-expiry" class="apple-input" style="font-size:14px; padding:12px;">
+            </div>
             <div style="font-size: 13px; color:#8e8e93; margin-bottom:6px;">物品照片 (選填)：</div>
             <input type="file" id="item-img-file" accept="image/*" style="font-size:12px; color:#aaa; margin-bottom:16px; width:100%;">
             
@@ -652,6 +657,12 @@
 
             <div id="consumable-item-panel" style="display:none; text-align: center; margin-bottom: 14px; background: rgba(255,255,255,0.06); padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1);">
                 <div style="font-size:11px; color:#8e8e93; margin-bottom:10px;">耗材只記錄庫存數量與消耗量，不個別追蹤每一件</div>
+                <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
+                    <span style="font-size:12px; color:#8e8e93;">📅 有效期限：</span>
+                    <input type="date" id="consumable-expiry-input" class="apple-input" style="padding:6px 8px; font-size:12px; width:150px;">
+                    <button class="apple-btn secondary" style="padding:6px 10px; font-size:11px;" onclick="saveConsumableExpiry()">儲存</button>
+                </div>
+                <div id="consumable-expiry-status" style="font-size:12px; font-weight:700; margin-bottom:12px;"></div>
                 <div id="consumable-qr-container" style="display:inline-block; background:#fff; border-radius:8px; padding:8px; margin-bottom:10px;"></div>
                 <div style="font-size:11px; color:#8e8e93; margin-bottom:4px;">掃這個 QR 進出貨，會跳出視窗輸入這次的數量</div>
                 <div style="font-size:11px; color:#8e8e93;">出庫模式＝出貨給目前選定的去處／進貨模式＝補貨回倉庫</div>
@@ -845,6 +856,40 @@
             confirmBtn.onclick = () => cleanup(true);
             cancelBtn.onclick = () => cleanup(false);
         });
+    }
+
+    // ===== 耗材有效期限 =====
+    const EXPIRY_WARNING_DAYS = 30;
+    function getExpiryInfo(it) {
+        if (!it || !it.expiryDate) return null;
+        const exp = new Date(it.expiryDate + 'T00:00:00');
+        if (isNaN(exp.getTime())) return null;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const daysLeft = Math.round((exp - today) / 86400000);
+        let status, color, label;
+        if (daysLeft < 0) { status = 'expired'; color = '#ff3b30'; label = `已過期 ${Math.abs(daysLeft)} 天`; }
+        else if (daysLeft <= EXPIRY_WARNING_DAYS) { status = 'warning'; color = '#ff9500'; label = `效期剩 ${daysLeft} 天`; }
+        else { status = 'ok'; color = '#8e8e93'; label = `效期還有 ${daysLeft} 天`; }
+        return { daysLeft, status, color, label, dateStr: it.expiryDate };
+    }
+
+    function checkExpiringConsumables() {
+        if (!boxesCache) return;
+        let expiredCount = 0, warningCount = 0;
+        boxesCache.forEach(b => (b.items || []).forEach(it => {
+            if (it.itemType !== 'consumable') return;
+            const info = getExpiryInfo(it);
+            if (!info) return;
+            if (info.status === 'expired') expiredCount++;
+            else if (info.status === 'warning') warningCount++;
+        }));
+        if (expiredCount > 0 || warningCount > 0) {
+            const parts = [];
+            if (expiredCount > 0) parts.push(`${expiredCount} 項已過期`);
+            if (warningCount > 0) parts.push(`${warningCount} 項即將到期 (${EXPIRY_WARNING_DAYS}天內)`);
+            showToast(`⏳ 耗材效期提醒\n${parts.join('，')}\n請至物品詳情查看`, 'error', 2600);
+        }
     }
 
     function showPromptDialog(message, defaultValue = '', title = '請輸入') {
@@ -1059,6 +1104,7 @@
             });
             preloadImagesAsync(otherImgUrls);
             document.getElementById('preload-status').innerText = "系統就緒 (已同步雲端)";
+            setTimeout(checkExpiringConsumables, 800);
         } catch (e) {
             document.getElementById('preload-status').innerText = "系統就緒";
         }
@@ -1451,7 +1497,7 @@
                 html += `<div style="font-size:12px; color:#0a84ff; font-weight:700; margin:16px 0 8px; padding-bottom:6px; border-bottom:1px solid rgba(255,255,255,0.1);">📅 ${getLogDateLabel(l.timestamp)}</div>`;
                 lastDateKey = dateKey;
             }
-            const badgeColor = l.type === '出庫' ? '#ff3b30' : (l.type === '轉交' ? '#ff9500' : '#34c759');
+            const badgeColor = l.type === '出庫' ? '#ff3b30' : (l.type === '轉交' ? '#ff9500' : (l.type === '消耗' ? '#bf5af2' : '#34c759'));
             html += `
                 <div class="log-card">
                     <div class="log-header">
@@ -1621,8 +1667,12 @@
             const checkedOut = isConsumable ? 0 : (Number(m.item.checkedOutCount) || 0);
             const total = isConsumable ? (Number(m.item.qty) || 0) : m.item.units.length;
             const pageName = pages.find(p => p.id === m.box.pageId)?.name || '未知位置';
+            const expiryInfo = isConsumable ? getExpiryInfo(m.item) : null;
+            const expiryHtml = expiryInfo && expiryInfo.status !== 'ok'
+                ? `<div style="font-size:12px; color:${expiryInfo.color}; margin-top:2px; font-weight:700;">${expiryInfo.status === 'expired' ? '❌' : '⏳'} ${expiryInfo.label}</div>`
+                : '';
             const statusHtml = isConsumable
-                ? `<div style="font-size:12px; color:#0a84ff; margin-top:2px;">📦 耗材／庫存 ${total} 個</div>`
+                ? `<div style="font-size:12px; color:#0a84ff; margin-top:2px;">📦 耗材／庫存 ${total} 個</div>${expiryHtml}`
                 : checkedOut > 0
                     ? `<div style="font-size:12px; color:#ff453a; margin-top:2px;">🔴 ${m.item.qty}/${total} 在庫，已出庫 → ${escapeHtml(m.item.borrower || '不詳')}</div>`
                     : `<div style="font-size:12px; color:#34c759; margin-top:2px;">🟢 ${total} 個全數在庫</div>`;
@@ -2565,12 +2615,16 @@
                 const totalUnits = isConsumable ? (Number(it.qty) || 0) : it.units.length;
                 const checkedOutNow = isConsumable ? 0 : (Number(it.checkedOutCount) || 0);
                 const qtyLabel = checkedOutNow > 0 ? `${it.qty}/${totalUnits} 個` : `${it.qty} 個`;
+                const expiryInfo = isConsumable ? getExpiryInfo(it) : null;
+                const expiryBadge = expiryInfo && expiryInfo.status !== 'ok'
+                    ? ` <span style="font-size:9px; color:${expiryInfo.color}; font-weight:700;">${expiryInfo.status === 'expired' ? '❌已過期' : '⏳快到期'}</span>`
+                    : '';
 
                 card.className = `grid-item-card ${isQtyZero ? 'empty-slot' : ''}`;
                 card.innerHTML = `
                     ${isContentEditActive ? `<button class="grid-item-del" onclick="event.stopPropagation(); deleteItem(${idx})">✕</button>` : ''}
                     <img src="${it.imageUrl || 'https://via.placeholder.com/100?text=No+Img'}" alt="" style="${isQtyZero ? 'opacity: 0.3;' : ''}">
-                    <div class="grid-item-name">${escapeHtml(it.name)}${isConsumable ? ' <span style="font-size:9px; color:#0a84ff;">📦耗材</span>' : ''}</div>
+                    <div class="grid-item-name">${escapeHtml(it.name)}${isConsumable ? ' <span style="font-size:9px; color:#0a84ff;">📦耗材</span>' : ''}${expiryBadge}</div>
                     ${it.stockCode ? `<div style="font-size:9px; color:#8e8e93; margin-bottom:2px;">${escapeHtml(it.stockCode)}</div>` : ''}
                     <div class="grid-item-qty" style="${isQtyZero ? 'color: #ff3b30;' : ''}">${isQtyZero ? '已清空' : qtyLabel}</div>
                 `;
@@ -2603,12 +2657,14 @@
         dBtn.style.borderColor = t === 'durable' ? '#0a84ff' : '';
         cBtn.style.background = t === 'consumable' ? '#0a84ff' : '';
         cBtn.style.borderColor = t === 'consumable' ? '#0a84ff' : '';
+        document.getElementById('new-item-expiry-group').style.display = t === 'consumable' ? 'block' : 'none';
     };
 
     window.openAddItemModal = function() {
         document.getElementById('new-item-name').value = '';
         document.getElementById('new-item-qty').value = '1';
         document.getElementById('item-img-file').value = '';
+        document.getElementById('new-item-expiry').value = '';
         setNewItemType('durable');
         document.getElementById('add-item-modal').style.display = 'block';
     };
@@ -2648,7 +2704,8 @@
             }
 
             if (newItemType === 'consumable') {
-                b.items.push({ name, qty: Number(qty), imageUrl, stockCode, itemType: 'consumable' });
+                const expiryDate = document.getElementById('new-item-expiry').value || null;
+                b.items.push({ name, qty: Number(qty), imageUrl, stockCode, itemType: 'consumable', expiryDate });
             } else {
                 const units = [];
                 for (let i = 0; i < Number(qty); i++) units.push({ uid: makeUid(), status: 'in', borrower: '' });
@@ -2892,7 +2949,7 @@
 
             let html = '';
             itemLogs.forEach(l => {
-                const badgeColor = l.type === '出庫' ? '#ff3b30' : (l.type === '轉交' ? '#ff9500' : '#34c759');
+                const badgeColor = l.type === '出庫' ? '#ff3b30' : (l.type === '轉交' ? '#ff9500' : (l.type === '消耗' ? '#bf5af2' : '#34c759'));
                 html += `
                     <div style="background:rgba(44,44,46,0.65); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:12px; font-size:12px;">
                         <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-weight:600;">
@@ -3001,6 +3058,30 @@
             text: `ITEM_${boxId}_${idx}`, width: 130, height: 130,
             colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H
         });
+
+        document.getElementById('consumable-expiry-input').value = it.expiryDate || '';
+        const statusEl = document.getElementById('consumable-expiry-status');
+        const info = getExpiryInfo(it);
+        if (info) {
+            statusEl.style.color = info.color;
+            if (info.status === 'expired') statusEl.innerText = `⚠️ ${info.label}！請盡快處理`;
+            else if (info.status === 'warning') statusEl.innerText = `⏳ ${info.label}，即將到期`;
+            else statusEl.innerText = `✅ ${info.label}（到期日 ${info.dateStr}）`;
+        } else {
+            statusEl.style.color = '#8e8e93';
+            statusEl.innerText = '尚未設定有效期限';
+        }
+    };
+
+    window.saveConsumableExpiry = async function() {
+        const b = boxesCache.find(x => x.id === currentBoxId);
+        if (!b || editingItemIndex === null) return;
+        const it = b.items[editingItemIndex];
+        if (!it || it.itemType !== 'consumable') return;
+        it.expiryDate = document.getElementById('consumable-expiry-input').value || null;
+        await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
+        renderConsumablePanel(it, b.id, editingItemIndex);
+        showToast(it.expiryDate ? `✅ 已設定有效期限：${it.expiryDate}` : '已清除有效期限', 'success', 900);
     };
 
     function getCurrentEditingConsumable() {
