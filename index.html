@@ -125,62 +125,89 @@
         }
         header > * { pointer-events: auto; }
         
+        header { gap: 8px; }
         .nav-back-pill {
-            background: rgba(28, 28, 30, 0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 20px;
-            padding: 6px 14px;
+            background: rgba(30, 30, 32, 0.72);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border: 0.5px solid rgba(255, 255, 255, 0.14);
+            border-radius: 22px;
+            height: 36px;
+            padding: 0 14px 0 8px;
             display: inline-flex;
             align-items: center;
-            gap: 4px;
+            gap: 1px;
+            flex-shrink: 0;
+            white-space: nowrap;
             color: #0a84ff;
-            font-size: 13px;
-            font-weight: 600;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: -0.2px;
             cursor: pointer;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-            transition: transform 0.15s, background 0.15s;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4), inset 0 0.5px 0 rgba(255,255,255,0.08);
+            transition: transform 0.15s, opacity 0.15s;
         }
-        .nav-back-pill:active { transform: scale(0.95); background: rgba(44, 44, 46, 0.95); }
+        .nav-back-pill svg { width: 17px; height: 17px; }
+        .nav-back-pill:active { transform: scale(0.96); opacity: 0.65; }
 
         .header-pill {
-            background: rgba(28, 28, 30, 0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 20px;
-            padding: 6px 12px;
+            background: rgba(30, 30, 32, 0.72);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border: 0.5px solid rgba(255, 255, 255, 0.14);
+            border-radius: 22px;
+            padding: 3px;
             display: flex;
             align-items: center;
-            gap: 8px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            gap: 2px;
+            min-width: 0;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4), inset 0 0.5px 0 rgba(255,255,255,0.08);
         }
         .header-title { font-size: 12px; font-weight: 600; color: #fff; }
-        
-        .header-btns { display: flex; gap: 6px; align-items: center; }
+
+        .header-btns { display: flex; gap: 2px; align-items: center; }
         .header-btns button, .header-btns .pill-btn {
-            background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.1); color: white; padding: 6px 12px; border-radius: 14px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.2s;
+            background: transparent; border: none; color: #f2f2f7;
+            height: 30px; padding: 0 10px; border-radius: 18px;
+            font-family: inherit; font-size: 13px; font-weight: 500; letter-spacing: -0.2px;
+            white-space: nowrap; display: inline-flex; align-items: center; gap: 5px;
+            cursor: pointer; transition: background 0.2s, color 0.2s, transform 0.15s;
         }
-        .header-btns button:active, .header-btns .pill-btn:active { transform: scale(0.95); }
-        .header-btns button.active { background: #34c759; border-color: transparent; }
+        .header-btns button svg { width: 15px; height: 15px; flex-shrink: 0; }
+        .header-btns button:active, .header-btns .pill-btn:active { transform: scale(0.94); background: rgba(255,255,255,0.12); }
+        .header-btns button.active { background: rgba(10, 132, 255, 0.25); color: #4da3ff; }
+        .header-btns #mode-btn-edit.active { background: rgba(255, 159, 10, 0.25); color: #ff9f0a; }
+        @media (max-width: 430px) {
+            .header-btns.compact .lbl { display: none; }
+            .header-btns.compact button { padding: 0 11px; }
+        }
 
         .page-nav {
-            position: absolute; top: 72px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; background: rgba(28, 28, 30, 0.85); backdrop-filter: blur(25px); padding: 5px 12px; border-radius: 30px; z-index: 95; border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            position: absolute; top: 64px; left: 50%; transform: translateX(-50%);
+            display: flex; align-items: center; gap: 5px; white-space: nowrap;
+            background: rgba(30, 30, 32, 0.72);
+            backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%);
+            padding: 4px 5px 4px 14px; border-radius: 22px; z-index: 95;
+            border: 0.5px solid rgba(255, 255, 255, 0.14);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.45), inset 0 0.5px 0 rgba(255,255,255,0.08);
+            max-width: calc(100% - 24px);
         }
         .page-nav-btn {
-            background: rgba(255, 255, 255, 0.12); border: none; color: #fff; width: 30px; height: 30px; border-radius: 50%; font-size: 15px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.2s;
+            background: rgba(255, 255, 255, 0.10); border: none; color: #f2f2f7; width: 28px; height: 28px; padding: 0;
+            border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; transition: background 0.2s, transform 0.15s, opacity 0.2s;
         }
-        .page-nav-btn:active:not(:disabled) { background: rgba(255, 255, 255, 0.25); }
-        .page-nav-btn:disabled { opacity: 0.2; cursor: default; }
-        .page-nav-title { font-size: 13px; font-weight: 600; padding: 0 4px; max-width: 140px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #f2f2f7; }
-        .page-nav-add { background: #34c759 !important; }
-        .page-nav-del { background: #ff3b30 !important; }
+        .page-nav-btn svg { width: 15px; height: 15px; }
+        .page-nav-btn:active:not(:disabled) { background: rgba(255, 255, 255, 0.24); transform: scale(0.92); }
+        .page-nav-btn:disabled { opacity: 0.25; cursor: default; }
+        .page-nav-title { font-size: 14px; font-weight: 600; letter-spacing: -0.2px; padding: 0 4px 0 0; max-width: 150px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #f2f2f7; }
+        .page-nav-add { background: rgba(48, 209, 88, 0.22) !important; color: #30d158 !important; }
+        .page-nav-del { background: rgba(255, 69, 58, 0.22) !important; color: #ff453a !important; }
 
         .image-map-container { position: relative; width: 100%; height: 100%; background: #000; overflow: hidden; touch-action: none; }
         #map-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform-origin: 0 0; }
         
-        #warehouse-img { width: 100%; height: 100%; object-fit: contain; display: block; }
+        #warehouse-img { width: 100%; height: 100%; object-fit: fill; display: block; }
 
         @keyframes spin { to { transform: rotate(360deg); } }
         #map-loading-overlay {
@@ -191,28 +218,43 @@
             width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.15); border-top-color: #0a84ff; border-radius: 50%; animation: spin 0.8s linear infinite;
         }
 
+        /* 📦 修改為透明框線的箱子設計 */
         .box-wrapper {
-            position: absolute; transform: translate(-50%, -50%); touch-action: none; z-index: 50;
+            position: absolute; 
+            transform: translate(-50%, -50%); 
+            touch-action: none; 
+            z-index: 50;
+            border: 2px dashed rgba(10, 132, 255, 0.6); /* 預設藍色透明線框 */
+            background: rgba(10, 132, 255, 0.1); 
+            border-radius: 8px;
+            box-sizing: border-box;
+            transition: border-color 0.2s, background 0.2s;
         }
-        .box-wrapper.layout-active { cursor: grab; }
+        .box-wrapper.layout-active { cursor: grab; border-color: #ff9500; background: rgba(255, 149, 0, 0.15); }
         .box-wrapper.layout-active:active { cursor: grabbing; }
 
-        .box-image-hotspot {
-            width: 100%; height: 100%; object-fit: contain; background: transparent !important; border: none !important; display: block; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.8)); pointer-events: none;
-        }
-        .box-wrapper.selected .box-image-hotspot {
-            outline: 2px dashed #ff9500; background: rgba(255, 149, 0, 0.15) !important; border-radius: 8px;
+        /* 點選時的高亮 (橘色) */
+        .box-wrapper.selected {
+            border: 2px dashed #ff9500 !important; 
+            background: rgba(255, 149, 0, 0.25) !important;
+            z-index: 60;
         }
 
+        /* 搜尋命中時的呼吸燈動畫 (紅色) */
         @keyframes targetPulse {
-            0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.9); outline: 3px solid #ff3b30; }
-            70% { box-shadow: 0 0 0 16px rgba(255, 59, 48, 0); outline: 3px solid rgba(255, 59, 48, 0.5); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); outline: 3px solid #ff3b30; }
+            0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.9); border-color: #ff3b30; }
+            70% { box-shadow: 0 0 0 16px rgba(255, 59, 48, 0); border-color: rgba(255, 59, 48, 0.5); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); border-color: #ff3b30; }
         }
-        .box-wrapper.search-highlight .box-image-hotspot {
+        .box-wrapper.search-highlight {
             animation: targetPulse 1.5s infinite;
             background: rgba(255, 59, 48, 0.25) !important;
-            border-radius: 10px;
+            border: 2px solid #ff3b30 !important;
+            z-index: 60;
+        }
+
+        .box-image-hotspot {
+            width: 100%; height: 100%; object-fit: contain; background: transparent !important; border: none !important; display: block; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.8)); pointer-events: none; border-radius: 8px;
         }
 
         .box-name-label {
@@ -331,12 +373,68 @@
         .borrower-card-icon { font-size: 24px; margin-bottom: 6px; }
         .borrower-card-name { font-size: 12px; font-weight: 600; color: #fff; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        /* 💡 修復日期輸入框點擊範圍與外觀 */
         input[type="date"]::-webkit-calendar-picker-indicator {
             filter: invert(1);
             cursor: pointer;
             padding: 4px;
         }
+
+        /* ===== 倉庫全景 ===== */
+        #panorama-view{display:none;position:absolute;inset:0;background:#000;z-index:70;}
+        #pano-stage{position:absolute;top:70px;left:0;right:0;bottom:30px;display:flex;align-items:center;justify-content:center;padding:0 8px;}
+        #pano-wrap{position:relative;display:inline-block;line-height:0;min-width:260px;min-height:160px;max-width:100%;}
+        #pano-img{display:block;max-width:100%;max-height:calc(100vh - 110px);margin:0 auto;}
+        #pano-layer{position:absolute;inset:0;}
+        #pano-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.6;font-size:13px;color:#8e8e93;padding:20px;}
+        .pano-spot{position:absolute;border:1.5px solid rgba(130,190,255,.55);background:rgba(10,132,255,.10);box-shadow:0 0 0 .5px rgba(0,0,0,.35),inset 0 0 14px rgba(10,132,255,.12);border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;touch-action:none;line-height:1.3;}
+        .pano-spot.editing{border:2px dashed #ff9500;background:rgba(255,149,0,.2);cursor:grab;}
+        .pano-spot-label{font-size:13px;font-weight:600;letter-spacing:-.2px;color:#fff;background:rgba(28,28,30,.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:3px 10px;border-radius:12px;border:.5px solid rgba(255,255,255,.18);pointer-events:none;}
+        .pano-h{position:absolute;right:-13px;bottom:-13px;width:26px;height:26px;background:#ff9500;border:3px solid #fff;border-radius:50%;}
+        .pano-edit-btn{position:absolute;top:-12px;left:-12px;width:26px;height:26px;border-radius:50%;border:2px solid #fff;background:#0a84ff;color:#fff;font-size:12px;padding:0;cursor:pointer;}
+        #pano-tabs{position:absolute;left:0;right:0;bottom:20px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:0 12px;}
+        .box-toolbar{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:18px;display:flex;gap:6px;z-index:70;white-space:nowrap;}
+        .box-toolbar button{display:inline-flex;align-items:center;gap:4px;padding:6px 10px;font-size:12px;border-radius:14px;border:none;color:#fff;font-weight:600;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(0,0,0,.5);}
+        .box-toolbar button svg{width:13px;height:13px;}
+
+        /* ===== 左右懸浮換頁箭頭（會呼吸閃爍，提示可以點） ===== */
+        #side-arrows{position:absolute;inset:0;pointer-events:none;z-index:96;}
+        .side-arrow{position:absolute;top:50%;margin-top:-28px;width:44px;height:56px;border-radius:22px;border:.5px solid rgba(255,255,255,.28);background:rgba(40,40,44,.55);backdrop-filter:blur(18px) saturate(180%);-webkit-backdrop-filter:blur(18px) saturate(180%);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;pointer-events:auto;padding:0;box-shadow:0 10px 28px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.4);transition:transform .15s,opacity .2s,background .2s;animation:arrowGlow 2.6s ease-in-out infinite;}
+        .side-arrow .chev{display:flex;}
+        .side-arrow svg{width:22px;height:22px;}
+        #page-nav-prev{left:8px;}
+        #page-nav-next{right:8px;animation-delay:1.3s;}
+        #page-nav-prev .chev{animation:chevNudgeL 2.6s ease-in-out infinite;}
+        #page-nav-next .chev{animation:chevNudgeR 2.6s ease-in-out infinite;animation-delay:1.3s;}
+        .side-arrow:active:not(:disabled){transform:scale(.92);background:rgba(70,70,76,.8);}
+        .side-arrow:disabled{opacity:.15;cursor:default;animation:none;}
+        .side-arrow:disabled .chev{animation:none;}
+        @keyframes arrowGlow{
+            0%,100%{box-shadow:0 10px 28px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.4),0 0 0 0 rgba(10,132,255,0);border-color:rgba(255,255,255,.28);}
+            50%{box-shadow:0 10px 28px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.4),0 0 0 6px rgba(10,132,255,.14),0 0 22px rgba(10,132,255,.55);border-color:rgba(120,180,255,.75);}
+        }
+        @keyframes chevNudgeL{0%,100%{transform:translateX(0);opacity:.7;}50%{transform:translateX(-4px);opacity:1;}}
+        @keyframes chevNudgeR{0%,100%{transform:translateX(0);opacity:.7;}50%{transform:translateX(4px);opacity:1;}}
+        @media (prefers-reduced-motion: reduce){.side-arrow,.side-arrow .chev{animation:none !important;}}
+        /* ===== 總覽：分層 ===== */
+        .ov-tier-title{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;color:#ff9f0a;margin:16px 2px 8px;letter-spacing:.3px;}
+        .ov-tier-title span:last-child{color:#8e8e93;font-weight:500;}
+        .ov-tier-chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px;}
+        .tier-chip{background:rgba(255,255,255,.08);border:.5px solid rgba(255,255,255,.14);color:#d1d1d6;font-size:11px;padding:5px 10px;border-radius:12px;cursor:pointer;font-family:inherit;}
+        .tier-chip.on{background:rgba(255,159,10,.25);color:#ff9f0a;border-color:rgba(255,159,10,.5);}
+        /* ===== 箱子內的多個標籤（可個別拖動） ===== */
+        .box-label-chip{position:absolute;transform:translate(-50%,-50%);font-size:11px;font-weight:700;color:#fff;background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.15);padding:2px 8px;border-radius:8px;white-space:nowrap;pointer-events:none;text-shadow:0 1px 2px rgba(0,0,0,.8);z-index:55;}
+        .box-label-chip.draggable{pointer-events:auto;cursor:grab;touch-action:none;border:1px dashed rgba(255,159,10,.95);background:rgba(0,0,0,.82);}
+        .box-label-chip.draggable:active{cursor:grabbing;}
+        /* ===== 總覽：每一層橫向一排，左到右 ===== */
+        .ov-tier-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:6px;}
+        .ov-tier-row::-webkit-scrollbar{display:none;}
+        .ov-tier-wrap{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:6px;}
+        .ov-tier-row .ov-box,.ov-tier-wrap .ov-box{margin-bottom:0;min-width:0;padding:8px;border-radius:12px;}
+        .ov-tier-row .ov-box-title,.ov-tier-wrap .ov-box-title{flex-direction:column;gap:2px;margin-bottom:6px;font-size:12px;line-height:1.35;}
+        .ov-tier-row .ov-box-title span:first-child,.ov-tier-wrap .ov-box-title span:first-child{min-width:0;word-break:break-all;}
+        .ov-tier-row .ov-box-count,.ov-tier-wrap .ov-box-count{font-size:10px;}
+        .ov-tier-row .ov-item,.ov-tier-wrap .ov-item{font-size:11px;padding-left:6px;word-break:break-all;}
+        .ov-tier-row .tier-chip,.ov-tier-wrap .tier-chip{font-size:10px;padding:4px 6px;}
     </style>
 </head>
 <body>
@@ -484,7 +582,6 @@
                 <button class="apple-btn secondary logs-tab" data-type="進貨" onclick="setLogsTypeFilter('進貨')" style="flex:1; padding:8px; font-size:12px;">📥 進貨</button>
             </div>
 
-            <!-- 💡 修復日期篩選列，確保點擊範圍與互動正常 -->
             <div style="display:flex; gap:8px; margin-bottom:12px; align-items:center;">
                 <input type="date" id="logs-date-input" class="apple-input" style="flex:1; font-size:13px; padding:10px 14px; cursor:pointer;" onchange="onLogsFilterChange()">
                 <button class="apple-btn secondary" style="padding:10px 14px; font-size:12px; flex-shrink:0;" onclick="clearLogsDateFilter()">清除日期</button>
@@ -519,24 +616,31 @@
             <header>
                 <!-- 📱 App 風格返回主選單按鈕 -->
                 <div class="nav-back-pill" onclick="backToMainMenu()">
-                    <span>‹</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
                     <span>主選單</span>
                 </div>
 
                 <div class="header-pill header-btns">
-                    <button id="btn-toggle-overview" class="pill-btn" onclick="toggleOverview()">📋 總覽</button>
-                    <button id="btn-toggle-box-labels" class="pill-btn" onclick="toggleBoxLabels()">🏷️ 箱名</button>
-                    <button id="btn-move-mode" class="pill-btn" style="display:none;" onclick="toggleLayoutMode()">📐 佈局</button>
-                    <button id="mode-btn-edit" class="pill-btn" onclick="toggleContentEditMode()">✏️ 編輯</button>
+                    <button id="btn-show-pano" class="pill-btn" onclick="showPanorama()">全景</button>
+                    <button id="btn-toggle-overview" class="pill-btn" onclick="toggleOverview()">總覽</button>
+                    <button id="btn-toggle-box-labels" class="pill-btn" onclick="toggleBoxLabels()">箱名</button>
+                    <button id="btn-move-mode" class="pill-btn" style="display:none;" onclick="toggleLayoutMode()">佈局</button>
+                    <button id="mode-btn-edit" class="pill-btn" onclick="toggleContentEditMode()">編輯</button>
                 </div>
             </header>
 
             <div class="page-nav" id="page-nav">
-                <button class="page-nav-btn" id="page-nav-prev" onclick="goToPage(-1)">‹</button>
                 <div class="page-nav-title" id="page-nav-title">載入中…</div>
-                <button class="page-nav-btn" id="page-nav-next" onclick="goToPage(1)">›</button>
-                <button class="page-nav-btn page-nav-add" id="btn-add-page" style="display:none;" onclick="addNewPage()">＋</button>
-                <button class="page-nav-btn page-nav-del" id="btn-del-page" style="display:none;" onclick="deleteCurrentPage()">✕</button>
+                <button class="page-nav-btn" id="btn-move-page-left" style="display:none;" title="這一排往前移" onclick="movePage(-1)"></button>
+                <button class="page-nav-btn" id="btn-move-page-right" style="display:none;" title="這一排往後移" onclick="movePage(1)"></button>
+                <button class="page-nav-btn" id="btn-rename-page" style="display:none;" title="改名" onclick="renamePage()"></button>
+                <button class="page-nav-btn page-nav-add" id="btn-add-page" style="display:none;" title="新增一排" onclick="addNewPage()"></button>
+                <button class="page-nav-btn page-nav-del" id="btn-del-page" style="display:none;" title="刪除這一排" onclick="deleteCurrentPage()"></button>
+            </div>
+
+            <div id="side-arrows">
+                <button class="side-arrow" id="page-nav-prev" onclick="goToPage(-1)"></button>
+                <button class="side-arrow" id="page-nav-next" onclick="goToPage(1)"></button>
             </div>
 
             <div class="image-map-container" id="map-container">
@@ -559,6 +663,17 @@
             <input type="file" id="bg-upload" style="display: none;" accept="image/*" onchange="uploadBackgroundImage(event)">
 
             <div id="overview-view"></div>
+
+            <!-- 🏠 倉庫全景 -->
+            <div id="panorama-view">
+                <div id="pano-stage">
+                    <div id="pano-wrap">
+                        <img id="pano-img" alt="">
+                        <div id="pano-empty">尚未設定全景圖<br>進入「✏️ 編輯」後按 ＋ → 更換底圖</div>
+                        <div id="pano-layer"></div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- 懸浮選單彈窗 (FAB Action Sheet) -->
@@ -566,10 +681,19 @@
         <div id="fab-modal" class="modal" style="z-index: 2200; padding-bottom: 40px;">
             <div style="font-size: 16px; font-weight: 600; margin-bottom: 16px; text-align: center; color: #0a84ff;">⚙️ 編輯模式快捷選單</div>
             <div style="display: flex; flex-direction: column; gap: 10px;">
-                <button class="apple-btn success" style="padding: 14px; font-size: 15px;" onclick="promptAddNewBox()">📦 新增箱子</button>
-                <button class="apple-btn secondary" style="padding: 14px; font-size: 15px;" onclick="document.getElementById('bg-upload').click(); closeFabMenu();">📁 更換底圖</button>
+                <button class="apple-btn success" style="padding: 14px; font-size: 15px;" onclick="promptAddNewBox()">📦 新增箱子（可一次輸入多個）</button>
+                <button class="apple-btn secondary" style="padding: 14px; font-size: 15px;" onclick="document.getElementById('bg-upload').click(); closeFabMenu();">📁 更換底圖 (自動壓縮上傳)</button>
                 <button class="apple-btn secondary" style="padding: 14px; font-size: 15px; color: #ff3b30;" onclick="closeFabMenu()">取消</button>
             </div>
+        </div>
+
+        <!-- 設定箱子所在層 -->
+        <div id="tier-backdrop" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(8px); z-index:2250;" onclick="closeTierPicker()"></div>
+        <div id="tier-modal" class="modal" style="z-index:2300; padding-bottom:36px;">
+            <div style="font-size:16px; font-weight:600; text-align:center; color:#0a84ff; margin-bottom:4px;">設定所在層</div>
+            <div id="tier-modal-box-name" style="font-size:12px; color:#8e8e93; text-align:center; margin-bottom:14px;"></div>
+            <div id="tier-modal-grid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px;"></div>
+            <button class="apple-btn secondary" style="width:100%; padding:14px;" onclick="closeTierPicker()">取消</button>
         </div>
 
         <!-- 箱子詳情視窗 -->
@@ -577,17 +701,18 @@
         <div id="item-modal" class="modal">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
                 <h2 id="modal-box-title" style="margin:0; font-size:18px; font-weight:600; color:#fff;">箱子詳情</h2>
-                <button class="apple-btn secondary" style="padding:6px 12px; font-size:12px;" onclick="openBoxPhotoUpload()">📷 換外觀照</button>
+                <!-- 移除了原有的「換外觀照」按鈕 -->
             </div>
-
-            <input type="file" id="box-img-upload" style="display:none;" accept="image/*" onchange="uploadBoxImageWithProgress(event)">
-            <div class="progress-bar-container" id="box-progress-container" style="margin-bottom:12px;"><div class="progress-bar-fill" id="box-progress-fill"></div></div>
 
             <div style="font-size: 13px; color:#8e8e93; margin-bottom:8px; font-weight: 500;">📦 箱內物品清單 (點擊檢視/編輯)：</div>
             <div id="item-list-container" class="items-grid"></div>
             
             <div id="add-item-trigger-section" style="display:none; margin-bottom:16px;">
                 <button class="apple-btn success" style="width:100%; padding:14px; font-size:14px; font-weight:600;" onclick="openAddItemModal()">＋ 新增箱內物品 (進貨)</button>
+            </div>
+
+            <div id="tier-section" style="display:none; margin-bottom:12px;">
+                <button class="apple-btn secondary" style="width:100%; padding:12px; font-size:13px;" onclick="openTierPicker()">🗂 設定所在層（第一層／第二層…）</button>
             </div>
 
             <div id="delete-box-section" style="display:none; margin-bottom:12px;">
@@ -614,7 +739,7 @@
                 <div style="font-size: 13px; color:#8e8e93; margin-bottom:6px;">有效期限（選填）：</div>
                 <input type="date" id="new-item-expiry" class="apple-input" style="font-size:14px; padding:12px;">
             </div>
-            <div style="font-size: 13px; color:#8e8e93; margin-bottom:6px;">物品照片 (選填)：</div>
+            <div style="font-size: 13px; color:#8e8e93; margin-bottom:6px;">物品照片 (選填，自動壓縮)：</div>
             <input type="file" id="item-img-file" accept="image/*" style="font-size:12px; color:#aaa; margin-bottom:16px; width:100%;">
             
             <div class="progress-bar-container" id="new-item-progress-container" style="margin-bottom:12px;"><div class="progress-bar-fill" id="new-item-progress-fill"></div></div>
@@ -683,7 +808,7 @@
                 <div style="text-align: center; margin-bottom: 10px; background: rgba(255,255,255,0.04); padding: 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
                     <img id="edit-item-preview-img" src="" style="width: 60px; height: 60px; object-fit: contain; border-radius: 8px; background: #1c1c1e; margin-bottom: 6px; display:block; margin-left:auto; margin-right:auto;">
                     <input type="file" id="edit-item-img-input" style="display:none;" accept="image/*" onchange="uploadNewItemImageWithProgress(event)">
-                    <button class="apple-btn secondary" style="padding:6px 12px; font-size:11px;" onclick="document.getElementById('edit-item-img-input').click()">📷 更換圖片</button>
+                    <button class="apple-btn secondary" style="padding:6px 12px; font-size:11px;" onclick="document.getElementById('edit-item-img-input').click()">📷 更換圖片 (自動壓縮)</button>
                     <div class="progress-bar-container" id="item-progress-container"><div class="progress-bar-fill" id="item-progress-fill"></div></div>
                 </div>
                 <div style="font-size: 13px; color:#8e8e93; margin-bottom:4px;">物品名稱：</div>
@@ -739,9 +864,9 @@
     </div>
 
 <script type="module">
+    // ⭐️ 已經不需要 Firebase Storage，直接使用 Firestore 即可
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, collection, getDocs, addDoc, doc, updateDoc, getDoc, setDoc, deleteDoc, runTransaction, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyD9oJirgoJCTU7h-ODfSpfwC80E5fqze2A",
@@ -755,7 +880,42 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    const storage = getStorage(app);
+
+    // ==============================================
+    // 前端圖片壓縮並轉 Base64 函數
+    // 會將圖片縮小到指定的寬度並壓縮，最後回傳 Base64 字串
+    // ==============================================
+    function compressImage(file, maxWidth = 800, quality = 0.7) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > maxWidth) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // 轉出 Base64
+                    const dataUrl = canvas.toDataURL('image/jpeg', quality);
+                    resolve(dataUrl);
+                };
+                img.onerror = (e) => reject(e);
+            };
+            reader.onerror = (e) => reject(e);
+        });
+    }
 
     let isLayoutMode = false;
     let isContentEditActive = false;
@@ -770,7 +930,7 @@
     function makeUid() {
         return (Math.random().toString(36).slice(2, 6) + Date.now().toString(36).slice(-4)).toUpperCase();
     }
-    // 確保 item.units 存在：每一件實體物品都有自己的 uid、狀態 (in/out) 與借用人
+    
     function ensureUnits(item) {
         if (item.itemType === 'consumable') return [];
         if (!Array.isArray(item.units) || item.units.length === 0) {
@@ -784,7 +944,7 @@
         syncItemCounts(item);
         return item.units;
     }
-    // 依 units 陣列回填 qty / checkedOutCount / borrower，讓其餘沿用舊欄位的畫面自動同步
+    
     function syncItemCounts(item) {
         if (item.itemType === 'consumable') return;
         const units = item.units || [];
@@ -793,6 +953,7 @@
         item.checkedOutCount = outUnits.length;
         item.borrower = outUnits.length ? outUnits[outUnits.length - 1].borrower : '';
     }
+    
     let html5QrCode = null;
 
     let scale = 1, panX = 0, panY = 0;
@@ -813,7 +974,7 @@
     ];
     let selectedGroupIndex = null; 
 
-    // ===== 進出貨紀錄：依「去處群組」上色+加圖示，一眼看出流向 (車輛/人員/其他) =====
+    // ===== 進出貨紀錄：依「去處群組」上色+加圖示 =====
     const TARGET_GROUP_ICONS = ['🚗', '👤', '🏥', '📍', '🏷️', '🧰'];
     const TARGET_GROUP_COLORS = ['#32d1c4', '#ff9f0a', '#ff375f', '#5e5ce6', '#64d2ff', '#ac8e68'];
     function getTargetGroupIndex(target) {
@@ -887,7 +1048,6 @@
         });
     }
 
-    // ===== 耗材有效期限 =====
     const EXPIRY_WARNING_DAYS = 30;
     function getExpiryInfo(it) {
         if (!it || !it.expiryDate) return null;
@@ -949,8 +1109,7 @@
         });
     }
 
-    // 批量匯入用：跟 showPromptDialog 一樣，但用多行 textarea，方便一次貼上 80~100 個名字
-    function showTextareaDialog(message, defaultValue = '', title = '請輸入') {
+    function showTextareaDialog(message, defaultValue = '', title = '請輸入', placeholder = '') {
         return new Promise((resolve) => {
             document.getElementById('dialog-title').innerText = title;
             document.getElementById('dialog-message').innerText = message;
@@ -959,6 +1118,7 @@
             const textarea = document.getElementById('dialog-textarea');
             textarea.style.display = 'block';
             textarea.value = defaultValue;
+            textarea.placeholder = placeholder || '每行一個名字，或用逗號、空白分隔皆可';
             document.getElementById('dialog-input').style.display = 'none';
             document.getElementById('dialog-backdrop').style.display = 'block';
             box.style.display = 'block';
@@ -1037,6 +1197,7 @@
             img.src = url;
         })));
     }
+    
     function setBackgroundImage(url) {
         const imgEl = document.getElementById('warehouse-img');
         const overlay = document.getElementById('map-loading-overlay');
@@ -1122,13 +1283,13 @@
     async function preloadAllData() {
         document.getElementById('preload-status').innerText = "正在背景預載資料庫…";
         try {
-            await Promise.all([loadPages(), startBoxesLiveSync(), loadBorrowerGroupsFromCloud()]);
+            await Promise.all([loadPages(), startBoxesLiveSync(), loadBorrowerGroupsFromCloud(), loadPanorama()]);
             document.getElementById('preload-status').innerText = "正在預先下載底圖…";
-            const pageImgUrls = pages.map(p => p.imageUrl);
+            const pageImgUrls = pages.map(p => p.imageUrl).concat([panoImg]);
             await preloadImagesAwait(pageImgUrls);
             const otherImgUrls = [];
             (boxesCache || []).forEach(b => {
-                otherImgUrls.push(b.imageUrl);
+                // 不再有 box imageUrl 的預載，只需處理物品照片
                 (b.items || []).forEach(it => otherImgUrls.push(it.imageUrl));
             });
             preloadImagesAsync(otherImgUrls);
@@ -1163,11 +1324,14 @@
     };
 
     window.backToMainMenu = function() {
+        setPanoUI(false);
+        selectedBoxId = null;
         if (isContentEditActive) {
             isContentEditActive = false;
             const editBtn = document.getElementById('mode-btn-edit');
             if (editBtn) {
-                editBtn.innerText = "✏️ 編輯";
+                setBtn(editBtn, 'pencil', '編輯');
+                const hb = document.querySelector('.header-btns'); if (hb) hb.classList.remove('compact');
                 editBtn.classList.remove('active');
             }
             const fab = document.getElementById('fab-container');
@@ -1203,10 +1367,11 @@
         } else {
             await switchToPage(currentPageIndex, true);
         }
+        showPanorama();
     };
 
     let isBorrowerEditMode = false;
-    let borrowerModalOnConfirm = null; // 若有設定，確認時改呼叫這個 callback，而不是直接開啟掃描器
+    let borrowerModalOnConfirm = null; 
 
     window.openBorrowerModal = function(onConfirm) {
         isBorrowerEditMode = false;
@@ -1397,7 +1562,6 @@
         );
         if (!text) return;
 
-        // 支援換行、逗號（全形/半形）、頓號、分號、多個空白 等各種分隔方式
         const names = text.split(/[\n,，、;；\t ]+/).map(s => s.trim()).filter(Boolean);
         if (names.length === 0) { showToast('沒有偵測到任何名字', 'error', 900); return; }
 
@@ -1440,7 +1604,6 @@
         }
     };
 
-    // 掃描出庫中途要換對象 (例如物資車1 換成 物資車2)，不用先結束掃描、鏡頭也不用重開
     window.changeScannerTarget = function() {
         openBorrowerModal((newTarget) => {
             currentBorrowTarget = newTarget;
@@ -1630,7 +1793,6 @@
         document.getElementById('main-menu-view').style.display = 'flex';
     };
 
-    // 讓「物品」也能像「去處」一樣直接點選瀏覽，而不是只能打字搜尋
     function renderLookupItemChips() {
         const el = document.getElementById('lookup-item-chips');
         if (!el) return;
@@ -1665,7 +1827,6 @@
         const resultsEl = document.getElementById('lookup-item-results');
         resultsEl.innerHTML = '';
 
-        // 若輸入框內容跟某個瀏覽按鈕不完全一致 (代表是自己打字的)，取消按鈕的選取狀態
         const matchingChip = Array.from(document.querySelectorAll('#lookup-item-chips .lookup-chip')).find(b => b.innerText === q);
         document.querySelectorAll('#lookup-item-chips .lookup-chip').forEach(b => b.classList.toggle('active-chip', b === matchingChip));
 
@@ -1886,7 +2047,6 @@
         if (now < scanGateUntil) return;
         if (scannedText === lastScannedCode && (now - lastScannedAt) < SAME_CODE_COOLDOWN_MS) return;
 
-        // 立刻上鎖，避免相機在同一瞬間重複觸發同一組碼，造成「一次出兩件」
         isProcessingScan = true;
         scanGateUntil = now + SCAN_GATE_MS;
         lastScannedCode = scannedText; lastScannedAt = now;
@@ -1907,13 +2067,12 @@
         if (scannedText.startsWith('ITEM_')) {
             const parts = scannedText.split('_');
             let itemIndex = parseInt(parts[2], 10);
-            const unitUid = parts[3]; // 每一件的專屬身分碼 (舊 QR 沒有此段，會自動 fallback)
+            const unitUid = parts[3]; 
 
             let box = boxesCache.find(b => b.id === parts[1]);
             let item = (box && box.items) ? box.items[itemIndex] : null;
             if (item) ensureUnits(item);
 
-            // 若在原本記錄的箱子/位置找不到這個身分碼 (物品已被搬移到別的箱子)，就全倉庫重新搜尋一次該身分碼
             if (unitUid && (!item || !item.units.find(u => u.uid === unitUid))) {
                 outerSearch:
                 for (const bx of boxesCache) {
@@ -1955,7 +2114,6 @@
                         const n = parseInt(raw, 10);
                         if (!n || n <= 0) { showToast('請輸入大於 0 的整數', 'error', 900); return; }
 
-                        // 領出數量超過庫存：明確提醒，不要默默截斷
                         if (n > currentQty) {
                             scanErrorFeedback('⚠️', `數量不夠！\n倉庫只剩 ${currentQty} 個\n無法出貨 ${n} 個`);
                             showToast(`⚠️ 數量不夠\n倉庫庫存只有 ${currentQty} 個，無法出貨 ${n} 個\n請重新掃描並輸入不超過庫存的數量`, 'error', 1600);
@@ -1977,7 +2135,6 @@
                             });
                         } catch (e) {}
                     } else {
-                        // 找出目前有哪些去處還持有這個耗材，讓使用者選這批是從哪裡回來的
                         const holdings = item.holdings || {};
                         const holdingKeys = Object.keys(holdings).filter(k => (holdings[k] || 0) > 0);
                         let sourceTarget = null;
@@ -2011,7 +2168,7 @@
                         if (sourceTarget) {
                             returned = Math.min(n, heldQty);
                             consumedQty = Math.max(0, heldQty - returned);
-                            delete item.holdings[sourceTarget]; // 這批結清：回來的算回庫存，沒回來的算消耗，去處歸零
+                            delete item.holdings[sourceTarget]; 
                             item.qty = currentQty + returned;
                         } else {
                             item.qty = currentQty + n;
@@ -2039,14 +2196,11 @@
                             }
                         } catch (e) {}
                     }
-
-                    // 掃描期間跳出的輸入框會暫停一小段時間，這裡刷新畫面上可能開著的物品詳情，確保庫存數字馬上對得上
                     refreshLiveViews();
                 }
                 else if (item) {
                     let unit = unitUid ? item.units.find(u => u.uid === unitUid) : null;
                     const scannedSpecificUnit = !!unit;
-                    // 舊版 QR（無身分碼）：自動挑一件符合狀態的單位頂替
                     if (!unit) unit = item.units.find(u => u.status === (scannerMode === 'out' ? 'in' : 'out'));
 
                     let actionType = '';
@@ -2062,7 +2216,6 @@
                             return;
                         }
                         if (unit.status === 'in') {
-                            // 從倉庫直接出庫給目前選定的對象 (例如：倉庫 → 物資車，或倉庫 → 人員)
                             unit.status = 'out';
                             unit.borrower = currentBorrowTarget;
                             unit.outAt = Date.now();
@@ -2071,7 +2224,6 @@
                             scanSuccessFeedback('📤', `已出庫\n${item.name} (${unitLabel})\n→ ${currentBorrowTarget}`);
                             showToast(`✅ 出貨成功\n物品：${item.name} (${unitLabel})\n去向：${currentBorrowTarget}`, 'success', 700);
                         } else {
-                            // 這件已經在外面了 (例如已在物資車上)，這次掃描視為「轉交」給新的對象 (物資車 → 人 / 人 → 物資車)
                             const fromWhom = unit.borrower || '不詳';
                             if (fromWhom === currentBorrowTarget) {
                                 scanErrorFeedback('🚫', `${unitLabel}\n已經在「${fromWhom}」手上\n無需重複操作`);
@@ -2095,7 +2247,6 @@
                             lastScannedCode = scannedText; lastScannedAt = now;
                             return;
                         }
-                        // 這件本來就是掃到指定的單位，但它已經是「在庫」狀態 → 不可重複入庫
                         if (scannedSpecificUnit && unit.status === 'in') {
                             scanErrorFeedback('🚫', `${unitLabel}\n已在庫中，無法重複入庫`);
                             showToast(`🚫 重複掃描\n物品：${item.name} (${unitLabel})\n此件本來就在庫中，未曾出庫`, 'error', 900);
@@ -2118,8 +2269,6 @@
                     lastScannedCode = scannedText; lastScannedAt = now;
 
                     await updateDoc(doc(db, "warehouse_boxes", targetBoxId), { items: box.items });
-
-                    // 畫面刷新交給 warehouse_boxes 的即時監聽器 (refreshLiveViews) 統一處理，這裡不用再手動刷新
 
                     try {
                         const nowDate = new Date();
@@ -2177,13 +2326,13 @@
     }
 
     async function initApp() {
+        await loadPanorama();
         await loadPages();
         await startBoxesLiveSync();
         await switchToPage(currentPageIndex, true);
     }
 
     let boxesListenerStarted = false;
-    // 即時同步：只要任何裝置寫入 warehouse_boxes，這裡就會立刻收到最新資料並刷新畫面
     function startBoxesLiveSync() {
         if (boxesListenerStarted) return Promise.resolve();
         boxesListenerStarted = true;
@@ -2202,7 +2351,6 @@
         });
     }
 
-    // 收到即時更新時，重繪目前畫面上有開著的地圖／箱子清單／物品詳情／總覽
     function refreshLiveViews() {
         renderBoxes();
         if (document.getElementById('lookup-view')?.style.display === 'block') renderLookupItemChips();
@@ -2335,9 +2483,11 @@
     async function saveCurrentPageTransform() {
         const p = pages[currentPageIndex];
         if (!p) return;
+        const cvs = document.getElementById('map-canvas');
         p.scale = scale; p.panX = panX; p.panY = panY;
+        p.panXr = panX / (cvs.offsetWidth || 1); p.panYr = panY / (cvs.offsetHeight || 1);
         try {
-            await updateDoc(doc(db, "warehouse_pages", p.id), { scale, panX, panY });
+            await updateDoc(doc(db, "warehouse_pages", p.id), { scale, panX, panY, panXr: p.panXr, panYr: p.panYr });
         } catch(e){}
     }
 
@@ -2345,7 +2495,8 @@
         isContentEditActive = !isContentEditActive;
         const btn = document.getElementById('mode-btn-edit');
         if (btn) {
-            btn.innerText = isContentEditActive ? "🔒 鎖定" : "✏️ 編輯";
+            setBtn(btn, isContentEditActive ? 'lock' : 'pencil', isContentEditActive ? '鎖定' : '編輯');
+            const hb = document.querySelector('.header-btns'); if (hb) hb.classList.toggle('compact', isContentEditActive);
             btn.classList.toggle('active', isContentEditActive);
         }
         const indicator = document.getElementById('mode-indicator');
@@ -2354,13 +2505,15 @@
         const fab = document.getElementById('fab-container');
         if (fab) fab.style.display = (isContentEditActive && !isOverviewActive) ? 'block' : 'none';
         const moveBtn = document.getElementById('btn-move-mode');
-        if (moveBtn) moveBtn.style.display = isContentEditActive ? 'inline-block' : 'none';
+        if (moveBtn) moveBtn.style.display = isContentEditActive ? 'inline-flex' : 'none';
         
         closeModal();
         closeEditItemModal();
         if (isOverviewActive) setOverviewMode(false);
         if (isLayoutMode) toggleLayoutMode();
 
+        selectedBoxId = null;
+        if (isPanoActive) renderPanorama();
         renderPageNav();
         renderBoxes();
     };
@@ -2374,21 +2527,10 @@
         document.getElementById('fab-modal').style.display = 'none';
     };
 
-    window.promptAddNewBox = async function() {
-        closeFabMenu();
-        const name = await showPromptDialog('請輸入新箱子名稱 (例: 救護箱)', '', '新增箱子');
-        if (!name) return;
-        const b = { name: name.trim(), x: 50, y: 50, width: 100, height: 80, items: [], imageUrl: "", pageId: pages[currentPageIndex].id };
-        const ref = await addDoc(collection(db, "warehouse_boxes"), b);
-        const newBox = { id: ref.id, ...b };
-        await getOrAssignBoxNumber(newBox);
-        boxesCache.push(newBox);
-        renderBoxes();
-        showToast(`✅ 已新增箱子「${name}」`, 'success', 900);
-    };
-
     window.toggleLayoutMode = function() {
+        if (isPanoActive) return showToast('請先進入某一排再調整佈局', 'error', 1200);
         isLayoutMode = !isLayoutMode;
+        if (!isLayoutMode) { scale = 1; panX = 0; panY = 0; updateCanvasTransform(); }
         const moveBtn = document.getElementById('btn-move-mode');
         if (moveBtn) moveBtn.classList.toggle('active', isLayoutMode);
         const indicator = document.getElementById('mode-indicator');
@@ -2401,18 +2543,59 @@
         renderBoxes();
     };
 
+    let isPageSliding = false;
     window.goToPage = async function(dir) {
-        if (isLayoutMode) return;
-        await switchToPage(currentPageIndex + dir);
+        if (isLayoutMode || isPageSliding) return;
+        const target = currentPageIndex + dir;
+        if (target < 0 || target >= pages.length) return;
+        isPageSliding = true;
+        const cont = document.getElementById('map-container');
+        const canvas = document.getElementById('map-canvas');
+        // 先把目前畫面複製成「殘影」蓋在上面，底下立刻換成新的一頁，再讓兩者同時橫移
+        const ghost = canvas.cloneNode(true);
+        ghost.removeAttribute('id');
+        ghost.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+        ghost.style.pointerEvents = 'none';
+        ghost.style.zIndex = '5';
+        cont.appendChild(ghost);
+        try {
+            const gi = ghost.querySelector('img');
+            if (gi && gi.getAttribute('src')) { try { await gi.decode(); } catch (e) {} }
+            await switchToPage(target);
+            const W = cont.clientWidth;
+            const opt = { duration: 320, easing: 'cubic-bezier(.4,0,.2,1)' };
+            const a1 = ghost.animate([{ translate: '0px 0' }, { translate: `${-dir * W}px 0` }], { ...opt, fill: 'forwards' });
+            const a2 = canvas.animate([{ translate: `${dir * W}px 0` }, { translate: '0px 0' }], opt);
+            await Promise.all([a1.finished, a2.finished]);
+        } catch (e) {
+        } finally {
+            ghost.remove();
+            isPageSliding = false;
+        }
     };
 
     async function switchToPage(idx, init = false) {
         if (!pages.length) return;
-        currentPageIndex = Math.max(0, Math.min(idx, pages.length - 1));
-        const p = pages[currentPageIndex];
-        scale = p.scale || 1; panX = p.panX || 0; panY = p.panY || 0;
-        updateCanvasTransform();
-        setBackgroundImage(p.imageUrl || '');
+        const ni = Math.max(0, Math.min(idx, pages.length - 1));
+        const p = pages[ni];
+        const imgEl = document.getElementById('warehouse-img');
+
+        // 1) 先在背景準備好：尺寸 + 解碼完成（畫面此時完全不動）
+        await loadPageDims(p);
+        if (p.imageUrl) {
+            if (imgEl.getAttribute('src') !== p.imageUrl) imgEl.src = p.imageUrl;
+            try { await imgEl.decode(); } catch (e) {}
+        } else {
+            imgEl.removeAttribute('src');
+        }
+        document.getElementById('map-loading-overlay').style.display = 'none';
+
+        // 2) 一次換好：頁面、縮放(固定 1 倍)、畫布大小、箱子
+        currentPageIndex = ni;
+        selectedBoxId = null;
+        setPanoUI(false);
+        scale = 1; panX = 0; panY = 0;
+        fitCanvas();
         renderPageNav();
         renderBoxes();
     }
@@ -2431,6 +2614,13 @@
         if (addPageBtn) addPageBtn.style.display = isContentEditActive ? 'flex' : 'none';
         const delPageBtn = document.getElementById('btn-del-page');
         if (delPageBtn) delPageBtn.style.display = (isContentEditActive && pages.length > 1) ? 'flex' : 'none';
+        const renameBtn = document.getElementById('btn-rename-page');
+        if (renameBtn) renameBtn.style.display = isContentEditActive ? 'flex' : 'none';
+        const showMove = isContentEditActive && pages.length > 1;
+        const mvL = document.getElementById('btn-move-page-left');
+        const mvR = document.getElementById('btn-move-page-right');
+        if (mvL) { mvL.style.display = showMove ? 'flex' : 'none'; mvL.disabled = currentPageIndex <= 0; }
+        if (mvR) { mvR.style.display = showMove ? 'flex' : 'none'; mvR.disabled = currentPageIndex >= pages.length - 1; }
     }
 
     window.addNewPage = async function() {
@@ -2450,6 +2640,373 @@
         await switchToPage(Math.max(0, currentPageIndex - 1));
     };
 
+    // ===== 倉庫全景 =====
+    let isPanoActive = false, panoImg = '', selectedBoxId = null;
+
+    async function loadPanorama() {
+        try {
+            const s = await getDoc(doc(db, "settings", "panorama"));
+            if (s.exists()) panoImg = s.data().imageUrl || '';
+        } catch (e) {}
+    }
+    function setPanoUI(active) {
+        isPanoActive = active;
+        document.getElementById('panorama-view').style.display = active ? 'block' : 'none';
+        document.getElementById('page-nav').style.display = active ? 'none' : 'flex';
+        document.getElementById('side-arrows').style.display = active ? 'none' : 'block';
+        document.getElementById('map-container').style.display = active ? 'none' : 'block';
+    }
+    window.showPanorama = function () {
+        if (isOverviewActive) setOverviewMode(false);
+        if (isLayoutMode) toggleLayoutMode();
+        closeModal(); closeEditItemModal();
+        selectedBoxId = null;
+        setPanoUI(true);
+        renderPanorama();
+    };
+    window.renamePage = async function (idx = currentPageIndex) {
+        const p = pages[idx]; if (!p) return;
+        const n = await showPromptDialog('請輸入頁面名稱', p.name, '編輯頁面名稱');
+        if (!n) return;
+        p.name = n;
+        await updateDoc(doc(db, "warehouse_pages", p.id), { name: n });
+        renderPageNav();
+        if (isPanoActive) renderPanorama();
+    };
+    function savePanoRect(p, r) { updateDoc(doc(db, "warehouse_pages", p.id), { panoRect: r }).catch(() => {}); }
+
+    function renderPanorama() {
+        const img = document.getElementById('pano-img');
+        const empty = document.getElementById('pano-empty');
+        if (panoImg) { img.src = panoImg; img.style.display = 'block'; empty.style.display = 'none'; }
+        else { img.removeAttribute('src'); img.style.display = 'none'; empty.style.display = 'flex'; }
+
+        const layer = document.getElementById('pano-layer');
+        layer.innerHTML = '';
+        const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+        const apply = (s, r) => { s.style.left = r.x + '%'; s.style.top = r.y + '%'; s.style.width = r.w + '%'; s.style.height = r.h + '%'; };
+
+        pages.forEach((p, i) => {
+            const w = 90 / pages.length;
+            const r = p.panoRect = p.panoRect || { x: 5 + i * w, y: 35, w: w - 2, h: 30 };
+            const s = document.createElement('div');
+            s.className = 'pano-spot' + (isContentEditActive ? ' editing' : '');
+            apply(s, r);
+            s.innerHTML = `<span class="pano-spot-label">${escapeHtml(p.name)}</span>`;
+            s.onclick = () => { if (s.dataset.moved) return; if (!isContentEditActive) switchToPage(i); };
+
+            if (isContentEditActive) {
+                const eb = document.createElement('button');
+                eb.className = 'pano-edit-btn'; eb.innerText = '✎';
+                eb.onpointerdown = e => e.stopPropagation();
+                eb.onclick = e => { e.stopPropagation(); renamePage(i); };
+                s.appendChild(eb);
+
+                const h = document.createElement('div');
+                h.className = 'pano-h';
+                s.appendChild(h);
+
+                s.onpointerdown = e => {
+                    if (e.target === h || e.target === eb) return;
+                    s.setPointerCapture(e.pointerId);
+                    const L = layer.getBoundingClientRect();
+                    const sx = e.clientX, sy = e.clientY, r0 = { ...r };
+                    s.dataset.moved = '';
+                    s.onpointermove = ev => {
+                        const dx = (ev.clientX - sx) / L.width * 100, dy = (ev.clientY - sy) / L.height * 100;
+                        if (Math.abs(ev.clientX - sx) > 4 || Math.abs(ev.clientY - sy) > 4) s.dataset.moved = '1';
+                        r.x = clamp(r0.x + dx, 0, 100 - r.w); r.y = clamp(r0.y + dy, 0, 100 - r.h);
+                        apply(s, r);
+                    };
+                    s.onpointerup = () => { s.onpointermove = null; s.onpointerup = null; if (s.dataset.moved) savePanoRect(p, r); };
+                };
+                h.onpointerdown = e => {
+                    e.stopPropagation();
+                    h.setPointerCapture(e.pointerId);
+                    const L = layer.getBoundingClientRect();
+                    const sx = e.clientX, sy = e.clientY, r0 = { ...r };
+                    h.onpointermove = ev => {
+                        r.w = clamp(r0.w + (ev.clientX - sx) / L.width * 100, 5, 100 - r.x);
+                        r.h = clamp(r0.h + (ev.clientY - sy) / L.height * 100, 5, 100 - r.y);
+                        apply(s, r);
+                    };
+                    h.onpointerup = () => { h.onpointermove = null; h.onpointerup = null; savePanoRect(p, r); };
+                };
+            }
+            layer.appendChild(s);
+        });
+
+    }
+
+    // 點地圖空白處 = 取消選取箱子
+    mapContainer.addEventListener('click', (e) => {
+        if (isContentEditActive && selectedBoxId && !e.target.closest('.box-wrapper')) {
+            selectedBoxId = null; renderBoxes();
+        }
+    });
+
+    // ===== Apple 風格 SF 線條圖示 =====
+    const _svg = (inner, sw = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+    const ICONS = {
+        home:   _svg('<path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/>'),
+        list:   _svg('<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r=".8"/><circle cx="4.5" cy="12" r=".8"/><circle cx="4.5" cy="18" r=".8"/>'),
+        map:    _svg('<path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/>'),
+        tag:    _svg('<path d="M20.6 13.4l-7.2 7.2a2 2 0 01-2.8 0L3 13V3h10l7.6 7.6a2 2 0 010 2.8z"/><circle cx="7.5" cy="7.5" r="1.2"/>'),
+        move:   _svg('<path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/>', 1.8),
+        pencil: _svg('<path d="M4 20h4L19 9a2.8 2.8 0 00-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>'),
+        lock:   _svg('<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>'),
+        plus:   _svg('<path d="M12 5v14M5 12h14"/>', 2.4),
+        trash:  _svg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'),
+        arrowL: _svg('<path d="M19 12H5M11 6l-6 6 6 6"/>', 2.2),
+        arrowR: _svg('<path d="M5 12h14M13 6l6 6-6 6"/>', 2.2),
+        chevL:  _svg('<path d="M15 5l-7 7 7 7"/>', 2.8),
+        chevR:  _svg('<path d="M9 5l7 7-7 7"/>', 2.8),
+        open:   _svg('<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>'),
+        layers: _svg('<path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/>'),
+        check:  _svg('<path d="M5 13l4 4L19 7"/>', 2.6),
+    };
+    function setBtn(btn, icon, label) {
+        if (!btn) return;
+        btn.innerHTML = ICONS[icon] + (label ? `<span class="lbl">${label}</span>` : '');
+    }
+    function initHeaderIcons() {
+        const $ = id => document.getElementById(id);
+        setBtn($('btn-show-pano'), 'home', '全景');
+        setBtn($('btn-toggle-overview'), 'list', '總覽');
+        setBtn($('btn-toggle-box-labels'), 'tag', '箱名');
+        setBtn($('btn-move-mode'), 'move', '佈局');
+        setBtn($('mode-btn-edit'), 'pencil', '編輯');
+        setBtn($('btn-move-page-left'), 'arrowL');
+        setBtn($('btn-move-page-right'), 'arrowR');
+        setBtn($('btn-rename-page'), 'pencil');
+        setBtn($('btn-add-page'), 'plus');
+        setBtn($('btn-del-page'), 'trash');
+        $('page-nav-prev').innerHTML = `<span class="chev">${ICONS.chevL}</span>`;
+        $('page-nav-next').innerHTML = `<span class="chev">${ICONS.chevR}</span>`;
+    }
+    initHeaderIcons();
+
+    // ===== 頁面（排）換順序 =====
+    window.movePage = async function (dir) {
+        const i = currentPageIndex, j = i + dir;
+        if (j < 0 || j >= pages.length) return;
+        const a = pages[i], b = pages[j];
+        const needRenumber = pages.some(p => typeof p.order !== 'number') || Number(a.order) === Number(b.order);
+        [pages[i], pages[j]] = [b, a];
+        try {
+            if (needRenumber) {
+                pages.forEach((p, k) => { p.order = k + 1; });
+                await Promise.all(pages.map(p => updateDoc(doc(db, "warehouse_pages", p.id), { order: p.order })));
+            } else {
+                const t = a.order; a.order = b.order; b.order = t;
+                await Promise.all([
+                    updateDoc(doc(db, "warehouse_pages", a.id), { order: a.order }),
+                    updateDoc(doc(db, "warehouse_pages", b.id), { order: b.order })
+                ]);
+            }
+        } catch (e) { showToast('❌ 排序儲存失敗，請重試', 'error', 1200); }
+        currentPageIndex = j;
+        renderPageNav();
+        if (isPanoActive) renderPanorama();
+        showToast(`✅ 「${a.name}」已移到第 ${j + 1} 位`, 'success', 900);
+    };
+
+    // ===== 圖片座標系：所有箱子位置/大小都用「圖片的 %」，換裝置不會跑掉 =====
+    let swipeBlockUntil = 0;
+    const r3 = v => Math.round(v * 1000) / 1000;
+    const clampN = (v, a, b) => Math.max(a, Math.min(b, v));
+
+    function loadPageDims(p) {
+        return new Promise(res => {
+            if (!p) return res();
+            if (!p.imageUrl) { p._nw = 0; p._nh = 0; return res(); }
+            if (p._nwUrl === p.imageUrl && p._nw) return res();
+            const im = new Image();
+            im.onload = () => { p._nw = im.naturalWidth; p._nh = im.naturalHeight; p._nwUrl = p.imageUrl; res(); };
+            im.onerror = () => { p._nw = 0; p._nh = 0; res(); };
+            im.src = p.imageUrl;
+        });
+    }
+
+    // 讓畫布剛好貼住圖片（contain），箱子 % 就是圖片 %
+    function fitCanvas() {
+        const cont = document.getElementById('map-container');
+        const canvas = document.getElementById('map-canvas');
+        if (!cont || !canvas) return;
+        const cw = cont.clientWidth, ch = cont.clientHeight;
+        if (!cw || !ch) return;
+        const p = pages[currentPageIndex];
+        let w = cw, h = ch;
+        if (p && p._nw && p._nh) {
+            const s = Math.min(cw / p._nw, ch / p._nh);
+            w = p._nw * s; h = p._nh * s;
+        }
+        canvas.dataset.fitted = (p && (p._nw || !p.imageUrl)) ? '1' : '';
+        canvas.style.left = ((cw - w) / 2) + 'px';
+        canvas.style.top = ((ch - h) / 2) + 'px';
+        canvas.style.width = w + 'px';
+        canvas.style.height = h + 'px';
+        updateCanvasTransform();
+    }
+    if (window.ResizeObserver) new ResizeObserver(() => fitCanvas()).observe(document.getElementById('map-container'));
+
+    // 取得箱子幾何（圖片 %）；舊資料（x,y %畫面 + width,height px）換算一次
+    function geomOf(b) {
+        if (typeof b.fw === 'number' && typeof b.fx === 'number') return { fx: b.fx, fy: b.fy, fw: b.fw, fh: b.fh };
+        const cont = document.getElementById('map-container');
+        const canvas = document.getElementById('map-canvas');
+        const cw = cont.clientWidth, ch = cont.clientHeight;
+        const sw = canvas.offsetWidth, sh = canvas.offsetHeight;
+        const visible = cw > 0 && ch > 0 && sw > 0 && sh > 0 && canvas.dataset.fitted === '1';
+        const W = visible ? cw : 480, H = visible ? ch : 800;
+        const SW = visible ? sw : 480, SH = visible ? sh : 800;
+        const SL = visible ? canvas.offsetLeft : 0, ST = visible ? canvas.offsetTop : 0;
+        const g = {
+            fx: r3((((b.x == null ? 50 : b.x) / 100 * W) - SL) / SW * 100),
+            fy: r3((((b.y == null ? 50 : b.y) / 100 * H) - ST) / SH * 100),
+            fw: r3((b.width || 100) / SW * 100),
+            fh: r3((b.height || 80) / SH * 100)
+        };
+        if (visible) Object.assign(b, g);
+        return g;
+    }
+    async function saveBoxGeom(b) {
+        const g = geomOf(b);
+        b.fx = r3(g.fx); b.fy = r3(g.fy); b.fw = r3(g.fw); b.fh = r3(g.fh);
+        try { await updateDoc(doc(db, "warehouse_boxes", b.id), { fx: b.fx, fy: b.fy, fw: b.fw, fh: b.fh }); } catch (e) {}
+    }
+
+    // ===== 滑動手勢：在檢視模式左右滑動換排 =====
+    (function initSwipe() {
+        const c = document.getElementById('map-container');
+        let sx = 0, sy = 0, t0 = 0, tracking = false;
+        c.addEventListener('pointerdown', e => {
+            tracking = e.isPrimary && !isContentEditActive && !isLayoutMode;
+            sx = e.clientX; sy = e.clientY; t0 = Date.now();
+        });
+        c.addEventListener('pointerup', e => {
+            if (!tracking) return;
+            tracking = false;
+            const dx = e.clientX - sx, dy = e.clientY - sy;
+            if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5 && Date.now() - t0 < 700) {
+                swipeBlockUntil = Date.now() + 350;
+                goToPage(dx < 0 ? 1 : -1);
+            }
+        });
+        c.addEventListener('pointercancel', () => { tracking = false; });
+    })();
+
+    // ===== 層 =====
+    const TIER_NAMES = ['未分層', '一', '二', '三', '四', '五', '六'];
+    const tierLabel = t => (t ? `第${TIER_NAMES[t] || t}層` : '未分層');
+    let tierPickerBoxId = null;
+
+    window.openTierPicker = function (id) {
+        id = id || currentBoxId;
+        const b = (boxesCache || []).find(x => x.id === id);
+        if (!b) return;
+        tierPickerBoxId = id;
+        document.getElementById('tier-modal-box-name').innerText = `「${b.name}」目前：${tierLabel(Number(b.tier) || 0)}`;
+        const grid = document.getElementById('tier-modal-grid');
+        grid.innerHTML = '';
+        [1, 2, 3, 4, 5, 6, 0].forEach(n => {
+            const btn = document.createElement('button');
+            const on = (Number(b.tier) || 0) === n;
+            btn.className = 'apple-btn ' + (on ? '' : 'secondary');
+            btn.style.cssText = 'padding:14px 4px; font-size:14px;';
+            btn.innerText = tierLabel(n);
+            btn.onclick = () => setBoxTier(id, n);
+            grid.appendChild(btn);
+        });
+        document.getElementById('tier-backdrop').style.display = 'block';
+        document.getElementById('tier-modal').style.display = 'block';
+    };
+    window.closeTierPicker = function () {
+        document.getElementById('tier-backdrop').style.display = 'none';
+        document.getElementById('tier-modal').style.display = 'none';
+    };
+    window.setBoxTier = async function (id, tier) {
+        const b = (boxesCache || []).find(x => x.id === id);
+        if (!b) return;
+        b.tier = tier;
+        closeTierPicker();
+        try { await updateDoc(doc(db, "warehouse_boxes", id), { tier }); } catch (e) { showToast('❌ 儲存失敗', 'error', 900); return; }
+        renderBoxes();
+        if (document.getElementById('item-modal').style.display === 'block' && currentBoxId === id) renderBoxModal(b);
+        if (isOverviewActive) setOverviewMode(true);
+        showToast(`✅ 「${b.name}」→ ${tierLabel(tier)}`, 'success', 800);
+    };
+
+    // ===== 箱子標籤：一個箱子可有多個標籤，每個都能拖到箱內想要的位置 =====
+    const LABEL_SPLIT = /[\n/／、,，;；|｜]+/;
+    function parseLabelTexts(text) { return String(text || '').split(LABEL_SPLIT).map(s => s.trim()).filter(Boolean); }
+    function defaultLabelPos(i, n) { return n <= 1 ? { x: 50, y: 88 } : { x: 50, y: Math.round((i + 1) / (n + 1) * 100) }; }
+    function labelsOf(b) {
+        if (Array.isArray(b.labels) && b.labels.length) return b.labels;
+        return [{ t: b.name || '未命名箱子', x: 50, y: 88 }];
+    }
+
+    window.editBoxLabels = async function (id) {
+        const b = (boxesCache || []).find(x => x.id === id);
+        if (!b) return;
+        const cur = labelsOf(b);
+        const text = await showTextareaDialog(
+            '一行一個標籤。一個箱子可以有很多個，例如：\n3X3\n4X4\n瞳孔筆\n儲存後，選取箱子就能把每個標籤拖到想要的位置。',
+            cur.map(l => l.t).join('\n'), '🏷️ 編輯箱子標籤', '每行一個標籤');
+        if (!text) return;
+        const texts = parseLabelTexts(text);
+        if (!texts.length) return;
+        const pool = cur.slice();
+        const next = texts.map((t, i) => {
+            const k = pool.findIndex(l => l.t === t);
+            if (k >= 0) { const l = pool.splice(k, 1)[0]; return { t, x: l.x, y: l.y }; }
+            const d = defaultLabelPos(i, texts.length);
+            return { t, x: d.x, y: d.y };
+        });
+        b.labels = next;
+        b.name = texts.join(' / ');
+        try { await updateDoc(doc(db, "warehouse_boxes", id), { labels: next, name: b.name }); } catch (e) { showToast('❌ 儲存失敗', 'error', 900); }
+        renderBoxes();
+        if (document.getElementById('item-modal').style.display === 'block' && currentBoxId === id) renderBoxModal(b);
+        if (isOverviewActive) setOverviewMode(true);
+        showToast(`✅ 已更新 ${next.length} 個標籤`, 'success', 900);
+    };
+    window.renameBox = (id) => window.editBoxLabels(id);
+
+    // ===== 一次新增多個箱子（一行一個箱子；同箱多標籤用 / 或 、 分開） =====
+    window.promptAddNewBox = async function () {
+        closeFabMenu();
+        if (isPanoActive) return showToast('請先進入某一排再新增箱子', 'error', 1200);
+        const text = await showTextareaDialog(
+            '一行一個箱子。同一個箱子有多個標籤，用「/」或「、」分開，例如：\n3X3 / 4X4 / 瞳孔筆\n新增後點選箱子，就能拖動箱子與每個標籤。',
+            '', '📦 新增箱子', '救護\n3X3 / 4X4 / 瞳孔筆');
+        if (!text) return;
+        const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
+        const pid = pages[currentPageIndex].id;
+        const existing = (boxesCache || []).filter(b => b.pageId === pid).length;
+        let created = 0, lastId = null, lastName = '';
+        for (const line of lines) {
+            const texts = parseLabelTexts(line);
+            if (!texts.length) continue;
+            const k = existing + created;
+            const b = {
+                name: texts.join(' / '),
+                labels: texts.map((t, i) => ({ t, ...defaultLabelPos(i, texts.length) })),
+                items: [], imageUrl: "", pageId: pid,
+                fx: 14 + (k % 4) * 24, fy: 16 + (Math.floor(k / 4) % 8) * 12, fw: 16, fh: 10
+            };
+            const ref = await addDoc(collection(db, "warehouse_boxes"), b);
+            const nb = { id: ref.id, ...b };
+            await getOrAssignBoxNumber(nb);
+            if (!boxesCache.find(x => x.id === nb.id)) boxesCache.push(nb);
+            lastId = nb.id; lastName = nb.name; created++;
+        }
+        if (!created) return;
+        selectedBoxId = created === 1 ? lastId : null;
+        renderBoxes();
+        showToast(created === 1 ? `✅ 已新增「${lastName}」\n可直接拖動、拉大小` : `✅ 已新增 ${created} 個箱子\n點選箱子即可拖到想要的位置`, 'success', 1400);
+    };
+
     function escapeHtml(str) {
         return String(str == null ? '' : str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
     }
@@ -2461,7 +3018,10 @@
         renderBoxes();
     };
 
-    window.toggleOverview = function() { setOverviewMode(!isOverviewActive); };
+    window.toggleOverview = function() {
+        if (isPanoActive) setPanoUI(false);
+        setOverviewMode(!isOverviewActive);
+    };
     
     function setOverviewMode(active) {
         isOverviewActive = active;
@@ -2469,6 +3029,8 @@
         if (mapContainerEl) mapContainerEl.style.display = active ? 'none' : 'block';
         const pageNavEl = document.getElementById('page-nav');
         if (pageNavEl) pageNavEl.style.display = active ? 'none' : 'flex';
+        const sideArrowsEl = document.getElementById('side-arrows');
+        if (sideArrowsEl) sideArrowsEl.style.display = active ? 'none' : 'block';
         const fab = document.getElementById('fab-container');
         if (fab) fab.style.display = (active || !isContentEditActive) ? 'none' : 'block';
         const ovView = document.getElementById('overview-view');
@@ -2476,7 +3038,7 @@
         
         const btn = document.getElementById('btn-toggle-overview');
         if (btn) {
-            btn.innerText = active ? '🗺 地圖' : '📋 總覽';
+            setBtn(btn, active ? 'map' : 'list', active ? '地圖' : '總覽');
             btn.classList.toggle('active', active);
         }
         if (active) {
@@ -2485,18 +3047,32 @@
                 html += `<div class="ov-page-title">📍 ${escapeHtml(p.name)}</div>`;
                 const boxes = (boxesCache || []).filter(b => b.pageId === p.id);
                 if (boxes.length === 0) html += `<div class="ov-empty-page">（無箱子）</div>`;
-                boxes.forEach(b => {
-                    html += `<div class="ov-box" onclick="openBoxModal('${b.id}')"><div class="ov-box-title"><span>📦 ${escapeHtml(b.name)}</span><span class="ov-box-count">${(b.items||[]).length} 項</span></div>`;
-                    
-                    (b.items || []).forEach(it => {
-                        const checkedOut = Number(it.checkedOutCount) || 0;
-                        const totalUnits = Array.isArray(it.units) && it.units.length ? it.units.length : (Number(it.qty) || 0) + checkedOut;
-                        if (checkedOut > 0) {
-                            const borrowerText = it.borrower ? ` (已出庫${checkedOut}件 → ${it.borrower})` : ` (已出庫${checkedOut}件)`;
-                            html += `<div class="ov-item checked-out">• ${escapeHtml(it.name)} ${it.qty||0}/${totalUnits} <span style="font-size:11px; font-weight:650;">${escapeHtml(borrowerText)}</span></div>`;
-                        } else {
-                            html += `<div class="ov-item">• ${escapeHtml(it.name)} x${it.qty||1}</div>`;
+                const tiers = [...new Set(boxes.map(b => Number(b.tier) || 0))].sort((a, b) => (a || 99) - (b || 99));
+                const showTierTitles = !(tiers.length === 1 && tiers[0] === 0);
+                tiers.forEach(t => {
+                    const inTier = boxes.filter(b => (Number(b.tier) || 0) === t)
+                        .sort((a, b) => geomOf(a).fx - geomOf(b).fx);
+                    if (showTierTitles) html += `<div class="ov-tier-title"><span>${tierLabel(t)}</span><span>${inTier.length} 箱（左→右）</span></div>`;
+                    html += `<div class="${t ? 'ov-tier-row' : 'ov-tier-wrap'}">`;
+                    inTier.forEach(b => {
+                        html += `<div class="ov-box" onclick="openBoxModal('${b.id}')"><div class="ov-box-title"><span>📦 ${escapeHtml(b.name)}</span><span class="ov-box-count">${(b.items||[]).length} 項</span></div>`;
+                        if (isContentEditActive) {
+                            const cur = Number(b.tier) || 0;
+                            html += `<div class="ov-tier-chips">` + [1, 2, 3, 4, 5, 0].map(n =>
+                                `<button class="tier-chip ${cur === n ? 'on' : ''}" onclick="event.stopPropagation(); setBoxTier('${b.id}', ${n})">${n ? tierLabel(n) : '未分層'}</button>`
+                            ).join('') + `</div>`;
                         }
+                        (b.items || []).forEach(it => {
+                            const checkedOut = Number(it.checkedOutCount) || 0;
+                            const totalUnits = Array.isArray(it.units) && it.units.length ? it.units.length : (Number(it.qty) || 0) + checkedOut;
+                            if (checkedOut > 0) {
+                                const borrowerText = it.borrower ? ` (已出庫${checkedOut}件 → ${it.borrower})` : ` (已出庫${checkedOut}件)`;
+                                html += `<div class="ov-item checked-out">• ${escapeHtml(it.name)} ${it.qty||0}/${totalUnits} <span style="font-size:11px; font-weight:650;">${escapeHtml(borrowerText)}</span></div>`;
+                            } else {
+                                html += `<div class="ov-item">• ${escapeHtml(it.name)} x${it.qty||1}</div>`;
+                            }
+                        });
+                        html += `</div>`;
                     });
                     html += `</div>`;
                 });
@@ -2508,114 +3084,175 @@
     function renderBoxes() {
         const layer = document.getElementById('boxes-layer');
         if (!layer) return;
+        const canvas = document.getElementById('map-canvas');
         const frag = document.createDocumentFragment();
         const pid = pages[currentPageIndex]?.id;
+
         (boxesCache || []).filter(b => b.pageId === pid).forEach(b => {
+            const g = geomOf(b);
+            const isSel = isLayoutMode || (isContentEditActive && selectedBoxId === b.id);
             const wrap = document.createElement('div');
             wrap.className = 'box-wrapper';
-            if (isLayoutMode) {
-                wrap.classList.add('selected');
-                wrap.classList.add('layout-active');
+            if (isSel) wrap.classList.add('selected', 'layout-active');
+            if (highlightedBoxId === b.id) wrap.classList.add('search-highlight');
+            const applyGeom = (G) => {
+                wrap.style.left = G.fx + '%'; wrap.style.top = G.fy + '%';
+                wrap.style.width = G.fw + '%'; wrap.style.height = G.fh + '%';
+            };
+            applyGeom(g);
+
+            if (b.imageUrl) {
+                const img = document.createElement('img');
+                img.className = 'box-image-hotspot'; img.src = b.imageUrl;
+                wrap.appendChild(img);
             }
-            if (highlightedBoxId === b.id) {
-                wrap.classList.add('search-highlight');
+            if (showBoxLabels || isContentEditActive) {
+                const labs = labelsOf(b);
+                labs.forEach((lb) => {
+                    const chip = document.createElement('div');
+                    chip.className = 'box-label-chip' + (isSel ? ' draggable' : '');
+                    chip.innerText = lb.t;
+                    chip.style.left = lb.x + '%';
+                    chip.style.top = lb.y + '%';
+                    if (isSel) {
+                        chip.onpointerdown = (e) => {
+                            e.stopPropagation();
+                            chip.setPointerCapture(e.pointerId);
+                            const r = wrap.getBoundingClientRect();
+                            const ox = lb.x - (e.clientX - r.left) / r.width * 100;
+                            const oy = lb.y - (e.clientY - r.top) / r.height * 100;
+                            const sx = e.clientX, sy = e.clientY;
+                            let moved = false;
+                            chip.onpointermove = (me) => {
+                                if (!moved && Math.abs(me.clientX - sx) < 3 && Math.abs(me.clientY - sy) < 3) return;
+                                moved = true;
+                                lb.x = r3(clampN((me.clientX - r.left) / r.width * 100 + ox, 0, 100));
+                                lb.y = r3(clampN((me.clientY - r.top) / r.height * 100 + oy, 0, 100));
+                                chip.style.left = lb.x + '%'; chip.style.top = lb.y + '%';
+                            };
+                            chip.onpointerup = async () => {
+                                chip.onpointermove = null; chip.onpointerup = null;
+                                if (!moved) return;
+                                b.labels = labs;
+                                try { await updateDoc(doc(db, "warehouse_boxes", b.id), { labels: labs }); } catch (err) {}
+                            };
+                        };
+                    }
+                    wrap.appendChild(chip);
+                });
             }
 
-            wrap.style.left = (b.x || 50) + '%';
-            wrap.style.top = (b.y || 50) + '%';
-            wrap.style.width = (b.width || 100) + 'px';
-            wrap.style.height = (b.height || 80) + 'px';
-
-            const img = document.createElement('img');
-            img.className = 'box-image-hotspot';
-            img.src = b.imageUrl || "https://via.placeholder.com/100?text=BOX";
-            wrap.appendChild(img);
-
-            if (showBoxLabels) {
-                const label = document.createElement('div');
-                label.className = 'box-name-label';
-                label.innerText = b.name || '未命名箱子';
-                wrap.appendChild(label);
-            }
-
-            if (isLayoutMode) {
+            if (isSel) {
+                // 拉角落：對角固定不動，只有被拉的那個角在動
                 ['tl', 'tr', 'bl', 'br'].forEach(pos => {
                     const handle = document.createElement('div');
                     handle.className = `resize-handle handle-${pos}`;
                     wrap.appendChild(handle);
-
                     handle.onpointerdown = (e) => {
                         e.stopPropagation();
                         handle.setPointerCapture(e.pointerId);
-                        const startX = e.clientX, startY = e.clientY;
-                        const startW = wrap.offsetWidth, startH = wrap.offsetHeight;
-
+                        const cw = canvas.offsetWidth || 1, ch = canvas.offsetHeight || 1;
+                        const sx = e.clientX, sy = e.clientY;
+                        const s0 = { ...geomOf(b) };
+                        const minW = 30 / cw * 100, minH = 30 / ch * 100;
+                        let cur = { ...s0 };
                         const onMove = (me) => {
-                            const dx = me.clientX - startX;
-                            const dy = me.clientY - startY;
-                            let newW = startW, newH = startH;
-                            if (pos.includes('r')) newW = Math.max(30, startW + dx);
-                            if (pos.includes('l')) newW = Math.max(30, startW - dx);
-                            if (pos.includes('b')) newH = Math.max(30, startH + dy);
-                            if (pos.includes('t')) newH = Math.max(30, startH - dy);
-                            wrap.style.width = newW + 'px';
-                            wrap.style.height = newH + 'px';
+                            const dxp = (me.clientX - sx) / scale / cw * 100;
+                            const dyp = (me.clientY - sy) / scale / ch * 100;
+                            let nw = s0.fw, nh = s0.fh;
+                            if (pos.includes('r')) nw = Math.max(minW, s0.fw + dxp);
+                            if (pos.includes('l')) nw = Math.max(minW, s0.fw - dxp);
+                            if (pos.includes('b')) nh = Math.max(minH, s0.fh + dyp);
+                            if (pos.includes('t')) nh = Math.max(minH, s0.fh - dyp);
+                            cur = {
+                                fw: nw, fh: nh,
+                                fx: s0.fx + (pos.includes('r') ? 1 : -1) * (nw - s0.fw) / 2,
+                                fy: s0.fy + (pos.includes('b') ? 1 : -1) * (nh - s0.fh) / 2
+                            };
+                            applyGeom(cur);
                         };
                         const onUp = async () => {
                             handle.removeEventListener('pointermove', onMove);
                             handle.removeEventListener('pointerup', onUp);
-                            b.width = wrap.offsetWidth;
-                            b.height = wrap.offsetHeight;
-                            await updateDoc(doc(db, "warehouse_boxes", b.id), { width: b.width, height: b.height });
+                            Object.assign(b, cur);
+                            await saveBoxGeom(b);
                         };
                         handle.addEventListener('pointermove', onMove);
                         handle.addEventListener('pointerup', onUp);
                     };
                 });
+
+                if (!isLayoutMode) {
+                    const bar = document.createElement('div');
+                    bar.className = 'box-toolbar';
+                    bar.onpointerdown = e => e.stopPropagation();
+                    const mk = (bg, icon, label, fn) => {
+                        const bt = document.createElement('button');
+                        bt.style.background = bg;
+                        setBtn(bt, icon, label);
+                        bt.onclick = e => { e.stopPropagation(); fn(); };
+                        return bt;
+                    };
+                    bar.append(
+                        mk('#0a84ff', 'open', '開啟', () => openBoxModal(b.id)),
+                        mk('#636366', 'tag', '標籤', () => editBoxLabels(b.id)),
+                        mk('#5e5ce6', 'layers', b.tier ? tierLabel(Number(b.tier)) : '分層', () => openTierPicker(b.id)),
+                        mk('#30d158', 'check', '固定', async () => {
+                            await saveBoxGeom(b);
+                            selectedBoxId = null;
+                            renderBoxes();
+                        })
+                    );
+                    wrap.appendChild(bar);
+                }
             }
 
-            wrap.onclick = (e) => { 
-                e.stopPropagation(); 
-                if (!isLayoutMode && !wrap.dataset.moved) {
-                    if (highlightedBoxId === b.id) {
-                        highlightedBoxId = null;
-                        wrap.classList.remove('search-highlight');
-                    }
-                    openBoxModal(b.id); 
+            wrap.onclick = (e) => {
+                e.stopPropagation();
+                if (Date.now() < swipeBlockUntil) return;
+                if (wrap.dataset.moved) return;
+                if (isLayoutMode) return;
+                if (isContentEditActive) {
+                    if (selectedBoxId !== b.id) { selectedBoxId = b.id; renderBoxes(); }
+                    return;
                 }
+                if (highlightedBoxId === b.id) { highlightedBoxId = null; wrap.classList.remove('search-highlight'); }
+                openBoxModal(b.id);
             };
 
-            let isDragging = false, startX = 0, startY = 0;
+            // 拖曳：保留抓取點的位移，不會一按就跳到指標中心
+            let isDragging = false, startX = 0, startY = 0, offX = 0, offY = 0, curPos = null;
+            const ptrPct = (e) => {
+                const c = canvas.getBoundingClientRect();
+                return { x: (e.clientX - c.left) / c.width * 100, y: (e.clientY - c.top) / c.height * 100 };
+            };
             wrap.onpointerdown = (e) => {
-                if (!isLayoutMode || e.target.classList.contains('resize-handle')) return;
+                if (!isSel || e.target.classList.contains('resize-handle')) return;
                 isDragging = true;
                 wrap.dataset.moved = "";
                 startX = e.clientX; startY = e.clientY;
+                const pp = ptrPct(e);
+                const g0 = geomOf(b);
+                offX = g0.fx - pp.x; offY = g0.fy - pp.y;
+                curPos = null;
                 wrap.setPointerCapture(e.pointerId);
                 e.stopPropagation();
             };
             wrap.onpointermove = (e) => {
-                if (!isDragging || !isLayoutMode) return;
-                const dx = Math.abs(e.clientX - startX), dy = Math.abs(e.clientY - startY);
-                if (dx > 4 || dy > 4) wrap.dataset.moved = "true";
-
-                const container = document.getElementById('map-canvas').getBoundingClientRect();
-                let newX = ((e.clientX - container.left) / container.width) * 100;
-                let newY = ((e.clientY - container.top) / container.height) * 100;
-                newX = Math.max(2, Math.min(98, newX));
-                newY = Math.max(2, Math.min(98, newY));
-                wrap.style.left = newX + '%';
-                wrap.style.top = newY + '%';
+                if (!isDragging) return;
+                if (Math.abs(e.clientX - startX) > 4 || Math.abs(e.clientY - startY) > 4) wrap.dataset.moved = "true";
+                if (!wrap.dataset.moved) return;
+                const pp = ptrPct(e);
+                curPos = { fx: clampN(pp.x + offX, 0, 100), fy: clampN(pp.y + offY, 0, 100) };
+                wrap.style.left = curPos.fx + '%'; wrap.style.top = curPos.fy + '%';
             };
-            wrap.onpointerup = async (e) => {
-                if (!isDragging || !isLayoutMode) return;
+            wrap.onpointerup = async () => {
+                if (!isDragging) return;
                 isDragging = false;
-                const container = document.getElementById('map-canvas').getBoundingClientRect();
-                let finalX = Math.round(((e.clientX - container.left) / container.width) * 100);
-                let finalY = Math.round(((e.clientY - container.top) / container.height) * 100);
-                
-                b.x = finalX; b.y = finalY;
-                await updateDoc(doc(db, "warehouse_boxes", b.id), { x: finalX, y: finalY });
+                if (!wrap.dataset.moved || !curPos) return;
+                geomOf(b);
+                b.fx = curPos.fx; b.fy = curPos.fy;
+                await saveBoxGeom(b);
             };
 
             frag.appendChild(wrap);
@@ -2629,7 +3266,9 @@
     };
 
     function renderBoxModal(b) {
-        document.getElementById('modal-box-title').innerText = `📦 ${b.name}`;
+        document.getElementById('modal-box-title').innerText = `📦 ${b.name}${b.tier ? ' · ' + tierLabel(Number(b.tier)) : ''}`;
+        const tierSec = document.getElementById('tier-section');
+        if (tierSec) tierSec.style.display = isContentEditActive ? 'block' : 'none';
         document.getElementById('delete-box-section').style.display = isContentEditActive ? 'block' : 'none';
         document.getElementById('add-item-trigger-section').style.display = isContentEditActive ? 'block' : 'none';
 
@@ -2671,10 +3310,6 @@
         document.getElementById('item-modal').style.display = 'none';
         document.getElementById('backdrop').style.display = 'none';
         if (isOverviewActive) setOverviewMode(true);
-    };
-
-    window.openBoxPhotoUpload = function() {
-        document.getElementById('box-img-upload').click();
     };
 
     let newItemType = 'durable';
@@ -2727,9 +3362,9 @@
             const file = fileInput.files[0];
             if (file) {
                 pFill.style.width = '55%';
-                const snap = await uploadBytes(ref(storage, 'items/item_' + Date.now() + '.jpg'), file);
+                // 使用前端自動壓縮：最大寬度600px，品質60%
+                imageUrl = await compressImage(file, 600, 0.6); 
                 pFill.style.width = '85%';
-                imageUrl = await getDownloadURL(snap.ref);
             }
 
             if (newItemType === 'consumable') {
@@ -2740,6 +3375,7 @@
                 for (let i = 0; i < Number(qty); i++) units.push({ uid: makeUid(), status: 'in', borrower: '' });
                 b.items.push({ name, qty: Number(qty), borrower: "", imageUrl, stockCode, checkedOutCount: 0, units });
             }
+            // Base64 圖片直接寫入 Firestore
             await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
             pFill.style.width = '100%';
 
@@ -2747,7 +3383,7 @@
             renderBoxModal(b);
             showToast(`✅ 已新增「${name}」\n貨號：${stockCode}`, 'success', 900);
         } catch (err) {
-            showToast('❌ 新增失敗，照片可能上傳不成功，請重試', 'error', 900);
+            showToast('❌ 新增失敗，請重試', 'error', 900);
         } finally {
             setTimeout(() => { pContainer.style.display = 'none'; pFill.style.width = '0%'; }, 400);
             addBtn.disabled = false;
@@ -2911,11 +3547,9 @@
         btn.innerText = '搬移中…';
 
         try {
-            // 從來源箱子移除
             sourceBox.items.splice(editingItemIndex, 1);
             await updateDoc(doc(db, "warehouse_boxes", sourceBox.id), { items: sourceBox.items });
 
-            // 加入目標箱子，並依目標箱子重新產生貨號 (QR code 位置對應目標箱子)
             targetBox.items = targetBox.items || [];
             const newIndex = targetBox.items.length;
             const movedItem = { ...item };
@@ -3007,15 +3641,33 @@
         const currentPage = pages[currentPageIndex];
         if (!currentPage) return;
 
+        const overlay = document.getElementById('map-loading-overlay');
+        overlay.style.display = 'flex'; 
+
         try {
-            const snap = await uploadBytes(ref(storage, 'pages/page_' + Date.now() + '.jpg'), file);
-            const url = await getDownloadURL(snap.ref);
-            await updateDoc(doc(db, "warehouse_pages", currentPage.id), { imageUrl: url });
-            currentPage.imageUrl = url;
-            setBackgroundImage(url);
+            // 背景圖稍微保留解析度，最大寬度設為 1200px，品質 70%
+            const base64Img = await compressImage(file, 1200, 0.7);
+            e.target.value = '';
+            if (isPanoActive) {
+                await setDoc(doc(db, "settings", "panorama"), { imageUrl: base64Img });
+                panoImg = base64Img;
+                renderPanorama();
+                showToast('✅ 全景圖已更新', 'success', 900);
+                return;
+            }
+            
+            // 直接存進 Firestore
+            await updateDoc(doc(db, "warehouse_pages", currentPage.id), { imageUrl: base64Img });
+            currentPage.imageUrl = base64Img;
+            await loadPageDims(currentPage);
+            setBackgroundImage(base64Img);
+            fitCanvas();
+            renderBoxes();
             showToast('✅ 底圖上傳完成！', 'success', 900);
         } catch (err) {
-            showToast('❌ 底圖上傳失敗：' + err.message, 'error', 900);
+            showToast('❌ 底圖上傳失敗', 'error', 900);
+        } finally {
+            overlay.style.display = 'none';
         }
     };
 
@@ -3026,19 +3678,19 @@
         const pContainer = document.getElementById('item-progress-container');
         const pFill = document.getElementById('item-progress-fill');
         pContainer.style.display = 'block';
-        pFill.style.width = '20%';
+        pFill.style.width = '30%';
 
         try {
-            document.getElementById('edit-item-preview-img').src = URL.createObjectURL(file);
-            pFill.style.width = '60%';
+            // 壓縮物品圖片：最大寬度600px，品質60%
+            const base64Img = await compressImage(file, 600, 0.6);
+            pFill.style.width = '80%';
 
-            const snap = await uploadBytes(ref(storage, 'items/item_' + Date.now() + '.jpg'), file);
-            pFill.style.width = '90%';
+            document.getElementById('edit-item-preview-img').src = base64Img;
 
-            const url = await getDownloadURL(snap.ref);
             const b = boxesCache.find(x => x.id === currentBoxId);
-            b.items[editingItemIndex].imageUrl = url;
+            b.items[editingItemIndex].imageUrl = base64Img;
 
+            // 直接存入 Firestore
             await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
             pFill.style.width = '100%';
 
@@ -3050,36 +3702,7 @@
         }
     };
 
-    window.uploadBoxImageWithProgress = async function(e) {
-        const file = e.target.files[0];
-        if (!file || !currentBoxId) return;
-
-        const pContainer = document.getElementById('box-progress-container');
-        const pFill = document.getElementById('box-progress-fill');
-        pContainer.style.display = 'block';
-        pFill.style.width = '30%';
-
-        try {
-            const snap = await uploadBytes(ref(storage, 'boxes/box_' + Date.now() + '.jpg'), file);
-            pFill.style.width = '80%';
-
-            const url = await getDownloadURL(snap.ref);
-            await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { imageUrl: url });
-            const b = boxesCache.find(x => x.id === currentBoxId);
-            b.imageUrl = url;
-            pFill.style.width = '100%';
-
-            setTimeout(() => { pContainer.style.display = 'none'; pFill.style.width = '0%'; }, 500);
-            renderBoxes();
-            showToast('✅ 箱子外觀照片上傳完成！', 'success', 900);
-        } catch (err) {
-            pContainer.style.display = 'none';
-            showToast('❌ 箱子照片上傳失敗', 'error', 900);
-        }
-    };
-
     // 畫出「每一件都有獨立 QR」的清單：狀態、借用人、單獨下載標籤
-    // ===== 耗材（消耗品）：只記數量與消耗，不建立個別身分 =====
     window.renderConsumablePanel = function(it, boxId, idx) {
         const qrEl = document.getElementById('consumable-qr-container');
         qrEl.innerHTML = '';
@@ -3359,7 +3982,6 @@
         return size;
     }
 
-    // 產生並下載「單一件」的專屬標籤 (QR + 貨號 + 名稱 + 件次)，回傳 Promise 方便批次呼叫
     function generateAndDownloadUnitLabel(uid) {
         return new Promise((resolve) => {
             const b = boxesCache.find(x => x.id === currentBoxId);
@@ -3477,7 +4099,6 @@
             it.qty = newQty;
         } else {
             ensureUnits(it);
-            // 依新的「在庫數量」增減獨立單位 (每件都有自己的 QR 身分)，已出庫中的單位不受影響
             const diff = newQty - it.qty;
             if (diff > 0) {
                 for (let i = 0; i < diff; i++) it.units.push({ uid: makeUid(), status: 'in', borrower: '' });
