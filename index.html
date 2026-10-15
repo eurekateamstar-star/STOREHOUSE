@@ -1891,7 +1891,7 @@
                     card.dataset.person = '1';
                     card.dataset.name = itemName.toLowerCase();
                     card.innerHTML = `
-                        <div class="borrower-card-icon">👤</div>
+                        <div class="borrower-card-icon">${avatarHtml(itemName, 40)}</div>
                         <div class="borrower-card-name">${escapeHtml(itemName)}</div>
                     `;
                     card.onclick = () => {
@@ -2296,7 +2296,7 @@
                 const btn = document.createElement('button');
                 btn.className = 'apple-btn secondary lookup-chip';
                 btn.style.cssText = 'padding:8px 12px; font-size:12px; margin:0 6px 6px 0;';
-                btn.innerText = itemName;
+                btn.innerHTML = avatarHtml(itemName, 22, false) + `<span>${escapeHtml(itemName)}</span>`;
                 btn.dataset.name = itemName.toLowerCase();
                 btn.onclick = () => {
                     document.querySelectorAll('.lookup-chip').forEach(b => b.classList.remove('active-chip'));
@@ -3442,6 +3442,17 @@
     };
 
     // ===== 成員（人）＝可領用對象；個人 QR；目前持有 =====
+    // 依名字找已註冊成員的 LINE 頭貼；找不到就用預設圖示
+    function avatarOf(name) {
+        const u = (usersCache || []).find(x => uStatus(x) === 'approved' && x.account === name && x.pictureUrl);
+        return u ? u.pictureUrl : '';
+    }
+    function avatarHtml(name, size = 40, emoji = true) {
+        const url = avatarOf(name);
+        if (!url) return emoji ? `<span style="font-size:${Math.round(size * 0.6)}px; line-height:1;">👤</span>` : '';
+        return `<img src="${escapeHtml(url)}" alt="" onerror="this.style.display='none'" style="width:${size}px; height:${size}px; border-radius:50%; object-fit:cover; background:#2c2c2e; flex-shrink:0; display:block; margin:0 auto;">`;
+    }
+
     const MEMBER_GROUP = '成員';
     const targetName = t => { t = String(t || ''); const i = t.indexOf(' - '); return i === -1 ? t : t.slice(i + 3); };
 
@@ -3508,12 +3519,13 @@
         document.getElementById('main-menu-view').style.display = 'flex';
     };
     function openPersonView(user) {
-        personViewUser = { id: user.id || user.userId, account: user.account };
+        personViewUser = { id: user.id || user.userId, account: user.account, pictureUrl: user.pictureUrl || '' };
         ['main-menu-view', 'users-view', 'lookup-view'].forEach(id => { const e = document.getElementById(id); if (e) e.style.display = 'none'; });
         document.getElementById('me-view').style.display = 'block';
         const isSelf = currentUser && personViewUser.id === currentUser.userId;
         document.getElementById('me-title').innerText = isSelf ? '🪪 我的 QR' : `🪪 ${personViewUser.account}`;
-        document.getElementById('me-name').innerText = personViewUser.account || '';
+        const _pic = personViewUser.pictureUrl || avatarOf(personViewUser.account);
+        document.getElementById('me-name').innerHTML = (_pic ? `<img src="${escapeHtml(_pic)}" alt="" onerror="this.style.display='none'" style="width:64px; height:64px; border-radius:50%; object-fit:cover; background:#2c2c2e; display:block; margin:0 auto 8px;">` : '') + escapeHtml(personViewUser.account || '');
         const qrEl = document.getElementById('me-qr');
         qrEl.innerHTML = '';
         new QRCode(qrEl, { text: `USER_${personViewUser.id}`, width: 200, height: 200, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
