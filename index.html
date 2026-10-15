@@ -2,7 +2,8 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
     <title>智慧行動倉儲管理 App</title>
     <!-- 引入 html5-qrcode 掃描庫與 qrcode.js 產生庫 -->
     <!-- LINE LIFF SDK -->
@@ -444,6 +445,14 @@
         .ov-fold{background:rgba(255,255,255,.08);border:none;color:#a1a1a6;font-size:10px;padding:3px 8px;border-radius:10px;cursor:pointer;font-family:inherit;align-self:flex-start;}
         .ov-fold:active{background:rgba(255,255,255,.2);}
         #users-view{display:none;position:absolute;top:0;left:0;width:100%;height:100%;background:#000;z-index:2500;padding:24px 20px;overflow-y:auto;}
+        /* ===== 手機滿版：延伸到安全區域，避免下方露出白條 ===== */
+        html, body { background: #000; }
+        .phone-frame { height: 100%; height: 100dvh; }
+        #fab-container { bottom: calc(30px + env(safe-area-inset-bottom)); }
+        .modal { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+        #main-menu-view, #logs-view, #lookup-view, #users-view, #me-view { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+        #me-view{display:none;position:absolute;top:0;left:0;width:100%;height:100%;background:#000;z-index:2500;padding:24px 20px;overflow-y:auto;}
+        #me-view{padding-bottom: calc(24px + env(safe-area-inset-bottom));}
     </style>
 </head>
 <body>
@@ -500,27 +509,32 @@
             </div>
 
             <div class="menu-grid">
-                <div class="menu-card" onclick="openScanner('locate')">
+                <div class="menu-card" id="menu-card-me" onclick="openMyView()" style="grid-column: span 2;">
+                    <div class="menu-card-icon">🪪</div>
+                    <div class="menu-card-title">我的 QR 與持有物品</div>
+                    <div class="menu-card-desc">個人 QR（給管理員掃）、目前身上有什麼</div>
+                </div>
+                <div class="menu-card" id="menu-card-locate" onclick="openScanner('locate')">
                     <div class="menu-card-icon">🔍</div>
                     <div class="menu-card-title">掃 QR 找位置</div>
                     <div class="menu-card-desc">尋找箱子與借出狀態</div>
                 </div>
-                <div class="menu-card" onclick="openScanner('in')">
+                <div class="menu-card" id="menu-card-in" onclick="openScanner('in')">
                     <div class="menu-card-icon">📥</div>
                     <div class="menu-card-title">快速進貨 (還回)</div>
                     <div class="menu-card-desc">掃碼入庫、紀錄時間</div>
                 </div>
-                <div class="menu-card" onclick="openBorrowerModal()">
+                <div class="menu-card" id="menu-card-out" onclick="openBorrowerModal()">
                     <div class="menu-card-icon">📤</div>
                     <div class="menu-card-title">快速出貨 (領用)</div>
                     <div class="menu-card-desc">選擇群組/細項、連掃出庫</div>
                 </div>
-                <div class="menu-card" onclick="openLogsView()">
+                <div class="menu-card" id="menu-card-logs" onclick="openLogsView()">
                     <div class="menu-card-icon">📜</div>
                     <div class="menu-card-title">進出貨紀錄</div>
                     <div class="menu-card-desc">檢視時間與對象</div>
                 </div>
-                <div class="menu-card" onclick="openLookupView()">
+                <div class="menu-card" id="menu-card-lookup" onclick="openLookupView()">
                     <div class="menu-card-icon">🔎</div>
                     <div class="menu-card-title">物品／去處查詢</div>
                     <div class="menu-card-desc">搜尋物品在哪、查某去處手上有什麼</div>
@@ -550,6 +564,8 @@
             <div style="font-size: 13px; color:#8e8e93; margin-bottom: 14px;" id="borrower-modal-desc">請點擊群組以展開細項：</div>
             
             <div id="borrower-selector-container" class="borrower-grid"></div>
+
+            <button id="btn-pick-by-qr" class="apple-btn secondary" style="width:100%; margin-bottom:12px;" onclick="pickPersonByQr()">📷 掃成員個人 QR 直接選人</button>
 
             <div id="borrower-manage-container" style="display:none; margin-bottom:16px; background:rgba(255,255,255,0.04); padding:12px; border-radius:12px; max-height:250px; overflow-y:auto;">
                 <div style="font-size:12px; color:#ff9500; font-weight:600; margin-bottom:8px;">雲端群組與細項設定：</div>
@@ -635,6 +651,23 @@
             <div id="lookup-target-chips" style="display:flex; flex-wrap:wrap;"></div>
             <div id="lookup-target-title" style="font-size:13px; color:#8e8e93; margin:10px 0 8px;">👆 點選上方去處，查看目前手上有哪些物品</div>
             <div id="lookup-target-results"></div>
+        </div>
+
+        <!-- 個人 QR 與持有物品 -->
+        <div id="me-view">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; padding-top:10px;">
+                <div style="font-size:20px; font-weight:700;" id="me-title">🪪 我的 QR</div>
+                <button onclick="closeMeView()" class="apple-btn secondary" style="padding:8px 14px; font-size:13px;">返回</button>
+            </div>
+            <div class="apple-card" style="text-align:center; margin-bottom:16px;">
+                <div id="me-qr" style="display:inline-block; background:#fff; padding:12px; border-radius:14px; line-height:0;"></div>
+                <div id="me-name" style="font-size:18px; font-weight:700; margin-top:12px;"></div>
+                <div style="font-size:12px; color:#8e8e93; margin-top:4px; line-height:1.6;">出貨時，讓管理員掃這個 QR，就會選你為領用人</div>
+            </div>
+            <div class="lookup-section-title" id="me-hold-title">📦 目前身上有</div>
+            <div id="me-holdings"></div>
+            <div class="lookup-section-title">📜 最近紀錄</div>
+            <div id="me-logs"><div style="color:#8e8e93; text-align:center; padding:16px; font-size:13px;">載入中…</div></div>
         </div>
 
         <!-- 使用者管理（管理員） -->
@@ -838,7 +871,7 @@
                 <div id="view-item-qty" style="font-size: 13px; color: #ff9500; font-weight: 600;"></div>
             </div>
 
-            <button class="apple-btn secondary" style="width:100%; margin-bottom:14px; background:rgba(10, 132, 255, 0.2); border-color:rgba(10, 132, 255, 0.4);" onclick="openItemHistoryModal()">📜 檢視此物品出入庫歷史紀錄</button>
+            <button class="apple-btn secondary" style="width:100%; margin-bottom:14px; background:rgba(10, 132, 255, 0.2); border-color:rgba(10, 132, 255, 0.4);" id="btn-item-history" onclick="openItemHistoryModal()">📜 檢視此物品出入庫歷史紀錄</button>
 
             <div id="edit-item-form-container" style="display: none; margin-bottom: 14px;">
                 <div style="text-align: center; margin-bottom: 10px; background: rgba(255,255,255,0.04); padding: 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
@@ -1476,6 +1509,9 @@
         setDisp('menu-card-users', admin);
         setDisp('btn-logs-edit', admin);
         setDisp('btn-edit-groups', admin);
+        ['in', 'out', 'logs', 'lookup'].forEach(k => setDisp('menu-card-' + k, admin));
+        const loc = _el('menu-card-locate'); if (loc) loc.style.gridColumn = admin ? '' : 'span 2';
+        setDisp('btn-item-history', admin);
         if (!admin) {
             if (isContentEditActive) toggleContentEditMode();
             if (isLogsEditMode) { isLogsEditMode = false; updateLogsEditUI(); renderLogsList(); }
@@ -1577,9 +1613,9 @@
         let html = '';
         html += section('⏳ 待審核', '#ff9f0a', pend, u => card(u, btn('✓ 核准', `approveUser('${u.id}')`, 'success') + btn('✕ 拒絕', `rejectUser('${u.id}')`, 'danger')));
         html += section('👑 管理員', '#0a84ff', admins, u => card(u,
-            btn('改名', `editUserAccount('${u.id}')`) + (u.id !== me ? btn('取消管理員', `setUserRole('${u.id}','member')`) : '')));
+            btn('持有', `openPersonViewById('${u.id}')`) + btn('改名', `editUserAccount('${u.id}')`) + (u.id !== me ? btn('取消管理員', `setUserRole('${u.id}','member')`) : '')));
         html += section('👤 一般成員', '#8e8e93', members, u => card(u,
-            btn('設為管理員', `setUserRole('${u.id}','admin')`) + btn('改名', `editUserAccount('${u.id}')`) + btn('停權', `suspendUser('${u.id}')`, 'danger')));
+            btn('持有', `openPersonViewById('${u.id}')`) + btn('設為管理員', `setUserRole('${u.id}','admin')`) + btn('改名', `editUserAccount('${u.id}')`) + btn('停權', `suspendUser('${u.id}')`, 'danger')));
         html += section('🚫 已拒絕／停權', '#ff453a', rejected, u => card(u,
             btn('恢復核准', `approveUser('${u.id}')`, 'success') + btn('刪除', `deleteUserRecord('${u.id}')`, 'danger')));
         box.innerHTML = html || '<div style="color:#8e8e93; text-align:center; padding:30px;">目前沒有任何使用者</div>';
@@ -1718,6 +1754,7 @@
     let borrowerModalOnConfirm = null; 
 
     window.openBorrowerModal = function(onConfirm) {
+        if (!isAdmin()) return showToast('🔒 只有管理員可以出貨', 'error', 1200);
         isBorrowerEditMode = false;
         selectedGroupIndex = null;
         currentBorrowTarget = '';
@@ -1756,6 +1793,7 @@
             document.getElementById('borrower-modal-title').innerText = '✏️ 管理群組與細項';
             document.getElementById('borrower-modal-desc').innerText = '在此新增、修改主群組與底下細項：';
             document.getElementById('btn-confirm-borrow').style.display = 'none';
+            document.getElementById('btn-pick-by-qr').style.display = 'none';
 
             borrowerGroupsCache.forEach((group, gIdx) => {
                 const groupCard = document.createElement('div');
@@ -1791,12 +1829,15 @@
         } else {
             selectorContainer.style.display = 'grid';
             manageContainer.style.display = 'none';
-            document.getElementById('borrower-modal-title').innerText = selectedGroupIndex === null ? '📂 選擇領用群組' : `📁 [${borrowerGroupsCache[selectedGroupIndex].groupName}] 選擇細項`;
+            const groups = getSelectableGroups();
+            if (selectedGroupIndex !== null && !groups[selectedGroupIndex]) selectedGroupIndex = null;
+            document.getElementById('borrower-modal-title').innerText = selectedGroupIndex === null ? '📂 選擇領用群組' : `📁 [${groups[selectedGroupIndex].groupName}] 選擇細項`;
             document.getElementById('borrower-modal-desc').innerText = selectedGroupIndex === null ? '請點擊群組以展開細項：' : '請選擇具體領用對象：';
             document.getElementById('btn-confirm-borrow').style.display = 'inline-flex';
+            document.getElementById('btn-pick-by-qr').style.display = borrowerModalOnConfirm ? 'none' : 'flex';
 
             if (selectedGroupIndex === null) {
-                borrowerGroupsCache.forEach((group, idx) => {
+                groups.forEach((group, idx) => {
                     const card = document.createElement('div');
                     card.className = 'borrower-card';
                     card.innerHTML = `
@@ -1811,7 +1852,7 @@
                     selectorContainer.appendChild(card);
                 });
             } else {
-                const currentGroup = borrowerGroupsCache[selectedGroupIndex];
+                const currentGroup = groups[selectedGroupIndex];
                 
                 const backBtn = document.createElement('button');
                 backBtn.className = 'apple-btn secondary';
@@ -1961,6 +2002,7 @@
     };
 
     window.openLogsView = async function() {
+        if (!isAdmin()) return showToast('🔒 只有管理員可以查看進出貨紀錄', 'error', 1200);
         document.getElementById('main-menu-view').style.display = 'none';
         document.getElementById('logs-view').style.display = 'block';
 
@@ -2127,6 +2169,7 @@
 
     // ===== 物品／去處查詢 =====
     window.openLookupView = function() {
+        if (!isAdmin()) return showToast('🔒 只有管理員可以使用物品查詢', 'error', 1200);
         document.getElementById('main-menu-view').style.display = 'none';
         document.getElementById('lookup-view').style.display = 'block';
         document.getElementById('lookup-search-input').value = '';
@@ -2236,7 +2279,7 @@
             el.innerHTML = `<div style="color:#8e8e93; font-size:12px;">尚未設定領用群組</div>`;
             return;
         }
-        borrowerGroupsCache.forEach(g => {
+        getSelectableGroups().forEach(g => {
             const groupWrap = document.createElement('div');
             groupWrap.className = 'lookup-group-wrap';
             groupWrap.style.cssText = 'margin-bottom:14px;';
@@ -2343,6 +2386,7 @@
     };
 
     window.openScanner = function(mode) {
+        if (mode !== 'locate' && !isAdmin()) return showToast('🔒 只有管理員可以進出貨', 'error', 1200);
         scannerMode = mode;
         lastScannedCode = null;
         lastScannedAt = 0;
@@ -2357,7 +2401,8 @@
         let hint = '請將鏡頭對準 QR Code';
         if (mode === 'locate') { title = '🔍 掃 QR 找位置'; hint = '對準箱子或物品 QR Code 尋找位置'; }
         else if (mode === 'in') { title = '📥 快速進貨 (還回)'; hint = '連續掃描物品 QR Code 進行還回/補貨'; }
-        else if (mode === 'out') { title = `📤 快速出貨`; hint = '連續掃描物品 QR Code 進行快速出庫'; }
+        else if (mode === 'out') { title = `📤 快速出貨`; hint = '連續掃描物品 QR Code 出庫；掃成員 QR 可換對象'; }
+        else if (mode === 'pickperson') { title = '👤 掃成員 QR 選人'; hint = '請對準成員手機上的「我的 QR」'; }
 
         document.getElementById('scanner-title').innerText = title;
         document.getElementById('scanner-hint').innerText = hint;
@@ -2433,6 +2478,7 @@
 
     async function handleGlobalScanInner(scannedText, now) {
         if (!boxesCache) boxesCache = [];
+        if (scannedText.startsWith('USER_')) { await handleUserQr(scannedText); return; }
 
         let targetBoxId = null;
         let scannedItemInfo = null;
@@ -2726,6 +2772,7 @@
 
     function refreshLiveViews() {
         renderBoxes();
+        if (document.getElementById('me-view') && document.getElementById('me-view').style.display === 'block') renderPersonHoldings();
         if (document.getElementById('lookup-view')?.style.display === 'block') renderLookupItemChips();
         const b = currentBoxId ? (boxesCache || []).find(x => x.id === currentBoxId) : null;
         if (b) {
@@ -3394,6 +3441,139 @@
         showToast(created === 1 ? `✅ 已新增「${lastName}」\n可直接拖動、拉大小` : `✅ 已新增 ${created} 個箱子\n點選箱子即可拖到想要的位置`, 'success', 1400);
     };
 
+    // ===== 成員（人）＝可領用對象；個人 QR；目前持有 =====
+    const MEMBER_GROUP = '成員';
+    const targetName = t => { t = String(t || ''); const i = t.indexOf(' - '); return i === -1 ? t : t.slice(i + 3); };
+
+    // 手動群組 + 自動產生的「成員」群組（已通過審核、但不在任何手動群組裡的人）
+    function getSelectableGroups() {
+        const groups = borrowerGroupsCache.map(g => ({ ...g }));
+        const known = new Set();
+        borrowerGroupsCache.forEach(g => (g.items || []).forEach(n => known.add(n)));
+        const extra = (usersCache || []).filter(u => uStatus(u) === 'approved' && u.account && !known.has(u.account)).map(u => u.account);
+        if (extra.length) groups.push({ groupName: MEMBER_GROUP, items: extra, virtual: true });
+        return groups;
+    }
+    // 某位成員出貨時要用的「去處」字串：名字若已在手動群組就用該群組，否則用「成員」
+    function targetForUser(account) {
+        for (const g of borrowerGroupsCache) if ((g.items || []).includes(account)) return `${g.groupName} - ${account}`;
+        return `${MEMBER_GROUP} - ${account}`;
+    }
+
+    window.pickPersonByQr = function () {
+        closeBorrowerModal();
+        openScanner('pickperson');
+    };
+
+    async function handleUserQr(text) {
+        const uid = text.slice(5);
+        if (!isAdmin()) { showToast('🔒 只有管理員可以掃描成員 QR', 'error', 1200); return; }
+        let user = usersCache.find(u => u.id === uid);
+        if (!user) {
+            try { const s = await getDoc(doc(db, "warehouse_users", uid)); if (s.exists()) user = { id: s.id, ...s.data() }; } catch (e) {}
+        }
+        if (!user || uStatus(user) !== 'approved') {
+            scanErrorFeedback('⚠️', '找不到這位成員\n或尚未通過審核');
+            showToast('⚠️ 找不到這位成員，或尚未通過審核', 'error', 1200);
+            return;
+        }
+        const target = targetForUser(user.account);
+        if (scannerMode === 'out') {
+            currentBorrowTarget = target;
+            document.getElementById('scanner-target-bar').style.display = 'flex';
+            document.getElementById('scanner-target-name').innerText = target;
+            scanSuccessFeedback('👤', `對象：${user.account}`);
+            showToast(`✅ 領用對象已切換為\n「${user.account}」`, 'success', 900);
+        } else if (scannerMode === 'pickperson') {
+            currentBorrowTarget = target;
+            scanSuccessFeedback('👤', `已選：${user.account}`);
+            closeScanner();
+            setTimeout(() => openScanner('out'), 500);
+        } else if (scannerMode === 'locate') {
+            scanSuccessFeedback('👤', user.account);
+            closeScanner();
+            setTimeout(() => openPersonView(user), 300);
+        } else {
+            scanErrorFeedback('ℹ️', '進貨請掃物品 QR');
+            showToast('ℹ️ 進貨請掃物品的 QR Code', 'error', 900);
+        }
+    }
+
+    // ===== 個人頁：QR + 目前持有 + 最近紀錄 =====
+    let personViewUser = null;
+    window.openMyView = function () { if (currentUser) openPersonView({ id: currentUser.userId, ...currentUser }); };
+    window.openPersonViewById = function (id) { const u = usersCache.find(x => x.id === id); if (u) openPersonView(u); };
+    window.closeMeView = function () {
+        document.getElementById('me-view').style.display = 'none';
+        document.getElementById('main-menu-view').style.display = 'flex';
+    };
+    function openPersonView(user) {
+        personViewUser = { id: user.id || user.userId, account: user.account };
+        ['main-menu-view', 'users-view', 'lookup-view'].forEach(id => { const e = document.getElementById(id); if (e) e.style.display = 'none'; });
+        document.getElementById('me-view').style.display = 'block';
+        const isSelf = currentUser && personViewUser.id === currentUser.userId;
+        document.getElementById('me-title').innerText = isSelf ? '🪪 我的 QR' : `🪪 ${personViewUser.account}`;
+        document.getElementById('me-name').innerText = personViewUser.account || '';
+        const qrEl = document.getElementById('me-qr');
+        qrEl.innerHTML = '';
+        new QRCode(qrEl, { text: `USER_${personViewUser.id}`, width: 200, height: 200, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+        renderPersonHoldings();
+        loadPersonLogs(personViewUser.account);
+    }
+    function computeHoldings(account) {
+        const rows = [];
+        (boxesCache || []).forEach(b => (b.items || []).forEach(it => {
+            if (it.itemType === 'consumable') {
+                Object.entries(it.holdings || {}).forEach(([t, q]) => {
+                    if ((Number(q) || 0) > 0 && targetName(t) === account) rows.push({ name: it.name, qty: Number(q), box: b.name, consumable: true });
+                });
+            } else {
+                ensureUnits(it);
+                const units = it.units.filter(u => u.status === 'out' && targetName(u.borrower) === account);
+                if (units.length) {
+                    const since = Math.min(...units.map(u => u.outAt || Infinity));
+                    rows.push({ name: it.name, qty: units.length, box: b.name, since: isFinite(since) ? since : 0 });
+                }
+            }
+        }));
+        return rows;
+    }
+    function renderPersonHoldings() {
+        if (!personViewUser) return;
+        const el = document.getElementById('me-holdings');
+        if (!boxesCache) { el.innerHTML = '<div style="color:#8e8e93; text-align:center; padding:16px; font-size:13px;">資料載入中…</div>'; return; }
+        const rows = computeHoldings(personViewUser.account);
+        const total = rows.reduce((a, r) => a + r.qty, 0);
+        document.getElementById('me-hold-title').innerText = `📦 目前身上有（${total} 件）`;
+        if (!rows.length) { el.innerHTML = '<div style="color:#8e8e93; text-align:center; padding:16px; font-size:13px;">目前身上沒有領用中的物品</div>'; return; }
+        el.innerHTML = rows.map(r => `
+            <div class="log-card">
+                <div style="font-weight:700; font-size:14px;">${escapeHtml(r.name)}${r.consumable ? ' <span style="font-size:10px; color:#0a84ff;">📦耗材</span>' : ''} <span style="color:#ff453a;">x${r.qty}</span></div>
+                <div style="font-size:12px; color:#8e8e93; margin-top:2px;">原位置：📦 ${escapeHtml(r.box)}${r.since ? ' · 領用於 ' + fmtUserTime(r.since) : ''}</div>
+            </div>`).join('');
+    }
+    async function loadPersonLogs(account) {
+        const el = document.getElementById('me-logs');
+        el.innerHTML = '<div style="color:#8e8e93; text-align:center; padding:16px; font-size:13px;">載入中…</div>';
+        try {
+            const snap = await getDocs(collection(db, "warehouse_logs"));
+            const rows = [];
+            snap.forEach(d => { const l = d.data(); if (String(l.target || '').includes(account)) rows.push(l); });
+            rows.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+            if (!personViewUser || personViewUser.account !== account) return;
+            if (!rows.length) { el.innerHTML = '<div style="color:#8e8e93; text-align:center; padding:16px; font-size:13px;">還沒有紀錄</div>'; return; }
+            el.innerHTML = rows.slice(0, 20).map(l => {
+                const c = l.type === '出庫' ? '#ff3b30' : (l.type === '轉交' ? '#ff9500' : (l.type === '消耗' ? '#bf5af2' : '#34c759'));
+                return `<div class="log-card">
+                    <div class="log-header"><span style="color:${c};">● ${escapeHtml(l.type)}：${escapeHtml(l.itemName)} (x${l.qty})</span><span class="log-time">${escapeHtml(l.timeStr || '')}</span></div>
+                    <div style="color:#d1d1d6; margin-top:4px;">📦 ${escapeHtml(l.boxName || '')}</div>
+                </div>`;
+            }).join('');
+        } catch (e) {
+            el.innerHTML = '<div style="color:#ff3b30; text-align:center; padding:16px; font-size:13px;">載入紀錄失敗</div>';
+        }
+    }
+
     function escapeHtml(str) {
         return String(str == null ? '' : str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
     }
@@ -3980,6 +4160,7 @@
     };
 
     window.openItemHistoryModal = async function() {
+        if (!isAdmin()) return showToast('🔒 只有管理員可以查看出入庫紀錄', 'error', 1200);
         const b = boxesCache.find(x => x.id === currentBoxId);
         if (!b || editingItemIndex === null) return;
         const it = b.items[editingItemIndex];
