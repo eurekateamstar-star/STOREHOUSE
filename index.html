@@ -505,12 +505,14 @@
                     <div id="line-name" style="font-size:16px; font-weight:600;"></div>
                 </div>
                 <div id="line-account-box" style="display:none;">
-                    <div style="font-size:13px; color:#8e8e93; margin-bottom:8px; text-align:center;">請輸入你的名字，送出後等待管理員審核</div>
-                    <input type="text" id="line-account-input" class="apple-input" placeholder="例：王小明" style="margin-bottom:14px; text-align:center;">
+                    <div style="font-size:13px; color:#8e8e93; margin-bottom:10px; text-align:center; line-height:1.6;">與「白沙屯救護紀錄表」共用同一份會員資料<br>只需填寫一次，送出後等待管理員審核</div>
+                    <input type="text" id="line-account-input" class="apple-input" placeholder="真實姓名" style="margin-bottom:10px; text-align:center;">
+                    <input type="text" id="line-idcard-input" class="apple-input" placeholder="身分證字號" maxlength="10" style="margin-bottom:14px; text-align:center; text-transform:uppercase;">
                     <button class="apple-btn success" onclick="submitLineAccount()" style="width:100%;">送出申請</button>
                 </div>
                 <div id="login-msg" style="display:none; font-size:13px; color:#c7c7cc; text-align:center; line-height:1.6; white-space:pre-line;"></div>
                 <button id="line-login-btn" class="apple-btn" onclick="lineLogin()" style="display:none; width:100%; background:#06c755; box-shadow:0 4px 12px rgba(6,199,85,0.35);">使用 LINE 登入</button>
+                <button id="login-resubmit-btn" class="apple-btn" onclick="startResubmit()" style="display:none; width:100%; margin-top:12px;">重新填寫並送審</button>
                 <button id="login-retry-btn" class="apple-btn secondary" onclick="location.reload()" style="display:none; width:100%; margin-top:12px;">重新整理</button>
             </div>
         </div>
@@ -694,8 +696,15 @@
                 <div style="font-size: 20px; font-weight: 700;">👥 使用者管理</div>
                 <button onclick="closeUsersView()" class="apple-btn secondary" style="padding: 8px 14px; font-size: 13px;">返回</button>
             </div>
-            <div style="font-size:12px; color:#8e8e93; margin-bottom:6px; line-height:1.6;">新成員第一次登入送出名字後，會出現在「待審核」。核准後才能進入系統；只有管理員可以進入編輯模式。</div>
+            <div style="font-size:12px; color:#8e8e93; margin-bottom:6px; line-height:1.6;">會員資料與「白沙屯救護紀錄表」共用：任一邊核准、退回、停權、改管理員，兩邊都會一起生效。只有管理員可以進出貨與編輯。</div>
             <div id="users-container"></div>
+
+            <div class="apple-card" style="margin-top:24px;">
+                <div style="font-size:14px; font-weight:700; margin-bottom:6px;">🚚 匯入舊倉庫資料</div>
+                <div style="font-size:12px; color:#8e8e93; line-height:1.6; margin-bottom:12px;">把舊資料庫的頁面、箱子、物品、紀錄、領用群組複製到目前的資料庫。編號會保留，已印出的 QR 仍可使用；已經存在的資料不會被覆蓋，可重複執行。</div>
+                <button class="apple-btn secondary" id="btn-migrate" style="width:100%;" onclick="migrateFromOldDb()">開始匯入</button>
+                <div id="migrate-status" style="font-size:12px; color:#8e8e93; margin-top:10px; line-height:1.6; white-space:pre-line;"></div>
+            </div>
         </div>
 
         <!-- 6. 倉儲地圖主介面 -->
@@ -953,16 +962,26 @@
 <script type="module">
     // ⭐️ 已經不需要 Firebase Storage，直接使用 Firestore 即可
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, getDocs, addDoc, doc, updateDoc, getDoc, setDoc, deleteDoc, runTransaction, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, addDoc, doc, updateDoc, getDoc, setDoc, deleteDoc, runTransaction, onSnapshot, query, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
+    // 與「白沙屯救護紀錄表」共用同一個 Firebase 專案（同一份 users，綁定一次即可）
     const firebaseConfig = {
+      apiKey: "AIzaSyA_5hmnIBCeLszWW8kIjgOZelv-c6-ALfY",
+      authDomain: "linebot-firebase-b1242.firebaseapp.com",
+      projectId: "linebot-firebase-b1242",
+      storageBucket: "linebot-firebase-b1242.firebasestorage.app",
+      messagingSenderId: "1002268658683",
+      appId: "1:1002268658683:web:739adcd7819f8c9393595e",
+      measurementId: "G-1Z55WR53W7"
+    };
+    // 舊倉庫資料庫（只用於「匯入舊資料」）
+    const OLD_FIREBASE_CONFIG = {
       apiKey: "AIzaSyD9oJirgoJCTU7h-ODfSpfwC80E5fqze2A",
       authDomain: "clawone-6445c.firebaseapp.com",
       projectId: "clawone-6445c",
       storageBucket: "clawone-6445c.firebasestorage.app",
       messagingSenderId: "945236029933",
-      appId: "1:945236029933:web:f93ffb9e6f8b41aebd37e4",
-      measurementId: "G-JEB18KRCXS"
+      appId: "1:945236029933:web:f93ffb9e6f8b41aebd37e4"
     };
 
     const app = initializeApp(firebaseConfig);
@@ -1365,24 +1384,38 @@
     const isAdmin = () => !!(currentUser && currentUser.role === 'admin' && currentUser.status === 'approved');
     const opInfo = () => ({ operator: currentUser ? currentUser.account : '', operatorId: currentUser ? currentUser.userId : '' });
     const inLine = () => { try { return !!(window.liff && liff.isInClient && liff.isInClient()); } catch (e) { return false; } };
-    const uStatus = u => u.status || 'approved';   // 舊資料沒有 status 視為已核准
+    const uStatus = u => u.status || 'pending';
+    const tsMs = t => (t && typeof t.toMillis === 'function') ? t.toMillis() : (Number(t) || 0);
+    // users/{LINE userId} 與白沙屯救護紀錄表共用：realName、lineDisplayName、pictureUrl、status、role('admin'|'user')、idCard
+    function normUser(id, d) {
+        d = d || {};
+        return { ...d, id, userId: id,
+            account: d.realName || '',
+            displayName: d.lineDisplayName || '',
+            role: d.role === 'admin' ? 'admin' : 'member',
+            createdAt: tsMs(d.createdAt) };
+    }
 
     function setLoginState(state, msg) {
         const show = (id, on) => { const e = _el(id); if (e) e.style.display = on ? 'block' : 'none'; };
         const sub = _el('login-subtitle'), lm = _el('login-msg');
-        ['line-card', 'line-profile', 'line-account-box', 'line-login-btn', 'login-msg', 'login-retry-btn'].forEach(id => show(id, false));
+        ['line-card', 'line-profile', 'line-account-box', 'line-login-btn', 'login-msg', 'login-retry-btn', 'login-resubmit-btn'].forEach(id => show(id, false));
         if (state === 'checking') {
             sub.innerText = '正在識別 LINE 身分…';
         } else if (state === 'account') {
-            sub.innerText = '歡迎！第一次使用請輸入名字';
+            sub.innerText = isResubmit ? '請修正資料後重新送審' : '第一次使用，請填寫實名資料';
             show('line-card', true); show('line-profile', true); show('line-account-box', true);
         } else if (state === 'pending') {
             sub.innerText = '⏳ 等待管理員審核';
             lm.innerText = '你的申請已送出。\n管理員核准後會自動進入系統，請稍候。';
             show('line-card', true); show('line-profile', true); show('login-msg', true);
         } else if (state === 'rejected') {
+            sub.innerText = '❌ 申請被退回';
+            lm.innerText = `原因：${(msg || '').trim() || '（管理員未填寫原因）'}`;
+            show('line-card', true); show('line-profile', true); show('login-msg', true); show('login-resubmit-btn', true);
+        } else if (state === 'banned') {
             sub.innerText = '🚫 目前無法進入';
-            lm.innerText = '你的申請未通過，或帳號已被停權。\n請聯絡管理員。';
+            lm.innerText = '你的帳號已被停權。' + ((msg || '').trim() ? `\n原因：${msg.trim()}` : '') + '\n請聯絡管理員。';
             show('line-card', true); show('line-profile', true); show('login-msg', true);
         } else if (state === 'needLogin') {
             sub.innerText = '請使用 LINE 登入以識別身分';
@@ -1420,94 +1453,99 @@
         }
     }
 
-    // 第一位使用者 = 管理員（以交易寫入 settings/user_registry 確保只會有一位）
-    async function registerUser(prof, account) {
-        const userRef = doc(db, "warehouse_users", prof.userId);
-        const regRef = doc(db, "settings", "user_registry");
-        let result = null;
-        await runTransaction(db, async (tx) => {
-            const reg = await tx.get(regRef);
-            const user = await tx.get(userRef);
-            const first = !reg.exists();
-            let role = first ? 'admin' : 'member';
-            let status = first ? 'approved' : 'pending';
-            let createdAt = Date.now();
-            if (user.exists()) {
-                const u = user.data();
-                createdAt = u.createdAt || createdAt;
-                if (!first) { role = u.role || role; status = u.status || (u.account ? 'approved' : status); }
-            }
-            if (first) tx.set(regRef, { adminId: prof.userId, createdAt: Date.now() });
-            tx.set(userRef, {
-                userId: prof.userId, displayName: prof.displayName || '', pictureUrl: prof.pictureUrl || '',
-                account, role, status, createdAt, lastLoginAt: Date.now()
-            }, { merge: true });
-            result = { role, status, first };
-        });
-        return result;
-    }
+    let isResubmit = false;
 
+    // 讀取共用 users 資料，依狀態決定：註冊 / 等待審核 / 被退回 / 停權 / 進入系統
     async function identifyLineUser(prof) {
         pendingLineProfile = prof;
         showProfile(prof);
-        const ref = doc(db, "warehouse_users", prof.userId);
+        const ref = doc(db, "users", prof.userId);
         const snap = await getDoc(ref);
-        let u = snap.exists() ? snap.data() : null;
-        if (u && u.account && !u.status) {            // 舊版（尚無審核機制）建立的帳號：轉換一次
-            const r = await registerUser(prof, u.account);
-            u = { ...u, role: r.role, status: r.status };
-        }
-        if (!u || !u.account) {
-            _el('line-account-input').value = prof.displayName || '';
+        if (!snap.exists()) {
+            isResubmit = false;
+            _el('line-account-input').value = '';
+            _el('line-idcard-input').value = '';
             setLoginState('account');
             return;
         }
-        currentUser = { userId: prof.userId, displayName: prof.displayName, pictureUrl: prof.pictureUrl || '', account: u.account, role: u.role || 'member', status: u.status };
-        if (u.status === 'approved') updateDoc(ref, { displayName: prof.displayName || '', pictureUrl: prof.pictureUrl || '', lastLoginAt: Date.now() }).catch(() => {});
-        watchOwnUser(prof.userId);
-        if (u.status === 'approved') enterApp();
-        else setLoginState(u.status === 'rejected' ? 'rejected' : 'pending');
+        const u = normUser(snap.id, snap.data());
+        const upd = {};   // 同步 LINE 頭貼／暱稱（與救護紀錄表相同欄位）
+        if (prof.pictureUrl && prof.pictureUrl !== u.pictureUrl) upd.pictureUrl = prof.pictureUrl;
+        if (prof.displayName && prof.displayName !== u.lineDisplayName) upd.lineDisplayName = prof.displayName;
+        if (Object.keys(upd).length) updateDoc(ref, upd).catch(() => {});
+        currentUser = {
+            userId: u.id, displayName: prof.displayName, pictureUrl: prof.pictureUrl || u.pictureUrl || '',
+            account: u.account, idCard: u.idCard || '', role: u.role, status: u.status || 'pending', rejectReason: u.rejectReason || ''
+        };
+        watchOwnUser(u.id);
+        applyStatusState();
+    }
+    function applyStatusState() {
+        const st = currentUser.status;
+        if (st === 'approved') enterApp();
+        else if (st === 'banned') setLoginState('banned', currentUser.rejectReason);
+        else if (st === 'rejected') setLoginState('rejected', currentUser.rejectReason);
+        else setLoginState('pending');
     }
 
+    window.startResubmit = function () {
+        isResubmit = true;
+        _el('line-account-input').value = (currentUser && currentUser.account) || '';
+        _el('line-idcard-input').value = (currentUser && currentUser.idCard) || '';
+        setLoginState('account');
+    };
+
+    // 送出實名資料（欄位與驗證都和白沙屯救護紀錄表一致）
     window.submitLineAccount = async function () {
-        const account = _el('line-account-input').value.trim();
-        if (!account) return showToast('請輸入名字', 'error', 900);
+        const realName = _el('line-account-input').value.trim();
+        const idCard = _el('line-idcard-input').value.trim().toUpperCase();
+        if (!realName) return showToast('請輸入真實姓名', 'error', 900);
+        if (!/^[A-Z][1289]\d{8}$/.test(idCard)) return showToast('身分證字號格式不正確', 'error', 1200);
         const prof = pendingLineProfile;
         if (!prof) return;
-        let r;
-        try { r = await registerUser(prof, account); }
-        catch (e) { console.error(e); showToast('❌ 送出失敗，請重試', 'error', 1200); return; }
-        currentUser = { userId: prof.userId, displayName: prof.displayName, pictureUrl: prof.pictureUrl || '', account, role: r.role, status: r.status };
-        watchOwnUser(prof.userId);
-        if (r.status === 'approved') {
-            if (r.first) showToast('👑 你是第一位使用者\n已自動設為管理員', 'success', 2000);
-            enterApp();
-        } else {
-            showToast('✅ 申請已送出', 'success', 900);
-            setLoginState('pending');
-        }
+        const ref = doc(db, "users", prof.userId);
+        let first = false;
+        try {
+            if (isResubmit) {
+                await updateDoc(ref, {
+                    lineDisplayName: prof.displayName || '', pictureUrl: prof.pictureUrl || '',
+                    realName, idCard, status: 'pending', rejectReason: '', resubmittedAt: serverTimestamp()
+                });
+                isResubmit = false;
+            } else {
+                first = (await getDocs(query(collection(db, "users"), limit(1)))).empty;
+                await setDoc(ref, {
+                    lineUserId: prof.userId, lineDisplayName: prof.displayName || '', pictureUrl: prof.pictureUrl || '',
+                    realName, idCard, status: first ? 'approved' : 'pending', role: first ? 'admin' : 'user', createdAt: serverTimestamp()
+                });
+            }
+        } catch (e) { console.error(e); showToast('❌ 送出失敗，請重試', 'error', 1200); return; }
+        try { await identifyLineUser(prof); } catch (e) { console.error(e); }
+        if (first) showToast('👑 你是第一位使用者\n已自動設為管理員', 'success', 2000);
+        else if (currentUser && currentUser.status === 'pending') showToast('✅ 申請已送出', 'success', 900);
     };
 
     // 監看自己的帳號：被核准自動進入；被停權/刪除自動登出；權限變動即時生效
     function watchOwnUser(userId) {
         if (ownUnsub) ownUnsub();
-        ownUnsub = onSnapshot(doc(db, "warehouse_users", userId), (snap) => {
+        ownUnsub = onSnapshot(doc(db, "users", userId), (snap) => {
             if (!snap.exists()) { if (appEntered) location.reload(); return; }
             if (!currentUser) return;
-            const u = snap.data();
+            const u = normUser(snap.id, snap.data());
             const wasAdmin = isAdmin();
             currentUser.account = u.account || currentUser.account;
-            currentUser.role = u.role || 'member';
-            currentUser.status = u.status || 'approved';
+            currentUser.role = u.role;
+            currentUser.status = u.status || 'pending';
+            currentUser.rejectReason = u.rejectReason || '';
             if (appEntered) {
                 if (currentUser.status !== 'approved') { location.reload(); return; }
                 updateMenuUser(); applyRoleUI();
                 if (wasAdmin && !isAdmin()) showToast('🔒 你的管理員權限已被取消', 'error', 2200);
                 else if (!wasAdmin && isAdmin()) showToast('👑 你已被設為管理員', 'success', 2200);
-            } else if (currentUser.status === 'approved') {
-                enterApp();
             } else {
-                setLoginState(currentUser.status === 'rejected' ? 'rejected' : 'pending');
+                const formOpen = _el('line-account-box') && _el('line-account-box').style.display === 'block';
+                if (formOpen && currentUser.status !== 'approved') return;   // 使用者正在填表，不要打斷
+                applyStatusState();
             }
         }, () => {});
     }
@@ -1572,13 +1610,13 @@
 
     window.changeAccount = async function () {
         if (!currentUser) return;
-        const n = await showPromptDialog('修改你的名字（帳號）', currentUser.account, '我的帳號');
+        const n = await showPromptDialog('修改你的真實姓名\n（白沙屯救護紀錄表也會一起更新）', currentUser.account, '我的姓名');
         if (!n || n === currentUser.account) return;
         try {
-            await updateDoc(doc(db, "warehouse_users", currentUser.userId), { account: n });
+            await updateDoc(doc(db, "users", currentUser.userId), { realName: n });
             currentUser.account = n;
             updateMenuUser();
-            showToast('✅ 名字已更新', 'success', 900);
+            showToast('✅ 姓名已更新', 'success', 900);
         } catch (e) { showToast('❌ 更新失敗', 'error', 900); }
     };
 
@@ -1587,10 +1625,10 @@
     function startUsersWatch() {
         if (usersUnsub) return;
         usersFirstLoad = true;
-        usersUnsub = onSnapshot(collection(db, "warehouse_users"), (snap) => {
+        usersUnsub = onSnapshot(collection(db, "users"), (snap) => {
             const prevPending = new Set(usersCache.filter(u => uStatus(u) === 'pending').map(u => u.id));
             const list = [];
-            snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+            snap.forEach(d => list.push(normUser(d.id, d.data())));
             usersCache = list;
             const pend = list.filter(u => uStatus(u) === 'pending');
             updateUsersBadge(pend.length);
@@ -1633,15 +1671,16 @@
         const pend = sorted.filter(u => uStatus(u) === 'pending');
         const admins = sorted.filter(u => uStatus(u) === 'approved' && u.role === 'admin');
         const members = sorted.filter(u => uStatus(u) === 'approved' && u.role !== 'admin');
-        const rejected = sorted.filter(u => uStatus(u) === 'rejected');
+        const blocked = sorted.filter(u => uStatus(u) === 'rejected' || uStatus(u) === 'banned');
 
         const btn = (label, fn, cls = 'secondary') => `<button class="apple-btn ${cls}" style="padding:6px 12px; font-size:12px;" onclick="${fn}">${label}</button>`;
-        const card = (u, btns) => `
+        const card = (u, btns, extra = '') => `
             <div class="log-card" style="display:flex; align-items:flex-start; gap:12px;">
                 <img src="${escapeHtml(u.pictureUrl || '')}" onerror="this.style.visibility='hidden'" style="width:44px; height:44px; border-radius:50%; object-fit:cover; background:#2c2c2e; flex-shrink:0;">
                 <div style="flex:1; min-width:0;">
                     <div style="font-weight:700; font-size:14px;">${escapeHtml(u.account || '(未命名)')}${u.id === me ? ' <span style="font-size:10px; color:#0a84ff;">（你）</span>' : ''}</div>
                     <div style="font-size:11px; color:#8e8e93; margin-top:2px;">LINE：${escapeHtml(u.displayName || '—')}${u.createdAt ? ' · ' + fmtUserTime(u.createdAt) : ''}</div>
+                    ${extra}
                     <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">${btns}</div>
                 </div>
             </div>`;
@@ -1649,50 +1688,89 @@
             ? `<div class="lookup-section-title" style="color:${color};">${title}（${arr.length}）</div>` + arr.map(mk).join('') : '';
 
         let html = '';
-        html += section('⏳ 待審核', '#ff9f0a', pend, u => card(u, btn('✓ 核准', `approveUser('${u.id}')`, 'success') + btn('✕ 拒絕', `rejectUser('${u.id}')`, 'danger')));
+        html += section('⏳ 待審核', '#ff9f0a', pend, u => card(u, btn('✓ 核准', `approveUser('${u.id}')`, 'success') + btn('✕ 退回', `rejectUser('${u.id}')`, 'danger')));
         html += section('👑 管理員', '#0a84ff', admins, u => card(u,
-            btn('持有', `openPersonViewById('${u.id}')`) + btn('改名', `editUserAccount('${u.id}')`) + (u.id !== me ? btn('取消管理員', `setUserRole('${u.id}','member')`) : '')));
+            btn('持有', `openPersonViewById('${u.id}')`) + btn('改名', `editUserAccount('${u.id}')`) + (u.id !== me ? btn('取消管理員', `setUserRole('${u.id}','user')`) : '')));
         html += section('👤 一般成員', '#8e8e93', members, u => card(u,
             btn('持有', `openPersonViewById('${u.id}')`) + btn('設為管理員', `setUserRole('${u.id}','admin')`) + btn('改名', `editUserAccount('${u.id}')`) + btn('停權', `suspendUser('${u.id}')`, 'danger')));
-        html += section('🚫 已拒絕／停權', '#ff453a', rejected, u => card(u,
-            btn('恢復核准', `approveUser('${u.id}')`, 'success') + btn('刪除', `deleteUserRecord('${u.id}')`, 'danger')));
+        html += section('🚫 已退回／停權', '#ff453a', blocked, u => card(u,
+            btn('恢復核准', `approveUser('${u.id}')`, 'success'),
+            `<div style="font-size:11px; color:#ff453a; margin-top:2px;">${uStatus(u) === 'banned' ? '停權' : '退回'}${u.rejectReason ? '：' + escapeHtml(u.rejectReason) : ''}</div>`));
         box.innerHTML = html || '<div style="color:#8e8e93; text-align:center; padding:30px;">目前沒有任何使用者</div>';
     }
 
-    const userRef = id => doc(db, "warehouse_users", id);
+    const userRef = id => doc(db, "users", id);
     const findUser = id => usersCache.find(u => u.id === id);
     async function patchUser(id, data, okMsg) {
         if (!isAdmin()) return showToast('🔒 只有管理員可以操作', 'error', 1200);
         try { await updateDoc(userRef(id), data); if (okMsg) showToast(okMsg, 'success', 900); }
         catch (e) { showToast('❌ 操作失敗，請重試', 'error', 1000); }
     }
-    window.approveUser = id => patchUser(id, { status: 'approved', role: (findUser(id) && findUser(id).role) || 'member', approvedBy: currentUser.account, approvedAt: Date.now() }, '✅ 已核准');
+    window.approveUser = id => patchUser(id, { status: 'approved', rejectReason: '' }, '✅ 已核准');
     window.rejectUser = async id => {
-        if (!(await showConfirmDialog(`確定拒絕「${(findUser(id) || {}).account || ''}」的申請？`, '拒絕申請'))) return;
-        patchUser(id, { status: 'rejected' }, '已拒絕');
+        const u = findUser(id) || {};
+        if (!(await showConfirmDialog(`確定退回「${u.account || ''}」的申請？`, '退回申請'))) return;
+        const reason = (await showPromptDialog('退回原因（可留空，直接按確定）', '', '退回原因')) || '';
+        patchUser(id, { status: 'rejected', rejectReason: reason }, '已退回');
     };
     window.suspendUser = async id => {
         if (id === currentUser.userId) return showToast('不能停權自己', 'error', 1000);
-        if (!(await showConfirmDialog(`確定停權「${(findUser(id) || {}).account || ''}」？\n對方會立刻被登出。`, '停權'))) return;
-        patchUser(id, { status: 'rejected' }, '已停權');
+        const u = findUser(id) || {};
+        if (!(await showConfirmDialog(`確定停權「${u.account || ''}」？\n對方會立刻被登出（白沙屯救護紀錄表也一併停權）。`, '停權'))) return;
+        const reason = (await showPromptDialog('停權原因（可留空，直接按確定）', '', '停權原因')) || '';
+        patchUser(id, { status: 'banned', rejectReason: reason }, '已停權');
     };
     window.setUserRole = async (id, role) => {
         if (id === currentUser.userId) return showToast('不能變更自己的權限', 'error', 1000);
         const u = findUser(id) || {};
         const label = role === 'admin' ? '設為管理員' : '取消管理員';
-        if (!(await showConfirmDialog(`確定要將「${u.account || ''}」${label}？`, label))) return;
+        if (!(await showConfirmDialog(`確定要將「${u.account || ''}」${label}？\n（白沙屯救護紀錄表的權限也會一起變動）`, label))) return;
         patchUser(id, { role }, role === 'admin' ? '👑 已設為管理員' : '已取消管理員');
     };
     window.editUserAccount = async id => {
         const u = findUser(id); if (!u) return;
-        const n = await showPromptDialog('修改名字（帳號）', u.account || '', '修改名字');
+        const n = await showPromptDialog('修改真實姓名', u.account || '', '修改姓名');
         if (!n || n === u.account) return;
-        patchUser(id, { account: n }, '✅ 已更新名字');
+        patchUser(id, { realName: n }, '✅ 已更新姓名');
     };
-    window.deleteUserRecord = async id => {
+
+    // ===== 一次性：把舊倉庫資料庫的資料匯入目前的資料庫（編號保留，已印出的 QR 仍可使用） =====
+    let oldAppInst = null;
+    window.migrateFromOldDb = async function () {
         if (!isAdmin()) return;
-        if (!(await showConfirmDialog(`確定刪除「${(findUser(id) || {}).account || ''}」？\n對方之後再開啟會重新申請。`, '刪除使用者'))) return;
-        try { await deleteDoc(userRef(id)); showToast('🗑️ 已刪除', 'success', 900); } catch (e) { showToast('❌ 刪除失敗', 'error', 900); }
+        if (!(await showConfirmDialog('要把舊倉庫資料庫的頁面、箱子、物品、紀錄、群組匯入目前的資料庫嗎？\n\n新資料庫已經有的資料不會被覆蓋，可以重複執行。', '匯入舊資料'))) return;
+        const btn = _el('btn-migrate'), st = _el('migrate-status');
+        btn.disabled = true;
+        const report = [];
+        const setSt = t => { st.innerText = t; };
+        try {
+            if (!oldAppInst) oldAppInst = initializeApp(OLD_FIREBASE_CONFIG, 'old-warehouse');
+            const odb = getFirestore(oldAppInst);
+            for (const c of ['warehouse_pages', 'warehouse_boxes', 'warehouse_logs', 'settings']) {
+                setSt(report.concat([`讀取 ${c} …`]).join('\n'));
+                const snap = await getDocs(collection(odb, c));
+                let copied = 0, skipped = 0, done = 0;
+                const docs = snap.docs.filter(d => !(c === 'settings' && d.id === 'user_registry'));
+                for (let i = 0; i < docs.length; i += 10) {
+                    await Promise.all(docs.slice(i, i + 10).map(async d => {
+                        const target = doc(db, c, d.id);
+                        if ((await getDoc(target)).exists()) { skipped++; }
+                        else { await setDoc(target, d.data()); copied++; }
+                        done++;
+                    }));
+                    setSt(report.concat([`匯入 ${c}：${done}/${docs.length} …`]).join('\n'));
+                }
+                report.push(`✅ ${c}：新增 ${copied} 筆，略過 ${skipped} 筆`);
+            }
+            setSt(report.join('\n') + '\n\n完成！請重新整理頁面。');
+            showToast('✅ 匯入完成，請重新整理頁面', 'success', 2000);
+        } catch (e) {
+            console.error(e);
+            setSt(report.join('\n') + '\n❌ 匯入失敗：' + (e && e.message ? e.message : e));
+            showToast('❌ 匯入失敗', 'error', 1500);
+        } finally {
+            btn.disabled = false;
+        }
     };
 
     async function preloadAllData() {
@@ -3523,7 +3601,7 @@
         if (!isAdmin()) { showToast('🔒 只有管理員可以掃描成員 QR', 'error', 1200); return; }
         let user = usersCache.find(u => u.id === uid);
         if (!user) {
-            try { const s = await getDoc(doc(db, "warehouse_users", uid)); if (s.exists()) user = { id: s.id, ...s.data() }; } catch (e) {}
+            try { const s = await getDoc(doc(db, "users", uid)); if (s.exists()) user = normUser(s.id, s.data()); } catch (e) {}
         }
         if (!user || uStatus(user) !== 'approved') {
             scanErrorFeedback('⚠️', '找不到這位成員\n或尚未通過審核');
