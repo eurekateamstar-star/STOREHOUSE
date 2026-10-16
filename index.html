@@ -459,6 +459,14 @@
 
     <div class="phone-frame">
 
+        <!-- QR 放大 -->
+        <div id="qr-zoom" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; z-index:9500; background:rgba(0,0,0,0.9); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); flex-direction:column; align-items:center; justify-content:center; padding:24px;" onclick="closeQrZoom()">
+            <div id="qr-zoom-qr" style="background:#fff; padding:16px; border-radius:20px; line-height:0;"></div>
+            <div id="qr-zoom-title" style="margin-top:18px; font-size:20px; font-weight:700; text-align:center;"></div>
+            <div id="qr-zoom-sub" style="margin-top:6px; font-size:13px; color:#c7c7cc; text-align:center; white-space:pre-line;"></div>
+            <div style="margin-top:20px; font-size:12px; color:#8e8e93;">點任意處關閉</div>
+        </div>
+
         <!-- 🔔 提示訊息容器 -->
         <div id="toast-container" style="position:absolute; top: 50%; left:50%; transform:translate(-50%, -50%); z-index:9999; display:flex; flex-direction:column; gap:12px; align-items:center; width:90%; pointer-events:none;"></div>
 
@@ -662,7 +670,7 @@
             <div class="apple-card" style="text-align:center; margin-bottom:16px;">
                 <div id="me-qr" style="display:inline-block; background:#fff; padding:12px; border-radius:14px; line-height:0;"></div>
                 <div id="me-name" style="font-size:18px; font-weight:700; margin-top:12px;"></div>
-                <div style="font-size:12px; color:#8e8e93; margin-top:4px; line-height:1.6;">出貨時，讓管理員掃這個 QR，就會選你為領用人</div>
+                <div style="font-size:12px; color:#8e8e93; margin-top:4px; line-height:1.6;">出貨時，讓管理員掃這個 QR，就會選你為領用人（點 QR 可放大）</div>
             </div>
             <div class="lookup-section-title" id="me-hold-title">📦 目前身上有</div>
             <div id="me-holdings"></div>
@@ -828,7 +836,7 @@
             </div>
 
             <div id="durable-item-panel" style="text-align: center; margin-bottom: 14px; background: rgba(255,255,255,0.06); padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1);">
-                <div style="font-size:11px; color:#8e8e93; margin-bottom:10px;">每一件都有自己專屬的 QR Code 身分，可分別掃描出庫／入庫</div>
+                <div style="font-size:11px; color:#8e8e93; margin-bottom:10px;">每一件都有自己專屬的 QR Code 身分，可分別掃描出庫／入庫（點 QR 可放大）</div>
                 <div id="item-units-list" style="display:flex; flex-direction:column; gap:8px; max-height: 300px; overflow-y:auto; text-align:left;"></div>
 
                 <div id="label-font-settings-group" style="display: none;">
@@ -846,7 +854,7 @@
                     </div>
                 </div>
 
-                <button class="apple-btn secondary" style="margin-top:12px; font-size:12px; padding:10px 14px; width:100%;" onclick="downloadAllItemLabels()">🖨️ 下載全部標籤 (每件一張獨立 QR)</button>
+                <button class="apple-btn secondary" style="margin-top:12px; font-size:12px; padding:10px 14px; width:100%;" id="btn-dl-all-labels" onclick="downloadAllItemLabels()">🖨️ 下載全部標籤 (每件一張獨立 QR)</button>
             </div>
 
             <div id="consumable-item-panel" style="display:none; text-align: center; margin-bottom: 14px; background: rgba(255,255,255,0.06); padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1);">
@@ -860,7 +868,7 @@
                 <div id="consumable-qr-container" style="display:inline-block; background:#fff; border-radius:8px; padding:8px; margin-bottom:10px;"></div>
                 <div style="font-size:11px; color:#8e8e93; margin-bottom:4px;">掃這個 QR 進出貨，會跳出視窗輸入這次的數量</div>
                 <div style="font-size:11px; color:#8e8e93;">出庫模式＝出貨給目前選定的去處／進貨模式＝補貨回倉庫</div>
-                <button class="apple-btn secondary" style="margin-top:12px; font-size:12px; padding:10px 14px; width:100%;" onclick="downloadConsumableLabel()">🖨️ 下載標籤圖片</button>
+                <button class="apple-btn secondary" style="margin-top:12px; font-size:12px; padding:10px 14px; width:100%;" id="btn-dl-consumable-label" onclick="downloadConsumableLabel()">🖨️ 下載標籤圖片</button>
             </div>
 
             <div id="item-stock-code-text" style="font-size: 13px; color: #ffd60a; font-weight: 700; margin: 0 0 14px; text-align:center;"></div>
@@ -2088,7 +2096,7 @@
                     </div>
                     <div style="color: #d1d1d6; margin-top: 4px;">📦 箱子位置：${escapeHtml(l.boxName)}</div>
                     <div style="margin-top: 2px;">👤 出庫去向 / 來源：${formatTargetDisplay(l.target)}</div>
-                    ${l.operator ? `<div style="margin-top: 2px; color:#8e8e93;">🧑‍💼 操作人：${escapeHtml(l.operator)}</div>` : ''}
+                    ${l.operator ? `<div style="margin-top: 2px; color:#ff9f0a; font-weight:600;">🧑‍💼 ${escapeHtml(opLabel(l))}</div>` : ''}
                 </div>
             `;
         });
@@ -2638,6 +2646,7 @@
                             unit.status = 'out';
                             unit.borrower = currentBorrowTarget;
                             unit.outAt = Date.now();
+                            unit.outBy = (currentUser && currentUser.account) || '';
                             actionType = '出庫';
                             recordTarget = currentBorrowTarget;
                             scanSuccessFeedback('📤', `已出庫\n${item.name} (${unitLabel})\n→ ${currentBorrowTarget}`);
@@ -2653,6 +2662,7 @@
                             }
                             unit.borrower = currentBorrowTarget;
                             unit.outAt = Date.now();
+                            unit.outBy = (currentUser && currentUser.account) || '';
                             actionType = '轉交';
                             recordTarget = `${fromWhom} → ${currentBorrowTarget}`;
                             scanSuccessFeedback('🔄', `已轉交\n${item.name} (${unitLabel})\n${fromWhom} → ${currentBorrowTarget}`);
@@ -2677,6 +2687,7 @@
                         unit.status = 'in';
                         unit.borrower = '';
                         unit.outAt = null;
+                        unit.outBy = '';
                         actionType = '進貨';
                         recordTarget = `還回 (原借用: ${oldBorrower})`;
                         scanSuccessFeedback('📥', `已入庫\n${item.name} (${unitLabel})\n→ 回到「${box.name}」`);
@@ -3529,23 +3540,27 @@
         const qrEl = document.getElementById('me-qr');
         qrEl.innerHTML = '';
         new QRCode(qrEl, { text: `USER_${personViewUser.id}`, width: 200, height: 200, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+        qrEl.style.cursor = 'pointer';
+        qrEl.onclick = () => showQrZoom(`USER_${personViewUser.id}`, personViewUser.account || '', '讓管理員掃這個 QR 選你為領用人');
         renderPersonHoldings();
         loadPersonLogs(personViewUser.account);
     }
     function computeHoldings(account) {
         const rows = [];
-        (boxesCache || []).forEach(b => (b.items || []).forEach(it => {
+        (boxesCache || []).forEach(b => (b.items || []).forEach((it, idx) => {
             if (it.itemType === 'consumable') {
                 Object.entries(it.holdings || {}).forEach(([t, q]) => {
-                    if ((Number(q) || 0) > 0 && targetName(t) === account) rows.push({ name: it.name, qty: Number(q), box: b.name, consumable: true });
+                    if ((Number(q) || 0) > 0 && targetName(t) === account) {
+                        rows.push({ name: it.name, qty: Number(q), box: b.name, consumable: true, label: '', qr: `ITEM_${b.id}_${idx}`, since: 0, by: '' });
+                    }
                 });
             } else {
                 ensureUnits(it);
-                const units = it.units.filter(u => u.status === 'out' && targetName(u.borrower) === account);
-                if (units.length) {
-                    const since = Math.min(...units.map(u => u.outAt || Infinity));
-                    rows.push({ name: it.name, qty: units.length, box: b.name, since: isFinite(since) ? since : 0 });
-                }
+                it.units.forEach((u, ui) => {
+                    if (u.status === 'out' && targetName(u.borrower) === account) {
+                        rows.push({ name: it.name, qty: 1, box: b.name, label: `第 ${ui + 1}/${it.units.length} 件`, qr: `ITEM_${b.id}_${idx}_${u.uid}`, since: u.outAt || 0, by: u.outBy || '' });
+                    }
+                });
             }
         }));
         return rows;
@@ -3557,12 +3572,27 @@
         const rows = computeHoldings(personViewUser.account);
         const total = rows.reduce((a, r) => a + r.qty, 0);
         document.getElementById('me-hold-title').innerText = `📦 目前身上有（${total} 件）`;
+        el.innerHTML = '';
         if (!rows.length) { el.innerHTML = '<div style="color:#8e8e93; text-align:center; padding:16px; font-size:13px;">目前身上沒有領用中的物品</div>'; return; }
-        el.innerHTML = rows.map(r => `
-            <div class="log-card">
-                <div style="font-weight:700; font-size:14px;">${escapeHtml(r.name)}${r.consumable ? ' <span style="font-size:10px; color:#0a84ff;">📦耗材</span>' : ''} <span style="color:#ff453a;">x${r.qty}</span></div>
-                <div style="font-size:12px; color:#8e8e93; margin-top:2px;">原位置：📦 ${escapeHtml(r.box)}${r.since ? ' · 領用於 ' + fmtUserTime(r.since) : ''}</div>
-            </div>`).join('');
+        rows.forEach(r => {
+            const card = document.createElement('div');
+            card.className = 'log-card';
+            card.style.cssText = 'display:flex; align-items:center; gap:12px;';
+            const qrBox = document.createElement('div');
+            qrBox.style.cssText = 'background:#fff; border-radius:8px; padding:4px; width:64px; height:64px; flex-shrink:0; cursor:pointer; line-height:0; display:flex; align-items:center; justify-content:center;';
+            card.appendChild(qrBox);
+            new QRCode(qrBox, { text: r.qr, width: 56, height: 56, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+            qrBox.onclick = () => showQrZoom(r.qr, r.name + (r.label ? ' · ' + r.label : ''), '歸還時，管理員用「快速進貨」掃這個 QR');
+            const info = document.createElement('div');
+            info.style.cssText = 'flex:1; min-width:0;';
+            info.innerHTML = `
+                <div style="font-weight:700; font-size:14px;">${escapeHtml(r.name)}${r.consumable ? ' <span style="font-size:10px; color:#0a84ff;">📦耗材</span> <span style="color:#ff453a;">x' + r.qty + '</span>' : ''}</div>
+                ${r.label ? `<div style="font-size:12px; color:#ff9500; margin-top:2px;">🔖 ${escapeHtml(r.label)}</div>` : ''}
+                <div style="font-size:12px; color:#8e8e93; margin-top:2px;">原位置：📦 ${escapeHtml(r.box)}</div>
+                ${(r.since || r.by) ? `<div style="font-size:11px; color:#ff9f0a; margin-top:2px;">${r.since ? '領用於 ' + fmtUserTime(r.since) : ''}${r.by ? ' · 發出管理員：' + escapeHtml(r.by) : ''}</div>` : ''}`;
+            card.appendChild(info);
+            el.appendChild(card);
+        });
     }
     async function loadPersonLogs(account) {
         const el = document.getElementById('me-logs');
@@ -3579,12 +3609,32 @@
                 return `<div class="log-card">
                     <div class="log-header"><span style="color:${c};">● ${escapeHtml(l.type)}：${escapeHtml(l.itemName)} (x${l.qty})</span><span class="log-time">${escapeHtml(l.timeStr || '')}</span></div>
                     <div style="color:#d1d1d6; margin-top:4px;">📦 ${escapeHtml(l.boxName || '')}</div>
+                    ${l.operator ? `<div style="margin-top:2px; color:#ff9f0a; font-weight:600;">🧑‍💼 ${escapeHtml(opLabel(l))}</div>` : ''}
                 </div>`;
             }).join('');
         } catch (e) {
             el.innerHTML = '<div style="color:#ff3b30; text-align:center; padding:16px; font-size:13px;">載入紀錄失敗</div>';
         }
     }
+
+    // 紀錄上的「經手管理員」文字
+    function opLabel(l) {
+        let role = '經手';
+        if (l.type === '出庫' || l.type === '轉交') role = '發出';
+        else if (l.type === '進貨') role = String(l.target || '').startsWith('還回') ? '收回' : '入庫';
+        return `${role}管理員：${l.operator}`;
+    }
+    // QR 放大
+    window.showQrZoom = function (text, title, sub) {
+        const box = document.getElementById('qr-zoom-qr');
+        box.innerHTML = '';
+        const size = Math.max(200, Math.min(300, Math.min(window.innerWidth, 480) - 100));
+        new QRCode(box, { text, width: size, height: size, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+        document.getElementById('qr-zoom-title').innerText = title || '';
+        document.getElementById('qr-zoom-sub').innerText = sub || '';
+        document.getElementById('qr-zoom').style.display = 'flex';
+    };
+    window.closeQrZoom = function () { document.getElementById('qr-zoom').style.display = 'none'; };
 
     function escapeHtml(str) {
         return String(str == null ? '' : str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
@@ -4012,6 +4062,8 @@
 
         const fontSettingsGroup = document.getElementById('label-font-settings-group');
         fontSettingsGroup.style.display = (isContentEditActive && !isConsumable) ? 'block' : 'none';
+        const _dlAll = document.getElementById('btn-dl-all-labels'); if (_dlAll) _dlAll.style.display = isContentEditActive ? '' : 'none';
+        const _dlCon = document.getElementById('btn-dl-consumable-label'); if (_dlCon) _dlCon.style.display = isContentEditActive ? '' : 'none';
 
         if (isContentEditActive) {
             document.getElementById('edit-modal-title').innerText = isConsumable ? '✏️ 編輯耗材資料' : '✏️ 編輯物品資料與 QR Code';
@@ -4209,7 +4261,7 @@
                         </div>
                         <div style="color:#d1d1d6;">📦 所在箱子：${escapeHtml(l.boxName)}</div>
                         <div style="margin-top:2px;">👤 對象/去向：${formatTargetDisplay(l.target)}</div>
-                        ${l.operator ? `<div style="margin-top:2px; color:#8e8e93;">🧑‍💼 操作人：${escapeHtml(l.operator)}</div>` : ''}
+                        ${l.operator ? `<div style="margin-top:2px; color:#ff9f0a; font-weight:600;">🧑‍💼 ${escapeHtml(opLabel(l))}</div>` : ''}
                         ${l.unitLabel ? `<div style="color:#ff9500; margin-top:2px;">🔖 ${escapeHtml(l.unitLabel)}</div>` : ''}
                     </div>
                 `;
@@ -4295,6 +4347,8 @@
     window.renderConsumablePanel = function(it, boxId, idx) {
         const qrEl = document.getElementById('consumable-qr-container');
         qrEl.innerHTML = '';
+        qrEl.style.cursor = 'pointer';
+        qrEl.onclick = () => showQrZoom(`ITEM_${boxId}_${idx}`, it.name, '耗材 QR：掃描後輸入數量出貨／入庫');
         new QRCode(qrEl, {
             text: `ITEM_${boxId}_${idx}`, width: 130, height: 130,
             colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H
@@ -4531,6 +4585,8 @@
             const qrBox = document.createElement('div');
             qrBox.style.cssText = `background:#fff; border-radius:6px; padding:4px; flex-shrink:0; width:56px; height:56px; display:flex; align-items:center; justify-content:center;${isOut ? ' filter:grayscale(1);' : ''}`;
             row.appendChild(qrBox);
+            qrBox.style.cursor = 'pointer';
+            qrBox.onclick = () => showQrZoom(`ITEM_${boxId}_${idx}_${u.uid}`, it.name, `第 ${uIdx + 1}/${it.units.length} 件${it.stockCode ? ' · 貨號 ' + it.stockCode : ''}`);
             new QRCode(qrBox, {
                 text: `ITEM_${boxId}_${idx}_${u.uid}`, width: 48, height: 48,
                 colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H
@@ -4552,7 +4608,7 @@
             dlBtn.style.cssText = 'padding:6px 10px; font-size:11px; flex-shrink:0;';
             dlBtn.innerText = '下載';
             dlBtn.onclick = () => downloadItemLabel(u.uid);
-            row.appendChild(dlBtn);
+            if (isContentEditActive) row.appendChild(dlBtn);
 
             listEl.appendChild(row);
         });
