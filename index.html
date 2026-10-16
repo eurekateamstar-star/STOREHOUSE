@@ -1495,12 +1495,15 @@
             if (!snap.exists()) { if (appEntered) location.reload(); return; }
             if (!currentUser) return;
             const u = snap.data();
+            const wasAdmin = isAdmin();
             currentUser.account = u.account || currentUser.account;
             currentUser.role = u.role || 'member';
             currentUser.status = u.status || 'approved';
             if (appEntered) {
                 if (currentUser.status !== 'approved') { location.reload(); return; }
                 updateMenuUser(); applyRoleUI();
+                if (wasAdmin && !isAdmin()) showToast('🔒 你的管理員權限已被取消', 'error', 2200);
+                else if (!wasAdmin && isAdmin()) showToast('👑 你已被設為管理員', 'success', 2200);
             } else if (currentUser.status === 'approved') {
                 enterApp();
             } else {
@@ -1519,6 +1522,22 @@
         if (lb) lb.innerText = inLine() ? '我的帳號' : '登出';
     }
 
+    // 權限被取消時：立刻關掉管理員專屬的畫面、掃描器與視窗，退回主選單
+    function closeAdminScreens() {
+        const visible = id => { const e = _el(id); return !!e && getComputedStyle(e).display !== 'none'; };
+        let backToMenu = false;
+        ['users-view', 'logs-view', 'lookup-view'].forEach(id => {
+            if (visible(id)) { _el(id).style.display = 'none'; backToMenu = true; }
+        });
+        if (visible('scanner-modal') && scannerMode !== 'locate') { closeScanner(); backToMenu = true; }
+        if (visible('borrower-modal')) { closeBorrowerModal(); borrowerModalOnConfirm = null; backToMenu = true; }
+        if (visible('item-history-modal')) closeItemHistoryModal();
+        if (visible('tier-modal')) closeTierPicker();
+        if (visible('fab-modal')) closeFabMenu();
+        if (visible('me-view') && personViewUser && currentUser && personViewUser.id !== currentUser.userId) { closeMeView(); backToMenu = false; }
+        if (backToMenu && !visible('warehouse-system-view') && !visible('me-view')) _el('main-menu-view').style.display = 'flex';
+    }
+
     // 依權限顯示/隱藏編輯功能
     function applyRoleUI() {
         const admin = isAdmin();
@@ -1535,6 +1554,7 @@
             if (isLogsEditMode) { isLogsEditMode = false; updateLogsEditUI(); renderLogsList(); }
             if (isBorrowerEditMode) { isBorrowerEditMode = false; renderBorrowerSelectorUI(); }
             stopUsersWatch();
+            closeAdminScreens();
         } else {
             startUsersWatch();
         }
