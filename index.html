@@ -962,7 +962,7 @@
 <script type="module">
     // ⭐️ 已經不需要 Firebase Storage，直接使用 Firestore 即可
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, getDocs, addDoc, doc, updateDoc, getDoc, setDoc, deleteDoc, runTransaction, onSnapshot, query, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, addDoc as _addDoc, doc, updateDoc as _updateDoc, getDoc, setDoc, deleteDoc as _deleteDoc, runTransaction, onSnapshot, query, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     // 與「白沙屯救護紀錄表」共用同一個 Firebase 專案（同一份 users，綁定一次即可）
     const firebaseConfig = {
@@ -986,6 +986,38 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+
+    // ===== 記錄使用者「最後操作時間」（進出貨、編輯、新增、刪除）=====
+    let _lastTouch = 0;
+    function touchAction(desc, throttleMs = 0) {
+        try {
+            if (!currentUser || currentUser.status !== 'approved' || !currentUser.userId) return;
+            const now = Date.now();
+            if (throttleMs && now - _lastTouch < throttleMs) return;   // 連續編輯不要每次都寫入
+            _lastTouch = now;
+            _updateDoc(doc(db, "users", currentUser.userId), { warehouseLastActionAt: serverTimestamp(), warehouseLastAction: desc }).catch(() => {});
+        } catch (e) {}
+    }
+    function addDoc(ref, data) {
+        const path = (ref && ref.path) || '';
+        if (path === 'warehouse_logs') touchAction(`${data.type || '紀錄'}：${data.itemName || ''}${data.qty ? ' x' + data.qty : ''}`);
+        else if (path === 'warehouse_boxes') touchAction('新增箱子', 30000);
+        else if (path === 'warehouse_pages') touchAction('新增頁面', 30000);
+        return _addDoc(ref, data);
+    }
+    function updateDoc(ref, data) {
+        const path = (ref && ref.path) || '';
+        if (path.startsWith('warehouse_boxes/')) touchAction('編輯箱子／物品', 30000);
+        else if (path.startsWith('warehouse_pages/')) touchAction('編輯頁面', 30000);
+        return _updateDoc(ref, data);
+    }
+    function deleteDoc(ref) {
+        const path = (ref && ref.path) || '';
+        if (path.startsWith('warehouse_boxes/')) touchAction('刪除箱子');
+        else if (path.startsWith('warehouse_pages/')) touchAction('刪除頁面');
+        else if (path.startsWith('warehouse_logs/')) touchAction('刪除進出貨紀錄', 5000);
+        return _deleteDoc(ref);
+    }
 
     // ==============================================
     // 前端圖片壓縮並轉 Base64 函數
@@ -1393,7 +1425,10 @@
             account: d.realName || '',
             displayName: d.lineDisplayName || '',
             role: d.role === 'admin' ? 'admin' : 'member',
-            createdAt: tsMs(d.createdAt) };
+            createdAt: tsMs(d.createdAt),
+            lastLoginAt: tsMs(d.warehouseLastLoginAt),
+            lastActionAt: tsMs(d.warehouseLastActionAt),
+            lastAction: d.warehouseLastAction || '' };
     }
 
     function setLoginState(state, msg) {
@@ -1472,7 +1507,8 @@
         const upd = {};   // 同步 LINE 頭貼／暱稱（與救護紀錄表相同欄位）
         if (prof.pictureUrl && prof.pictureUrl !== u.pictureUrl) upd.pictureUrl = prof.pictureUrl;
         if (prof.displayName && prof.displayName !== u.lineDisplayName) upd.lineDisplayName = prof.displayName;
-        if (Object.keys(upd).length) updateDoc(ref, upd).catch(() => {});
+        upd.warehouseLastLoginAt = serverTimestamp();   // 倉庫最後登入時間
+        updateDoc(ref, upd).catch(() => {});
         currentUser = {
             userId: u.id, displayName: prof.displayName, pictureUrl: prof.pictureUrl || u.pictureUrl || '',
             account: u.account, idCard: u.idCard || '', role: u.role, status: u.status || 'pending', rejectReason: u.rejectReason || ''
@@ -1663,6 +1699,18 @@
         const d = new Date(ts);
         return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     }
+    function loginText(u) {
+        if (!u.lastLoginAt) return '倉庫尚無登入紀錄';
+        const m = Math.floor((Date.now() - u.lastLoginAt) / 60000);
+        const rel = m < 1 ? '剛剛' : m < 60 ? `${m} 分鐘前` : m < 1440 ? `${Math.floor(m / 60)} 小時前` : `${Math.floor(m / 1440)} 天前`;
+        return `倉庫上次登入：${fmtUserTime(u.lastLoginAt)}（${rel}）`;
+    }
+    function actionText(u) {
+        if (!u.lastActionAt) return '倉庫尚無操作紀錄';
+        const m = Math.floor((Date.now() - u.lastActionAt) / 60000);
+        const rel = m < 1 ? '剛剛' : m < 60 ? `${m} 分鐘前` : m < 1440 ? `${Math.floor(m / 60)} 小時前` : `${Math.floor(m / 1440)} 天前`;
+        return `最後操作：${fmtUserTime(u.lastActionAt)}（${rel}）${u.lastAction ? ' · ' + u.lastAction : ''}`;
+    }
     function renderUsersView() {
         const box = _el('users-container');
         if (!box) return;
@@ -1680,6 +1728,8 @@
                 <div style="flex:1; min-width:0;">
                     <div style="font-weight:700; font-size:14px;">${escapeHtml(u.account || '(未命名)')}${u.id === me ? ' <span style="font-size:10px; color:#0a84ff;">（你）</span>' : ''}</div>
                     <div style="font-size:11px; color:#8e8e93; margin-top:2px;">LINE：${escapeHtml(u.displayName || '—')}${u.createdAt ? ' · ' + fmtUserTime(u.createdAt) : ''}</div>
+                    <div style="font-size:11px; color:#ff9f0a; margin-top:2px;">🕒 ${loginText(u)}</div>
+                    <div style="font-size:11px; color:#34c759; margin-top:2px;">🛠 ${escapeHtml(actionText(u))}</div>
                     ${extra}
                     <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">${btns}</div>
                 </div>
