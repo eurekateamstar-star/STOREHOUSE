@@ -1767,7 +1767,7 @@
         const mk = (key, label, n) => {
             const b = document.createElement('button');
             b.className = 'tier-chip' + (usersCatFilter === key ? ' on' : '');
-            b.innerText = `${label} ${n}`;
+            b.innerText = `${label} (${n})`;
             b.onclick = () => { usersCatFilter = key; renderUsersView(); };
             el.appendChild(b);
         };
