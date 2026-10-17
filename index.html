@@ -1441,7 +1441,7 @@
             lastActionAt: tsMs(d.warehouseLastActionAt),
             lastAction: d.warehouseLastAction || '',
             removed: !!d.warehouseRemoved,          // 已被移出倉庫（不影響白沙屯）
-            category: d.warehouseCategory || '' };   // 成員分類
+            category: ('category' in d) ? (d.category || '') : (d.warehouseCategory || '') };   // 成員分類（與白沙屯共用 category）
     }
 
     function setLoginState(state, msg) {
@@ -1890,7 +1890,7 @@
     };
     async function applyUserCategory(id, name) {
         closeUserCategory();
-        await patchUser(id, { warehouseCategory: name }, name ? `🏷️ 已分類：${name}` : '已改為未分類');
+        await patchUser(id, { category: name, warehouseCategory: name }, name ? `🏷️ 已分類：${name}` : '已改為未分類');
     }
 
     // ===== 一次性：把舊倉庫資料庫的資料匯入目前的資料庫（編號保留，已印出的 QR 仍可使用） =====
