@@ -697,6 +697,8 @@
                 <button onclick="closeUsersView()" class="apple-btn secondary" style="padding: 8px 14px; font-size: 13px;">返回</button>
             </div>
             <div style="font-size:12px; color:#8e8e93; margin-bottom:6px; line-height:1.6;">會員資料與「白沙屯救護紀錄表」共用：任一邊核准、退回、停權、改管理員，兩邊都會一起生效。只有管理員可以進出貨與編輯。</div>
+            <input type="text" id="users-search-input" class="apple-input" placeholder="🔍 搜尋姓名 / LINE 名稱 / 分類…" style="margin:10px 0 8px; font-size:13px; padding:10px 14px;" oninput="onUsersFilterChange()">
+            <div id="users-cat-chips" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:4px;"></div>
             <div id="users-container"></div>
 
             <div class="apple-card" style="margin-top:24px;">
@@ -781,6 +783,15 @@
                 <button class="apple-btn secondary" style="padding: 14px; font-size: 15px;" onclick="document.getElementById('bg-upload').click(); closeFabMenu();">📁 更換底圖 (自動壓縮上傳)</button>
                 <button class="apple-btn secondary" style="padding: 14px; font-size: 15px; color: #ff3b30;" onclick="closeFabMenu()">取消</button>
             </div>
+        </div>
+
+        <!-- 成員分類 -->
+        <div id="cat-backdrop" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(8px); z-index:2650;" onclick="closeUserCategory()"></div>
+        <div id="cat-modal" class="modal" style="z-index:2700; padding-bottom:36px;">
+            <div style="font-size:16px; font-weight:600; text-align:center; color:#bf5af2; margin-bottom:4px;">設定分類</div>
+            <div id="cat-modal-name" style="font-size:12px; color:#8e8e93; text-align:center; margin-bottom:14px;"></div>
+            <div id="cat-modal-grid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:14px;"></div>
+            <button class="apple-btn secondary" style="width:100%; padding:14px;" onclick="closeUserCategory()">取消</button>
         </div>
 
         <!-- 設定箱子所在層 -->
@@ -1413,7 +1424,7 @@
     let pendingLineProfile = null;
     let appEntered = false, ownUnsub = null;
     const _el = id => document.getElementById(id);
-    const isAdmin = () => !!(currentUser && currentUser.role === 'admin' && currentUser.status === 'approved');
+    const isAdmin = () => !!(currentUser && currentUser.role === 'admin' && currentUser.status === 'approved' && !currentUser.removed);
     const opInfo = () => ({ operator: currentUser ? currentUser.account : '', operatorId: currentUser ? currentUser.userId : '' });
     const inLine = () => { try { return !!(window.liff && liff.isInClient && liff.isInClient()); } catch (e) { return false; } };
     const uStatus = u => u.status || 'pending';
@@ -1428,7 +1439,9 @@
             createdAt: tsMs(d.createdAt),
             lastLoginAt: tsMs(d.warehouseLastLoginAt),
             lastActionAt: tsMs(d.warehouseLastActionAt),
-            lastAction: d.warehouseLastAction || '' };
+            lastAction: d.warehouseLastAction || '',
+            removed: !!d.warehouseRemoved,          // 已被移出倉庫（不影響白沙屯）
+            category: d.warehouseCategory || '' };   // 成員分類
     }
 
     function setLoginState(state, msg) {
@@ -1451,6 +1464,10 @@
         } else if (state === 'banned') {
             sub.innerText = '🚫 目前無法進入';
             lm.innerText = '你的帳號已被停權。' + ((msg || '').trim() ? `\n原因：${msg.trim()}` : '') + '\n請聯絡管理員。';
+            show('line-card', true); show('line-profile', true); show('login-msg', true);
+        } else if (state === 'removed') {
+            sub.innerText = '⛔ 已被移出倉庫';
+            lm.innerText = '管理員已將你移出倉庫系統。\n白沙屯救護紀錄表不受影響。\n如有疑問請聯絡管理員。';
             show('line-card', true); show('line-profile', true); show('login-msg', true);
         } else if (state === 'needLogin') {
             sub.innerText = '請使用 LINE 登入以識別身分';
@@ -1511,14 +1528,15 @@
         updateDoc(ref, upd).catch(() => {});
         currentUser = {
             userId: u.id, displayName: prof.displayName, pictureUrl: prof.pictureUrl || u.pictureUrl || '',
-            account: u.account, idCard: u.idCard || '', role: u.role, status: u.status || 'pending', rejectReason: u.rejectReason || ''
+            account: u.account, idCard: u.idCard || '', role: u.role, status: u.status || 'pending', rejectReason: u.rejectReason || '', removed: u.removed
         };
         watchOwnUser(u.id);
         applyStatusState();
     }
     function applyStatusState() {
         const st = currentUser.status;
-        if (st === 'approved') enterApp();
+        if (currentUser.removed) setLoginState('removed');
+        else if (st === 'approved') enterApp();
         else if (st === 'banned') setLoginState('banned', currentUser.rejectReason);
         else if (st === 'rejected') setLoginState('rejected', currentUser.rejectReason);
         else setLoginState('pending');
@@ -1573,8 +1591,9 @@
             currentUser.role = u.role;
             currentUser.status = u.status || 'pending';
             currentUser.rejectReason = u.rejectReason || '';
+            currentUser.removed = u.removed;
             if (appEntered) {
-                if (currentUser.status !== 'approved') { location.reload(); return; }
+                if (currentUser.status !== 'approved' || currentUser.removed) { location.reload(); return; }
                 updateMenuUser(); applyRoleUI();
                 if (wasAdmin && !isAdmin()) showToast('🔒 你的管理員權限已被取消', 'error', 2200);
                 else if (!wasAdmin && isAdmin()) showToast('👑 你已被設為管理員', 'success', 2200);
@@ -1711,22 +1730,63 @@
         const rel = m < 1 ? '剛剛' : m < 60 ? `${m} 分鐘前` : m < 1440 ? `${Math.floor(m / 60)} 小時前` : `${Math.floor(m / 1440)} 天前`;
         return `最後操作：${fmtUserTime(u.lastActionAt)}（${rel}）${u.lastAction ? ' · ' + u.lastAction : ''}`;
     }
+    let usersQuery = '', usersCatFilter = '__all';
+    function userCategories() {
+        const m = new Map();
+        usersCache.forEach(u => { if (u.category && !u.removed) m.set(u.category, (m.get(u.category) || 0) + 1); });
+        return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0], 'zh-Hant'));
+    }
+    function userMatches(u) {
+        if (usersCatFilter === '__none' && u.category) return false;
+        if (usersCatFilter !== '__all' && usersCatFilter !== '__none' && u.category !== usersCatFilter) return false;
+        if (usersQuery) {
+            const hay = `${u.account || ''} ${u.displayName || ''} ${u.category || ''}`.toLowerCase();
+            if (!hay.includes(usersQuery)) return false;
+        }
+        return true;
+    }
+    function renderUsersChips() {
+        const el = _el('users-cat-chips');
+        if (!el) return;
+        el.innerHTML = '';
+        const live = usersCache.filter(u => !u.removed);
+        const mk = (key, label, n) => {
+            const b = document.createElement('button');
+            b.className = 'tier-chip' + (usersCatFilter === key ? ' on' : '');
+            b.innerText = `${label} ${n}`;
+            b.onclick = () => { usersCatFilter = key; renderUsersView(); };
+            el.appendChild(b);
+        };
+        mk('__all', '全部', live.length);
+        userCategories().forEach(([c, n]) => mk(c, '🏷️ ' + c, n));
+        const none = live.filter(u => !u.category).length;
+        if (none && userCategories().length) mk('__none', '未分類', none);
+        if (usersCatFilter !== '__all' && usersCatFilter !== '__none' && !userCategories().some(([c]) => c === usersCatFilter)) usersCatFilter = '__all';
+    }
+    window.onUsersFilterChange = function () {
+        usersQuery = (_el('users-search-input').value || '').trim().toLowerCase();
+        renderUsersView();
+    };
+
     function renderUsersView() {
         const box = _el('users-container');
         if (!box) return;
+        renderUsersChips();
         const me = currentUser && currentUser.userId;
-        const sorted = [...usersCache].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-        const pend = sorted.filter(u => uStatus(u) === 'pending');
-        const admins = sorted.filter(u => uStatus(u) === 'approved' && u.role === 'admin');
-        const members = sorted.filter(u => uStatus(u) === 'approved' && u.role !== 'admin');
-        const blocked = sorted.filter(u => uStatus(u) === 'rejected' || uStatus(u) === 'banned');
+        const sorted = usersCache.filter(userMatches).sort((a, b) => (a.category || '￿').localeCompare(b.category || '￿', 'zh-Hant') || (a.account || '').localeCompare(b.account || '', 'zh-Hant'));
+        const newest = [...sorted].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        const pend = newest.filter(u => uStatus(u) === 'pending' && !u.removed);
+        const admins = sorted.filter(u => uStatus(u) === 'approved' && u.role === 'admin' && !u.removed);
+        const members = sorted.filter(u => uStatus(u) === 'approved' && u.role !== 'admin' && !u.removed);
+        const removed = sorted.filter(u => u.removed);
+        const blocked = sorted.filter(u => !u.removed && (uStatus(u) === 'rejected' || uStatus(u) === 'banned'));
 
         const btn = (label, fn, cls = 'secondary') => `<button class="apple-btn ${cls}" style="padding:6px 12px; font-size:12px;" onclick="${fn}">${label}</button>`;
         const card = (u, btns, extra = '') => `
             <div class="log-card" style="display:flex; align-items:flex-start; gap:12px;">
                 <img src="${escapeHtml(u.pictureUrl || '')}" onerror="this.style.visibility='hidden'" style="width:44px; height:44px; border-radius:50%; object-fit:cover; background:#2c2c2e; flex-shrink:0;">
                 <div style="flex:1; min-width:0;">
-                    <div style="font-weight:700; font-size:14px;">${escapeHtml(u.account || '(未命名)')}${u.id === me ? ' <span style="font-size:10px; color:#0a84ff;">（你）</span>' : ''}</div>
+                    <div style="font-weight:700; font-size:14px;">${escapeHtml(u.account || '(未命名)')}${u.id === me ? ' <span style="font-size:10px; color:#0a84ff;">（你）</span>' : ''}${u.category ? ` <span style="font-size:10px; color:#bf5af2; font-weight:600;">🏷️ ${escapeHtml(u.category)}</span>` : ''}</div>
                     <div style="font-size:11px; color:#8e8e93; margin-top:2px;">LINE：${escapeHtml(u.displayName || '—')}${u.createdAt ? ' · ' + fmtUserTime(u.createdAt) : ''}</div>
                     <div style="font-size:11px; color:#ff9f0a; margin-top:2px;">🕒 ${loginText(u)}</div>
                     <div style="font-size:11px; color:#34c759; margin-top:2px;">🛠 ${escapeHtml(actionText(u))}</div>
@@ -1740,13 +1800,16 @@
         let html = '';
         html += section('⏳ 待審核', '#ff9f0a', pend, u => card(u, btn('✓ 核准', `approveUser('${u.id}')`, 'success') + btn('✕ 退回', `rejectUser('${u.id}')`, 'danger')));
         html += section('👑 管理員', '#0a84ff', admins, u => card(u,
-            btn('持有', `openPersonViewById('${u.id}')`) + btn('改名', `editUserAccount('${u.id}')`) + (u.id !== me ? btn('取消管理員', `setUserRole('${u.id}','user')`) : '')));
+            btn('持有', `openPersonViewById('${u.id}')`) + btn('分類', `openUserCategory('${u.id}')`) + btn('改名', `editUserAccount('${u.id}')`)
+            + (u.id !== me ? btn('取消管理員', `setUserRole('${u.id}','user')`) + btn('移出倉庫', `removeFromWarehouse('${u.id}')`, 'danger') : '')));
         html += section('👤 一般成員', '#8e8e93', members, u => card(u,
-            btn('持有', `openPersonViewById('${u.id}')`) + btn('設為管理員', `setUserRole('${u.id}','admin')`) + btn('改名', `editUserAccount('${u.id}')`) + btn('停權', `suspendUser('${u.id}')`, 'danger')));
-        html += section('🚫 已退回／停權', '#ff453a', blocked, u => card(u,
-            btn('恢復核准', `approveUser('${u.id}')`, 'success'),
+            btn('持有', `openPersonViewById('${u.id}')`) + btn('分類', `openUserCategory('${u.id}')`) + btn('設為管理員', `setUserRole('${u.id}','admin')`)
+            + btn('改名', `editUserAccount('${u.id}')`) + btn('移出倉庫', `removeFromWarehouse('${u.id}')`, 'danger')));
+        html += section('⛔ 已移出倉庫', '#ff453a', removed, u => card(u, btn('恢復進入倉庫', `restoreToWarehouse('${u.id}')`, 'success')));
+        html += section('🚫 已退回／停權（兩邊）', '#ff453a', blocked, u => card(u,
+            btn('恢復核准', `approveUser('${u.id}')`, 'success') + btn('分類', `openUserCategory('${u.id}')`),
             `<div style="font-size:11px; color:#ff453a; margin-top:2px;">${uStatus(u) === 'banned' ? '停權' : '退回'}${u.rejectReason ? '：' + escapeHtml(u.rejectReason) : ''}</div>`));
-        box.innerHTML = html || '<div style="color:#8e8e93; text-align:center; padding:30px;">目前沒有任何使用者</div>';
+        box.innerHTML = html || `<div style="color:#8e8e93; text-align:center; padding:30px;">${usersCache.length ? '沒有符合的成員' : '目前沒有任何使用者'}</div>`;
     }
 
     const userRef = id => doc(db, "users", id);
@@ -1783,6 +1846,52 @@
         if (!n || n === u.account) return;
         patchUser(id, { realName: n }, '✅ 已更新姓名');
     };
+
+    // 移出倉庫：只影響倉庫，白沙屯救護紀錄表不受影響；可隨時恢復
+    window.removeFromWarehouse = async id => {
+        if (id === currentUser.userId) return showToast('不能移出自己', 'error', 1000);
+        const u = findUser(id) || {};
+        let held = 0;
+        try { held = computeHoldings(u.account || '').reduce((a, r) => a + r.qty, 0); } catch (e) {}
+        const warn = held > 0 ? `\n\n⚠️ 他目前身上還有 ${held} 件物品尚未歸還。` : '';
+        if (!(await showConfirmDialog(`確定把「${u.account || ''}」移出倉庫？\n對方將無法再使用倉庫，白沙屯救護紀錄表不受影響。\n之後可以隨時恢復。${warn}`, '移出倉庫'))) return;
+        patchUser(id, { warehouseRemoved: true, warehouseRemovedBy: currentUser.account, warehouseRemovedAt: serverTimestamp() }, '已移出倉庫');
+    };
+    window.restoreToWarehouse = id => patchUser(id, { warehouseRemoved: false }, '✅ 已恢復進入倉庫');
+
+    // 成員分類
+    let catPickerUserId = null;
+    window.openUserCategory = function (id) {
+        const u = findUser(id); if (!u) return;
+        catPickerUserId = id;
+        _el('cat-modal-name').innerText = `「${u.account || ''}」目前：${u.category || '未分類'}`;
+        const grid = _el('cat-modal-grid');
+        grid.innerHTML = '';
+        const add = (label, cls, fn) => {
+            const b = document.createElement('button');
+            b.className = 'apple-btn ' + cls;
+            b.style.cssText = 'padding:14px 6px; font-size:14px;';
+            b.innerText = label;
+            b.onclick = fn;
+            grid.appendChild(b);
+        };
+        userCategories().forEach(([c]) => add(c, u.category === c ? '' : 'secondary', () => applyUserCategory(id, c)));
+        add('＋ 新增分類', 'success', async () => {
+            const n = await showPromptDialog('輸入新分類名稱（例如：A 隊、護理組、志工）', '', '新增分類');
+            if (n) applyUserCategory(id, n);
+        });
+        add('未分類', 'secondary', () => applyUserCategory(id, ''));
+        _el('cat-backdrop').style.display = 'block';
+        _el('cat-modal').style.display = 'block';
+    };
+    window.closeUserCategory = function () {
+        _el('cat-backdrop').style.display = 'none';
+        _el('cat-modal').style.display = 'none';
+    };
+    async function applyUserCategory(id, name) {
+        closeUserCategory();
+        await patchUser(id, { warehouseCategory: name }, name ? `🏷️ 已分類：${name}` : '已改為未分類');
+    }
 
     // ===== 一次性：把舊倉庫資料庫的資料匯入目前的資料庫（編號保留，已印出的 QR 仍可使用） =====
     let oldAppInst = null;
@@ -3626,19 +3735,25 @@
     const MEMBER_GROUP = '成員';
     const targetName = t => { t = String(t || ''); const i = t.indexOf(' - '); return i === -1 ? t : t.slice(i + 3); };
 
-    // 手動群組 + 自動產生的「成員」群組（已通過審核、但不在任何手動群組裡的人）
+    // 手動群組 + 自動產生的群組：已通過審核、不在任何手動群組的成員，依「分類」分組（沒分類的歸「成員」）
     function getSelectableGroups() {
         const groups = borrowerGroupsCache.map(g => ({ ...g }));
         const known = new Set();
         borrowerGroupsCache.forEach(g => (g.items || []).forEach(n => known.add(n)));
-        const extra = (usersCache || []).filter(u => uStatus(u) === 'approved' && u.account && !known.has(u.account)).map(u => u.account);
-        if (extra.length) groups.push({ groupName: MEMBER_GROUP, items: extra, virtual: true });
+        const byGroup = new Map();
+        (usersCache || []).filter(u => uStatus(u) === 'approved' && !u.removed && u.account && !known.has(u.account)).forEach(u => {
+            const g = u.category || MEMBER_GROUP;
+            if (!byGroup.has(g)) byGroup.set(g, []);
+            byGroup.get(g).push(u.account);
+        });
+        byGroup.forEach((items, g) => groups.push({ groupName: g, items, virtual: true }));
         return groups;
     }
-    // 某位成員出貨時要用的「去處」字串：名字若已在手動群組就用該群組，否則用「成員」
+    // 某位成員出貨時要用的「去處」字串：名字已在手動群組就用該群組，否則用他的分類（沒有就「成員」）
     function targetForUser(account) {
         for (const g of borrowerGroupsCache) if ((g.items || []).includes(account)) return `${g.groupName} - ${account}`;
-        return `${MEMBER_GROUP} - ${account}`;
+        const u = (usersCache || []).find(x => x.account === account);
+        return `${(u && u.category) || MEMBER_GROUP} - ${account}`;
     }
 
     window.pickPersonByQr = function () {
@@ -3653,7 +3768,7 @@
         if (!user) {
             try { const s = await getDoc(doc(db, "users", uid)); if (s.exists()) user = normUser(s.id, s.data()); } catch (e) {}
         }
-        if (!user || uStatus(user) !== 'approved') {
+        if (!user || uStatus(user) !== 'approved' || user.removed) {
             scanErrorFeedback('⚠️', '找不到這位成員\n或尚未通過審核');
             showToast('⚠️ 找不到這位成員，或尚未通過審核', 'error', 1200);
             return;
