@@ -466,6 +466,10 @@
         .u-tile-badge{position:absolute;right:-4px;bottom:-2px;font-size:13px;line-height:1;}
         .u-tile-name{font-size:11px;font-weight:600;color:#f2f2f7;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
         .u-tile-cat{font-size:9px;color:#bf5af2;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:-3px;}
+        .cert-group{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+        .cert-btn{border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:#f2f2f7;font-size:14px;font-weight:600;padding:10px 4px;border-radius:12px;cursor:pointer;font-family:inherit;}
+        .cert-btn:active{transform:scale(.96);}
+        .cert-btn.on{background:#0a84ff;border-color:#0a84ff;color:#fff;}
     </style>
 </head>
 <body>
@@ -520,7 +524,9 @@
                 <div id="line-account-box" style="display:none;">
                     <div style="font-size:13px; color:#8e8e93; margin-bottom:10px; text-align:center; line-height:1.6;">與「白沙屯救護紀錄表」共用同一份會員資料<br>只需填寫一次，送出後等待管理員審核</div>
                     <input type="text" id="line-account-input" class="apple-input" placeholder="真實姓名" style="margin-bottom:10px; text-align:center;">
-                    <input type="text" id="line-idcard-input" class="apple-input" placeholder="身分證字號" maxlength="10" style="margin-bottom:14px; text-align:center; text-transform:uppercase;">
+                    <input type="text" id="line-idcard-input" class="apple-input" placeholder="身分證字號" maxlength="10" style="margin-bottom:12px; text-align:center; text-transform:uppercase;">
+                    <div style="font-size:12px; color:#8e8e93; margin-bottom:6px; text-align:center;">證照類別</div>
+                    <div class="cert-group" id="regCertGroup" style="margin-bottom:14px;"><button type="button" class="cert-btn" data-cert="EMT-1" onclick="pickCert('EMT-1')">EMT-1</button><button type="button" class="cert-btn" data-cert="EMT-2" onclick="pickCert('EMT-2')">EMT-2</button><button type="button" class="cert-btn" data-cert="EMT-P" onclick="pickCert('EMT-P')">EMT-P</button><button type="button" class="cert-btn" data-cert="護理師" onclick="pickCert('護理師')">護理師</button><button type="button" class="cert-btn" data-cert="醫師" onclick="pickCert('醫師')">醫師</button><button type="button" class="cert-btn" data-cert="無證照" onclick="pickCert('無證照')">無證照</button></div>
                     <button class="apple-btn success" onclick="submitLineAccount()" style="width:100%;">送出申請</button>
                 </div>
                 <div id="login-msg" style="display:none; font-size:13px; color:#c7c7cc; text-align:center; line-height:1.6; white-space:pre-line;"></div>
@@ -1524,6 +1530,7 @@
             isResubmit = false;
             _el('line-account-input').value = '';
             _el('line-idcard-input').value = '';
+            pickCert('');
             setLoginState('account');
             return;
         }
@@ -1535,7 +1542,7 @@
         updateDoc(ref, upd).catch(() => {});
         currentUser = {
             userId: u.id, displayName: prof.displayName, pictureUrl: prof.pictureUrl || u.pictureUrl || '',
-            account: u.account, idCard: u.idCard || '', role: u.role, status: u.status || 'pending', rejectReason: u.rejectReason || '', removed: u.removed
+            account: u.account, idCard: u.idCard || '', certification: u.certification || u.category || '', role: u.role, status: u.status || 'pending', rejectReason: u.rejectReason || '', removed: u.removed
         };
         watchOwnUser(u.id);
         applyStatusState();
@@ -1553,7 +1560,16 @@
         isResubmit = true;
         _el('line-account-input').value = (currentUser && currentUser.account) || '';
         _el('line-idcard-input').value = (currentUser && currentUser.idCard) || '';
+        pickCert((currentUser && currentUser.certification) || '');
         setLoginState('account');
+    };
+
+    // 證照類別（註冊時必選，直接成為人員分類）
+    const CERTS = ['EMT-1', 'EMT-2', 'EMT-P', '護理師', '醫師', '無證照'];
+    let regCert = '';
+    window.pickCert = function (c) {
+        regCert = CERTS.includes(c) ? c : '';
+        document.querySelectorAll('#regCertGroup .cert-btn').forEach(x => x.classList.toggle('on', x.dataset.cert === regCert));
     };
 
     // 送出實名資料（欄位與驗證都和白沙屯救護紀錄表一致）
@@ -1562,6 +1578,7 @@
         const idCard = _el('line-idcard-input').value.trim().toUpperCase();
         if (!realName) return showToast('請輸入真實姓名', 'error', 900);
         if (!/^[A-Z][1289]\d{8}$/.test(idCard)) return showToast('身分證字號格式不正確', 'error', 1200);
+        if (!regCert) return showToast('請選擇證照類別', 'error', 1200);
         const prof = pendingLineProfile;
         if (!prof) return;
         const ref = doc(db, "users", prof.userId);
@@ -1570,14 +1587,14 @@
             if (isResubmit) {
                 await updateDoc(ref, {
                     lineDisplayName: prof.displayName || '', pictureUrl: prof.pictureUrl || '',
-                    realName, idCard, status: 'pending', rejectReason: '', resubmittedAt: serverTimestamp()
+                    realName, idCard, certification: regCert, category: regCert, warehouseCategory: regCert, status: 'pending', rejectReason: '', resubmittedAt: serverTimestamp()
                 });
                 isResubmit = false;
             } else {
                 first = (await getDocs(query(collection(db, "users"), limit(1)))).empty;
                 await setDoc(ref, {
                     lineUserId: prof.userId, lineDisplayName: prof.displayName || '', pictureUrl: prof.pictureUrl || '',
-                    realName, idCard, status: first ? 'approved' : 'pending', role: first ? 'admin' : 'user', createdAt: serverTimestamp()
+                    realName, idCard, certification: regCert, category: regCert, warehouseCategory: regCert, status: first ? 'approved' : 'pending', role: first ? 'admin' : 'user', createdAt: serverTimestamp()
                 });
             }
         } catch (e) { console.error(e); showToast('❌ 送出失敗，請重試', 'error', 1200); return; }
