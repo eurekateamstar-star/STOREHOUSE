@@ -507,7 +507,8 @@
                 <div id="line-account-box" style="display:none;">
                     <div style="font-size:13px; color:#8e8e93; margin-bottom:10px; text-align:center; line-height:1.6;">與「白沙屯救護紀錄表」共用同一份會員資料<br>只需填寫一次，送出後等待管理員審核</div>
                     <input type="text" id="line-account-input" class="apple-input" placeholder="真實姓名" style="margin-bottom:10px; text-align:center;">
-                    <input type="text" id="line-idcard-input" class="apple-input" placeholder="身分證字號" maxlength="10" style="margin-bottom:14px; text-align:center; text-transform:uppercase;">
+                    <input type="text" id="line-idcard-input" class="apple-input" placeholder="身分證字號" maxlength="10" style="margin-bottom:10px; text-align:center; text-transform:uppercase;">
+                    <input type="text" id="line-lineid-input" class="apple-input" placeholder="LINE ID（選填，方便管理員聯絡）" autocapitalize="off" autocomplete="off" style="margin-bottom:14px; text-align:center;">
                     <button class="apple-btn success" onclick="submitLineAccount()" style="width:100%;">送出申請</button>
                 </div>
                 <div id="login-msg" style="display:none; font-size:13px; color:#c7c7cc; text-align:center; line-height:1.6; white-space:pre-line;"></div>
@@ -682,6 +683,7 @@
             <div class="apple-card" style="text-align:center; margin-bottom:16px;">
                 <div id="me-qr" style="display:inline-block; background:#fff; padding:12px; border-radius:14px; line-height:0;"></div>
                 <div id="me-name" style="font-size:18px; font-weight:700; margin-top:12px;"></div>
+                <div id="me-lineid" style="display:flex; gap:8px; justify-content:center; align-items:center; flex-wrap:wrap; margin-top:8px;"></div>
                 <div style="font-size:12px; color:#8e8e93; margin-top:4px; line-height:1.6;">出貨時，讓管理員掃這個 QR，就會選你為領用人（點 QR 可放大）</div>
             </div>
             <div class="lookup-section-title" id="me-hold-title">📦 目前身上有</div>
@@ -1420,6 +1422,7 @@
             displayName: d.lineDisplayName || '',
             role: d.role === 'admin' ? 'admin' : 'member',
             createdAt: tsMs(d.createdAt),
+            lineId: d.lineId || '',
             lastLoginAt: tsMs(d.warehouseLastLoginAt),
             bstLoginAt: tsMs(d.bstLastLoginAt),
             lastActionAt: tsMs(d.warehouseLastActionAt),
@@ -1501,6 +1504,7 @@
             isResubmit = false;
             _el('line-account-input').value = '';
             _el('line-idcard-input').value = '';
+            _el('line-lineid-input').value = '';
             setLoginState('account');
             return;
         }
@@ -1512,7 +1516,7 @@
         updateDoc(ref, upd).catch(() => {});
         currentUser = {
             userId: u.id, displayName: prof.displayName, pictureUrl: prof.pictureUrl || u.pictureUrl || '',
-            account: u.account, idCard: u.idCard || '', role: u.role, status: u.status || 'pending', rejectReason: u.rejectReason || '', removed: u.removed
+            account: u.account, idCard: u.idCard || '', lineId: u.lineId || '', role: u.role, status: u.status || 'pending', rejectReason: u.rejectReason || '', removed: u.removed
         };
         watchOwnUser(u.id);
         applyStatusState();
@@ -1530,6 +1534,7 @@
         isResubmit = true;
         _el('line-account-input').value = (currentUser && currentUser.account) || '';
         _el('line-idcard-input').value = (currentUser && currentUser.idCard) || '';
+        _el('line-lineid-input').value = (currentUser && currentUser.lineId) || '';
         setLoginState('account');
     };
 
@@ -1537,8 +1542,10 @@
     window.submitLineAccount = async function () {
         const realName = _el('line-account-input').value.trim();
         const idCard = _el('line-idcard-input').value.trim().toUpperCase();
+        const lineId = normLineId(_el('line-lineid-input').value);
         if (!realName) return showToast('請輸入真實姓名', 'error', 900);
         if (!/^[A-Z][1289]\d{8}$/.test(idCard)) return showToast('身分證字號格式不正確', 'error', 1200);
+        if (!validLineId(lineId)) return showToast('LINE ID 格式不正確\n（4～20 個英數字、點、底線或減號）', 'error', 1600);
         const prof = pendingLineProfile;
         if (!prof) return;
         const ref = doc(db, "users", prof.userId);
@@ -1547,14 +1554,14 @@
             if (isResubmit) {
                 await updateDoc(ref, {
                     lineDisplayName: prof.displayName || '', pictureUrl: prof.pictureUrl || '',
-                    realName, idCard, status: 'pending', rejectReason: '', resubmittedAt: serverTimestamp()
+                    realName, idCard, lineId, status: 'pending', rejectReason: '', resubmittedAt: serverTimestamp()
                 });
                 isResubmit = false;
             } else {
                 first = (await getDocs(query(collection(db, "users"), limit(1)))).empty;
                 await setDoc(ref, {
                     lineUserId: prof.userId, lineDisplayName: prof.displayName || '', pictureUrl: prof.pictureUrl || '',
-                    realName, idCard, status: first ? 'approved' : 'pending', role: first ? 'admin' : 'user', createdAt: serverTimestamp()
+                    realName, idCard, lineId, status: first ? 'approved' : 'pending', role: first ? 'admin' : 'user', createdAt: serverTimestamp()
                 });
             }
         } catch (e) { console.error(e); showToast('❌ 送出失敗，請重試', 'error', 1200); return; }
@@ -1777,12 +1784,12 @@
                 <img src="${escapeHtml(u.pictureUrl || '')}" onerror="this.style.visibility='hidden'" style="width:44px; height:44px; border-radius:50%; object-fit:cover; background:#2c2c2e; flex-shrink:0;">
                 <div style="flex:1; min-width:0;">
                     <div style="font-weight:700; font-size:14px;">${escapeHtml(u.account || '(未命名)')}${u.id === me ? ' <span style="font-size:10px; color:#0a84ff;">（你）</span>' : ''}${u.category ? ` <span style="font-size:10px; color:#bf5af2; font-weight:600;">🏷️ ${escapeHtml(u.category)}</span>` : ''}</div>
-                    <div style="font-size:11px; color:#8e8e93; margin-top:2px;">LINE：${escapeHtml(u.displayName || '—')}${u.createdAt ? ' · ' + fmtUserTime(u.createdAt) : ''}</div>
+                    <div style="font-size:11px; color:#8e8e93; margin-top:2px;">LINE：${escapeHtml(u.displayName || '—')}${u.lineId ? ' · ID ' + escapeHtml(u.lineId) : ''}${u.createdAt ? ' · ' + fmtUserTime(u.createdAt) : ''}</div>
                     <div style="font-size:11px; color:#ff6b81; margin-top:2px;">🏥 ${bstLoginText(u)}</div>
                     <div style="font-size:11px; color:#ff9f0a; margin-top:2px;">🕒 ${loginText(u)}</div>
                     <div style="font-size:11px; color:#34c759; margin-top:2px;">🛠 ${escapeHtml(actionText(u))}</div>
                     ${extra}
-                    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">${btns}</div>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">${u.lineId ? `<button class="apple-btn" style="padding:6px 12px; font-size:12px; background:#06c755; box-shadow:none;" onclick="openLineChat('${escapeHtml(u.lineId)}')">💬 LINE</button>` : ''}${btns}</div>
                 </div>
             </div>`;
         const section = (title, color, arr, mk) => arr.length
@@ -3749,6 +3756,45 @@
 
     // ===== 個人頁：QR + 目前持有 + 最近紀錄 =====
     let personViewUser = null;
+    function renderMeLineId() {
+        const el = document.getElementById('me-lineid');
+        if (!el || !personViewUser) return;
+        const isSelf = currentUser && personViewUser.id === currentUser.userId;
+        const canEdit = isSelf || isAdmin();
+        const id = personViewUser.lineId;
+        el.innerHTML = '';
+        const tag = document.createElement('span');
+        tag.style.cssText = 'font-size:13px; color:' + (id ? '#30d158' : '#8e8e93') + ';';
+        tag.innerText = id ? `💬 LINE ID：${id}` : '💬 尚未設定 LINE ID';
+        el.appendChild(tag);
+        if (id && !isSelf) {
+            const ob = document.createElement('button');
+            ob.className = 'apple-btn'; ob.style.cssText = 'padding:6px 12px; font-size:12px; background:#06c755; box-shadow:none;';
+            ob.innerText = '開啟 LINE'; ob.onclick = () => openLineChat(id);
+            el.appendChild(ob);
+        }
+        if (canEdit) {
+            const eb = document.createElement('button');
+            eb.className = 'apple-btn secondary'; eb.style.cssText = 'padding:6px 12px; font-size:12px;';
+            eb.innerText = id ? '修改' : '設定'; eb.onclick = editPersonLineId;
+            el.appendChild(eb);
+        }
+    }
+    async function editPersonLineId() {
+        if (!personViewUser) return;
+        const raw = await showPromptDialog('輸入可被搜尋的 LINE ID\nLINE「設定 → 個人檔案 → ID」可以查到，並要開啟「允許利用 ID 加入好友」。', personViewUser.lineId || '', '💬 LINE ID');
+        if (raw === null) return;
+        const id = normLineId(raw);
+        if (!validLineId(id)) return showToast('LINE ID 格式不正確\n（4～20 個英數字、點、底線或減號）', 'error', 1600);
+        try {
+            await _updateDoc(doc(db, "users", personViewUser.id), { lineId: id });
+            personViewUser.lineId = id;
+            if (currentUser && personViewUser.id === currentUser.userId) currentUser.lineId = id;
+            renderMeLineId();
+            showToast(id ? '✅ 已儲存 LINE ID' : '已清除 LINE ID', 'success', 900);
+        } catch (e) { showToast('❌ 儲存失敗', 'error', 900); }
+    }
+
     window.openMyView = function () { if (currentUser) openPersonView({ id: currentUser.userId, ...currentUser }); };
     window.openPersonViewById = function (id) { const u = usersCache.find(x => x.id === id); if (u) openPersonView(u); };
     window.closeMeView = function () {
@@ -3756,7 +3802,8 @@
         document.getElementById('main-menu-view').style.display = 'flex';
     };
     function openPersonView(user) {
-        personViewUser = { id: user.id || user.userId, account: user.account, pictureUrl: user.pictureUrl || '' };
+        personViewUser = { id: user.id || user.userId, account: user.account, pictureUrl: user.pictureUrl || '', lineId: user.lineId || '' };
+        renderMeLineId();
         ['main-menu-view', 'users-view', 'lookup-view'].forEach(id => { const e = document.getElementById(id); if (e) e.style.display = 'none'; });
         document.getElementById('me-view').style.display = 'block';
         const isSelf = currentUser && personViewUser.id === currentUser.userId;
@@ -3842,6 +3889,19 @@
             el.innerHTML = '<div style="color:#ff3b30; text-align:center; padding:16px; font-size:13px;">載入紀錄失敗</div>';
         }
     }
+
+
+    // ===== 個人 LINE ID（選填，用來從名單打開對方的 LINE）=====
+    function normLineId(v) { return String(v || '').trim().replace(/^@/, '').replace(/^~/, '').toLowerCase(); }
+    function validLineId(v) { return !v || /^[a-z0-9._-]{4,20}$/.test(v); }
+    function lineChatUrl(id) { return `https://line.me/R/ti/p/~${encodeURIComponent(normLineId(id))}`; }
+    window.openLineChat = function (id) {
+      id = normLineId(id);
+      if (!id) return;
+      const url = lineChatUrl(id);
+      try { if (window.liff && liff.isInClient && liff.isInClient()) { liff.openWindow({ url, external: false }); return; } } catch (e) {}
+      window.open(url, '_blank');
+    };
 
     // 紀錄上的「經手管理員」文字
     function opLabel(l) {
