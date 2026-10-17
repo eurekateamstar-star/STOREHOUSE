@@ -805,7 +805,7 @@
         <!-- 成員分類 -->
         <div id="cat-backdrop" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(8px); z-index:2650;" onclick="closeUserCategory()"></div>
         <div id="cat-modal" class="modal" style="z-index:2700; padding-bottom:36px;">
-            <div style="font-size:16px; font-weight:600; text-align:center; color:#bf5af2; margin-bottom:4px;">設定分類</div>
+            <div id="cat-modal-title" style="font-size:16px; font-weight:600; text-align:center; color:#bf5af2; margin-bottom:4px;">設定分類</div>
             <div id="cat-modal-name" style="font-size:12px; color:#8e8e93; text-align:center; margin-bottom:14px;"></div>
             <div id="cat-modal-grid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:14px;"></div>
             <button class="apple-btn secondary" style="width:100%; padding:14px;" onclick="closeUserCategory()">取消</button>
@@ -1775,6 +1775,14 @@
         userCategories().forEach(([c, n]) => mk(c, '🏷️ ' + c, n));
         const none = live.filter(u => !u.category).length;
         if (none && userCategories().length) mk('__none', '未分類', none);
+        if (userCategories().length) {
+            const rb = document.createElement('button');
+            rb.className = 'tier-chip';
+            rb.style.cssText = 'border-style:dashed; color:#bf5af2;';
+            rb.innerText = '✏️ 改分類名稱';
+            rb.onclick = openCategoryRename;
+            el.appendChild(rb);
+        }
         if (usersCatFilter !== '__all' && usersCatFilter !== '__none' && !userCategories().some(([c]) => c === usersCatFilter)) usersCatFilter = '__all';
     }
     window.onUsersFilterChange = function () {
@@ -1921,6 +1929,7 @@
     window.openUserCategory = function (id) {
         const u = findUser(id); if (!u) return;
         catPickerUserId = id;
+        _el('cat-modal-title').innerText = '設定分類';
         _el('cat-modal-name').innerText = `「${u.account || ''}」目前：${u.category || '未分類'}`;
         const grid = _el('cat-modal-grid');
         grid.innerHTML = '';
@@ -1945,6 +1954,41 @@
         _el('cat-backdrop').style.display = 'none';
         _el('cat-modal').style.display = 'none';
     };
+    // 修改分類名稱：所有屬於這個分類的人一起改（白沙屯也同步）
+    function openCategoryRename() {
+        const cats = userCategories();
+        if (!cats.length) return;
+        _el('cat-modal-title').innerText = '修改分類名稱';
+        _el('cat-modal-name').innerText = '點選要改名的分類';
+        const grid = _el('cat-modal-grid');
+        grid.innerHTML = '';
+        cats.forEach(([c, n]) => {
+            const b = document.createElement('button');
+            b.className = 'apple-btn secondary';
+            b.style.cssText = 'padding:14px 6px; font-size:14px;';
+            b.innerText = `${c}（${n}）`;
+            b.onclick = async () => {
+                closeUserCategory();
+                const nn = await showPromptDialog(`把「${c}」改成：`, c, '修改分類名稱');
+                if (nn) renameCategory(c, nn.trim());
+            };
+            grid.appendChild(b);
+        });
+        _el('cat-backdrop').style.display = 'block';
+        _el('cat-modal').style.display = 'block';
+    }
+    async function renameCategory(oldName, newName) {
+        if (!isAdmin() || !newName || newName === oldName) return;
+        const targets = usersCache.filter(u => u.category === oldName);
+        if (userCategories().some(([c]) => c === newName) &&
+            !(await showConfirmDialog(`已經有「${newName}」這個分類。\n要把「${oldName}」的 ${targets.length} 人併入「${newName}」嗎？`, '合併分類'))) return;
+        try {
+            await Promise.all(targets.map(u => _updateDoc(doc(db, "users", u.id), { category: newName, warehouseCategory: newName })));
+            if (usersCatFilter === oldName) usersCatFilter = newName;
+            showToast(`✅ 已將「${oldName}」改為「${newName}」\n共 ${targets.length} 人`, 'success', 1400);
+        } catch (e) { showToast('❌ 修改失敗，請重試', 'error', 1000); }
+    }
+
     async function applyUserCategory(id, name) {
         closeUserCategory();
         await patchUser(id, { category: name, warehouseCategory: name }, name ? `🏷️ 已分類：${name}` : '已改為未分類');
