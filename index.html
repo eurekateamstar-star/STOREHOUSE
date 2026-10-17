@@ -1864,13 +1864,13 @@
         html += section('⏳ 待審核', '#ff9f0a', pend, u => card(u, btn('✓ 核准', `approveUser('${u.id}')`, 'success') + btn('✕ 退回', `rejectUser('${u.id}')`, 'danger')));
         html += section('👑 管理員', '#0a84ff', admins, u => card(u,
             btn('持有', `openPersonViewById('${u.id}')`) + btn('分類', `openUserCategory('${u.id}')`) + btn('改名', `editUserAccount('${u.id}')`)
-            + (u.id !== me ? btn('取消管理員', `setUserRole('${u.id}','user')`) + btn('移出倉庫', `removeFromWarehouse('${u.id}')`, 'danger') : '')));
+            + (u.id !== me ? btn('取消管理員', `setUserRole('${u.id}','user')`) + btn('移出倉庫', `removeFromWarehouse('${u.id}')`, 'danger') + btn('踢出', `kickUser('${u.id}')`, 'danger') : '')));
         html += section('👤 一般成員', '#8e8e93', members, u => card(u,
             btn('持有', `openPersonViewById('${u.id}')`) + btn('分類', `openUserCategory('${u.id}')`) + btn('設為管理員', `setUserRole('${u.id}','admin')`)
-            + btn('改名', `editUserAccount('${u.id}')`) + btn('移出倉庫', `removeFromWarehouse('${u.id}')`, 'danger')));
-        html += section('⛔ 已移出倉庫', '#ff453a', removed, u => card(u, btn('恢復進入倉庫', `restoreToWarehouse('${u.id}')`, 'success')));
+            + btn('改名', `editUserAccount('${u.id}')`) + btn('移出倉庫', `removeFromWarehouse('${u.id}')`, 'danger') + btn('踢出', `kickUser('${u.id}')`, 'danger')));
+        html += section('⛔ 已移出倉庫', '#ff453a', removed, u => card(u, btn('恢復進入倉庫', `restoreToWarehouse('${u.id}')`, 'success') + btn('踢出', `kickUser('${u.id}')`, 'danger')));
         html += section('🚫 已退回／停權（兩邊）', '#ff453a', blocked, u => card(u,
-            btn('恢復核准', `approveUser('${u.id}')`, 'success') + btn('分類', `openUserCategory('${u.id}')`),
+            btn('恢復核准', `approveUser('${u.id}')`, 'success') + btn('分類', `openUserCategory('${u.id}')`) + btn('踢出', `kickUser('${u.id}')`, 'danger'),
             `<div style="font-size:11px; color:#ff453a; margin-top:2px;">${uStatus(u) === 'banned' ? '停權' : '退回'}${u.rejectReason ? '：' + escapeHtml(u.rejectReason) : ''}</div>`));
         box.innerHTML = html || `<div style="color:#8e8e93; text-align:center; padding:30px;">${usersCache.length ? '沒有符合的成員' : '目前沒有任何使用者'}</div>`;
         if (userSheetId) { if (usersCardHtml[userSheetId]) _el('user-sheet-body').innerHTML = usersCardHtml[userSheetId]; else closeUserSheet(); }
@@ -1920,6 +1920,20 @@
         const warn = held > 0 ? `\n\n⚠️ 他目前身上還有 ${held} 件物品尚未歸還。` : '';
         if (!(await showConfirmDialog(`確定把「${u.account || ''}」移出倉庫？\n對方將無法再使用倉庫，白沙屯救護紀錄表不受影響。\n之後可以隨時恢復。${warn}`, '移出倉庫'))) return;
         patchUser(id, { warehouseRemoved: true, warehouseRemovedBy: currentUser.account, warehouseRemovedAt: serverTimestamp() }, '已移出倉庫');
+    };
+    // 完全踢出：刪除會員資料，從名單消失；對方再打開要重新填資料、重新審核（白沙屯也一樣）
+    window.kickUser = async id => {
+        if (!isAdmin()) return;
+        if (id === currentUser.userId) return showToast('不能踢出自己', 'error', 1000);
+        const u = findUser(id) || {};
+        let held = 0;
+        try { held = computeHoldings(u.account || '').reduce((a, r) => a + r.qty, 0); } catch (e) {}
+        const warn = held > 0 ? `\n\n⚠️ 他身上還有 ${held} 件物品尚未歸還。` : '';
+        if (!(await showConfirmDialog(`確定把「${u.account || ''}」完全踢出？\n\n• 會從名單消失（倉庫與白沙屯都會）\n• 對方會立刻被登出\n• 他要再加入，必須重新填資料、等待審核\n• 進出貨紀錄會保留${warn}`, '完全踢出'))) return;
+        try {
+            await deleteDoc(doc(db, "users", id));
+            showToast(`已踢出「${u.account || ''}」`, 'success', 1200);
+        } catch (e) { showToast('❌ 踢出失敗，請重試', 'error', 1000); }
     };
     window.restoreToWarehouse = id => patchUser(id, { warehouseRemoved: false }, '✅ 已恢復進入倉庫');
 
