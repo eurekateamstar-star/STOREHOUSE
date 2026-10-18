@@ -196,6 +196,7 @@
   .empty { text-align: center; color: #9ca3af; padding: 30px 10px; font-size: 14px; }
 
   .p-card { padding: 16px; margin-bottom: 10px; }
+  .app-card { cursor: pointer; transition: transform .1s; } .app-card:hover { box-shadow: 0 12px 30px rgba(124,58,237,0.14); }
   .app-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 16px; margin-bottom: 12px; flex-wrap: wrap; }
   .app-bar .sub { font-size: 12px; color: var(--sub); margin-top: 3px; }
   .grp-t { font-size: 13px; font-weight: 800; color: var(--gold); margin: 14px 4px 8px; }
@@ -740,7 +741,7 @@
     const it = (t, v) => v ? `<div>${esc(t)}：<b>${esc(v)}</b></div>` : '';
     el.innerHTML = `<div class="grp-t">📝 新人申請（${apps.length}）</div>` + apps.map(a => {
       const dup = a.idCard && rosterCache.find(r => normId(r.idCard) === normId(a.idCard));
-      return `<div class="card p-card">
+      return `<div class="card p-card app-card" data-app-open="${a.id}">
         <div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">
           <div style="font-size:17px; font-weight:900;">${esc(a.name || '(未填)')} ${a.certText ? `<span class="pill cert">${esc(a.certText)}</span>` : ''}</div>
           <div style="font-size:12px; color:var(--sub); white-space:nowrap;">${esc(fmtAt(tsMs(a.createdAt)))}</div>
@@ -749,14 +750,10 @@
         <div class="app-grid">${it('生日', a.birthdayRaw || a.birthday)}${it('身分證', a.idCard)}${it('電話', a.phone)}${it('LINE', a.lineName)}
           ${it('緊急聯絡人', [a.emName, a.emRelation, a.emPhone].filter(Boolean).join('　'))}${it('尺寸', [a.shirtSize && '衣 ' + a.shirtSize, a.pantsSize && '褲 ' + a.pantsSize].filter(Boolean).join('　'))}
           ${it('地址', a.address)}${it('職業', a.job)}${it('介紹人', a.introducer)}${it('學歷經歷', a.education)}${it('備註', a.notes)}</div>
-        <div class="p-actions">
-          <button class="sbtn green" data-app-ok="${a.id}">✅ 審核通過，加入名冊</button>
-          <button class="sbtn red" data-app-no="${a.id}">退回</button>
-        </div>
+        <div class="p-actions"><button class="sbtn violet" data-app-open="${a.id}">🔍 審查</button></div>
       </div>`;
     }).join('') + '<div class="grp-t">⏳ LINE 帳號待審核</div>';
-    el.querySelectorAll('[data-app-ok]').forEach(b => b.onclick = () => approveApp(b.dataset.appOk));
-    el.querySelectorAll('[data-app-no]').forEach(b => b.onclick = () => rejectApp(b.dataset.appNo));
+    el.querySelectorAll('.app-card').forEach(c => c.onclick = () => approveApp(c.dataset.appOpen));
   }
   function approveApp(id) {
     const a = appsCache.find(x => x.id === id); if (!a) return;
@@ -770,9 +767,9 @@
   async function rejectApp(id) {
     const a = appsCache.find(x => x.id === id); if (!a) return;
     const reason = await dialog({ title: `退回「${a.name || ''}」的申請？`, msg: '可以留下原因（選填）', input: { placeholder: '退回原因（選填）' }, okText: '退回', danger: true });
-    if (reason === null) return;
-    try { await updateDoc(doc(db, 'roster_applications', id), { status: 'rejected', rejectReason: typeof reason === 'string' ? reason : '', reviewedBy: user.realName || '', reviewedAt: serverTimestamp() }); toast('已退回'); }
-    catch (e) { toast('❌ 操作失敗'); }
+    if (reason === null) return false;
+    try { await updateDoc(doc(db, 'roster_applications', id), { status: 'rejected', rejectReason: typeof reason === 'string' ? reason : '', reviewedBy: user.realName || '', reviewedAt: serverTimestamp() }); toast('已退回'); return true; }
+    catch (e) { toast('❌ 操作失敗'); return false; }
   }
   $('btn-app-copy').onclick = async () => {
     try { await navigator.clipboard.writeText(JOIN_URL); toast('🔗 已複製新人申請表連結'); }
@@ -1060,16 +1057,20 @@
     };
     $('sheet-body').innerHTML = `
       <h3>${r.fromApp ? '📝 審核新人申請' : r.isNew ? '＋ 新增團員' : '✏️ 編輯' + (role === 'self' ? '我的資料' : '：' + esc(rv(r, 'name') || ''))}</h3>
-      <div style="font-size:12px; color:var(--sub); margin:4px 0 12px;">${role === 'self' ? '請確認以下資料正確，修改後會記錄為「本人」更新。' : '修改後會記錄為「管理員」更新。'}</div>
+      <div style="font-size:12px; color:var(--sub); margin:4px 0 12px;">${role === 'self' ? '請確認以下資料正確，修改後會記錄為「本人」更新。' : (r.fromApp ? '請確認新人填寫的資料，可以直接修改後再通過。' : '修改後會記錄為「管理員」更新。')}</div>
       ${role === 'admin' ? `<div class="paste-box">
         <textarea id="ed-paste" placeholder="🪄 智慧貼上：把一整串資料貼在這裡（LINE 訊息、表單內容、Excel 複製的一整列都可以），按「🤖 AI 填入」就會分到對應的格子（「🪄 快速填入」不經過 AI，適合格式整齊的資料）。"></textarea>
         <div style="display:flex; gap:8px; justify-content:flex-end;"><button class="sbtn" id="ed-paste-go">🪄 快速填入</button><button class="sbtn pri" id="ed-ai-go">🤖 AI 填入</button></div>
       </div>` : ''}
       <div class="edit-form edit-grid">${fields.map(inp).join('')}</div>
-      <button class="btn" id="ed-save">${role === 'self' ? '確認並儲存' : '儲存'}</button>`;
+      ${r.fromApp ? `<div style="display:flex; gap:10px; margin-top:6px;">
+          <button class="btn" id="ed-reject" style="flex:1; background:#fff; color:var(--red); box-shadow: inset 0 0 0 1.5px #fca5a5;">✕ 退回</button>
+          <button class="btn" id="ed-save" style="flex:2; background:var(--green);">✅ 通過，加入名冊</button>
+        </div>` : `<button class="btn" id="ed-save">${role === 'self' ? '確認並儲存' : '儲存'}</button>`}`;
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open');
     $('sheet').scrollTop = 0;
     $('ed-save').onclick = saveEdit;
+    if ($('ed-reject')) $('ed-reject').onclick = async () => { if (await rejectApp(r.fromApp)) closeSheet(); };
     const fillFrom = (o, how) => {
       if (o.birthdayRaw) { const iso = parseBday(o.birthdayRaw); if (iso) o.birthdayRaw = rocBday(iso); }
       if (o.idCard) o.idCard = normId(o.idCard);
