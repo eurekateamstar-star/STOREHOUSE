@@ -122,7 +122,13 @@
   .edit-form .field label { font-size: 12px; }
   .edit-form .field input, .edit-form .field textarea { font-size: 15px; padding: 10px 12px; }
   .edit-form textarea { width: 100%; border-radius: 12px; border: 1.5px solid #e5e7eb; font-family: inherit; resize: vertical; min-height: 60px; }
-  .edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+  .edit-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 0 10px; }
+  .edit-form .field { min-width: 0; }
+  .edit-form input, .edit-form textarea { box-sizing: border-box; max-width: 100%; min-width: 0; display: block; }
+  .edit-form input[type=date] { -webkit-appearance: none; appearance: none; height: 45px; line-height: 23px; text-align: left; }
+  .edit-form input[type=date]::-webkit-date-and-time-value { text-align: left; }
+  .sheet { overflow-x: hidden; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+  body.sheet-open { overflow: hidden; }
   .edit-grid .full { grid-column: 1 / -1; }
   .log-item { font-size: 12px; color: var(--sub); padding: 6px 2px; border-bottom: 1px dashed var(--line); }
   .log-item b { color: var(--ink); }
@@ -816,7 +822,7 @@
         ${r.boundUserId ? '<button class="sbtn" id="sh-unbind">解除 LINE 綁定</button>' : ''}
         <button class="sbtn red" id="sh-del">刪除此筆名冊</button>
       </div>`;
-    $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block';
+    $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open');
     $('sh-edit').onclick = () => openEditForm(r, 'admin');
     if ($('sh-unbind')) $('sh-unbind').onclick = async () => {
       if (!(await dialog({ title: '解除綁定？', msg: `「${r.name}」的名冊資料將不再對應到這個 LINE 帳號。\n（不會影響對方的會員資格）`, okText: '解除' }))) return;
@@ -869,7 +875,7 @@
       <div style="font-size:12px; color:var(--sub); margin:4px 0 12px;">${role === 'self' ? '請確認以下資料正確，修改後會記錄為「本人」更新。' : '修改後會記錄為「管理員」更新。'}</div>
       <div class="edit-form edit-grid">${fields.map(inp).join('')}</div>
       <button class="btn" id="ed-save">${role === 'self' ? '確認並儲存' : '儲存'}</button>`;
-    $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block';
+    $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open');
     $('sheet').scrollTop = 0;
     $('ed-save').onclick = saveEdit;
   }
@@ -951,7 +957,7 @@
     }
   }
 
-  function closeSheet() { sheetRid = null; $('sheet-bg').style.display = 'none'; $('sheet').style.display = 'none'; }
+  function closeSheet() { document.body.classList.remove('sheet-open'); sheetRid = null; $('sheet-bg').style.display = 'none'; $('sheet').style.display = 'none'; }
   $('sheet-bg').onclick = closeSheet; $('sheet-close').onclick = closeSheet;
 
   // ---------- 系統會員 ----------
