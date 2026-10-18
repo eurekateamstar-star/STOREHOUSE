@@ -998,6 +998,7 @@
     // ⭐️ 已經不需要 Firebase Storage，直接使用 Firestore 即可
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, collection, getDocs, addDoc as _addDoc, doc, updateDoc as _updateDoc, getDoc, setDoc, deleteDoc as _deleteDoc, runTransaction, onSnapshot, query, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAuth, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
     // 與「白沙屯救護紀錄表」共用同一個 Firebase 專案（同一份 users，綁定一次即可）
     const firebaseConfig = {
@@ -1011,6 +1012,31 @@
     };
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+
+    // ===== Firebase 身分驗證：LINE → 驗證伺服器（Cloudflare）→ Firebase，資料庫規則靠這個認人 =====
+    const AUTH_URL = '';   // Cloudflare Worker 網址
+    const auth = getAuth(app);
+    async function fbSignIn(uid) {
+      try {
+        await new Promise(res => { const off = onAuthStateChanged(auth, () => { off(); res(); }); });
+        if (auth.currentUser && auth.currentUser.uid === uid) return true;
+        if (!AUTH_URL) return false;
+        const at = liff.getAccessToken();
+        if (!at) return false;
+        const r = await fetch(AUTH_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accessToken: at }) });
+        const j = await r.json().catch(() => ({}));
+        if (r.status === 401) {   // LINE 憑證過期 → 重新登入一次
+          let tried = false;
+          try { tried = sessionStorage.getItem('fbRelogin') === '1'; sessionStorage.setItem('fbRelogin', '1'); } catch (e) {}
+          if (!tried) { try { liff.logout(); } catch (e) {} liff.login({ redirectUri: location.origin + location.pathname }); return new Promise(() => {}); }
+        }
+        if (!j.token) throw new Error(j.error || 'auth failed');
+        await signInWithCustomToken(auth, j.token);
+        try { sessionStorage.removeItem('fbRelogin'); } catch (e) {}
+        return true;
+      } catch (e) { console.warn('Firebase 登入失敗', e); return false; }
+    }
+
 
     // ===== 記錄使用者「最後操作時間」（進出貨、編輯、新增、刪除）=====
     let _lastTouch = 0;
@@ -1513,6 +1539,7 @@
         if (!liff.isLoggedIn()) { setLoginState('needLogin'); return; }
         try {
             const prof = await liff.getProfile();
+            await fbSignIn(prof.userId);
             await identifyLineUser(prof);
         } catch (e) {
             console.error('liff profile', e);
@@ -1621,7 +1648,7 @@
                 });
                 isResubmit = false;
             } else {
-                first = (await getDocs(query(collection(db, "users"), limit(1)))).empty;
+                first = await getDocs(query(collection(db, "users"), limit(1))).then(s => s.empty, () => false);
                 await setDoc(ref, {
                     lineUserId: prof.userId, lineDisplayName: prof.displayName || '', pictureUrl: prof.pictureUrl || '',
                     realName, idCard, birthday, certification: regCert, category: regCert, warehouseCategory: regCert, ...verified, status: (first || roster) ? 'approved' : 'pending', role: first ? 'admin' : 'user', createdAt: serverTimestamp()

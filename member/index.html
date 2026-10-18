@@ -382,6 +382,7 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getFirestore, collection, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, limit, serverTimestamp, writeBatch, deleteField }
     from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAuth, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
   // 與「救護紀錄表」「倉庫管理」共用同一個 Firebase 專案
   const app = initializeApp({
@@ -393,6 +394,31 @@
     appId: "1:1002268658683:web:739adcd7819f8c9393595e"
   });
   const db = getFirestore(app);
+
+    // ===== Firebase 身分驗證：LINE → 驗證伺服器（Cloudflare）→ Firebase，資料庫規則靠這個認人 =====
+    const AUTH_URL = '';   // Cloudflare Worker 網址
+    const auth = getAuth(app);
+    async function fbSignIn(uid) {
+      try {
+        await new Promise(res => { const off = onAuthStateChanged(auth, () => { off(); res(); }); });
+        if (auth.currentUser && auth.currentUser.uid === uid) return true;
+        if (!AUTH_URL) return false;
+        const at = liff.getAccessToken();
+        if (!at) return false;
+        const r = await fetch(AUTH_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accessToken: at }) });
+        const j = await r.json().catch(() => ({}));
+        if (r.status === 401) {   // LINE 憑證過期 → 重新登入一次
+          let tried = false;
+          try { tried = sessionStorage.getItem('fbRelogin') === '1'; sessionStorage.setItem('fbRelogin', '1'); } catch (e) {}
+          if (!tried) { try { liff.logout(); } catch (e) {} liff.login({ redirectUri: location.origin + location.pathname }); return new Promise(() => {}); }
+        }
+        if (!j.token) throw new Error(j.error || 'auth failed');
+        await signInWithCustomToken(auth, j.token);
+        try { sessionStorage.removeItem('fbRelogin'); } catch (e) {}
+        return true;
+      } catch (e) { console.warn('Firebase 登入失敗', e); return false; }
+    }
+
 
   const LIFF_ID = '2011820105-x1KU6xLW';   // 會員中心專用 LIFF（Endpoint: /STOREHOUSE/member/）
   const CERTS = ['EMT-1', 'EMT-2', 'EMT-P', '護理師', '醫師', '無證照'];
@@ -605,7 +631,7 @@
         await updateDoc(ref, { ...base, status: verified ? 'approved' : 'pending', rejectReason: '', resubmittedAt: serverTimestamp(),
           ...(verified ? { verifiedBy: 'roster', rosterId: roster.id, approvedAt: serverTimestamp() } : {}) });
       } else {
-        const first = (await getDocs(query(collection(db, 'users'), limit(1)))).empty;   // 第一位使用者 = 管理員
+        const first = await getDocs(query(collection(db, 'users'), limit(1))).then(s => s.empty, () => false);   // 第一位使用者 = 管理員
         await setDoc(ref, { ...base, lineUserId: profile.userId, role: first ? 'admin' : 'user', createdAt: serverTimestamp(),
           status: (first || verified) ? 'approved' : 'pending',
           ...(verified ? { verifiedBy: 'roster', rosterId: roster.id, approvedAt: serverTimestamp() } : {}) });
@@ -1137,6 +1163,7 @@
     }
 
     $('loading-text').textContent = '讀取會員資料…';
+    await fbSignIn(profile.userId);
     const ref = doc(db, 'users', profile.userId);
     let first = true;
     // 即時同步：管理員核准、退回、改名、改分類、設為管理員，這裡都會馬上更新

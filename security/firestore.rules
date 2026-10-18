@@ -1,0 +1,111 @@
+rules_version = '2';
+// 白沙屯醫護團 Firestore 安全規則（倉庫、救護紀錄表、會員中心共用）
+// 登入方式：LINE → Cloudflare Worker 驗證 → Firebase 自訂權杖，request.auth.uid = LINE userId
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function me() { return request.auth.uid; }
+    function userPath(id) { return /databases/$(database)/documents/users/$(id); }
+    function rosterPath(id) { return /databases/$(database)/documents/member_roster/$(id); }
+    function myData() { return get(userPath(me())).data; }
+    function approved() { return signedIn() && exists(userPath(me())) && myData().get('status', '') == 'approved'; }
+    function isAdmin() { return approved() && myData().get('role', '') == 'admin'; }
+    function inWarehouse() { return approved() && myData().get('warehouseRemoved', false) != true; }
+    function cleanName(s) { return s.replace(' ', '').replace('　', ''); }
+
+    // 本人用「姓名＋身分證＋生日」對上管理員匯入的名冊，才可自動開通
+    function rosterMatches(d) {
+      let r = get(rosterPath(d.rosterId)).data;
+      return d.get('verifiedBy', '') == 'roster'
+        && r.get('createdBySelf', false) != true
+        && r.get('idCard', '') == d.get('idCard', '')
+        && r.get('birthday', '') == d.get('birthday', '')
+        && r.get('name', '') == cleanName(d.get('realName', ''))
+        && r.get('boundUserId', null) in [null, '', me()];
+    }
+
+    // 本人不能自己改的欄位（權限、審核、移出倉庫）
+    function lockedKeys() {
+      return ['role', 'status', 'verifiedBy', 'rosterId', 'approvedAt', 'approvedBy', 'rejectReason',
+              'warehouseRemoved', 'warehouseRemovedBy', 'warehouseRemovedAt', 'lineUserId'];
+    }
+
+    function selfUpdateOk() {
+      let d = request.resource.data;
+      let o = resource.data;
+      let changed = d.diff(o).affectedKeys();
+      let hard = ['role', 'approvedBy', 'warehouseRemoved', 'warehouseRemovedBy', 'warehouseRemovedAt', 'lineUserId'];
+      return
+        // 一般更新：頭貼、登入時間、姓名、證照…
+        !changed.hasAny(lockedKeys())
+        // 重新送審 → 待審核
+        || (o.get('status', '') != 'banned' && d.get('status', '') == 'pending'
+            && !changed.hasAny(hard.concat(['verifiedBy', 'approvedAt', 'rosterId'])))
+        // 重新送審且對上名冊 → 自動開通
+        || (o.get('status', '') != 'banned' && d.get('status', '') == 'approved'
+            && !changed.hasAny(hard) && rosterMatches(d))
+        // 會員中心「編輯我的資料」：連到自己綁定的名冊
+        || (changed.intersection(lockedKeys().toSet()) == ['rosterId'].toSet()
+            && get(rosterPath(d.rosterId)).data.get('boundUserId', '') == me());
+    }
+
+    function selfCreateOk() {
+      let d = request.resource.data;
+      return d.get('role', 'user') == 'user'
+        && !d.keys().hasAny(['approvedBy', 'warehouseRemoved'])
+        && (d.get('status', 'pending') == 'pending' || (d.get('status', '') == 'approved' && rosterMatches(d)));
+    }
+
+    // ===== 會員帳號（三個系統共用）=====
+    match /users/{userId} {
+      allow get: if signedIn() && (me() == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isAdmin() || (signedIn() && me() == userId && selfCreateOk());
+      allow update: if isAdmin() || (signedIn() && me() == userId && selfUpdateOk());
+      allow delete: if isAdmin();
+    }
+
+    // ===== 團員名冊 =====
+    // 文件 ID = SHA-256(身分證|生日)，知道本人資料才算得出來，所以允許單筆讀取做註冊比對
+    match /member_roster/{rid} {
+      allow get: if signedIn();
+      allow list: if isAdmin();
+      allow create: if isAdmin()
+        || (signedIn() && request.resource.data.get('createdBySelf', false) == true
+            && request.resource.data.get('boundUserId', '') == me());
+      allow update: if isAdmin()
+        // 本人編輯自己的聯絡資料（姓名／身分證／生日只能管理員改）
+        || (signedIn() && resource.data.get('boundUserId', '') == me()
+            && request.resource.data.get('boundUserId', '') == me()
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                 'lineName', 'phone', 'emName', 'emRelation', 'emPhone', 'shirtSize', 'pantsSize',
+                 'certText', 'cert', 'address', 'job', 'education',
+                 'updatedAt', 'updatedBy', 'updatedByRole', 'editLog']))
+        // 自動開通後綁定：名冊尚未被綁定，且本人帳號已指向這筆名冊
+        || (signedIn() && resource.data.get('boundUserId', null) in [null, '']
+            && request.resource.data.boundUserId == me()
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['boundUserId', 'boundAt'])
+            && get(userPath(me())).data.get('rosterId', '') == rid);
+      allow delete: if isAdmin();
+    }
+
+    // ===== 救護紀錄表 =====
+    match /medical_records/{id} {
+      allow create: if approved();
+      allow read, update, delete: if isAdmin();
+    }
+    match /system_configs/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // ===== 倉庫 =====
+    match /warehouse_boxes/{id} { allow read: if inWarehouse(); allow write: if isAdmin(); }
+    match /warehouse_pages/{id} { allow read: if inWarehouse(); allow write: if isAdmin(); }
+    match /warehouse_logs/{id}  { allow read: if inWarehouse(); allow write: if isAdmin(); }
+    match /settings/{id}        { allow read: if inWarehouse(); allow write: if isAdmin(); }
+
+    // 其他沒列出的集合一律拒絕
+  }
+}
