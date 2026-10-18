@@ -82,7 +82,7 @@ service cloud.firestore {
                  'name', 'nameRaw', 'idCard', 'idCardRaw', 'birthday', 'birthdayRaw',
                  'lineName', 'phone', 'emName', 'emRelation', 'emPhone', 'shirtSize', 'pantsSize',
                  'certText', 'cert', 'address', 'job', 'introducer', 'education',
-                 'updatedAt', 'updatedBy', 'updatedByRole', 'editLog']))
+                 'updatedAt', 'updatedBy', 'updatedByRole', 'editLog', 'confirmedAt']))
         // 自動開通後綁定：名冊尚未被綁定，且本人帳號已指向這筆名冊
         || (signedIn() && resource.data.get('boundUserId', null) in [null, '']
             && request.resource.data.boundUserId == me()

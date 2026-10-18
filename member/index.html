@@ -573,6 +573,8 @@
     $('f-status').innerHTML = '<span class="ok">✅ 已核准</span>' + (user.verifiedBy === 'roster' ? '（名冊自動驗證）' : '');
     $('f-line').textContent = user.lineDisplayName || profile.displayName || '—';
     $('confirm-card').classList.toggle('hidden', !!user.profileConfirmedAt);
+    $('confirm-card').querySelector('.t').textContent = user.confirmRequestedBy ? `🔔 管理員 ${user.confirmRequestedBy} 請你重新確認資料` : '📝 請確認你的團員資料';
+    setTimeout(maybeConfirmPopup, 0);
     show('v-member');
   }
 
@@ -816,7 +818,9 @@
       <div class="grp">系統</div>
       <div class="rows">${row('證照分類', esc(r.cert || ''))}${row('生日（換算）', esc(r.birthday ? bdayText(r.birthday) : '讀不到，無法自動驗證'))}${row('Email', esc(r.email || ''))}</div>
       <div class="grp">更新紀錄</div>
-      <div>${(r.editLog || []).length ? r.editLog.map(l => `<div class="log-item"><b>${esc(fmtAt(l.at))}</b>　${l.role === 'self' ? '🙋 本人' : '🛠 管理員'}（${esc(l.by || '')}）修改：${esc((l.fields || []).join('、'))}</div>`).join('') : '<div class="log-item">尚無更新紀錄</div>'}</div>
+      <div class="rows">${row('本人確認', !r.boundUserId ? '尚未綁定 LINE' : !u ? '—' : u.profileConfirmedAt ? '<span class="ok">✅ 已確認</span>　' + esc(fmtAt(tsMs(u.profileConfirmedAt))) : u.confirmRequestedAt ? '<span class="warn">🔔 已要求，等待本人確認</span>' : '<span class="warn">尚未確認</span>')}</div>
+      ${r.boundUserId ? `<button class="sbtn" id="sh-reconfirm" style="margin:8px 0 2px; width:100%;">🔔 請本人重新確認資料</button>` : ''}
+      <div>${(r.editLog || []).length ? r.editLog.map(logText).join('') : '<div class="log-item">尚無更新紀錄</div>'}</div>
       <div class="p-actions">
         <button class="sbtn pri" id="sh-edit">✏️ 編輯資料</button>
         ${r.boundUserId ? '<button class="sbtn" id="sh-unbind">解除 LINE 綁定</button>' : ''}
@@ -824,6 +828,16 @@
       </div>`;
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open');
     $('sh-edit').onclick = () => openEditForm(r, 'admin');
+    if ($('sh-reconfirm')) $('sh-reconfirm').onclick = async () => {
+      if (!(await dialog({ title: '請本人重新確認？', msg: `「${r.name}」下次打開會員中心時，會跳出確認資料的畫面。`, okText: '送出' }))) return;
+      const by = user.realName || profile.displayName || '';
+      try {
+        await updateDoc(doc(db, 'users', r.boundUserId), { profileConfirmedAt: deleteField(), confirmRequestedAt: serverTimestamp(), confirmRequestedBy: by });
+        await updateDoc(doc(db, ROSTER, r.id), { editLog: [{ at: Date.now(), by, role: 'admin', action: 'request', fields: [] }, ...(r.editLog || [])].slice(0, 30) });
+        toast('🔔 已送出，等待本人確認');
+        setTimeout(() => { if (sheetRid === r.id) openRoster(r.id); }, 400);
+      } catch (e) { toast('❌ 操作失敗'); }
+    };
     if ($('sh-unbind')) $('sh-unbind').onclick = async () => {
       if (!(await dialog({ title: '解除綁定？', msg: `「${r.name}」的名冊資料將不再對應到這個 LINE 帳號。\n（不會影響對方的會員資格）`, okText: '解除' }))) return;
       try {
@@ -860,6 +874,14 @@
     return `<span class="upd ${r.updatedByRole === 'self' ? 'self' : 'admin'}">${who}${short ? '' : '（' + esc(r.updatedBy || '') + '）'} ${when}</span>`;
   }
 
+  // 更新紀錄文字：修改／確認無誤／管理員要求重新確認
+  function logText(l) {
+    const who = l.role === 'self' ? '🙋 本人' : '🛠 管理員';
+    const what = l.action === 'confirm' ? '✅ 確認資料無誤（未修改）'
+      : l.action === 'request' ? '🔔 要求本人重新確認資料'
+      : '修改：' + esc((l.fields || []).join('、'));
+    return `<div class="log-item"><b>${esc(fmtAt(l.at))}</b>　${who}（${esc(l.by || '')}）${what}</div>`;
+  }
   let editCtx = null;
   function openEditForm(r, role) {
     editCtx = { r, role };
@@ -885,10 +907,41 @@
   };
   $('btn-edit-me').onclick = editMe;
   $('btn-confirm-edit').onclick = editMe;
-  $('btn-confirm-ok').onclick = async () => {
-    try { await updateDoc(doc(db, 'users', profile.userId), { profileConfirmedAt: serverTimestamp() }); toast('✅ 已確認，謝謝！'); }
-    catch (e) { toast('❌ 儲存失敗'); }
-  };
+  async function confirmOk() {
+    const by = user.realName || profile.displayName || '';
+    try {
+      await updateDoc(doc(db, 'users', profile.userId), { profileConfirmedAt: serverTimestamp(), confirmRequestedAt: deleteField(), confirmRequestedBy: deleteField() });
+      if (myRoster && myRoster.id) await updateDoc(doc(db, ROSTER, myRoster.id), {
+        confirmedAt: serverTimestamp(), updatedAt: serverTimestamp(), updatedBy: by, updatedByRole: 'self',
+        editLog: [{ at: Date.now(), by, role: 'self', action: 'confirm', fields: [] }, ...(myRoster.editLog || [])].slice(0, 30) }).catch(() => {});
+      closeSheet(); toast('✅ 已確認，謝謝！');
+    } catch (e) { toast('❌ 儲存失敗'); }
+  }
+  $('btn-confirm-ok').onclick = confirmOk;
+
+  // 未確認 → 跳出確認畫面（每次需要確認時跳一次）
+  let confirmPopKey = null;
+  function maybeConfirmPopup() {
+    if (!user || user.status !== 'approved' || user.profileConfirmedAt || adminOn) return;
+    const key = String(tsMs(user.confirmRequestedAt) || 'first');
+    if (confirmPopKey === key || $('sheet').style.display === 'block') return;
+    confirmPopKey = key;
+    const r = myRoster || { name: user.realName, idCard: user.idCard, birthday: user.birthday, certText: user.certification || '' };
+    const row = (t, v) => `<div class="row"><span class="k">${esc(t)}</span><span class="v">${esc(v || '—')}</span></div>`;
+    const req = user.confirmRequestedBy ? `管理員 ${esc(user.confirmRequestedBy)} 請你重新確認資料。` : '第一次登入，請確認你的團員資料。';
+    $('sheet-body').innerHTML = `
+      <h3>📝 請確認你的資料</h3>
+      <div style="font-size:13px; color:var(--sub); margin:4px 0 10px; line-height:1.6;">${req}<br>都正確請按「資料正確」，有錯請按「編輯資料」。</div>
+      <div class="rows">${SELF_FIELDS.map(k => row(SELF_LABEL[k] || (ROSTER_COLS.find(c => c[0] === k) || [k, k])[1], k === 'birthdayISO' ? (r.birthday ? bdayText(r.birthday) : '') : k === 'idCard' ? maskId(r.idCard) : rv(r, k))).join('')}</div>
+      <div class="p-actions" style="display:flex; gap:8px; margin-top:14px;">
+        <button class="sbtn pri" id="cp-edit" style="flex:1">✏️ 編輯資料</button>
+        <button class="sbtn" id="cp-ok" style="flex:1; background:#16a34a; color:#fff;">✅ 資料正確</button>
+      </div>`;
+    $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open');
+    $('sheet').scrollTop = 0;
+    $('cp-ok').onclick = confirmOk;
+    $('cp-edit').onclick = editMe;
+  }
   const rocBday = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? `${+m[1] - 1911}.${m[2]}.${m[3]}` : ''; };
 
   async function saveEdit() {
@@ -902,7 +955,7 @@
       if (!/^\d{4}-\d{2}-\d{2}$/.test(vals.birthdayISO || '')) return toast('請選擇出生日期');
     }
     if (!changed.length) {
-      if (role === 'self') { $('btn-confirm-ok').onclick(); closeSheet(); return; }
+      if (role === 'self') { confirmOk(); return; }
       toast('沒有修改'); return;
     }
     const upd = {};
@@ -918,6 +971,7 @@
     const labels = changed.map(k => SELF_LABEL[k] || (ROSTER_COLS.find(c => c[0] === k) || [k, k])[1]);
     const by = user.realName || profile.displayName || '';
     upd.updatedAt = serverTimestamp(); upd.updatedBy = by; upd.updatedByRole = role;
+    if (role === 'self') upd.confirmedAt = serverTimestamp();
     upd.editLog = [{ at: Date.now(), by, role, fields: labels }, ...(r.editLog || [])].slice(0, 30);
     const btn = $('ed-save'); btn.disabled = true; btn.textContent = '儲存中…';
     try {
@@ -946,7 +1000,7 @@
         if (upd.idCard !== undefined && idOk) su.idCard = upd.idCard;
         if (upd.birthday) su.birthday = upd.birthday;
         if (upd.cert) { su.certification = upd.cert; su.category = upd.cert; su.warehouseCategory = upd.cert; }
-        if (role === 'self') su.profileConfirmedAt = serverTimestamp();
+        if (role === 'self') { su.profileConfirmedAt = serverTimestamp(); su.confirmRequestedAt = deleteField(); su.confirmRequestedBy = deleteField(); }
         await updateDoc(doc(db, 'users', uid), su).catch(() => {});
       }
       toast('✅ 已儲存');
