@@ -396,7 +396,7 @@
   const db = getFirestore(app);
 
     // ===== Firebase 身分驗證：LINE → 驗證伺服器（Cloudflare）→ Firebase，資料庫規則靠這個認人 =====
-    const AUTH_URL = '';   // Cloudflare Worker 網址
+    const AUTH_URL = 'https://bst-auth.eurekateamstar.workers.dev';   // Cloudflare Worker 網址
     const auth = getAuth(app);
     async function fbSignIn(uid) {
       try {
