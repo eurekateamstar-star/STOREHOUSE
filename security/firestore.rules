@@ -91,6 +91,27 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ===== 新人入團申請表（公開表單，不用登入就能送出；只有管理員能看） =====
+    function shortStr(d, k, n) { return !(k in d) || (d[k] is string && d[k].size() <= n); }
+    match /roster_applications/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['name', 'lineName', 'birthday', 'birthdayRaw', 'idCard', 'phone',
+            'emName', 'emRelation', 'emPhone', 'shirtSize', 'pantsSize', 'certText', 'address', 'job', 'introducer', 'education',
+            'notes', 'status', 'createdAt'])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 20
+        && request.resource.data.idCard is string && request.resource.data.idCard.matches('^[A-Z][1289][0-9]{8}$')
+        && shortStr(request.resource.data, 'lineName', 40) && shortStr(request.resource.data, 'phone', 20)
+        && shortStr(request.resource.data, 'emName', 20) && shortStr(request.resource.data, 'emRelation', 10)
+        && shortStr(request.resource.data, 'emPhone', 20) && shortStr(request.resource.data, 'certText', 120)
+        && shortStr(request.resource.data, 'address', 120) && shortStr(request.resource.data, 'job', 40)
+        && shortStr(request.resource.data, 'introducer', 20) && shortStr(request.resource.data, 'education', 300)
+        && shortStr(request.resource.data, 'notes', 300) && shortStr(request.resource.data, 'shirtSize', 5)
+        && shortStr(request.resource.data, 'pantsSize', 5) && shortStr(request.resource.data, 'birthday', 10)
+        && shortStr(request.resource.data, 'birthdayRaw', 10);
+      allow read, update, delete: if isAdmin();
+    }
+
     // ===== 救護紀錄表 =====
     match /medical_records/{id} {
       allow create: if approved();

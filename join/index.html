@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#D65A68">
+<title>白沙屯醫護團 - 新人入團申請</title>
+<meta property="og:title" content="白沙屯醫護團｜新人入團申請">
+<meta property="og:description" content="填寫基本資料，送出後由管理員審核加入團員名冊。">
+<style>
+  :root {
+    --primary: #D65A68; --accent: #F08339; --gold: #B68D40;
+    --ink: #1f2430; --sub: #6b7280; --line: #ece7e5;
+    --green: #16a34a; --red: #dc2626;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: #f6f3f2; color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif; }
+  body::before { content: ''; position: fixed; top: -20%; left: -20%; width: 80%; height: 70%; z-index: -1;
+    background: radial-gradient(circle, rgba(214,90,104,0.16) 0%, rgba(255,255,255,0) 70%); }
+  body::after { content: ''; position: fixed; bottom: -20%; right: -20%; width: 80%; height: 70%; z-index: -1;
+    background: radial-gradient(circle, rgba(240,131,57,0.14) 0%, rgba(255,255,255,0) 70%); }
+  .wrap { max-width: 560px; margin: 0 auto; padding: calc(20px + env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom)); }
+
+  .hero { position: relative; overflow: hidden; border-radius: 26px; padding: 26px 22px 22px; color: #fff;
+    background: linear-gradient(135deg, #D65A68 0%, #E97452 55%, #F08339 100%); box-shadow: 0 18px 36px rgba(214,90,104,0.30); }
+  .hero::after { content: ''; position: absolute; right: -70px; top: -70px; width: 220px; height: 220px; border-radius: 50%; background: rgba(255,255,255,0.11); }
+  .hero::before { content: ''; position: absolute; left: -40px; bottom: -80px; width: 180px; height: 180px; border-radius: 50%; background: rgba(255,255,255,0.07); }
+  .hero .org { font-size: 12px; font-weight: 800; letter-spacing: 3px; opacity: 0.9; position: relative; z-index: 1; }
+  .hero h1 { margin: 6px 0 8px; font-size: 28px; font-weight: 900; letter-spacing: 1px; position: relative; z-index: 1; }
+  .hero p { margin: 0; font-size: 14px; line-height: 1.7; opacity: 0.95; position: relative; z-index: 1; }
+  .steps { display: flex; gap: 6px; margin-top: 16px; position: relative; z-index: 1; flex-wrap: wrap; }
+  .steps span { font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.35); }
+
+  .card { background: rgba(255,255,255,0.88); border: 1px solid #fff; border-radius: 22px; box-shadow: 0 10px 30px rgba(31,38,135,0.07);
+    padding: 18px 16px 6px; margin-top: 16px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+  .card h2 { margin: 0 0 14px; font-size: 15px; font-weight: 900; color: var(--gold); letter-spacing: 1px; display: flex; align-items: center; gap: 6px; }
+  .grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 0 12px; }
+  .full { grid-column: 1 / -1; }
+  @media (max-width: 420px) { .grid { grid-template-columns: minmax(0,1fr); } }
+
+  .field { margin-bottom: 14px; min-width: 0; }
+  .field label { display: block; font-size: 13px; font-weight: 800; color: #4b5563; margin: 0 0 6px 2px; }
+  .field label .req { color: var(--primary); margin-left: 2px; }
+  .field label .hint { font-weight: 600; color: #9ca3af; font-size: 12px; margin-left: 4px; }
+  .field input, .field textarea { width: 100%; max-width: 100%; display: block; padding: 12px 14px; font-size: 16px; border-radius: 14px;
+    border: 1.5px solid #e5e7eb; background: #fff; outline: none; font-family: inherit; color: var(--ink); -webkit-appearance: none; appearance: none; }
+  .field input[type=date] { height: 48px; text-align: left; }
+  .field textarea { min-height: 76px; resize: vertical; }
+  .field input:focus, .field textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(214,90,104,0.10); }
+  .field.bad input, .field.bad textarea, .field.bad .chips { border-color: var(--red); }
+  .field .err { display: none; color: var(--red); font-size: 12px; font-weight: 700; margin: 5px 2px 0; }
+  .field.bad .err { display: block; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; border-radius: 14px; border: 1.5px solid transparent; }
+  .chip { border: 1.5px solid #e5e7eb; background: #fff; color: #374151; border-radius: 999px; padding: 9px 14px; font-size: 14px; font-weight: 800;
+    cursor: pointer; font-family: inherit; min-width: 48px; }
+  .chip.on { border-color: var(--primary); background: var(--primary); color: #fff; box-shadow: 0 6px 14px rgba(214,90,104,0.25); }
+  .chip-other { margin-top: 8px; }
+
+  .consent { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.7; color: #4b5563; padding: 4px 2px 14px; cursor: pointer; }
+  .consent input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--primary); flex-shrink: 0; }
+
+  .submit { width: 100%; border: none; border-radius: 16px; padding: 16px; margin-top: 18px; font-size: 17px; font-weight: 900; color: #fff; cursor: pointer;
+    background: linear-gradient(90deg, var(--primary), var(--accent)); box-shadow: 0 12px 26px rgba(214,90,104,0.32); font-family: inherit; letter-spacing: 1px; }
+  .submit:disabled { opacity: 0.6; }
+  .foot { text-align: center; font-size: 11px; color: #9ca3af; margin-top: 16px; line-height: 1.7; }
+
+  .done { text-align: center; padding: 34px 20px 28px; }
+  .done .ic { width: 84px; height: 84px; border-radius: 50%; margin: 0 auto 14px; display: flex; align-items: center; justify-content: center; font-size: 42px;
+    background: linear-gradient(135deg, #dcfce7, #bbf7d0); box-shadow: 0 10px 24px rgba(22,163,74,0.2); }
+  .done h2 { justify-content: center; color: var(--ink); font-size: 22px; }
+  .done p { color: var(--sub); font-size: 14px; line-height: 1.8; margin: 0 0 6px; }
+  .hidden { display: none !important; }
+  .toast { position: fixed; left: 50%; bottom: calc(30px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: rgba(31,36,48,0.94); color: #fff;
+    padding: 11px 18px; border-radius: 14px; font-size: 14px; font-weight: 700; z-index: 99; display: none; max-width: 88vw; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <div class="org">白沙屯醫護團</div>
+    <h1>新人入團申請</h1>
+    <p>歡迎加入白沙屯醫護團！請填寫以下資料，送出後由管理員審核，通過後就會加入團員名冊。</p>
+    <div class="steps"><span>① 填寫資料</span><span>② 管理員審核</span><span>③ 加入名冊</span></div>
+  </div>
+
+  <form id="f" novalidate>
+    <div class="card">
+      <h2>👤 基本資料</h2>
+      <div class="grid">
+        <div class="field"><label>姓名<span class="req">*</span></label><input name="name" autocomplete="name" maxlength="20"><div class="err">請填寫姓名</div></div>
+        <div class="field"><label>LINE 名稱<span class="hint">方便我們找到你</span></label><input name="lineName" maxlength="40"></div>
+        <div class="field"><label>出生日期<span class="req">*</span></label><input name="birthday" type="date" max="2015-12-31"><div class="err">請選擇出生日期</div></div>
+        <div class="field"><label>身分證字號<span class="req">*</span></label><input name="idCard" maxlength="10" autocapitalize="characters" placeholder="A123456789"><div class="err">身分證字號格式不正確</div></div>
+        <div class="field full"><label>本人聯絡電話<span class="req">*</span></label><input name="phone" type="tel" inputmode="tel" maxlength="20" placeholder="0912-345678"><div class="err">請填寫手機號碼</div></div>
+        <div class="field full"><label>地址</label><input name="address" maxlength="120" autocomplete="street-address"></div>
+        <div class="field"><label>職業</label><input name="job" maxlength="40"></div>
+        <div class="field"><label>介紹人</label><input name="introducer" maxlength="20"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🚨 緊急聯絡人</h2>
+      <div class="grid">
+        <div class="field"><label>姓名<span class="req">*</span></label><input name="emName" maxlength="20"><div class="err">請填寫緊急聯絡人</div></div>
+        <div class="field"><label>關係<span class="req">*</span></label><input name="emRelation" maxlength="10" placeholder="例如 夫妻、父子、母女"><div class="err">請填寫關係</div></div>
+        <div class="field full"><label>電話<span class="req">*</span></label><input name="emPhone" type="tel" inputmode="tel" maxlength="20"><div class="err">請填寫緊急聯絡人電話</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🩺 證照與經歷</h2>
+      <div class="field" data-chips="cert"><label>證照<span class="req">*</span><span class="hint">可複選</span></label>
+        <div class="chips" data-multi="1">
+          <button type="button" class="chip">EMT-1</button><button type="button" class="chip">EMT-2</button><button type="button" class="chip">EMT-P</button>
+          <button type="button" class="chip">護理師</button><button type="button" class="chip">醫師</button><button type="button" class="chip">無證照</button><button type="button" class="chip" data-other="1">其他</button>
+        </div>
+        <input class="chip-other hidden" id="cert-other" maxlength="60" placeholder="請填寫其他證照（例如 ACLS、ETTC）">
+        <div class="err">請選擇證照</div>
+      </div>
+      <div class="field"><label>學歷・經歷<span class="hint">例如 救護志工經驗</span></label><textarea name="education" maxlength="300"></textarea></div>
+    </div>
+
+    <div class="card">
+      <h2>👕 團服尺寸</h2>
+      <div class="field" data-chips="shirtSize"><label>衣服尺寸<span class="req">*</span></label>
+        <div class="chips"><button type="button" class="chip">XS</button><button type="button" class="chip">S</button><button type="button" class="chip">M</button><button type="button" class="chip">L</button><button type="button" class="chip">XL</button><button type="button" class="chip">2L</button><button type="button" class="chip">3L</button><button type="button" class="chip">4L</button><button type="button" class="chip">5L</button></div>
+        <div class="err">請選擇衣服尺寸</div>
+      </div>
+      <div class="field" data-chips="pantsSize"><label>褲子尺寸<span class="req">*</span></label>
+        <div class="chips"><button type="button" class="chip">XS</button><button type="button" class="chip">S</button><button type="button" class="chip">M</button><button type="button" class="chip">L</button><button type="button" class="chip">XL</button><button type="button" class="chip">2L</button><button type="button" class="chip">3L</button><button type="button" class="chip">4L</button><button type="button" class="chip">5L</button></div>
+        <div class="err">請選擇褲子尺寸</div>
+      </div>
+      <div class="field"><label>其他想讓我們知道的</label><textarea name="notes" maxlength="300"></textarea></div>
+    </div>
+
+    <div class="card" style="padding-bottom:4px;">
+      <label class="consent"><input type="checkbox" id="agree"><span>我同意白沙屯醫護團蒐集並使用以上個人資料，僅用於團員管理、活動保險與緊急聯絡，不會提供給無關的第三方。</span></label>
+    </div>
+
+    <button class="submit" id="btn-submit" type="submit">送出申請</button>
+    <div class="foot">送出後如需修改，請聯絡團內管理員。<br>白沙屯醫護團</div>
+  </form>
+
+  <div class="card done hidden" id="done">
+    <div class="ic">✅</div>
+    <h2>申請已送出！</h2>
+    <p id="done-name"></p>
+    <p>管理員審核通過後，就會把你加入團員名冊。<br>之後用 LINE 開啟「會員中心」，輸入姓名、身分證、生日即可自動開通。</p>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  const app = initializeApp({
+    apiKey: "AIzaSyA_5hmnIBCeLszWW8kIjgOZelv-c6-ALfY",
+    authDomain: "linebot-firebase-b1242.firebaseapp.com",
+    projectId: "linebot-firebase-b1242",
+    storageBucket: "linebot-firebase-b1242.firebasestorage.app",
+    messagingSenderId: "1002268658683",
+    appId: "1:1002268658683:web:739adcd7819f8c9393595e"
+  });
+  const db = getFirestore(app);
+  const $ = id => document.getElementById(id);
+  const f = $('f');
+  const toast = (m, ms = 2200) => { const t = $('toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(toast._t); toast._t = setTimeout(() => t.style.display = 'none', ms); };
+
+  // 選項按鈕
+  document.querySelectorAll('[data-chips] .chips').forEach(box => {
+    const multi = box.dataset.multi === '1';
+    box.querySelectorAll('.chip').forEach(c => c.onclick = () => {
+      if (!multi) box.querySelectorAll('.chip').forEach(x => x !== c && x.classList.remove('on'));
+      c.classList.toggle('on');
+      if (multi && c.textContent === '無證照' && c.classList.contains('on')) box.querySelectorAll('.chip').forEach(x => x !== c && x.classList.remove('on'));
+      if (multi && c.textContent !== '無證照' && c.classList.contains('on')) box.querySelectorAll('.chip').forEach(x => x.textContent === '無證照' && x.classList.remove('on'));
+      const other = box.querySelector('[data-other].on');
+      if (box.parentElement.dataset.chips === 'cert') $('cert-other').classList.toggle('hidden', !other);
+      box.parentElement.classList.remove('bad');
+    });
+  });
+  f.querySelectorAll('input,textarea').forEach(i => i.addEventListener('input', () => i.closest('.field') && i.closest('.field').classList.remove('bad')));
+
+  const chipVals = key => [...document.querySelectorAll(`[data-chips="${key}"] .chip.on`)].map(c => c.dataset.other ? '' : c.textContent).filter(Boolean);
+  const roc = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? `${+m[1] - 1911}.${m[2]}.${m[3]}` : ''; };
+
+  f.onsubmit = async e => {
+    e.preventDefault();
+    const v = n => (f.elements[n] ? f.elements[n].value.trim() : '');
+    const bad = [];
+    const mark = (n, ok) => { const el = f.elements[n] ? f.elements[n].closest('.field') : document.querySelector(`[data-chips="${n}"]`); el.classList.toggle('bad', !ok); if (!ok) bad.push(el); };
+    const idCard = v('idCard').replace(/\s+/g, '').toUpperCase();
+    mark('name', !!v('name'));
+    mark('birthday', /^\d{4}-\d{2}-\d{2}$/.test(v('birthday')));
+    mark('idCard', /^[A-Z][1289]\d{8}$/.test(idCard));
+    mark('phone', v('phone').replace(/\D/g, '').length >= 8);
+    mark('emName', !!v('emName')); mark('emRelation', !!v('emRelation'));
+    mark('emPhone', v('emPhone').replace(/\D/g, '').length >= 8);
+    const certs = chipVals('cert'); const other = $('cert-other').value.trim(); if (other) certs.push(other);
+    mark('cert', certs.length > 0);
+    mark('shirtSize', chipVals('shirtSize').length > 0); mark('pantsSize', chipVals('pantsSize').length > 0);
+    if (bad.length) { bad[0].scrollIntoView({ behavior: 'smooth', block: 'center' }); return toast('還有欄位沒填好'); }
+    if (!$('agree').checked) return toast('請勾選同意個資使用');
+
+    const btn = $('btn-submit'); btn.disabled = true; btn.textContent = '送出中…';
+    try {
+      await addDoc(collection(db, 'roster_applications'), {
+        name: v('name'), lineName: v('lineName'), birthday: v('birthday'), birthdayRaw: roc(v('birthday')), idCard,
+        phone: v('phone'), emName: v('emName'), emRelation: v('emRelation'), emPhone: v('emPhone'),
+        shirtSize: chipVals('shirtSize')[0], pantsSize: chipVals('pantsSize')[0], certText: certs.join('、'),
+        address: v('address'), job: v('job'), introducer: v('introducer'), education: v('education'), notes: v('notes'),
+        status: 'pending', createdAt: serverTimestamp(),
+      });
+      f.classList.add('hidden'); $('done').classList.remove('hidden');
+      $('done-name').textContent = `${v('name')}，謝謝你！`;
+      window.scrollTo(0, 0);
+    } catch (err) {
+      console.error(err);
+      btn.disabled = false; btn.textContent = '送出申請';
+      toast('送出失敗，請稍後再試');
+    }
+  };
+</script>
+</body>
+</html>

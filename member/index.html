@@ -196,6 +196,11 @@
   .empty { text-align: center; color: #9ca3af; padding: 30px 10px; font-size: 14px; }
 
   .p-card { padding: 16px; margin-bottom: 10px; }
+  .app-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 16px; margin-bottom: 12px; flex-wrap: wrap; }
+  .app-bar .sub { font-size: 12px; color: var(--sub); margin-top: 3px; }
+  .grp-t { font-size: 13px; font-weight: 800; color: var(--gold); margin: 14px 4px 8px; }
+  .app-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 4px 14px; font-size: 13px; margin: 10px 0 4px; }
+  .app-grid div { color: var(--sub); } .app-grid b { color: var(--ink); font-weight: 700; }
   .p-head { display: flex; gap: 12px; align-items: center; }
   .p-head .avatar { width: 48px; height: 48px; font-size: 18px; color: var(--primary); background-color: #fde8ea; border-color: #fff; }
   .cand { border: 1.5px dashed #e5e7eb; border-radius: 14px; padding: 10px 12px; margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
@@ -337,6 +342,11 @@
 
     <!-- 待審核 -->
     <div id="tab-pending" class="hidden">
+      <div class="app-bar card">
+        <div><b>📝 新人申請表</b><div class="sub">把連結傳給新人填寫，送出後會出現在這裡等你審核。</div></div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;"><button class="sbtn" id="btn-app-copy">🔗 複製連結</button><button class="sbtn violet" id="btn-app-open">開啟表單</button></div>
+      </div>
+      <div id="app-list"></div>
       <div id="pending-list"></div>
     </div>
 
@@ -451,7 +461,8 @@
   const isWide = () => window.matchMedia('(min-width: 900px)').matches;
 
   let profile = null, user = null, myRoster = null, regCert = '', isResubmit = false, showId = false;
-  let adminOn = false, usersCache = [], rosterCache = [], usersUnsub = null, rosterUnsub = null;
+  let adminOn = false, usersCache = [], rosterCache = [], usersUnsub = null, rosterUnsub = null, appsCache = [], appsUnsub = null;
+  const JOIN_URL = 'https://eurekateamstar-star.github.io/STOREHOUSE/join/';
 
   // ---------- 小工具 ----------
   function toast(msg) {
@@ -679,6 +690,10 @@
       usersCache = s.docs.map(d => ({ id: d.id, ...d.data() }));
       updateAdminDot(); if (adminOn) renderAdmin();
     }, () => toast('讀取會員失敗'));
+    if (!appsUnsub) appsUnsub = onSnapshot(collection(db, 'roster_applications'), s => {
+      appsCache = s.docs.map(d => ({ id: d.id, ...d.data() }));
+      updateAdminDot(); if (adminOn) renderAdmin();
+    }, () => {});
     if (!rosterUnsub) rosterUnsub = onSnapshot(collection(db, ROSTER), s => {
       rosterCache = s.docs.map(d => ({ id: d.id, ...d.data() }));
       if (adminOn) renderAdmin();
@@ -689,7 +704,7 @@
     if (rosterUnsub) { rosterUnsub(); rosterUnsub = null; }
   }
   function updateAdminDot() {
-    const n = usersCache.filter(u => (u.status || 'pending') === 'pending').length;
+    const n = usersCache.filter(u => (u.status || 'pending') === 'pending').length + appsCache.filter(a => a.status === 'pending').length;
     $('admin-dot').textContent = n; $('admin-dot').classList.toggle('hidden', !n);
   }
   const userById = id => usersCache.find(u => u.id === id);
@@ -699,9 +714,10 @@
     const pend = usersCache.filter(u => (u.status || 'pending') === 'pending');
     $('st-roster').textContent = rosterCache.length;
     $('st-bound').textContent = rosterCache.filter(r => r.boundUserId).length;
-    $('st-pending').textContent = pend.length;
+    const pendApps = appsCache.filter(a => a.status === 'pending').length;
+    $('st-pending').textContent = pend.length + pendApps;
     $('st-users').textContent = usersCache.filter(u => u.status === 'approved').length;
-    $('tab-pending-c').textContent = pend.length; $('tab-pending-c').classList.toggle('hidden', !pend.length);
+    $('tab-pending-c').textContent = pend.length + pendApps; $('tab-pending-c').classList.toggle('hidden', !(pend.length + pendApps));
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === curTab));
     ['pending', 'roster', 'users', 'import'].forEach(k => $('tab-' + k).classList.toggle('hidden', k !== curTab));
     if (curTab === 'pending') renderPending();
@@ -717,10 +733,58 @@
       return { r, mId, mName, mBday, score: mId * 2 + mName + mBday };
     }).filter(c => c.score > 0).sort((a, b) => b.score - a.score).slice(0, 3);
   }
+  function renderApps() {
+    const apps = appsCache.filter(a => a.status === 'pending').sort((a, b) => tsMs(b.createdAt) - tsMs(a.createdAt));
+    const el = $('app-list');
+    if (!apps.length) { el.innerHTML = ''; return; }
+    const it = (t, v) => v ? `<div>${esc(t)}：<b>${esc(v)}</b></div>` : '';
+    el.innerHTML = `<div class="grp-t">📝 新人申請（${apps.length}）</div>` + apps.map(a => {
+      const dup = a.idCard && rosterCache.find(r => normId(r.idCard) === normId(a.idCard));
+      return `<div class="card p-card">
+        <div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">
+          <div style="font-size:17px; font-weight:900;">${esc(a.name || '(未填)')} ${a.certText ? `<span class="pill cert">${esc(a.certText)}</span>` : ''}</div>
+          <div style="font-size:12px; color:var(--sub); white-space:nowrap;">${esc(fmtAt(tsMs(a.createdAt)))}</div>
+        </div>
+        ${dup ? `<div class="cand"><div class="info"><span class="pill red">⚠ 名冊已有相同身分證：${esc(dup.name)}（序號 ${esc(dup.serial || '—')}）</span></div></div>` : ''}
+        <div class="app-grid">${it('生日', a.birthdayRaw || a.birthday)}${it('身分證', a.idCard)}${it('電話', a.phone)}${it('LINE', a.lineName)}
+          ${it('緊急聯絡人', [a.emName, a.emRelation, a.emPhone].filter(Boolean).join('　'))}${it('尺寸', [a.shirtSize && '衣 ' + a.shirtSize, a.pantsSize && '褲 ' + a.pantsSize].filter(Boolean).join('　'))}
+          ${it('地址', a.address)}${it('職業', a.job)}${it('介紹人', a.introducer)}${it('學歷經歷', a.education)}${it('備註', a.notes)}</div>
+        <div class="p-actions">
+          <button class="sbtn green" data-app-ok="${a.id}">✅ 審核通過，加入名冊</button>
+          <button class="sbtn red" data-app-no="${a.id}">退回</button>
+        </div>
+      </div>`;
+    }).join('') + '<div class="grp-t">⏳ LINE 帳號待審核</div>';
+    el.querySelectorAll('[data-app-ok]').forEach(b => b.onclick = () => approveApp(b.dataset.appOk));
+    el.querySelectorAll('[data-app-no]').forEach(b => b.onclick = () => rejectApp(b.dataset.appNo));
+  }
+  function approveApp(id) {
+    const a = appsCache.find(x => x.id === id); if (!a) return;
+    const maxNum = k => rosterCache.reduce((m, r) => Math.max(m, Number(r[k]) || 0), 0);
+    const r = { id: null, isNew: true, fromApp: id, serial: String(maxNum('serial') + 1), rowIndex: maxNum('rowIndex') + 1,
+      joinYear: String(new Date().getFullYear() - 1911), notes: a.notes || '' };
+    ['name', 'lineName', 'birthdayRaw', 'idCard', 'phone', 'emName', 'emRelation', 'emPhone', 'shirtSize', 'pantsSize', 'certText', 'address', 'job', 'introducer', 'education']
+      .forEach(k => { r[k] = a[k] || ''; });
+    openEditForm(r, 'admin');
+  }
+  async function rejectApp(id) {
+    const a = appsCache.find(x => x.id === id); if (!a) return;
+    const reason = await dialog({ title: `退回「${a.name || ''}」的申請？`, msg: '可以留下原因（選填）', input: { placeholder: '退回原因（選填）' }, okText: '退回', danger: true });
+    if (reason === null) return;
+    try { await updateDoc(doc(db, 'roster_applications', id), { status: 'rejected', rejectReason: typeof reason === 'string' ? reason : '', reviewedBy: user.realName || '', reviewedAt: serverTimestamp() }); toast('已退回'); }
+    catch (e) { toast('❌ 操作失敗'); }
+  }
+  $('btn-app-copy').onclick = async () => {
+    try { await navigator.clipboard.writeText(JOIN_URL); toast('🔗 已複製新人申請表連結'); }
+    catch (e) { await dialog({ title: '新人申請表連結', msg: JOIN_URL, okText: '好' }); }
+  };
+  $('btn-app-open').onclick = () => { try { if (inLine()) { liff.openWindow({ url: JOIN_URL, external: true }); return; } } catch (e) {} window.open(JOIN_URL, '_blank'); };
+
   function renderPending() {
+    renderApps();
     const list = usersCache.filter(u => (u.status || 'pending') === 'pending').sort((a, b) => tsMs(b.createdAt) - tsMs(a.createdAt));
     const el = $('pending-list');
-    if (!list.length) { el.innerHTML = '<div class="card empty">🎉 目前沒有待審核的會員</div>'; return; }
+    if (!list.length) { el.innerHTML = '<div class="card empty">🎉 目前沒有待審核的 LINE 帳號</div>'; return; }
     const mk = (ok, t) => `<span class="m ${ok ? 'y' : 'n'}">${ok ? '✓' : '✗'}${t}</span>`;
     el.innerHTML = list.map(u => {
       const cands = candidatesFor(u);
@@ -910,7 +974,7 @@
     const who = l.role === 'self' ? '🙋 本人' : '🛠 管理員';
     const what = l.action === 'confirm' ? '✅ 確認資料無誤（未修改）'
       : l.action === 'request' ? '🔔 要求本人重新確認資料'
-      : l.action === 'create' ? '➕ 新增團員'
+      : l.action === 'create' ? (l.fromApp ? '➕ 新增團員（新人申請表審核通過）' : '➕ 新增團員')
       : '修改：' + esc((l.fields || []).join('、'));
     const ch = (l.changes || []).map(c => `<div class="log-ch"><span class="f">${esc(c.f)}</span>　<s>${esc(c.from || '（空白）')}</s> → <b>${esc(c.to || '（空白）')}</b></div>`).join('');
     return `<div class="log-item">${i != null ? `<button class="log-del" data-li="${i}" title="刪除這筆紀錄">✕</button>` : ''}<b>${esc(fmtAt(l.at))}</b>　${who}（${esc(l.by || '')}）${what}${ch}</div>`;
@@ -995,7 +1059,7 @@
         ? `<textarea data-k="${k}">${v}</textarea>` : `<input data-k="${k}" value="${v}">`}</div>`;
     };
     $('sheet-body').innerHTML = `
-      <h3>${r.isNew ? '＋ 新增團員' : '✏️ 編輯' + (role === 'self' ? '我的資料' : '：' + esc(rv(r, 'name') || ''))}</h3>
+      <h3>${r.fromApp ? '📝 審核新人申請' : r.isNew ? '＋ 新增團員' : '✏️ 編輯' + (role === 'self' ? '我的資料' : '：' + esc(rv(r, 'name') || ''))}</h3>
       <div style="font-size:12px; color:var(--sub); margin:4px 0 12px;">${role === 'self' ? '請確認以下資料正確，修改後會記錄為「本人」更新。' : '修改後會記錄為「管理員」更新。'}</div>
       ${role === 'admin' ? `<div class="paste-box">
         <textarea id="ed-paste" placeholder="🪄 智慧貼上：把一整串資料貼在這裡（LINE 訊息、表單內容、Excel 複製的一整列都可以），按「🤖 AI 填入」就會分到對應的格子（「🪄 快速填入」不經過 AI，適合格式整齊的資料）。"></textarea>
@@ -1088,7 +1152,7 @@
     const { r, role } = editCtx;
     const vals = {};
     document.querySelectorAll('#sheet-body [data-k]').forEach(el => vals[el.dataset.k] = el.value.trim());
-    const changed = Object.keys(vals).filter(k => vals[k] !== curVal(r, k));
+    const changed = Object.keys(vals).filter(k => r.isNew ? !!vals[k] : vals[k] !== curVal(r, k));
     if (role === 'self') {
       if (!vals.name) return toast('請填寫姓名');
       if (!/^[A-Z][1289]\d{8}$/.test(normId(vals.idCard))) return toast('身分證字號格式不正確');
@@ -1121,7 +1185,7 @@
     if (role === 'self') upd.confirmedAt = serverTimestamp();
     const cut = v => { v = String(v || ''); return v.length > 60 ? v.slice(0, 60) + '…' : v; };
     const changes = changed.map((k, i) => ({ f: labels[i], from: cut(curVal(r, k)), to: cut(vals[k]) }));
-    upd.editLog = [r.isNew ? { at: Date.now(), by, role, action: 'create', fields: [] } : { at: Date.now(), by, role, fields: labels, changes }, ...(r.editLog || [])].slice(0, 30);
+    upd.editLog = [r.isNew ? { at: Date.now(), by, role, action: 'create', fromApp: !!r.fromApp, fields: [] } : { at: Date.now(), by, role, fields: labels, changes }, ...(r.editLog || [])].slice(0, 30);
     const btn = $('ed-save'); btn.disabled = true; btn.textContent = '儲存中…';
     try {
       // 名冊文件 ID 跟著身分證＋生日（登入驗證用）；改了就搬到新的 ID
@@ -1154,6 +1218,7 @@
         await updateDoc(doc(db, 'users', uid), su).catch(() => {});
       }
       toast('✅ 已儲存');
+      if (r.fromApp) await updateDoc(doc(db, 'roster_applications', r.fromApp), { status: 'approved', rosterId: rid, reviewedBy: by, reviewedAt: serverTimestamp() }).catch(() => {});
       if (role === 'admin') setTimeout(() => openRoster(rid), 300); else closeSheet();
     } catch (e) {
       btn.disabled = false; btn.textContent = '儲存';
