@@ -548,6 +548,22 @@
   // =========================================================
   const isAdmin = () => !!(user && user.role === 'admin' && user.status === 'approved');
 
+  // 名冊「加入年份」→ 加入幾年（108、2016、114.11 都可以）
+  function joinText(v) {
+    const m = /(\d{2,4})(?:[.\/\-年](\d{1,2}))?/.exec(String(v || ''));
+    if (!m) return '';
+    let y = +m[1]; const mo = m[2] ? +m[2] : 0;
+    if (y < 200) y += 1911;
+    const now = new Date(), roc = `民國 ${y - 1911} 年${mo ? ' ' + mo + ' 月' : ''}`;
+    if (y < 1980 || y > now.getFullYear()) return '';
+    if (mo >= 1 && mo <= 12) {
+      const months = (now.getFullYear() - y) * 12 + (now.getMonth() + 1 - mo);
+      if (months < 0) return '';
+      return (months < 12 ? (months ? `加入 ${months} 個月` : '本月加入') : `加入 ${Math.floor(months / 12)} 年`) + `（${roc}）`;
+    }
+    const n = now.getFullYear() - y;
+    return (n ? `加入 ${n} 年` : '今年加入') + `（${roc}）`;
+  }
   function render() {
     $('btn-admin').classList.toggle('hidden', !isAdmin());
     if (adminOn && isAdmin()) { show('v-admin'); renderAdmin(); return; }
@@ -589,7 +605,7 @@
       + (user.rosterId ? '<span class="badge">✔ 名冊已驗證</span>' : '')
       + (isAdmin() ? '<span class="badge">⭐ 管理員</span>' : '');
     const created = tsMs(user.createdAt);
-    $('m-since').textContent = created ? '加入於 ' + new Date(created).toLocaleDateString('zh-TW') : '';
+    $('m-since').textContent = joinText(myRoster && myRoster.joinYear) || (created ? '加入於 ' + new Date(created).toLocaleDateString('zh-TW') : '');
     $('f-name').innerHTML = `<b>${esc(name || '—')}</b>`;
     $('f-id').textContent = showId ? (user.idCard || '—') : maskId(user.idCard);
     $('btn-eye').textContent = showId ? '隱藏' : '顯示';
