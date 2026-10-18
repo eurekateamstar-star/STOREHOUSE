@@ -117,7 +117,11 @@
   .sbtn:disabled { opacity: 0.5; }
 
   /* 名冊：電腦是表格，手機是卡片 */
-  .tbl-wrap { overflow: hidden; }
+  .tbl-wrap { overflow: auto; max-height: 72vh; }
+  #rs-table th, #rs-table td { white-space: nowrap; }
+  #rs-table td.c-address, #rs-table td.c-education, #rs-table td.c-notes, #rs-table td.c-certText { white-space: normal; min-width: 160px; max-width: 280px; }
+  #rs-table td.c-name, #rs-table th:nth-child(3) { position: sticky; left: 0; background: #fff; z-index: 1; }
+  .nm-cell { display: inline-flex; align-items: center; gap: 8px; }
   table.tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
   .tbl th { text-align: left; font-size: 12px; color: var(--sub); font-weight: 800; padding: 12px 14px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,0.6); position: sticky; top: 0; }
   .tbl td { padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
@@ -710,6 +714,13 @@
   }
 
   // ---------- 團員名冊 ----------
+  const ROSTER_COLS = [['serial', '序號'], ['joinYear', '加入年份'], ['name', '姓名'], ['lineName', 'Line名稱'], ['birthdayRaw', '出生日期'],
+    ['idCard', '身份證字號'], ['phone', '本人聯絡電話'], ['emName', '緊急聯絡人姓名'], ['emRelation', '緊急連絡人關係'], ['emPhone', '緊急聯絡人電話'],
+    ['shirtSize', '衣服尺寸'], ['pantsSize', '褲子尺寸'], ['certText', '證照'], ['address', '地址'], ['job', '職業'], ['introducer', '介紹人'],
+    ['education', '學歷 . 經歷'], ['notes', '更新-備註']];
+  const rv = (r, k) => k === 'name' ? (r.nameRaw || r.name) : k === 'idCard' ? (r.idCardRaw || r.idCard) : k === 'birthdayRaw' ? (r.birthdayRaw || r.birthday) : r[k];
+  const rosterOrder = (a, b) => (Number(a.rowIndex) || 1e9) - (Number(b.rowIndex) || 1e9) || (Number(a.serial) || 1e9) - (Number(b.serial) || 1e9);
+
   function renderRoster() {
     const certs = {}; rosterCache.forEach(r => { const c = r.cert || '未填'; certs[c] = (certs[c] || 0) + 1; });
     const bound = rosterCache.filter(r => r.boundUserId).length;
@@ -723,7 +734,7 @@
     else if (rsFilter === 'unbound') list = list.filter(r => !r.boundUserId);
     else if (rsFilter.startsWith('c:')) list = list.filter(r => (r.cert || '未填') === rsFilter.slice(2));
     if (rsQuery) list = list.filter(r => [r.name, r.phone, r.lineName, r.introducer, r.certText, r.job].join(' ').toLowerCase().includes(rsQuery));
-    list.sort((a, b) => (Number(a.serial) || 9999) - (Number(b.serial) || 9999) || String(a.name).localeCompare(String(b.name), 'zh-Hant'));
+    list.sort(rosterOrder);   // 依 Excel 原本的順序
 
     if (!rosterCache.length) {
       const e = '<div class="empty">名冊是空的，請到「📥 匯入名冊」匯入團員資料表</div>';
@@ -732,13 +743,12 @@
     const st = r => { const u = r.boundUserId && userById(r.boundUserId);
       return r.boundUserId ? `<span class="pill bound">✔ 已綁定${u ? ' ' + esc(u.lineDisplayName || '') : ''}</span>` : '<span class="pill unbound">未綁定</span>'; };
     const av = r => { const u = r.boundUserId && userById(r.boundUserId); return miniAv(u && u.pictureUrl, r.name); };
-    $('rs-table').innerHTML = `<thead><tr><th style="width:44px"></th><th>姓名</th><th>證照</th><th>生日</th><th>電話</th><th>加入</th><th>介紹人</th><th>LINE 綁定</th></tr></thead><tbody>`
-      + (list.map(r => `<tr data-r="${r.id}"><td>${av(r)}</td><td><b>${esc(r.name)}</b></td><td>${r.cert ? `<span class="pill cert">${esc(r.cert)}</span>` : '—'}</td>
-          <td>${esc(r.birthday || '—')}</td><td>${esc(r.phone || '—')}</td><td>${esc(r.joinYear || '—')}</td><td>${esc(r.introducer || '—')}</td><td>${st(r)}</td></tr>`).join('')
-        || '<tr><td colspan="8"><div class="empty">沒有符合的資料</div></td></tr>') + '</tbody>';
+    $('rs-table').innerHTML = `<thead><tr>${ROSTER_COLS.map(([k, t]) => `<th>${esc(t)}</th>`).join('')}<th>LINE 綁定</th></tr></thead><tbody>`
+      + (list.map(r => `<tr data-r="${r.id}">${ROSTER_COLS.map(([k]) => `<td class="c-${k}">${k === 'name' ? `<span class="nm-cell">${av(r)}<b>${esc(rv(r, k) || '')}</b></span>` : esc(rv(r, k) || '')}</td>`).join('')}<td>${st(r)}</td></tr>`).join('')
+        || `<tr><td colspan="${ROSTER_COLS.length + 1}"><div class="empty">沒有符合的資料</div></td></tr>`) + '</tbody>';
     $('rs-cards').innerHTML = list.map(r => `<div class="card r-card" data-r="${r.id}">${av(r)}
-        <div class="main"><div class="nm">${esc(r.name)} ${r.cert ? `<span class="pill cert">${esc(r.cert)}</span>` : ''}</div>
-        <div class="sub">${esc(r.phone || '無電話')}　${esc(r.birthday || '')}</div></div>${st(r)}</div>`).join('')
+        <div class="main"><div class="nm">${r.serial ? `<span style="color:var(--sub);font-size:13px;">${esc(r.serial)}</span>` : ''}${esc(rv(r, 'name'))} ${r.cert ? `<span class="pill cert">${esc(r.cert)}</span>` : ''}</div>
+        <div class="sub">${esc(r.phone || '無電話')}　${esc(rv(r, 'birthdayRaw') || '')}</div></div>${st(r)}</div>`).join('')
       || '<div class="card empty">沒有符合的資料</div>';
     document.querySelectorAll('#rs-table [data-r], #rs-cards [data-r]').forEach(e => e.onclick = () => openRoster(e.dataset.r));
   }
@@ -755,25 +765,15 @@
         <span class="mini-av" style="width:54px;height:54px;font-size:20px;${u && u.pictureUrl ? `background-image:url('${esc(u.pictureUrl)}')` : ''}">${u && u.pictureUrl ? '' : esc(String(r.name || '?').charAt(0))}</span>
         <div><h3>${esc(r.name)}</h3><div>${r.cert ? `<span class="pill cert">${esc(r.cert)}</span>` : ''} ${r.boundUserId ? `<span class="pill bound">✔ 已綁定 LINE${u ? '：' + esc(u.lineDisplayName || u.realName || '') : ''}</span>` : '<span class="pill unbound">尚未綁定 LINE</span>'}</div></div>
       </div>
-      <div class="grp">基本資料</div>
-      <div class="rows">
-        ${row('身分證字號', esc(sheetShowId ? r.idCard : maskId(r.idCard)) + ` <button class="eye" id="sh-eye">${sheetShowId ? '隱藏' : '顯示'}</button>`)}
-        ${row('出生日期', esc(bdayText(r.birthday)))}${row('電話', esc(r.phone))}${row('Email', esc(r.email))}
-        ${row('LINE 名稱（名冊）', esc(r.lineName))}${row('地址', esc(r.address))}${row('職業', esc(r.job))}${row('學歷 / 經歷', esc(r.education))}
-      </div>
-      <div class="grp">團務</div>
-      <div class="rows">
-        ${row('序號', esc(r.serial))}${row('加入年份', esc(r.joinYear))}${row('證照（原文）', esc(r.certText))}${row('介紹人', esc(r.introducer))}
-        ${row('衣服 / 褲子', esc([r.shirtSize, r.pantsSize].filter(Boolean).join(' / ')))}${row('備註', esc(r.notes))}
-      </div>
-      <div class="grp">緊急聯絡人</div>
-      <div class="rows">${row('姓名', esc(r.emName))}${row('關係', esc(r.emRelation))}${row('電話', esc(r.emPhone))}</div>
+      <div class="grp">團員資料表（與 Excel 相同）</div>
+      <div class="rows">${ROSTER_COLS.map(([k, t]) => row(esc(t), esc(rv(r, k) || ''))).join('')}</div>
+      <div class="grp">系統</div>
+      <div class="rows">${row('證照分類', esc(r.cert || ''))}${row('生日（換算）', esc(r.birthday ? bdayText(r.birthday) : '讀不到，無法自動驗證'))}${row('Email', esc(r.email || ''))}</div>
       <div class="p-actions">
         ${r.boundUserId ? '<button class="sbtn" id="sh-unbind">解除 LINE 綁定</button>' : ''}
         <button class="sbtn red" id="sh-del">刪除此筆名冊</button>
       </div>`;
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block';
-    $('sh-eye').onclick = () => { sheetShowId = !sheetShowId; openRoster(rid); };
     if ($('sh-unbind')) $('sh-unbind').onclick = async () => {
       if (!(await dialog({ title: '解除綁定？', msg: `「${r.name}」的名冊資料將不再對應到這個 LINE 帳號。\n（不會影響對方的會員資格）`, okText: '解除' }))) return;
       try {
@@ -899,7 +899,8 @@
       });
       importRows = [];
       let skipped = 0, noBday = 0, noId = 0;
-      for (const r of rows.slice(hi + 1)) {
+      for (let ri = hi + 1; ri < rows.length; ri++) {
+        const r = rows[ri];
         if (!r) continue;
         const get = k => col[k] == null ? null : r[col[k]];
         const name = normName(get('name')), idCard = normId(get('idCard'));
@@ -909,10 +910,13 @@
         const birthday = parseBday(get('birthdayRaw'));
         if (idOk && !birthday) noBday++;
         const certText = cellStr(get('certText'));
-        const o = { name, idCard: idCard || '', birthday, birthdayRaw: cellStr(typeof get('birthdayRaw') === 'number' ? birthday : get('birthdayRaw')), certText, cert: mapCert(certText) };
+        const bRaw = get('birthdayRaw');
+        const o = { name, idCard: idCard || '', birthday, certText, cert: mapCert(certText),
+          rowIndex: ri + 1,                                   // Excel 的列號：名冊依此順序顯示，完全不變
+          nameRaw: cellStr(get('name')), idCardRaw: cellStr(get('idCard')),
+          birthdayRaw: typeof bRaw === 'number' ? (birthday ? birthday.replace(/^(\d+)-0?(\d+)-0?(\d+)$/, '$1/$2/$3') : '') : cellStr(bRaw) };
         ['phone', 'email', 'serial', 'joinYear', 'lineName', 'emName', 'emRelation', 'emPhone', 'shirtSize', 'pantsSize', 'address', 'job', 'introducer', 'education', 'notes']
           .forEach(k => { const v = cellStr(get(k)); if (v) o[k] = v; });
-        if (o.joinYear && /^\d{4}(\.\d+)?$/.test(o.joinYear) && parseFloat(o.joinYear) > 1911) o.joinYear = String(parseInt(o.joinYear, 10) - 1911);   // 西元 → 民國
         // 有身分證：ID = SHA-256(身分證|生日)，登入時可自動驗證；沒有身分證：用姓名＋生日＋電話產生固定 ID（只能人工審核）
         o.key = idOk ? await rosterKey(idCard, birthday) : await rosterKey('NOID:' + name, `${birthday}|${normId(o.phone)}`);
         importRows.push(o);
