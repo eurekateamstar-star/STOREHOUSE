@@ -196,6 +196,8 @@
   .empty { text-align: center; color: #9ca3af; padding: 30px 10px; font-size: 14px; }
 
   .p-card { padding: 16px; margin-bottom: 10px; }
+  .join-link { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; background: #fff7ed; border: 1.5px dashed #fdba74; border-radius: 14px; padding: 10px 12px; margin: 0 0 10px; font-size: 14px; }
+  .join-link .u { font-size: 12px; color: var(--sub); word-break: break-all; margin-top: 2px; }
   .app-card { cursor: pointer; transition: transform .1s; } .app-card:hover { box-shadow: 0 12px 30px rgba(124,58,237,0.14); }
   .app-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 16px; margin-bottom: 12px; flex-wrap: wrap; }
   .app-bar .sub { font-size: 12px; color: var(--sub); margin-top: 3px; }
@@ -1058,6 +1060,10 @@
     $('sheet-body').innerHTML = `
       <h3>${r.fromApp ? '📝 審核新人申請' : r.isNew ? '＋ 新增團員' : '✏️ 編輯' + (role === 'self' ? '我的資料' : '：' + esc(rv(r, 'name') || ''))}</h3>
       <div style="font-size:12px; color:var(--sub); margin:4px 0 12px;">${role === 'self' ? '請確認以下資料正確，修改後會記錄為「本人」更新。' : (r.fromApp ? '請確認新人填寫的資料，可以直接修改後再通過。' : '修改後會記錄為「管理員」更新。')}</div>
+      ${r.isNew && !r.fromApp ? `<div class="join-link">
+        <div><b>📝 讓新人自己填</b><div class="u">${esc(JOIN_URL)}</div></div>
+        <div style="display:flex; gap:6px;"><button class="sbtn" id="ed-join-copy">🔗 複製連結</button><button class="sbtn violet" id="ed-join-open">開啟</button></div>
+      </div>` : ''}
       ${role === 'admin' ? `<div class="paste-box">
         <textarea id="ed-paste" placeholder="🪄 智慧貼上：把一整串資料貼在這裡（LINE 訊息、表單內容、Excel 複製的一整列都可以），按「🤖 AI 填入」就會分到對應的格子（「🪄 快速填入」不經過 AI，適合格式整齊的資料）。"></textarea>
         <div style="display:flex; gap:8px; justify-content:flex-end;"><button class="sbtn" id="ed-paste-go">🪄 快速填入</button><button class="sbtn pri" id="ed-ai-go">🤖 AI 填入</button></div>
@@ -1070,6 +1076,7 @@
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open');
     $('sheet').scrollTop = 0;
     $('ed-save').onclick = saveEdit;
+    if ($('ed-join-copy')) { $('ed-join-copy').onclick = () => $('btn-app-copy').onclick(); $('ed-join-open').onclick = () => $('btn-app-open').onclick(); }
     if ($('ed-reject')) $('ed-reject').onclick = async () => { if (await rejectApp(r.fromApp)) closeSheet(); };
     const fillFrom = (o, how) => {
       if (o.birthdayRaw) { const iso = parseBday(o.birthdayRaw); if (iso) o.birthdayRaw = rocBday(iso); }
