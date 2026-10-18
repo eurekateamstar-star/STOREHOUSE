@@ -524,7 +524,9 @@
                 <div id="line-account-box" style="display:none;">
                     <div style="font-size:13px; color:#8e8e93; margin-bottom:10px; text-align:center; line-height:1.6;">與「白沙屯救護紀錄表」共用同一份會員資料<br>只需填寫一次，送出後等待管理員審核</div>
                     <input type="text" id="line-account-input" class="apple-input" placeholder="真實姓名" style="margin-bottom:10px; text-align:center;">
-                    <input type="text" id="line-idcard-input" class="apple-input" placeholder="身分證字號" maxlength="10" style="margin-bottom:12px; text-align:center; text-transform:uppercase;">
+                    <input type="text" id="line-idcard-input" class="apple-input" placeholder="身分證字號" maxlength="10" style="margin-bottom:10px; text-align:center; text-transform:uppercase;">
+                    <div style="font-size:12px; color:#8e8e93; margin-bottom:6px; text-align:center;">出生日期</div>
+                    <input type="date" id="line-bday-input" class="apple-input" max="2030-12-31" style="margin-bottom:12px; text-align:center;">
                     <div style="font-size:12px; color:#8e8e93; margin-bottom:6px; text-align:center;">證照類別</div>
                     <div class="cert-group" id="regCertGroup" style="margin-bottom:14px;"><button type="button" class="cert-btn" data-cert="EMT-1" onclick="pickCert('EMT-1')">EMT-1</button><button type="button" class="cert-btn" data-cert="EMT-2" onclick="pickCert('EMT-2')">EMT-2</button><button type="button" class="cert-btn" data-cert="EMT-P" onclick="pickCert('EMT-P')">EMT-P</button><button type="button" class="cert-btn" data-cert="護理師" onclick="pickCert('護理師')">護理師</button><button type="button" class="cert-btn" data-cert="醫師" onclick="pickCert('醫師')">醫師</button><button type="button" class="cert-btn" data-cert="無證照" onclick="pickCert('無證照')">無證照</button></div>
                     <button class="apple-btn success" onclick="submitLineAccount()" style="width:100%;">送出申請</button>
@@ -1468,8 +1470,8 @@
             show('line-card', true); show('line-profile', true); show('line-account-box', true);
         } else if (state === 'pending') {
             sub.innerText = '⏳ 等待管理員審核';
-            lm.innerText = '你的申請已送出。\n管理員核准後會自動進入系統，請稍候。';
-            show('line-card', true); show('line-profile', true); show('login-msg', true);
+            lm.innerText = '你輸入的資料與團員名冊沒有完全相符，\n已送管理員人工審核，核准後會自動進入系統。';
+            show('line-card', true); show('line-profile', true); show('login-msg', true); show('login-resubmit-btn', true);
         } else if (state === 'rejected') {
             sub.innerText = '❌ 申請被退回';
             lm.innerText = `原因：${(msg || '').trim() || '（管理員未填寫原因）'}`;
@@ -1530,6 +1532,7 @@
             isResubmit = false;
             _el('line-account-input').value = '';
             _el('line-idcard-input').value = '';
+            _el('line-bday-input').value = '';
             pickCert('');
             setLoginState('account');
             return;
@@ -1542,7 +1545,7 @@
         updateDoc(ref, upd).catch(() => {});
         currentUser = {
             userId: u.id, displayName: prof.displayName, pictureUrl: prof.pictureUrl || u.pictureUrl || '',
-            account: u.account, idCard: u.idCard || '', certification: u.certification || u.category || '', role: u.role, status: u.status || 'pending', rejectReason: u.rejectReason || '', removed: u.removed
+            account: u.account, idCard: u.idCard || '', birthday: u.birthday || '', certification: u.certification || u.category || '', role: u.role, status: u.status || 'pending', rejectReason: u.rejectReason || '', removed: u.removed
         };
         watchOwnUser(u.id);
         applyStatusState();
@@ -1560,6 +1563,7 @@
         isResubmit = true;
         _el('line-account-input').value = (currentUser && currentUser.account) || '';
         _el('line-idcard-input').value = (currentUser && currentUser.idCard) || '';
+        _el('line-bday-input').value = (currentUser && currentUser.birthday) || '';
         pickCert((currentUser && currentUser.certification) || '');
         setLoginState('account');
     };
@@ -1573,33 +1577,61 @@
     };
 
     // 送出實名資料（欄位與驗證都和白沙屯救護紀錄表一致）
+
+    // ===== 團員名冊比對（與「會員中心」相同規則）=====
+    // 名冊文件 ID = SHA-256(身分證|生日)；姓名也要相符、且尚未被別的 LINE 綁定，才算驗證通過
+    const ROSTER = 'member_roster';
+    const _normId = s => String(s || '').replace(/\s+/g, '').toUpperCase();
+    const _normName = s => String(s || '').replace(/[\s　]+/g, '');
+    async function rosterKey(idCard, bday) {
+        const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${_normId(idCard)}|${bday || ''}`));
+        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    async function matchRoster(realName, idCard, birthday, uid) {
+        try {
+          const s = await getDoc(doc(db, ROSTER, await rosterKey(idCard, birthday)));
+          if (!s.exists()) return null;
+          const r = { id: s.id, ...s.data() };
+          if (_normName(r.name) !== _normName(realName)) return null;
+          if (r.boundUserId && r.boundUserId !== uid) return null;
+          return r;
+        } catch (e) { return null; }
+    }
+
     window.submitLineAccount = async function () {
         const realName = _el('line-account-input').value.trim();
         const idCard = _el('line-idcard-input').value.trim().toUpperCase();
         if (!realName) return showToast('請輸入真實姓名', 'error', 900);
         if (!/^[A-Z][1289]\d{8}$/.test(idCard)) return showToast('身分證字號格式不正確', 'error', 1200);
+        const birthday = _el('line-bday-input').value;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(birthday)) return showToast('請選擇出生日期', 'error', 1200);
         if (!regCert) return showToast('請選擇證照類別', 'error', 1200);
         const prof = pendingLineProfile;
         if (!prof) return;
         const ref = doc(db, "users", prof.userId);
         let first = false;
+        const roster = await matchRoster(realName, idCard, birthday, prof.userId);   // 與團員名冊比對
+        const verified = roster ? { verifiedBy: 'roster', rosterId: roster.id, approvedAt: serverTimestamp() } : {};
         try {
+            if (!isResubmit && (await getDoc(ref)).exists()) isResubmit = true;
             if (isResubmit) {
                 await updateDoc(ref, {
                     lineDisplayName: prof.displayName || '', pictureUrl: prof.pictureUrl || '',
-                    realName, idCard, certification: regCert, category: regCert, warehouseCategory: regCert, status: 'pending', rejectReason: '', resubmittedAt: serverTimestamp()
+                    realName, idCard, birthday, certification: regCert, category: regCert, warehouseCategory: regCert, status: roster ? 'approved' : 'pending', rejectReason: '', ...verified, resubmittedAt: serverTimestamp()
                 });
                 isResubmit = false;
             } else {
                 first = (await getDocs(query(collection(db, "users"), limit(1)))).empty;
                 await setDoc(ref, {
                     lineUserId: prof.userId, lineDisplayName: prof.displayName || '', pictureUrl: prof.pictureUrl || '',
-                    realName, idCard, certification: regCert, category: regCert, warehouseCategory: regCert, status: first ? 'approved' : 'pending', role: first ? 'admin' : 'user', createdAt: serverTimestamp()
+                    realName, idCard, birthday, certification: regCert, category: regCert, warehouseCategory: regCert, ...verified, status: (first || roster) ? 'approved' : 'pending', role: first ? 'admin' : 'user', createdAt: serverTimestamp()
                 });
             }
+            if (roster) await updateDoc(doc(db, ROSTER, roster.id), { boundUserId: prof.userId, boundAt: serverTimestamp() }).catch(() => {});
         } catch (e) { console.error(e); showToast('❌ 送出失敗，請重試', 'error', 1200); return; }
         try { await identifyLineUser(prof); } catch (e) { console.error(e); }
         if (first) showToast('👑 你是第一位使用者\n已自動設為管理員', 'success', 2000);
+        else if (roster) showToast('✅ 與團員名冊相符\n已自動開通', 'success', 1500);
         else if (currentUser && currentUser.status === 'pending') showToast('✅ 申請已送出', 'success', 900);
     };
 

@@ -897,22 +897,24 @@
         const i = hdr.findIndex((h, idx) => h && names.some(n => h.includes(n)) && !Object.values(col).includes(idx));
         if (i >= 0) col[key] = i;
       });
-      if (col.idCard == null) throw new Error('找不到「身分證字號」欄位');
       importRows = [];
-      let skipped = 0, noBday = 0;
+      let skipped = 0, noBday = 0, noId = 0;
       for (const r of rows.slice(hi + 1)) {
         if (!r) continue;
         const get = k => col[k] == null ? null : r[col[k]];
         const name = normName(get('name')), idCard = normId(get('idCard'));
-        if (!name || !/^[A-Z][0-9A-Z]\d{8}$/.test(idCard)) { if (name || idCard) skipped++; continue; }
+        if (!name) { if (idCard) skipped++; continue; }          // 只要有姓名就匯入
+        const idOk = /^[A-Z][0-9A-Z]\d{8}$/.test(idCard);
+        if (!idOk) noId++;
         const birthday = parseBday(get('birthdayRaw'));
-        if (!birthday) noBday++;
+        if (idOk && !birthday) noBday++;
         const certText = cellStr(get('certText'));
-        const o = { name, idCard, birthday, birthdayRaw: cellStr(typeof get('birthdayRaw') === 'number' ? birthday : get('birthdayRaw')), certText, cert: mapCert(certText) };
+        const o = { name, idCard: idCard || '', birthday, birthdayRaw: cellStr(typeof get('birthdayRaw') === 'number' ? birthday : get('birthdayRaw')), certText, cert: mapCert(certText) };
         ['phone', 'email', 'serial', 'joinYear', 'lineName', 'emName', 'emRelation', 'emPhone', 'shirtSize', 'pantsSize', 'address', 'job', 'introducer', 'education', 'notes']
           .forEach(k => { const v = cellStr(get(k)); if (v) o[k] = v; });
         if (o.joinYear && /^\d{4}(\.\d+)?$/.test(o.joinYear) && parseFloat(o.joinYear) > 1911) o.joinYear = String(parseInt(o.joinYear, 10) - 1911);   // 西元 → 民國
-        o.key = await rosterKey(idCard, birthday);
+        // 有身分證：ID = SHA-256(身分證|生日)，登入時可自動驗證；沒有身分證：用姓名＋生日＋電話產生固定 ID（只能人工審核）
+        o.key = idOk ? await rosterKey(idCard, birthday) : await rosterKey('NOID:' + name, `${birthday}|${normId(o.phone)}`);
         importRows.push(o);
       }
       const existing = new Set(rosterCache.map(r => r.id));
@@ -920,13 +922,14 @@
       const certCount = {}; importRows.forEach(r => certCount[r.cert || '未填'] = (certCount[r.cert || '未填'] || 0) + 1);
       $('imp-preview').innerHTML = `
         <div class="warnbox">
-          共讀到 <b>${importRows.length}</b> 位團員：新增 <b>${importRows.length - upd}</b>、更新 <b>${upd}</b>${skipped ? `，略過 ${skipped} 列（缺姓名或身分證）` : ''}<br>
-          ${noBday ? `⚠️ 有 ${noBday} 位生日讀不到，這些人無法自動驗證，登入時會改成人工審核。<br>` : ''}
+          共讀到 <b>${importRows.length}</b> 位團員：新增 <b>${importRows.length - upd}</b>、更新 <b>${upd}</b>${skipped ? `，略過 ${skipped} 列（沒有姓名）` : ''}<br>
+          ${noId ? `⚠️ 有 ${noId} 位沒有身分證字號，仍會匯入名冊，但登入時無法自動驗證，會改成人工審核。<br>` : ''}
+          ${noBday ? `⚠️ 有 ${noBday} 位生日讀不到，登入時同樣會改成人工審核。<br>` : ''}
           證照分類：${Object.entries(certCount).map(([k, v]) => `${esc(k)} ${v}`).join('、')}
         </div>
         <div class="card tbl-wrap" style="display:block; max-height:320px; overflow:auto;"><table class="tbl">
           <thead><tr><th>姓名</th><th>身分證</th><th>生日</th><th>證照分類</th><th>電話</th></tr></thead><tbody>
-          ${importRows.slice(0, 8).map(r => `<tr><td>${esc(r.name)}</td><td>${esc(maskId(r.idCard))}</td><td>${esc(r.birthday || '⚠️ ' + r.birthdayRaw)}</td><td>${esc(r.cert)}</td><td>${esc(r.phone || '')}</td></tr>`).join('')}
+          ${importRows.slice(0, 8).map(r => `<tr><td>${esc(r.name)}</td><td>${r.idCard ? esc(maskId(r.idCard)) : '⚠️ 無'}</td><td>${esc(r.birthday || ('⚠️ ' + (r.birthdayRaw || '無')))}</td><td>${esc(r.cert)}</td><td>${esc(r.phone || '')}</td></tr>`).join('')}
           ${importRows.length > 8 ? `<tr><td colspan="5" style="color:var(--sub)">…還有 ${importRows.length - 8} 位</td></tr>` : ''}
           </tbody></table></div>
         <button class="btn" id="imp-go" style="margin-top:14px;">確認匯入 ${importRows.length} 位團員</button>`;
