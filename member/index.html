@@ -339,6 +339,7 @@
     <div id="tab-roster">
       <div class="toolbar">
         <input class="inp" id="rs-q" placeholder="🔍 搜尋姓名、電話、LINE 名稱、介紹人…">
+        <button class="edit-btn" id="btn-add-roster" style="white-space:nowrap; flex-shrink:0;">＋ 新增團員</button>
       </div>
       <div class="chips" id="rs-chips"></div>
       <div class="card tbl-wrap"><table class="tbl" id="rs-table"></table></div>
@@ -904,6 +905,7 @@
     const who = l.role === 'self' ? '🙋 本人' : '🛠 管理員';
     const what = l.action === 'confirm' ? '✅ 確認資料無誤（未修改）'
       : l.action === 'request' ? '🔔 要求本人重新確認資料'
+      : l.action === 'create' ? '➕ 新增團員'
       : '修改：' + esc((l.fields || []).join('、'));
     const ch = (l.changes || []).map(c => `<div class="log-ch"><span class="f">${esc(c.f)}</span>　<s>${esc(c.from || '（空白）')}</s> → <b>${esc(c.to || '（空白）')}</b></div>`).join('');
     return `<div class="log-item">${i != null ? `<button class="log-del" data-li="${i}" title="刪除這筆紀錄">✕</button>` : ''}<b>${esc(fmtAt(l.at))}</b>　${who}（${esc(l.by || '')}）${what}${ch}</div>`;
@@ -919,7 +921,7 @@
         ? `<textarea data-k="${k}">${v}</textarea>` : `<input data-k="${k}" value="${v}">`}</div>`;
     };
     $('sheet-body').innerHTML = `
-      <h3>✏️ 編輯${role === 'self' ? '我的資料' : '：' + esc(rv(r, 'name') || '')}</h3>
+      <h3>${r.isNew ? '＋ 新增團員' : '✏️ 編輯' + (role === 'self' ? '我的資料' : '：' + esc(rv(r, 'name') || ''))}</h3>
       <div style="font-size:12px; color:var(--sub); margin:4px 0 12px;">${role === 'self' ? '請確認以下資料正確，修改後會記錄為「本人」更新。' : '修改後會記錄為「管理員」更新。'}</div>
       <div class="edit-form edit-grid">${fields.map(inp).join('')}</div>
       <button class="btn" id="ed-save">${role === 'self' ? '確認並儲存' : '儲存'}</button>`;
@@ -932,6 +934,11 @@
     openEditForm(r, 'self');
   };
   $('btn-edit-me').onclick = editMe;
+  // 新增團員：序號、列順序接在最後面
+  $('btn-add-roster').onclick = () => {
+    const maxNum = k => rosterCache.reduce((m, r) => Math.max(m, Number(r[k]) || 0), 0);
+    openEditForm({ id: null, isNew: true, serial: String(maxNum('serial') + 1), rowIndex: maxNum('rowIndex') + 1 }, 'admin');
+  };
   $('btn-confirm-edit').onclick = editMe;
   async function confirmOk() {
     const by = user.realName || profile.displayName || '';
@@ -981,6 +988,13 @@
       if (!/^[A-Z][1289]\d{8}$/.test(normId(vals.idCard))) return toast('身分證字號格式不正確');
       if (!/^\d{4}-\d{2}-\d{2}$/.test(vals.birthdayISO || '')) return toast('請選擇出生日期');
     }
+    if (r.isNew) {
+      if (!vals.name) return toast('請填寫姓名');
+      const nid0 = normId(vals.idCard || ''), nbd0 = parseBday(vals.birthdayRaw || '');
+      if (nid0 && !/^[A-Z][0-9A-Z]\d{8}$/.test(nid0)) return toast('身分證字號格式不正確');
+      if (vals.birthdayRaw && !nbd0) return toast('出生日期看不懂，請用 80.10.05 或 1991/10/5');
+      if (/^[A-Z][0-9A-Z]\d{8}$/.test(nid0) && rosterById(await rosterKey(nid0, nbd0))) return toast('名冊已有相同身分證＋生日的團員');
+    }
     if (!changed.length) {
       if (role === 'self') { confirmOk(); return; }
       toast('沒有修改'); return;
@@ -1001,7 +1015,7 @@
     if (role === 'self') upd.confirmedAt = serverTimestamp();
     const cut = v => { v = String(v || ''); return v.length > 60 ? v.slice(0, 60) + '…' : v; };
     const changes = changed.map((k, i) => ({ f: labels[i], from: cut(curVal(r, k)), to: cut(vals[k]) }));
-    upd.editLog = [{ at: Date.now(), by, role, fields: labels, changes }, ...(r.editLog || [])].slice(0, 30);
+    upd.editLog = [r.isNew ? { at: Date.now(), by, role, action: 'create', fields: [] } : { at: Date.now(), by, role, fields: labels, changes }, ...(r.editLog || [])].slice(0, 30);
     const btn = $('ed-save'); btn.disabled = true; btn.textContent = '儲存中…';
     try {
       // 名冊文件 ID 跟著身分證＋生日（登入驗證用）；改了就搬到新的 ID
@@ -1013,7 +1027,8 @@
         const newId = idOk ? await rosterKey(nid, nbd) : (rid || await rosterKey('NOID:' + (upd.name || r.name), nbd));
         if (newId !== rid) {
           const base = rid ? { ...rosterById(rid) } : { name: r.name || '', nameRaw: r.nameRaw || r.name || '', idCard: r.idCard || '', idCardRaw: r.idCard || '', birthday: r.birthday || '',
-            birthdayRaw: r.birthday ? r.birthday.replace(/^(\d+)-0?(\d+)-0?(\d+)$/, '$1/$2/$3') : '', boundUserId: role === 'self' ? profile.userId : null, createdBySelf: role === 'self' };
+            birthdayRaw: r.birthday ? r.birthday.replace(/^(\d+)-0?(\d+)-0?(\d+)$/, '$1/$2/$3') : '', boundUserId: role === 'self' ? profile.userId : null, createdBySelf: role === 'self',
+            ...(r.isNew ? { serial: r.serial || '', rowIndex: r.rowIndex, createdAt: serverTimestamp(), createdBy: by } : {}) };
           delete base.id;
           await setDoc(doc(db, ROSTER, newId), { ...base, ...upd });
           if (rid) await deleteDoc(doc(db, ROSTER, rid));
