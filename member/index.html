@@ -933,9 +933,10 @@
   $('btn-confirm-ok').onclick = confirmOk;
 
   // 未確認 → 跳出確認畫面（每次需要確認時跳一次）
-  let confirmPopKey = null;
+  let confirmPopKey = null, myRosterReady = false;
   function maybeConfirmPopup() {
     if (!user || user.status !== 'approved' || user.profileConfirmedAt || adminOn) return;
+    if (user.rosterId && !myRosterReady) return;   // 等名冊資料載入完再跳，避免顯示空白
     const key = String(tsMs(user.confirmRequestedAt) || 'first');
     if (confirmPopKey === key || $('sheet').style.display === 'block') return;
     confirmPopKey = key;
@@ -1209,9 +1210,9 @@
   function watchMyRoster(rid) {
     if (myRosterUnsub && watchMyRoster._rid === rid) return;
     if (myRosterUnsub) { myRosterUnsub(); myRosterUnsub = null; }
-    watchMyRoster._rid = rid; myRoster = null;
+    watchMyRoster._rid = rid; myRoster = null; myRosterReady = !rid;
     if (!rid) return;
-    myRosterUnsub = onSnapshot(doc(db, ROSTER, rid), s => { myRoster = s.exists() ? { id: s.id, ...s.data() } : null; if (!adminOn) render(); }, () => {});
+    myRosterUnsub = onSnapshot(doc(db, ROSTER, rid), s => { myRoster = s.exists() ? { id: s.id, ...s.data() } : null; myRosterReady = true; if (!adminOn) render(); }, () => { myRosterReady = true; if (!adminOn) render(); });
   }
 
   async function start() {

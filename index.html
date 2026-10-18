@@ -543,7 +543,7 @@
             <div class="menu-header">
                 <div>
                     <div style="font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">倉儲中樞</div>
-                    <div style="font-size: 13px; color: #8e8e93;" id="preload-status">系統就緒 (背景已預載)</div>
+                    <div style="font-size: 13px; color: #8e8e93;" id="preload-status">系統就緒</div>
                     <div id="menu-user" style="font-size:13px; color:#0a84ff; font-weight:600; margin-top:2px;"></div>
                 </div>
                 <button id="btn-logout" onclick="logout()" class="apple-btn secondary" style="padding: 8px 14px; font-size: 13px;">登出</button>
@@ -2096,7 +2096,7 @@
                 (b.items || []).forEach(it => otherImgUrls.push(it.imageUrl));
             });
             preloadImagesAsync(otherImgUrls);
-            document.getElementById('preload-status').innerText = "系統就緒 (已同步雲端)";
+            document.getElementById('preload-status').innerText = "系統就緒";
             setTimeout(checkExpiringConsumables, 800);
         } catch (e) {
             document.getElementById('preload-status').innerText = "系統就緒";
