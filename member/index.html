@@ -117,10 +117,17 @@
   .sbtn:disabled { opacity: 0.5; }
 
   /* 名冊：電腦是表格，手機是卡片 */
-  .tbl-wrap { overflow: auto; max-height: 72vh; }
-  #rs-table th, #rs-table td { white-space: nowrap; }
-  #rs-table td.c-address, #rs-table td.c-education, #rs-table td.c-notes, #rs-table td.c-certText { white-space: normal; min-width: 160px; max-width: 280px; }
-  #rs-table td.c-name, #rs-table th:nth-child(3) { position: sticky; left: 0; background: #fff; z-index: 1; }
+  .tbl-wrap { overflow-x: auto; }
+  /* 名冊：電腦一頁看完全部欄位（不左右捲動、不在框內捲動） */
+  body.admin-wide .wrap { max-width: none; padding-left: 20px; padding-right: 20px; }
+  #rs-table { table-layout: auto; font-size: 12px; }
+  #rs-table th { font-size: 11px; padding: 8px 5px; white-space: nowrap; }
+  #rs-table td { padding: 7px 5px; line-height: 1.35; word-break: break-all; }
+  #rs-table td.c-serial, #rs-table td.c-joinYear, #rs-table td.c-name, #rs-table td.c-birthdayRaw, #rs-table td.c-idCard,
+  #rs-table td.c-phone, #rs-table td.c-emName, #rs-table td.c-emRelation, #rs-table td.c-emPhone, #rs-table td.c-shirtSize, #rs-table td.c-pantsSize { white-space: nowrap; word-break: normal; }
+  #rs-table td.c-certText { min-width: 64px; } #rs-table td.c-address { min-width: 130px; } #rs-table td.c-education, #rs-table td.c-notes { min-width: 90px; }
+  #rs-table .mini-av { display: none; }
+  #rs-table .pill { font-size: 11px; padding: 1px 6px; }
   .nm-cell { display: inline-flex; align-items: center; gap: 8px; }
   table.tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
   .tbl th { text-align: left; font-size: 12px; color: var(--sub); font-weight: 800; padding: 12px 14px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,0.6); position: sticky; top: 0; }
@@ -394,6 +401,7 @@
   function show(view) {
     ['v-loading', 'v-login', 'v-register', 'v-status', 'v-member', 'v-admin'].forEach(id => $(id).classList.toggle('hidden', id !== view));
     document.body.classList.toggle('wide', view === 'v-member' || view === 'v-admin');
+    document.body.classList.toggle('admin-wide', view === 'v-admin');
   }
   function setAvatar(el, url, name) {
     el.style.backgroundImage = url ? `url("${url}")` : '';
@@ -741,7 +749,7 @@
       $('rs-table').innerHTML = `<tr><td>${e}</td></tr>`; $('rs-cards').innerHTML = `<div class="card">${e}</div>`; return;
     }
     const st = r => { const u = r.boundUserId && userById(r.boundUserId);
-      return r.boundUserId ? `<span class="pill bound">✔ 已綁定${u ? ' ' + esc(u.lineDisplayName || '') : ''}</span>` : '<span class="pill unbound">未綁定</span>'; };
+      return r.boundUserId ? `<span class="pill bound" title="${u ? esc(u.lineDisplayName || '') : ''}">✔ 已綁定</span>` : '<span class="pill unbound">未綁定</span>'; };
     const av = r => { const u = r.boundUserId && userById(r.boundUserId); return miniAv(u && u.pictureUrl, r.name); };
     $('rs-table').innerHTML = `<thead><tr>${ROSTER_COLS.map(([k, t]) => `<th>${esc(t)}</th>`).join('')}<th>LINE 綁定</th></tr></thead><tbody>`
       + (list.map(r => `<tr data-r="${r.id}">${ROSTER_COLS.map(([k]) => `<td class="c-${k}">${k === 'name' ? `<span class="nm-cell">${av(r)}<b>${esc(rv(r, k) || '')}</b></span>` : esc(rv(r, k) || '')}</td>`).join('')}<td>${st(r)}</td></tr>`).join('')
