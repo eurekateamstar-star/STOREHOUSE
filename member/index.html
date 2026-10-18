@@ -126,6 +126,13 @@
   .edit-grid .full { grid-column: 1 / -1; }
   .log-item { font-size: 12px; color: var(--sub); padding: 6px 2px; border-bottom: 1px dashed var(--line); }
   .log-item b { color: var(--ink); }
+  .confirm-card { background: linear-gradient(135deg,#fff7ed,#fff); border: 1.5px solid #fdba74; border-radius: 20px; padding: 16px 16px 14px; margin-top: 16px; box-shadow: var(--shadow); }
+  .confirm-card .t { font-size: 16px; font-weight: 900; color: #c2410c; }
+  .confirm-card .d { font-size: 13px; color: #6b7280; margin: 6px 0 12px; line-height: 1.6; }
+  .confirm-card .b { display: flex; gap: 8px; }
+  .confirm-card .b button { flex: 1; border: none; border-radius: 12px; padding: 11px 8px; font-size: 14px; font-weight: 800; cursor: pointer; font-family: inherit; }
+  .confirm-card .b .p { background: var(--primary); color: #fff; }
+  .confirm-card .b .s { background: #fff; color: #15803d; box-shadow: inset 0 0 0 1.5px #86efac; }
   .edit-btn { border: none; border-radius: 12px; padding: 10px 14px; font-size: 14px; font-weight: 800; cursor: pointer; background: #fff; color: var(--primary); box-shadow: var(--shadow); font-family: inherit; }
   .chip { border: 1.5px solid #e5e7eb; background: #fff; color: #475569; font-size: 13px; font-weight: 800; padding: 6px 12px; border-radius: 999px; cursor: pointer; font-family: inherit; }
   .chip.on { background: var(--primary); border-color: var(--primary); color: #fff; }
@@ -267,7 +274,13 @@
         <div class="member-foot"><span id="m-since"></span><span>白沙屯醫護團 會員</span></div>
       </div>
 
-      <div class="sec">基本資料</div>
+      <div class="confirm-card hidden" id="confirm-card">
+        <div class="t">📝 請確認你的團員資料</div>
+        <div class="d">第一次登入請先檢查你的資料（電話、緊急聯絡人、尺寸、證照…），有錯請按「編輯資料」修改；確認都正確就按「資料正確」，之後不會再提示。</div>
+        <div class="b"><button class="p" id="btn-confirm-edit">✏️ 編輯資料</button><button class="s" id="btn-confirm-ok">✅ 資料正確</button></div>
+      </div>
+
+      <div class="sec" style="display:flex; justify-content:space-between; align-items:center;">基本資料<button class="edit-btn" id="btn-edit-me">✏️ 編輯資料</button></div>
       <div class="card rows">
         <div class="row"><span class="k">真實姓名</span><span class="v" id="f-name"></span></div>
         <div class="row"><span class="k">身分證字號</span><span class="v"><span id="f-id"></span><button class="eye" id="btn-eye">顯示</button></span></div>
@@ -281,25 +294,12 @@
     </div>
 
     <div class="col-r">
-      <div id="roster-sec" class="hidden">
-        <div class="sec" style="display:flex; justify-content:space-between; align-items:center;">團員資料<button class="edit-btn" id="btn-edit-me">✏️ 編輯我的資料</button></div>
-        <div class="card rows" id="my-roster"></div>
-      </div>
-
-      <div class="sec">使用紀錄</div>
-      <div class="card rows">
-        <div class="row"><span class="k">加入時間</span><span class="v" id="f-created"></span></div>
-        <div class="row"><span class="k">救護紀錄表 上次登入</span><span class="v" id="f-bst"></span></div>
-        <div class="row"><span class="k">倉庫管理 上次登入</span><span class="v" id="f-wh"></span></div>
-        <div class="row"><span class="k">倉庫使用權限</span><span class="v" id="f-whstate"></span></div>
-      </div>
-
       <div class="sec">前往系統</div>
       <div class="apps">
         <button class="card app" data-open="https://liff.line.me/2011820105-6oXAxIEi"><span class="ic">🚑</span><span class="t">救護紀錄表</span><span class="d">填寫與查看救護紀錄</span></button>
         <button class="card app" data-open="https://liff.line.me/2011820105-ofRs4ehy"><span class="ic">📦</span><span class="t">倉庫管理</span><span class="d">我的 QR、持有物品</span></button>
       </div>
-      <div class="note">資料與「救護紀錄表」「倉庫管理」同步。<br>如需修改資料，請聯絡管理員。</div>
+      <div class="note">資料與「救護紀錄表」「倉庫管理」同步。<br>資料有變動請按「編輯資料」更新。</div>
     </div>
   </div>
 
@@ -566,21 +566,7 @@
     $('f-role').innerHTML = isAdmin() ? '<b>管理員</b>' : '一般會員';
     $('f-status').innerHTML = '<span class="ok">✅ 已核准</span>' + (user.verifiedBy === 'roster' ? '（名冊自動驗證）' : '');
     $('f-line').textContent = user.lineDisplayName || profile.displayName || '—';
-    $('f-created').textContent = created ? fmt(created) : '—';
-    $('f-bst').textContent = fmt(tsMs(user.bstLastLoginAt));
-    $('f-wh').textContent = fmt(tsMs(user.warehouseLastLoginAt));
-    $('f-whstate').innerHTML = user.warehouseRemoved ? '<span class="warn">⛔ 已移出倉庫</span>' : '<span class="ok">可使用</span>';
-
-    // 自己在名冊裡的資料
-    const r = myRoster;
-    const canSelf = !!(r || (user.idCard && user.birthday));
-    $('roster-sec').classList.toggle('hidden', !canSelf);
-    if (canSelf) {
-      const rr = r || {};
-      const row = (k, v) => `<div class="row"><span class="k">${k}</span><span class="v">${esc(v || '—')}</span></div>`;
-      $('my-roster').innerHTML = ROSTER_COLS.filter(([k]) => !['name', 'idCard', 'birthdayRaw'].includes(k)).map(([k, t]) => row(t, rr[k])).join('')
-        + `<div class="row"><span class="k">最後更新</span><span class="v">${updText(rr) || '尚未更新過'}</span></div>`;
-    }
+    $('confirm-card').classList.toggle('hidden', !!user.profileConfirmedAt);
     show('v-member');
   }
 
@@ -850,7 +836,9 @@
   // =========================================================
   // 編輯名冊資料（管理員：全部欄位；本人：聯絡資料等）＋ 更新紀錄
   // =========================================================
-  const SELF_FIELDS = ['lineName', 'phone', 'emName', 'emRelation', 'emPhone', 'shirtSize', 'pantsSize', 'certText', 'address', 'job', 'education'];
+  const SELF_FIELDS = ['name', 'birthdayISO', 'idCard', 'phone', 'emName', 'emRelation', 'emPhone', 'shirtSize', 'pantsSize', 'certText', 'address', 'job', 'introducer', 'education'];
+  const SELF_LABEL = { birthdayISO: '出生日期' };
+  const curVal = (r, k) => k === 'birthdayISO' ? (r.birthday || '') : String(rv(r, k) || '');
   const LONG_FIELDS = ['address', 'education', 'notes', 'certText'];
   function fmtAt(ms) {
     if (!ms) return '';
@@ -869,42 +857,59 @@
   let editCtx = null;
   function openEditForm(r, role) {
     editCtx = { r, role };
-    const fields = role === 'admin' ? ROSTER_COLS : ROSTER_COLS.filter(([k]) => SELF_FIELDS.includes(k));
+    const fields = role === 'admin' ? ROSTER_COLS : SELF_FIELDS.map(k => [k, SELF_LABEL[k] || (ROSTER_COLS.find(c => c[0] === k) || [k, k])[1]]);
     const inp = ([k, t]) => {
-      const v = esc(rv(r, k) || '');
+      const v = esc(curVal(r, k));
+      if (k === 'birthdayISO') return `<div class="field"><label>${esc(t)}</label><input type="date" data-k="${k}" value="${v}"></div>`;
       return `<div class="field ${LONG_FIELDS.includes(k) ? 'full' : ''}"><label>${esc(t)}</label>${LONG_FIELDS.includes(k)
         ? `<textarea data-k="${k}">${v}</textarea>` : `<input data-k="${k}" value="${v}">`}</div>`;
     };
     $('sheet-body').innerHTML = `
       <h3>✏️ 編輯${role === 'self' ? '我的資料' : '：' + esc(rv(r, 'name') || '')}</h3>
-      <div style="font-size:12px; color:var(--sub); margin:4px 0 12px;">${role === 'self' ? '姓名、身分證、生日如需更改，請聯絡管理員。' : '修改後會記錄為「管理員」更新。'}</div>
+      <div style="font-size:12px; color:var(--sub); margin:4px 0 12px;">${role === 'self' ? '請確認以下資料正確，修改後會記錄為「本人」更新。' : '修改後會記錄為「管理員」更新。'}</div>
       <div class="edit-form edit-grid">${fields.map(inp).join('')}</div>
-      <button class="btn" id="ed-save">儲存</button>`;
+      <button class="btn" id="ed-save">${role === 'self' ? '確認並儲存' : '儲存'}</button>`;
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block';
     $('sheet').scrollTop = 0;
     $('ed-save').onclick = saveEdit;
   }
-  $('btn-edit-me').onclick = () => {
-    const r = myRoster || { id: null, name: user.realName, nameRaw: user.realName, idCard: user.idCard, birthday: user.birthday };
+  const editMe = () => {
+    const r = myRoster || { id: null, name: user.realName, nameRaw: user.realName, idCard: user.idCard, birthday: user.birthday, certText: user.certification || '' };
     openEditForm(r, 'self');
   };
+  $('btn-edit-me').onclick = editMe;
+  $('btn-confirm-edit').onclick = editMe;
+  $('btn-confirm-ok').onclick = async () => {
+    try { await updateDoc(doc(db, 'users', profile.userId), { profileConfirmedAt: serverTimestamp() }); toast('✅ 已確認，謝謝！'); }
+    catch (e) { toast('❌ 儲存失敗'); }
+  };
+  const rocBday = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? `${+m[1] - 1911}.${m[2]}.${m[3]}` : ''; };
 
   async function saveEdit() {
     const { r, role } = editCtx;
     const vals = {};
     document.querySelectorAll('#sheet-body [data-k]').forEach(el => vals[el.dataset.k] = el.value.trim());
-    const changed = Object.keys(vals).filter(k => vals[k] !== String(rv(r, k) || ''));
-    if (!changed.length) { toast('沒有修改'); return; }
+    const changed = Object.keys(vals).filter(k => vals[k] !== curVal(r, k));
+    if (role === 'self') {
+      if (!vals.name) return toast('請填寫姓名');
+      if (!/^[A-Z][1289]\d{8}$/.test(normId(vals.idCard))) return toast('身分證字號格式不正確');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(vals.birthdayISO || '')) return toast('請選擇出生日期');
+    }
+    if (!changed.length) {
+      if (role === 'self') { $('btn-confirm-ok').onclick(); closeSheet(); return; }
+      toast('沒有修改'); return;
+    }
     const upd = {};
     changed.forEach(k => {
       const v = vals[k];
       if (k === 'name') { upd.nameRaw = v; upd.name = normName(v); }
       else if (k === 'idCard') { upd.idCardRaw = v; upd.idCard = normId(v); }
       else if (k === 'birthdayRaw') { upd.birthdayRaw = v; upd.birthday = parseBday(v); }
+      else if (k === 'birthdayISO') { upd.birthday = v; upd.birthdayRaw = rocBday(v); }
       else if (k === 'certText') { upd.certText = v; upd.cert = mapCert(v); }
       else upd[k] = v;
     });
-    const labels = changed.map(k => (ROSTER_COLS.find(c => c[0] === k) || [k, k])[1]);
+    const labels = changed.map(k => SELF_LABEL[k] || (ROSTER_COLS.find(c => c[0] === k) || [k, k])[1]);
     const by = user.realName || profile.displayName || '';
     upd.updatedAt = serverTimestamp(); upd.updatedBy = by; upd.updatedByRole = role;
     upd.editLog = [{ at: Date.now(), by, role, fields: labels }, ...(r.editLog || [])].slice(0, 30);
@@ -915,7 +920,7 @@
       const nbd = upd.birthday !== undefined ? upd.birthday : (r.birthday || '');
       let rid = r.id;
       const idOk = /^[A-Z][0-9A-Z]\d{8}$/.test(nid);
-      if (!rid || (idOk && (upd.idCard !== undefined || upd.birthday !== undefined))) {
+      if (!rid || (role === 'admin' && idOk && (upd.idCard !== undefined || upd.birthday !== undefined))) {
         const newId = idOk ? await rosterKey(nid, nbd) : (rid || await rosterKey('NOID:' + (upd.name || r.name), nbd));
         if (newId !== rid) {
           const base = rid ? { ...rosterById(rid) } : { name: r.name || '', nameRaw: r.nameRaw || r.name || '', idCard: r.idCard || '', idCardRaw: r.idCard || '', birthday: r.birthday || '',
@@ -935,6 +940,7 @@
         if (upd.idCard !== undefined && idOk) su.idCard = upd.idCard;
         if (upd.birthday) su.birthday = upd.birthday;
         if (upd.cert) { su.certification = upd.cert; su.category = upd.cert; su.warehouseCategory = upd.cert; }
+        if (role === 'self') su.profileConfirmedAt = serverTimestamp();
         await updateDoc(doc(db, 'users', uid), su).catch(() => {});
       }
       toast('✅ 已儲存');

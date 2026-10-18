@@ -75,12 +75,13 @@ service cloud.firestore {
         || (signedIn() && request.resource.data.get('createdBySelf', false) == true
             && request.resource.data.get('boundUserId', '') == me());
       allow update: if isAdmin()
-        // 本人編輯自己的聯絡資料（姓名／身分證／生日只能管理員改）
+        // 本人編輯自己的團員資料（序號、加入年份、備註只能管理員改）
         || (signedIn() && resource.data.get('boundUserId', '') == me()
             && request.resource.data.get('boundUserId', '') == me()
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                 'name', 'nameRaw', 'idCard', 'idCardRaw', 'birthday', 'birthdayRaw',
                  'lineName', 'phone', 'emName', 'emRelation', 'emPhone', 'shirtSize', 'pantsSize',
-                 'certText', 'cert', 'address', 'job', 'education',
+                 'certText', 'cert', 'address', 'job', 'introducer', 'education',
                  'updatedAt', 'updatedBy', 'updatedByRole', 'editLog']))
         // 自動開通後綁定：名冊尚未被綁定，且本人帳號已指向這筆名冊
         || (signedIn() && resource.data.get('boundUserId', null) in [null, '']
