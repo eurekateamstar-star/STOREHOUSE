@@ -1016,10 +1016,11 @@
     // ===== Firebase 身分驗證：LINE → 驗證伺服器（Cloudflare）→ Firebase，資料庫規則靠這個認人 =====
     const AUTH_URL = 'https://bst-auth.eurekateamstar.workers.dev';   // Cloudflare Worker 網址
     const auth = getAuth(app);
+    const liffUid = () => { try { const t = liff.getDecodedIDToken(); return (t && t.sub) || null; } catch (e) { return null; } };
     async function fbSignIn(uid) {
       try {
         await new Promise(res => { const off = onAuthStateChanged(auth, () => { off(); res(); }); });
-        if (auth.currentUser && auth.currentUser.uid === uid) return true;
+        if (auth.currentUser && (!uid || auth.currentUser.uid === uid)) return true;
         if (!AUTH_URL) return false;
         const at = liff.getAccessToken();
         if (!at) return false;
@@ -1538,8 +1539,10 @@
         }
         if (!liff.isLoggedIn()) { setLoginState('needLogin'); return; }
         try {
+            const fbP = fbSignIn(liffUid());          // 和取得 LINE 資料同時進行，登入比較快
             const prof = await liff.getProfile();
-            await fbSignIn(prof.userId);
+            await fbP;
+            if (!auth.currentUser || auth.currentUser.uid !== prof.userId) await fbSignIn(prof.userId);
             await identifyLineUser(prof);
         } catch (e) {
             console.error('liff profile', e);
@@ -1695,7 +1698,7 @@
     function updateMenuUser() {
         const mu = _el('menu-user'), lb = _el('btn-logout');
         if (mu) mu.innerText = currentUser ? `👤 ${currentUser.account}${isAdmin() ? ' · 管理員' : ''}` : '';
-        if (lb) lb.innerText = inLine() ? '我的帳號' : '登出';
+        if (lb) { lb.innerText = '登出'; lb.style.display = inLine() ? 'none' : ''; }
     }
 
     // 權限被取消時：立刻關掉管理員專屬的畫面、掃描器與視窗，退回主選單
@@ -3275,7 +3278,7 @@
             pages = [];
             snap.forEach(d => pages.push({ id: d.id, ...d.data() }));
             pages.sort((a, b) => (a.order || 0) - (b.order || 0));
-        } catch (e) { pages = []; }
+        } catch (e) { pages = []; console.warn('讀取頁面失敗', e); return; }   // 讀取失敗不要自動新增頁面
         if (pages.length === 0) {
             const p = { name: '第 1 排', imageUrl: '', scale: 1, panX: 0, panY: 0, order: Date.now() };
             const ref = await addDoc(collection(db, "warehouse_pages"), p);

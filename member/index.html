@@ -429,10 +429,11 @@
     // ===== Firebase 身分驗證：LINE → 驗證伺服器（Cloudflare）→ Firebase，資料庫規則靠這個認人 =====
     const AUTH_URL = 'https://bst-auth.eurekateamstar.workers.dev';   // Cloudflare Worker 網址
     const auth = getAuth(app);
+    const liffUid = () => { try { const t = liff.getDecodedIDToken(); return (t && t.sub) || null; } catch (e) { return null; } };
     async function fbSignIn(uid) {
       try {
         await new Promise(res => { const off = onAuthStateChanged(auth, () => { off(); res(); }); });
-        if (auth.currentUser && auth.currentUser.uid === uid) return true;
+        if (auth.currentUser && (!uid || auth.currentUser.uid === uid)) return true;
         if (!AUTH_URL) return false;
         const at = liff.getAccessToken();
         if (!at) return false;
@@ -1433,6 +1434,7 @@
       return show('v-login');
     }
     try {
+      var fbP = fbSignIn(liffUid());
       profile = await liff.getProfile();
       try { sessionStorage.removeItem('memberRelogin'); } catch (e) {}
     } catch (e) {
@@ -1452,7 +1454,8 @@
     }
 
     $('loading-text').textContent = '讀取會員資料…';
-    await fbSignIn(profile.userId);
+    try { await fbP; } catch (e) {}
+    if (!auth.currentUser || auth.currentUser.uid !== profile.userId) await fbSignIn(profile.userId);
     const ref = doc(db, 'users', profile.userId);
     let first = true;
     // 即時同步：管理員核准、退回、改名、改分類、設為管理員，這裡都會馬上更新

@@ -33,13 +33,16 @@ export default {
       if (!accessToken) return json({ error: 'missing token' }, 400);
 
       // 1) 確認 token 是我們的 LINE 頻道發的、還沒過期
-      const v = await fetch('https://api.line.me/oauth2/v2.1/verify?access_token=' + encodeURIComponent(accessToken));
+      // 兩個 LINE 查詢同時送出，比較快
+      const [v, p] = await Promise.all([
+        fetch('https://api.line.me/oauth2/v2.1/verify?access_token=' + encodeURIComponent(accessToken)),
+        fetch('https://api.line.me/v2/profile', { headers: { Authorization: 'Bearer ' + accessToken } }),
+      ]);
       if (!v.ok) return json({ error: 'invalid token' }, 401);
       const info = await v.json();
       if (String(info.client_id) !== LINE_CHANNEL_ID || !(info.expires_in > 0)) return json({ error: 'wrong channel' }, 401);
 
       // 2) 用 token 取得 LINE userId（不能偽造）
-      const p = await fetch('https://api.line.me/v2/profile', { headers: { Authorization: 'Bearer ' + accessToken } });
       if (!p.ok) return json({ error: 'profile failed' }, 401);
       const { userId } = await p.json();
       if (!userId) return json({ error: 'no user' }, 401);
