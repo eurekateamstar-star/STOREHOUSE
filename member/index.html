@@ -118,6 +118,8 @@
   .upd { font-size: 11px; font-weight: 800; white-space: nowrap; }
   .upd.self { color: #0369a1; } .upd.admin { color: #7c3aed; }
   .r-card .upd { display: block; margin-top: 4px; }
+  .upd.conf { color: #15803d; } .upd.req { color: #c2410c; } .upd.none { color: #9ca3af; }
+  td .upd { display: block; line-height: 1.6; }
   .edit-form .field { margin-bottom: 10px; }
   .edit-form .field label { font-size: 12px; }
   .edit-form .field input, .edit-form .field textarea { font-size: 15px; padding: 10px 12px; }
@@ -792,11 +794,11 @@
       return r.boundUserId ? `<span class="pill bound" title="${u ? esc(u.lineDisplayName || '') : ''}">✔ 已綁定</span>` : '<span class="pill unbound">未綁定</span>'; };
     const av = r => { const u = r.boundUserId && userById(r.boundUserId); return miniAv(u && u.pictureUrl, r.name); };
     $('rs-table').innerHTML = `<thead><tr>${ROSTER_COLS.map(([k, t]) => `<th>${esc(t)}</th>`).join('')}<th>LINE 綁定</th><th>最後更新</th></tr></thead><tbody>`
-      + (list.map(r => `<tr data-r="${r.id}">${ROSTER_COLS.map(([k]) => `<td class="c-${k}">${k === 'name' ? `<span class="nm-cell">${av(r)}<b>${esc(rv(r, k) || '')}</b></span>` : esc(rv(r, k) || '')}</td>`).join('')}<td>${st(r)}</td><td>${updText(r, true)}</td></tr>`).join('')
+      + (list.map(r => `<tr data-r="${r.id}">${ROSTER_COLS.map(([k]) => `<td class="c-${k}">${k === 'name' ? `<span class="nm-cell">${av(r)}<b>${esc(rv(r, k) || '')}</b></span>` : esc(rv(r, k) || '')}</td>`).join('')}<td>${st(r)}</td><td>${updText(r, true)}${confText(r)}</td></tr>`).join('')
         || `<tr><td colspan="${ROSTER_COLS.length + 2}"><div class="empty">沒有符合的資料</div></td></tr>`) + '</tbody>';
     $('rs-cards').innerHTML = list.map(r => `<div class="card r-card" data-r="${r.id}">${av(r)}
         <div class="main"><div class="nm">${r.serial ? `<span style="color:var(--sub);font-size:13px;">${esc(r.serial)}</span>` : ''}${esc(rv(r, 'name'))} ${r.cert ? `<span class="pill cert">${esc(r.cert)}</span>` : ''}</div>
-        <div class="sub">${esc(r.phone || '無電話')}　${esc(rv(r, 'birthdayRaw') || '')}</div>${updText(r, true)}</div>${st(r)}</div>`).join('')
+        <div class="sub">${esc(r.phone || '無電話')}　${esc(rv(r, 'birthdayRaw') || '')}</div>${updText(r, true)}${confText(r)}</div>${st(r)}</div>`).join('')
       || '<div class="card empty">沒有符合的資料</div>';
     document.querySelectorAll('#rs-table [data-r], #rs-cards [data-r]').forEach(e => e.onclick = () => openRoster(e.dataset.r));
   }
@@ -874,6 +876,14 @@
     return `<span class="upd ${r.updatedByRole === 'self' ? 'self' : 'admin'}">${who}${short ? '' : '（' + esc(r.updatedBy || '') + '）'} ${when}</span>`;
   }
 
+  // 本人確認狀態（從綁定的會員帳號讀）
+  function confText(r) {
+    if (!r.boundUserId) return '';
+    const u = userById(r.boundUserId); if (!u) return '';
+    const ms = tsMs(u.profileConfirmedAt);
+    if (ms) { const d = new Date(ms), p = n => String(n).padStart(2, '0'); return `<span class="upd conf">✅ 已確認 ${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}</span>`; }
+    return u.confirmRequestedAt ? '<span class="upd req">🔔 待本人確認</span>' : '<span class="upd none">未確認</span>';
+  }
   // 更新紀錄文字：修改／確認無誤／管理員要求重新確認
   function logText(l) {
     const who = l.role === 'self' ? '🙋 本人' : '🛠 管理員';
@@ -913,7 +923,7 @@
       await updateDoc(doc(db, 'users', profile.userId), { profileConfirmedAt: serverTimestamp(), confirmRequestedAt: deleteField(), confirmRequestedBy: deleteField() });
       if (myRoster && myRoster.id) await updateDoc(doc(db, ROSTER, myRoster.id), {
         confirmedAt: serverTimestamp(), updatedAt: serverTimestamp(), updatedBy: by, updatedByRole: 'self',
-        editLog: [{ at: Date.now(), by, role: 'self', action: 'confirm', fields: [] }, ...(myRoster.editLog || [])].slice(0, 30) }).catch(() => {});
+        editLog: [{ at: Date.now(), by, role: 'self', action: 'confirm', fields: [] }, ...(myRoster.editLog || [])].slice(0, 30) }).catch(e => console.warn('確認紀錄寫入失敗', e));
       closeSheet(); toast('✅ 已確認，謝謝！');
     } catch (e) { toast('❌ 儲存失敗'); }
   }
