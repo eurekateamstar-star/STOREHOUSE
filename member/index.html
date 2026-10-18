@@ -134,6 +134,8 @@
   .edit-grid .full { grid-column: 1 / -1; }
   .log-item { font-size: 12px; color: var(--sub); padding: 6px 2px; border-bottom: 1px dashed var(--line); }
   .log-item b { color: var(--ink); }
+  .log-item { position: relative; padding-right: 30px; }
+  .log-del { position: absolute; right: 0; top: 4px; width: 24px; height: 24px; border: none; border-radius: 50%; background: #fee2e2; color: #dc2626; font-size: 12px; font-weight: 900; cursor: pointer; line-height: 24px; padding: 0; }
   .log-ch { margin: 3px 0 0 14px; font-size: 12px; color: var(--sub); line-height: 1.5; word-break: break-all; }
   .log-ch .f { font-weight: 800; color: #555; } .log-ch s { color: #9ca3af; } .log-ch b { color: #15803d; }
   .confirm-card { background: linear-gradient(135deg,#fff7ed,#fff); border: 1.5px solid #fdba74; border-radius: 20px; padding: 16px 16px 14px; margin-top: 16px; box-shadow: var(--shadow); }
@@ -824,7 +826,7 @@
       <div class="grp">更新紀錄</div>
       <div class="rows">${row('本人確認', !r.boundUserId ? '尚未綁定 LINE' : !u ? '—' : u.profileConfirmedAt ? '<span class="ok">✅ 已確認</span>　' + esc(fmtAt(tsMs(u.profileConfirmedAt))) : u.confirmRequestedAt ? '<span class="warn">🔔 已要求，等待本人確認</span>' : '<span class="warn">尚未確認</span>')}</div>
       ${r.boundUserId ? `<button class="sbtn" id="sh-reconfirm" style="margin:8px 0 2px; width:100%;">🔔 請本人重新確認資料</button>` : ''}
-      <div>${(r.editLog || []).length ? r.editLog.map(logText).join('') : '<div class="log-item">尚無更新紀錄</div>'}</div>
+      <div>${(r.editLog || []).length ? r.editLog.map((l, i) => logText(l, i)).join('') : '<div class="log-item">尚無更新紀錄</div>'}</div>
       <div class="p-actions">
         <button class="sbtn pri" id="sh-edit">✏️ 編輯資料</button>
         ${r.boundUserId ? '<button class="sbtn" id="sh-unbind">解除 LINE 綁定</button>' : ''}
@@ -832,6 +834,17 @@
       </div>`;
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open');
     $('sh-edit').onclick = () => openEditForm(r, 'admin');
+    document.querySelectorAll('#sheet-body .log-del').forEach(btn => btn.onclick = async () => {
+      const i = +btn.dataset.li, l = (r.editLog || [])[i]; if (!l) return;
+      if (!(await dialog({ title: '刪除這筆更新紀錄？', msg: `${fmtAt(l.at)}　${l.role === 'self' ? '本人' : '管理員'}（${l.by || ''}）\n刪除後無法復原。`, okText: '刪除', danger: true }))) return;
+      const log = (r.editLog || []).filter((_, j) => j !== i);
+      const last = log.find(x => x.action !== 'request');   // 「最後更新」改成剩下最新的一筆
+      const upd = { editLog: log };
+      if (last) { upd.updatedAt = new Date(last.at); upd.updatedBy = last.by || ''; upd.updatedByRole = last.role; }
+      else { upd.updatedAt = deleteField(); upd.updatedBy = deleteField(); upd.updatedByRole = deleteField(); }
+      try { await updateDoc(doc(db, ROSTER, r.id), upd); toast('已刪除'); setTimeout(() => { if (sheetRid === r.id) openRoster(r.id); }, 300); }
+      catch (e) { toast('❌ 刪除失敗'); }
+    });
     if ($('sh-reconfirm')) $('sh-reconfirm').onclick = async () => {
       if (!(await dialog({ title: '請本人重新確認？', msg: `「${r.name}」下次打開會員中心時，會跳出確認資料的畫面。`, okText: '送出' }))) return;
       const by = user.realName || profile.displayName || '';
@@ -887,13 +900,13 @@
     return u.confirmRequestedAt ? '<span class="upd req">🔔 待本人確認</span>' : '<span class="upd none">未確認</span>';
   }
   // 更新紀錄文字：修改／確認無誤／管理員要求重新確認
-  function logText(l) {
+  function logText(l, i) {
     const who = l.role === 'self' ? '🙋 本人' : '🛠 管理員';
     const what = l.action === 'confirm' ? '✅ 確認資料無誤（未修改）'
       : l.action === 'request' ? '🔔 要求本人重新確認資料'
       : '修改：' + esc((l.fields || []).join('、'));
     const ch = (l.changes || []).map(c => `<div class="log-ch"><span class="f">${esc(c.f)}</span>　<s>${esc(c.from || '（空白）')}</s> → <b>${esc(c.to || '（空白）')}</b></div>`).join('');
-    return `<div class="log-item"><b>${esc(fmtAt(l.at))}</b>　${who}（${esc(l.by || '')}）${what}${ch}</div>`;
+    return `<div class="log-item">${i != null ? `<button class="log-del" data-li="${i}" title="刪除這筆紀錄">✕</button>` : ''}<b>${esc(fmtAt(l.at))}</b>　${who}（${esc(l.by || '')}）${what}${ch}</div>`;
   }
   let editCtx = null;
   function openEditForm(r, role) {
