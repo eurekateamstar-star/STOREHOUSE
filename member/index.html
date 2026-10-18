@@ -134,6 +134,8 @@
   .edit-grid .full { grid-column: 1 / -1; }
   .log-item { font-size: 12px; color: var(--sub); padding: 6px 2px; border-bottom: 1px dashed var(--line); }
   .log-item b { color: var(--ink); }
+  .log-ch { margin: 3px 0 0 14px; font-size: 12px; color: var(--sub); line-height: 1.5; word-break: break-all; }
+  .log-ch .f { font-weight: 800; color: #555; } .log-ch s { color: #9ca3af; } .log-ch b { color: #15803d; }
   .confirm-card { background: linear-gradient(135deg,#fff7ed,#fff); border: 1.5px solid #fdba74; border-radius: 20px; padding: 16px 16px 14px; margin-top: 16px; box-shadow: var(--shadow); }
   .confirm-card .t { font-size: 16px; font-weight: 900; color: #c2410c; }
   .confirm-card .d { font-size: 13px; color: #6b7280; margin: 6px 0 12px; line-height: 1.6; }
@@ -890,7 +892,8 @@
     const what = l.action === 'confirm' ? '✅ 確認資料無誤（未修改）'
       : l.action === 'request' ? '🔔 要求本人重新確認資料'
       : '修改：' + esc((l.fields || []).join('、'));
-    return `<div class="log-item"><b>${esc(fmtAt(l.at))}</b>　${who}（${esc(l.by || '')}）${what}</div>`;
+    const ch = (l.changes || []).map(c => `<div class="log-ch"><span class="f">${esc(c.f)}</span>　<s>${esc(c.from || '（空白）')}</s> → <b>${esc(c.to || '（空白）')}</b></div>`).join('');
+    return `<div class="log-item"><b>${esc(fmtAt(l.at))}</b>　${who}（${esc(l.by || '')}）${what}${ch}</div>`;
   }
   let editCtx = null;
   function openEditForm(r, role) {
@@ -982,7 +985,9 @@
     const by = user.realName || profile.displayName || '';
     upd.updatedAt = serverTimestamp(); upd.updatedBy = by; upd.updatedByRole = role;
     if (role === 'self') upd.confirmedAt = serverTimestamp();
-    upd.editLog = [{ at: Date.now(), by, role, fields: labels }, ...(r.editLog || [])].slice(0, 30);
+    const cut = v => { v = String(v || ''); return v.length > 60 ? v.slice(0, 60) + '…' : v; };
+    const changes = changed.map((k, i) => ({ f: labels[i], from: cut(curVal(r, k)), to: cut(vals[k]) }));
+    upd.editLog = [{ at: Date.now(), by, role, fields: labels, changes }, ...(r.editLog || [])].slice(0, 30);
     const btn = $('ed-save'); btn.disabled = true; btn.textContent = '儲存中…';
     try {
       // 名冊文件 ID 跟著身分證＋生日（登入驗證用）；改了就搬到新的 ID
