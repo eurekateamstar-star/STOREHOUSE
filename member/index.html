@@ -134,6 +134,10 @@
   .edit-grid .full { grid-column: 1 / -1; }
   .log-item { font-size: 12px; color: var(--sub); padding: 6px 2px; border-bottom: 1px dashed var(--line); }
   .log-item b { color: var(--ink); }
+  .paste-box { background: #f5f3ff; border: 1.5px dashed #a78bfa; border-radius: 14px; padding: 10px; margin: 0 0 14px; display: flex; flex-direction: column; gap: 8px; }
+  .paste-box textarea { width: 100%; box-sizing: border-box; min-height: 74px; border: 1px solid #ddd6fe; border-radius: 10px; padding: 8px 10px; font-size: 14px; font-family: inherit; resize: vertical; }
+  .paste-box .sbtn.pri { align-self: flex-end; background: #7c3aed; color: #fff; }
+  .edit-form .filled { background: #f0fdf4; border-color: #86efac !important; }
   .log-item { position: relative; padding-right: 30px; }
   .log-del { position: absolute; right: 0; top: 4px; width: 24px; height: 24px; border: none; border-radius: 50%; background: #fee2e2; color: #dc2626; font-size: 12px; font-weight: 900; cursor: pointer; line-height: 24px; padding: 0; }
   .log-ch { margin: 3px 0 0 14px; font-size: 12px; color: var(--sub); line-height: 1.5; word-break: break-all; }
@@ -910,6 +914,75 @@
     const ch = (l.changes || []).map(c => `<div class="log-ch"><span class="f">${esc(c.f)}</span>　<s>${esc(c.from || '（空白）')}</s> → <b>${esc(c.to || '（空白）')}</b></div>`).join('');
     return `<div class="log-item">${i != null ? `<button class="log-del" data-li="${i}" title="刪除這筆紀錄">✕</button>` : ''}<b>${esc(fmtAt(l.at))}</b>　${who}（${esc(l.by || '')}）${what}${ch}</div>`;
   }
+  // 智慧貼上：把一串文字拆成名冊欄位（在瀏覽器裡處理，資料不會外傳）
+  const PASTE_LABELS = [
+    ['serial', ['序號', '編號']], ['joinYear', ['加入年份', '加入年度', '入團年份', '加入時間']],
+    ['name', ['真實姓名', '姓名', '本名', '名字']], ['lineName', ['LINE名稱', 'LINE暱稱', 'Line名稱', 'line名稱', 'LINE', 'Line', 'line', '賴']],
+    ['birthdayRaw', ['出生年月日', '出生日期', '生日', '出生']], ['idCard', ['身分證字號', '身份證字號', '身分證號', '身份證號', '身分證', '身份證']],
+    ['emName', ['緊急聯絡人姓名', '緊急連絡人姓名', '緊急聯絡人', '緊急連絡人']], ['emRelation', ['緊急聯絡人關係', '緊急連絡人關係', '關係']],
+    ['emPhone', ['緊急聯絡人電話', '緊急連絡人電話', '緊急電話']], ['phone', ['本人聯絡電話', '本人電話', '聯絡電話', '連絡電話', '手機號碼', '手機', '電話']],
+    ['shirtSize', ['衣服尺寸', '上衣尺寸', '衣服', '上衣']], ['pantsSize', ['褲子尺寸', '褲子', '褲']],
+    ['certText', ['證照', '執照', '證書']], ['address', ['通訊地址', '戶籍地址', '地址', '住址']], ['job', ['職業', '工作']],
+    ['introducer', ['介紹人', '推薦人']], ['education', ['學歷.經歷', '學歷經歷', '學經歷', '學歷', '經歷']], ['notes', ['更新-備註', '備註']]];
+  const PASTE_ORDER = ['serial', 'joinYear', 'name', 'lineName', 'birthdayRaw', 'idCard', 'phone', 'emName', 'emRelation', 'emPhone', 'shirtSize', 'pantsSize', 'certText', 'address', 'job', 'introducer', 'education', 'notes'];
+  const SHORT_KEYS = ['serial', 'joinYear', 'name', 'lineName', 'idCard', 'phone', 'emName', 'emRelation', 'emPhone', 'shirtSize', 'pantsSize'];
+  function parsePaste(text) {
+    const out = {};
+    text = String(text || '').replace(/\r/g, '').trim();
+    if (!text) return out;
+    // 1) 從 Excel 複製的一整列（Tab 分隔）→ 照欄位順序
+    const cells = text.split('\n')[0].split('\t');
+    if (cells.length >= 6) {
+      const start = cells.length === PASTE_ORDER.length - 1 && !/^\d+$/.test(cells[0].trim()) ? 1 : 0;
+      cells.forEach((c, i) => { const k = PASTE_ORDER[i + start]; if (k && c.trim()) out[k] = c.trim(); });
+      return out;
+    }
+    // 2) 有標籤的寫法：「姓名：王小明 電話0912…」
+    const hits = [];
+    const taken = new Array(text.length).fill(false);
+    const all = [];
+    PASTE_LABELS.forEach(([k, ls]) => ls.forEach(l => all.push([k, l])));
+    all.sort((a, b) => b[1].length - a[1].length);
+    all.forEach(([k, l]) => {
+      let i = -1;
+      while ((i = text.indexOf(l, i + 1)) !== -1) {
+        if (taken.slice(i, i + l.length).some(Boolean)) continue;
+        // 英文標籤要是獨立的字
+        if (/^[A-Za-z]/.test(l) && (/[A-Za-z]/.test(text[i - 1] || '') || /[A-Za-z]/.test(text[i + l.length] || ''))) continue;
+        for (let j = i; j < i + l.length; j++) taken[j] = true;
+        hits.push({ k, s: i, e: i + l.length });
+      }
+    });
+    hits.sort((a, b) => a.s - b.s);
+    let rest = text;
+    hits.forEach((h, n) => {
+      const end = n + 1 < hits.length ? hits[n + 1].s : text.length;
+      let v = text.slice(h.e, end).replace(/^[\s:：=＝\-－、,，;；|｜)）(（]+/, '').replace(/[\s、,，;；|｜/(（]+$/, '').trim();
+      // 短欄位只取第一段，後面的（例如「王大明 父子 0933…」）留給下面去猜
+      let extra = '';
+      if (SHORT_KEYS.includes(h.k) && /\s/.test(v) && !/^[\dA-Za-z\s\-+()]+$/.test(v)) { const m = v.match(/^(\S+)\s+([\s\S]*)$/); v = m[1]; extra = m[2]; }
+      if (v && out[h.k] == null) out[h.k] = v;
+      rest = rest.replace(text.slice(h.s, end), ' ' + extra + ' ');
+    });
+    // 3) 沒標籤的部分：用格式猜
+    const R = rest + ' ';
+    const take = (k, v) => { if (v && !out[k]) out[k] = v.trim(); };
+    const id = R.match(/\b[A-Za-z][12]\d{8}\b/); if (id) take('idCard', id[0].toUpperCase());
+    const phones = R.match(/(?:\+?886-?|0)9\d{2}[-\s]?\d{3}[-\s]?\d{3}|0\d{1,2}-\d{6,8}/g) || [];
+    phones.forEach(p => { if (!out.phone) out.phone = p; else if (!out.emPhone && p !== out.phone) out.emPhone = p; });
+    const bd = R.match(/(?:19|20)\d{2}[./\-年]\d{1,2}[./\-月]\d{1,2}日?|\b\d{2,3}[./\-年]\d{1,2}[./\-月]\d{1,2}日?/); if (bd) take('birthdayRaw', bd[0]);
+    const cert = R.match(/EMT[\s\-]?(?:P|1|2|Ｐ)|EMTP|ACLS[^\s,，]*|護理師|醫師|護士|救護技術員|無證照/i); if (cert) take('certText', cert[0]);
+    const addr = R.match(/[一-龥]{1,4}[市縣][一-龥\d\-之巷弄號樓Ff段路街里鄰村區鎮鄉]{3,}/); if (addr) take('address', addr[0]);
+    const rel = R.match(/父子|父女|母子|母女|夫妻|配偶|兄弟|姊妹|姐妹|兄妹|姐弟|姊弟|兄姊|朋友|同事/); if (rel) take('emRelation', rel[0]);
+    const sizes = (R.match(/(?:^|[\s,，、/])((?:\d?X{0,3}[SL]|M|\dL|F))(?=$|[\s,，、/])/g) || []).map(s => s.replace(/^[\s,，、/]/, ''));
+    if (sizes[0]) take('shirtSize', sizes[0]); if (sizes[1]) take('pantsSize', sizes[1]);
+    if (!out.name) { const nm = rest.trim().match(/^[一-龥]{2,4}(?=[\s,，、]|$)/); if (nm) out.name = nm[0]; }
+    // 整理
+    if (out.idCard) out.idCard = out.idCard.replace(/\s+/g, '').toUpperCase();
+    ['shirtSize', 'pantsSize'].forEach(k => { if (out[k]) out[k] = out[k].replace(/\s+/g, '').toUpperCase(); });
+    return out;
+  }
+
   let editCtx = null;
   function openEditForm(r, role) {
     editCtx = { r, role };
@@ -923,11 +996,26 @@
     $('sheet-body').innerHTML = `
       <h3>${r.isNew ? '＋ 新增團員' : '✏️ 編輯' + (role === 'self' ? '我的資料' : '：' + esc(rv(r, 'name') || ''))}</h3>
       <div style="font-size:12px; color:var(--sub); margin:4px 0 12px;">${role === 'self' ? '請確認以下資料正確，修改後會記錄為「本人」更新。' : '修改後會記錄為「管理員」更新。'}</div>
+      ${role === 'admin' ? `<div class="paste-box">
+        <textarea id="ed-paste" placeholder="🪄 智慧貼上：把一整串資料貼在這裡（LINE 訊息、表單內容、Excel 複製的一整列都可以），按「自動填入」就會分到對應的格子。"></textarea>
+        <button class="sbtn pri" id="ed-paste-go">🪄 自動填入</button>
+      </div>` : ''}
       <div class="edit-form edit-grid">${fields.map(inp).join('')}</div>
       <button class="btn" id="ed-save">${role === 'self' ? '確認並儲存' : '儲存'}</button>`;
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open');
     $('sheet').scrollTop = 0;
     $('ed-save').onclick = saveEdit;
+    if ($('ed-paste-go')) $('ed-paste-go').onclick = () => {
+      const o = parsePaste($('ed-paste').value);
+      if (o.birthdayRaw) { const iso = parseBday(o.birthdayRaw); if (iso) o.birthdayRaw = rocBday(iso); }
+      let n = 0;
+      document.querySelectorAll('#sheet-body [data-k]').forEach(el => {
+        el.classList.remove('filled');
+        const v = o[el.dataset.k];
+        if (v) { el.value = v; el.classList.add('filled'); n++; }
+      });
+      toast(n ? `🪄 已填入 ${n} 個欄位，請檢查後儲存` : '看不出資料，請換個寫法（例如「姓名：王小明 電話：0912…」）');
+    };
   }
   const editMe = () => {
     const r = myRoster || { id: null, name: user.realName, nameRaw: user.realName, idCard: user.idCard, birthday: user.birthday, certText: user.certification || '' };
