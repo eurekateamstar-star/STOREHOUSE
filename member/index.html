@@ -356,11 +356,29 @@
       return show('v-login');
     }
     if (!liff.isLoggedIn()) {
-      $('btn-line-login').onclick = () => liff.login({ redirectUri: location.href });
+      $('btn-line-login').onclick = () => liff.login({ redirectUri: location.origin + location.pathname });
       return show('v-login');
     }
-    try { profile = await liff.getProfile(); }
-    catch (e) { $('login-msg').textContent = '無法取得 LINE 身分，請重新整理。'; $('btn-retry').classList.remove('hidden'); $('btn-line-login').classList.add('hidden'); return show('v-login'); }
+    try {
+      profile = await liff.getProfile();
+      try { sessionStorage.removeItem('memberRelogin'); } catch (e) {}
+    } catch (e) {
+      // 舊的登入憑證失效（例如換過 LIFF、在瀏覽器登入過期）→ 自動登出再重新登入一次
+      let tried = false;
+      try { tried = sessionStorage.getItem('memberRelogin') === '1'; } catch (err) {}
+      if (!tried && !inLine()) {
+        try { sessionStorage.setItem('memberRelogin', '1'); } catch (err) {}
+        try { liff.logout(); } catch (err) {}
+        liff.login({ redirectUri: location.origin + location.pathname });
+        return;
+      }
+      $('login-msg').textContent = '無法取得 LINE 身分，請重新登入。' + (e && e.message ? '\n（' + e.message + '）' : '');
+      $('btn-line-login').textContent = '重新登入 LINE';
+      $('btn-line-login').classList.remove('hidden');
+      $('btn-line-login').onclick = () => { try { sessionStorage.removeItem('memberRelogin'); liff.logout(); } catch (err) {} liff.login({ redirectUri: location.origin + location.pathname }); };
+      $('btn-retry').classList.add('hidden');
+      return show('v-login');
+    }
 
     $('loading-text').textContent = '讀取會員資料…';
     const ref = doc(db, 'users', profile.userId);
