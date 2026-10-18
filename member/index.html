@@ -110,6 +110,23 @@
   .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
   .toolbar .inp { flex: 1 1 220px; padding: 10px 14px; font-size: 15px; }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  @media (max-width: 760px) {   /* 手機：篩選標籤排成一列，左右滑動 */
+    .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px 12px; padding: 2px 16px; -webkit-overflow-scrolling: touch; }
+    .chips::-webkit-scrollbar { display: none; }
+    .chip { flex-shrink: 0; }
+  }
+  .upd { font-size: 11px; font-weight: 800; white-space: nowrap; }
+  .upd.self { color: #0369a1; } .upd.admin { color: #7c3aed; }
+  .r-card .upd { display: block; margin-top: 4px; }
+  .edit-form .field { margin-bottom: 10px; }
+  .edit-form .field label { font-size: 12px; }
+  .edit-form .field input, .edit-form .field textarea { font-size: 15px; padding: 10px 12px; }
+  .edit-form textarea { width: 100%; border-radius: 12px; border: 1.5px solid #e5e7eb; font-family: inherit; resize: vertical; min-height: 60px; }
+  .edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+  .edit-grid .full { grid-column: 1 / -1; }
+  .log-item { font-size: 12px; color: var(--sub); padding: 6px 2px; border-bottom: 1px dashed var(--line); }
+  .log-item b { color: var(--ink); }
+  .edit-btn { border: none; border-radius: 12px; padding: 10px 14px; font-size: 14px; font-weight: 800; cursor: pointer; background: #fff; color: var(--primary); box-shadow: var(--shadow); font-family: inherit; }
   .chip { border: 1.5px solid #e5e7eb; background: #fff; color: #475569; font-size: 13px; font-weight: 800; padding: 6px 12px; border-radius: 999px; cursor: pointer; font-family: inherit; }
   .chip.on { background: var(--primary); border-color: var(--primary); color: #fff; }
   .sbtn { border: none; border-radius: 10px; padding: 8px 13px; font-size: 13px; font-weight: 800; cursor: pointer; color: #fff; background: #64748b; white-space: nowrap; font-family: inherit; }
@@ -265,7 +282,7 @@
 
     <div class="col-r">
       <div id="roster-sec" class="hidden">
-        <div class="sec">團員名冊資料</div>
+        <div class="sec" style="display:flex; justify-content:space-between; align-items:center;">團員資料<button class="edit-btn" id="btn-edit-me">✏️ 編輯我的資料</button></div>
         <div class="card rows" id="my-roster"></div>
       </div>
 
@@ -299,7 +316,6 @@
       <button class="tab" data-tab="pending">⏳ 待審核<span class="c hidden" id="tab-pending-c"></span></button>
       <button class="tab on" data-tab="roster">📋 團員名冊</button>
       <button class="tab" data-tab="users">👥 系統會員</button>
-      <button class="tab" data-tab="import">📥 匯入名冊</button>
     </div>
 
     <!-- 待審核 -->
@@ -504,8 +520,8 @@
     }
 
     const name = user.realName || '';
-    const cert = user.certification || '';
-    const cat = ('category' in user) ? (user.category || '') : (user.warehouseCategory || '');
+    const cert = user.certification || (myRoster && myRoster.cert) || '';
+    const cat = (('category' in user) ? (user.category || '') : (user.warehouseCategory || '')) || cert;
     setAvatar($('m-avatar'), user.pictureUrl || profile.pictureUrl, name);
     $('m-name').textContent = name || '(未命名)';
     $('m-line').textContent = 'LINE：' + (user.lineDisplayName || profile.displayName || '—');
@@ -531,13 +547,13 @@
 
     // 自己在名冊裡的資料
     const r = myRoster;
-    $('roster-sec').classList.toggle('hidden', !r);
-    if (r) {
-      const row = (k, v) => v ? `<div class="row"><span class="k">${k}</span><span class="v">${esc(v)}</span></div>` : '';
-      $('my-roster').innerHTML = row('聯絡電話', r.phone) + row('加入年份', r.joinYear) + row('證照（名冊）', r.certText)
-        + row('衣服 / 褲子尺寸', [r.shirtSize, r.pantsSize].filter(Boolean).join(' / '))
-        + row('緊急聯絡人', [r.emName, r.emRelation, r.emPhone].filter(Boolean).join('　'))
-        || '<div class="row"><span class="v">名冊中沒有其他資料</span></div>';
+    const canSelf = !!(r || (user.idCard && user.birthday));
+    $('roster-sec').classList.toggle('hidden', !canSelf);
+    if (canSelf) {
+      const rr = r || {};
+      const row = (k, v) => `<div class="row"><span class="k">${k}</span><span class="v">${esc(v || '—')}</span></div>`;
+      $('my-roster').innerHTML = ROSTER_COLS.filter(([k]) => !['name', 'idCard', 'birthdayRaw'].includes(k)).map(([k, t]) => row(t, rr[k])).join('')
+        + `<div class="row"><span class="k">最後更新</span><span class="v">${updText(rr) || '尚未更新過'}</span></div>`;
     }
     show('v-member');
   }
@@ -705,7 +721,7 @@
         !(await dialog({ title: '這筆名冊已被綁定', msg: `「${r.name}」已被另一個 LINE 帳號綁定，仍要改綁給 ${u.realName}？`, okText: '改綁', danger: true }))) return;
     try {
       await updateDoc(doc(db, 'users', uid), { status: 'approved', rejectReason: '', approvedAt: serverTimestamp(), approvedBy: user.realName || '',
-        ...(r ? { rosterId: r.id, verifiedBy: 'admin' } : {}) });
+        ...(r ? { rosterId: r.id, verifiedBy: 'admin', ...(!u.certification && r.cert ? { certification: r.cert, category: r.cert, warehouseCategory: r.cert } : {}) } : {}) });
       if (r) {
         if (r.boundUserId && r.boundUserId !== uid) await updateDoc(doc(db, 'users', r.boundUserId), { rosterId: deleteField() }).catch(() => {});
         await updateDoc(doc(db, ROSTER, r.id), { boundUserId: uid, boundAt: serverTimestamp() });
@@ -733,30 +749,34 @@
     const certs = {}; rosterCache.forEach(r => { const c = r.cert || '未填'; certs[c] = (certs[c] || 0) + 1; });
     const bound = rosterCache.filter(r => r.boundUserId).length;
     const chip = (k, t) => `<button class="chip ${rsFilter === k ? 'on' : ''}" data-f="${esc(k)}">${esc(t)}</button>`;
+    const selfUpd = rosterCache.filter(r => r.updatedByRole === 'self').length;
     $('rs-chips').innerHTML = chip('all', `全部 (${rosterCache.length})`) + chip('bound', `已綁定 (${bound})`) + chip('unbound', `未綁定 (${rosterCache.length - bound})`)
+      + (selfUpd ? chip('self', `🙋 本人更新 (${selfUpd})`) : '') + chip('updated', `✏️ 有更新 (${rosterCache.filter(r => r.updatedAt).length})`)
       + Object.keys(certs).sort().map(c => chip('c:' + c, `${c} (${certs[c]})`)).join('');
     $('rs-chips').querySelectorAll('[data-f]').forEach(b => b.onclick = () => { rsFilter = b.dataset.f; renderRoster(); });
 
     let list = rosterCache.slice();
     if (rsFilter === 'bound') list = list.filter(r => r.boundUserId);
     else if (rsFilter === 'unbound') list = list.filter(r => !r.boundUserId);
+    else if (rsFilter === 'self') list = list.filter(r => r.updatedByRole === 'self').sort((a, b) => tsMs(b.updatedAt) - tsMs(a.updatedAt));
+    else if (rsFilter === 'updated') list = list.filter(r => r.updatedAt);
     else if (rsFilter.startsWith('c:')) list = list.filter(r => (r.cert || '未填') === rsFilter.slice(2));
     if (rsQuery) list = list.filter(r => [r.name, r.phone, r.lineName, r.introducer, r.certText, r.job].join(' ').toLowerCase().includes(rsQuery));
-    list.sort(rosterOrder);   // 依 Excel 原本的順序
+    if (rsFilter !== 'self') list.sort(rosterOrder);   // 依 Excel 原本的順序
 
     if (!rosterCache.length) {
-      const e = '<div class="empty">名冊是空的，請到「📥 匯入名冊」匯入團員資料表</div>';
+      const e = '<div class="empty">名冊是空的</div>';
       $('rs-table').innerHTML = `<tr><td>${e}</td></tr>`; $('rs-cards').innerHTML = `<div class="card">${e}</div>`; return;
     }
     const st = r => { const u = r.boundUserId && userById(r.boundUserId);
       return r.boundUserId ? `<span class="pill bound" title="${u ? esc(u.lineDisplayName || '') : ''}">✔ 已綁定</span>` : '<span class="pill unbound">未綁定</span>'; };
     const av = r => { const u = r.boundUserId && userById(r.boundUserId); return miniAv(u && u.pictureUrl, r.name); };
-    $('rs-table').innerHTML = `<thead><tr>${ROSTER_COLS.map(([k, t]) => `<th>${esc(t)}</th>`).join('')}<th>LINE 綁定</th></tr></thead><tbody>`
-      + (list.map(r => `<tr data-r="${r.id}">${ROSTER_COLS.map(([k]) => `<td class="c-${k}">${k === 'name' ? `<span class="nm-cell">${av(r)}<b>${esc(rv(r, k) || '')}</b></span>` : esc(rv(r, k) || '')}</td>`).join('')}<td>${st(r)}</td></tr>`).join('')
-        || `<tr><td colspan="${ROSTER_COLS.length + 1}"><div class="empty">沒有符合的資料</div></td></tr>`) + '</tbody>';
+    $('rs-table').innerHTML = `<thead><tr>${ROSTER_COLS.map(([k, t]) => `<th>${esc(t)}</th>`).join('')}<th>LINE 綁定</th><th>最後更新</th></tr></thead><tbody>`
+      + (list.map(r => `<tr data-r="${r.id}">${ROSTER_COLS.map(([k]) => `<td class="c-${k}">${k === 'name' ? `<span class="nm-cell">${av(r)}<b>${esc(rv(r, k) || '')}</b></span>` : esc(rv(r, k) || '')}</td>`).join('')}<td>${st(r)}</td><td>${updText(r, true)}</td></tr>`).join('')
+        || `<tr><td colspan="${ROSTER_COLS.length + 2}"><div class="empty">沒有符合的資料</div></td></tr>`) + '</tbody>';
     $('rs-cards').innerHTML = list.map(r => `<div class="card r-card" data-r="${r.id}">${av(r)}
         <div class="main"><div class="nm">${r.serial ? `<span style="color:var(--sub);font-size:13px;">${esc(r.serial)}</span>` : ''}${esc(rv(r, 'name'))} ${r.cert ? `<span class="pill cert">${esc(r.cert)}</span>` : ''}</div>
-        <div class="sub">${esc(r.phone || '無電話')}　${esc(rv(r, 'birthdayRaw') || '')}</div></div>${st(r)}</div>`).join('')
+        <div class="sub">${esc(r.phone || '無電話')}　${esc(rv(r, 'birthdayRaw') || '')}</div>${updText(r, true)}</div>${st(r)}</div>`).join('')
       || '<div class="card empty">沒有符合的資料</div>';
     document.querySelectorAll('#rs-table [data-r], #rs-cards [data-r]').forEach(e => e.onclick = () => openRoster(e.dataset.r));
   }
@@ -777,11 +797,15 @@
       <div class="rows">${ROSTER_COLS.map(([k, t]) => row(esc(t), esc(rv(r, k) || ''))).join('')}</div>
       <div class="grp">系統</div>
       <div class="rows">${row('證照分類', esc(r.cert || ''))}${row('生日（換算）', esc(r.birthday ? bdayText(r.birthday) : '讀不到，無法自動驗證'))}${row('Email', esc(r.email || ''))}</div>
+      <div class="grp">更新紀錄</div>
+      <div>${(r.editLog || []).length ? r.editLog.map(l => `<div class="log-item"><b>${esc(fmtAt(l.at))}</b>　${l.role === 'self' ? '🙋 本人' : '🛠 管理員'}（${esc(l.by || '')}）修改：${esc((l.fields || []).join('、'))}</div>`).join('') : '<div class="log-item">尚無更新紀錄</div>'}</div>
       <div class="p-actions">
+        <button class="sbtn pri" id="sh-edit">✏️ 編輯資料</button>
         ${r.boundUserId ? '<button class="sbtn" id="sh-unbind">解除 LINE 綁定</button>' : ''}
         <button class="sbtn red" id="sh-del">刪除此筆名冊</button>
       </div>`;
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block';
+    $('sh-edit').onclick = () => openEditForm(r, 'admin');
     if ($('sh-unbind')) $('sh-unbind').onclick = async () => {
       if (!(await dialog({ title: '解除綁定？', msg: `「${r.name}」的名冊資料將不再對應到這個 LINE 帳號。\n（不會影響對方的會員資格）`, okText: '解除' }))) return;
       try {
@@ -796,6 +820,105 @@
       catch (e) { toast('❌ 刪除失敗'); }
     };
   }
+
+  // =========================================================
+  // 編輯名冊資料（管理員：全部欄位；本人：聯絡資料等）＋ 更新紀錄
+  // =========================================================
+  const SELF_FIELDS = ['lineName', 'phone', 'emName', 'emRelation', 'emPhone', 'shirtSize', 'pantsSize', 'certText', 'address', 'job', 'education'];
+  const LONG_FIELDS = ['address', 'education', 'notes', 'certText'];
+  function fmtAt(ms) {
+    if (!ms) return '';
+    const d = new Date(ms), p = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
+  function updText(r, short) {
+    const ms = tsMs(r && r.updatedAt);
+    if (!ms) return '';
+    const who = r.updatedByRole === 'self' ? '🙋 本人' : '🛠 管理員';
+    const d = new Date(ms), p = n => String(n).padStart(2, '0');
+    const when = short ? `${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}` : fmtAt(ms);
+    return `<span class="upd ${r.updatedByRole === 'self' ? 'self' : 'admin'}">${who}${short ? '' : '（' + esc(r.updatedBy || '') + '）'} ${when}</span>`;
+  }
+
+  let editCtx = null;
+  function openEditForm(r, role) {
+    editCtx = { r, role };
+    const fields = role === 'admin' ? ROSTER_COLS : ROSTER_COLS.filter(([k]) => SELF_FIELDS.includes(k));
+    const inp = ([k, t]) => {
+      const v = esc(rv(r, k) || '');
+      return `<div class="field ${LONG_FIELDS.includes(k) ? 'full' : ''}"><label>${esc(t)}</label>${LONG_FIELDS.includes(k)
+        ? `<textarea data-k="${k}">${v}</textarea>` : `<input data-k="${k}" value="${v}">`}</div>`;
+    };
+    $('sheet-body').innerHTML = `
+      <h3>✏️ 編輯${role === 'self' ? '我的資料' : '：' + esc(rv(r, 'name') || '')}</h3>
+      <div style="font-size:12px; color:var(--sub); margin:4px 0 12px;">${role === 'self' ? '姓名、身分證、生日如需更改，請聯絡管理員。' : '修改後會記錄為「管理員」更新。'}</div>
+      <div class="edit-form edit-grid">${fields.map(inp).join('')}</div>
+      <button class="btn" id="ed-save">儲存</button>`;
+    $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block';
+    $('sheet').scrollTop = 0;
+    $('ed-save').onclick = saveEdit;
+  }
+  $('btn-edit-me').onclick = () => {
+    const r = myRoster || { id: null, name: user.realName, nameRaw: user.realName, idCard: user.idCard, birthday: user.birthday };
+    openEditForm(r, 'self');
+  };
+
+  async function saveEdit() {
+    const { r, role } = editCtx;
+    const vals = {};
+    document.querySelectorAll('#sheet-body [data-k]').forEach(el => vals[el.dataset.k] = el.value.trim());
+    const changed = Object.keys(vals).filter(k => vals[k] !== String(rv(r, k) || ''));
+    if (!changed.length) { toast('沒有修改'); return; }
+    const upd = {};
+    changed.forEach(k => {
+      const v = vals[k];
+      if (k === 'name') { upd.nameRaw = v; upd.name = normName(v); }
+      else if (k === 'idCard') { upd.idCardRaw = v; upd.idCard = normId(v); }
+      else if (k === 'birthdayRaw') { upd.birthdayRaw = v; upd.birthday = parseBday(v); }
+      else if (k === 'certText') { upd.certText = v; upd.cert = mapCert(v); }
+      else upd[k] = v;
+    });
+    const labels = changed.map(k => (ROSTER_COLS.find(c => c[0] === k) || [k, k])[1]);
+    const by = user.realName || profile.displayName || '';
+    upd.updatedAt = serverTimestamp(); upd.updatedBy = by; upd.updatedByRole = role;
+    upd.editLog = [{ at: Date.now(), by, role, fields: labels }, ...(r.editLog || [])].slice(0, 30);
+    const btn = $('ed-save'); btn.disabled = true; btn.textContent = '儲存中…';
+    try {
+      // 名冊文件 ID 跟著身分證＋生日（登入驗證用）；改了就搬到新的 ID
+      const nid = upd.idCard !== undefined ? upd.idCard : normId(r.idCard);
+      const nbd = upd.birthday !== undefined ? upd.birthday : (r.birthday || '');
+      let rid = r.id;
+      const idOk = /^[A-Z][0-9A-Z]\d{8}$/.test(nid);
+      if (!rid || (idOk && (upd.idCard !== undefined || upd.birthday !== undefined))) {
+        const newId = idOk ? await rosterKey(nid, nbd) : (rid || await rosterKey('NOID:' + (upd.name || r.name), nbd));
+        if (newId !== rid) {
+          const base = rid ? { ...rosterById(rid) } : { name: r.name || '', nameRaw: r.nameRaw || r.name || '', idCard: r.idCard || '', idCardRaw: r.idCard || '', birthday: r.birthday || '',
+            birthdayRaw: r.birthday ? r.birthday.replace(/^(\d+)-0?(\d+)-0?(\d+)$/, '$1/$2/$3') : '', boundUserId: role === 'self' ? profile.userId : null, createdBySelf: role === 'self' };
+          delete base.id;
+          await setDoc(doc(db, ROSTER, newId), { ...base, ...upd });
+          if (rid) await deleteDoc(doc(db, ROSTER, rid));
+          rid = newId;
+        } else await setDoc(doc(db, ROSTER, rid), upd, { merge: true });
+      } else await setDoc(doc(db, ROSTER, rid), upd, { merge: true });
+
+      // 同步到會員帳號（三個系統共用）
+      const uid = role === 'self' ? profile.userId : r.boundUserId;
+      if (uid) {
+        const su = { rosterId: rid };
+        if (upd.name) su.realName = upd.name;
+        if (upd.idCard !== undefined && idOk) su.idCard = upd.idCard;
+        if (upd.birthday) su.birthday = upd.birthday;
+        if (upd.cert) { su.certification = upd.cert; su.category = upd.cert; su.warehouseCategory = upd.cert; }
+        await updateDoc(doc(db, 'users', uid), su).catch(() => {});
+      }
+      toast('✅ 已儲存');
+      if (role === 'admin') setTimeout(() => openRoster(rid), 300); else closeSheet();
+    } catch (e) {
+      btn.disabled = false; btn.textContent = '儲存';
+      toast('❌ 儲存失敗');
+    }
+  }
+
   function closeSheet() { sheetRid = null; $('sheet-bg').style.display = 'none'; $('sheet').style.display = 'none'; }
   $('sheet-bg').onclick = closeSheet; $('sheet-close').onclick = closeSheet;
 
@@ -843,7 +966,8 @@
       for (let i = 0; i < pairs.length; i += 200) {
         const b = writeBatch(db);
         pairs.slice(i, i + 200).forEach(({ u, r }) => {
-          b.update(doc(db, 'users', u.id), { rosterId: r.id, ...(u.birthday ? {} : { birthday: r.birthday || '' }) });
+          b.update(doc(db, 'users', u.id), { rosterId: r.id, ...(u.birthday ? {} : { birthday: r.birthday || '' }),
+            ...(!u.certification && r.cert ? { certification: r.cert, category: r.cert, warehouseCategory: r.cert } : {}) });
           b.update(doc(db, ROSTER, r.id), { boundUserId: u.id, boundAt: serverTimestamp() });
         });
         await b.commit();
