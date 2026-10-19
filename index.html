@@ -393,6 +393,15 @@
         .pano-spot.editing{border:2px dashed #ff9500;background:rgba(255,149,0,.2);cursor:grab;}
         .pano-spot-label{font-size:13px;font-weight:600;letter-spacing:-.2px;color:#fff;background:rgba(28,28,30,.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:3px 10px;border-radius:12px;border:.5px solid rgba(255,255,255,.18);pointer-events:none;}
         .pano-h{position:absolute;right:-13px;bottom:-13px;width:26px;height:26px;background:#ff9500;border:3px solid #fff;border-radius:50%;}
+        .pano-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
+        .pano-poly{fill:rgba(10,132,255,.12);stroke:rgba(130,190,255,.75);stroke-width:1.5px;vector-effect:non-scaling-stroke;stroke-linejoin:round;cursor:pointer;}
+        .pano-poly.editing{fill:rgba(255,149,0,.2);stroke:#ff9500;stroke-dasharray:6 4;cursor:grab;touch-action:none;}
+        .pano-poly-label{position:absolute;transform:translate(-50%,-50%);pointer-events:none;line-height:1.3;white-space:nowrap;touch-action:none;}
+        .pano-poly-label span{font-size:13px;font-weight:600;color:#fff;background:rgba(28,28,30,.6);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:3px 10px;border-radius:12px;border:.5px solid rgba(255,255,255,.18);}
+        .pano-poly-edit{position:absolute;top:-22px;left:-22px;}
+        .pano-vtx{position:absolute;width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:50%;background:#ff9500;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5);touch-action:none;cursor:move;z-index:3;}
+        .pano-mid{position:absolute;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;background:rgba(255,255,255,.9);color:#ff9500;font-size:15px;font-weight:900;line-height:18px;text-align:center;border:1.5px solid #ff9500;touch-action:none;cursor:copy;z-index:2;}
+        .pano-tip{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);font-size:11px;color:#fff;background:rgba(0,0,0,.6);padding:4px 10px;border-radius:10px;white-space:nowrap;pointer-events:none;line-height:1.4;max-width:96%;overflow:hidden;text-overflow:ellipsis;}
         .pano-edit-btn{position:absolute;top:-12px;left:-12px;width:26px;height:26px;border-radius:50%;border:2px solid #fff;background:#0a84ff;color:#fff;font-size:12px;padding:0;cursor:pointer;}
         #pano-tabs{position:absolute;left:0;right:0;bottom:20px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:0 12px;}
         .box-toolbar{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:18px;display:flex;gap:6px;z-index:70;white-space:nowrap;}
@@ -3508,7 +3517,20 @@
         renderPageNav();
         if (isPanoActive) renderPanorama();
     };
-    function savePanoRect(p, r) { updateDoc(doc(db, "warehouse_pages", p.id), { panoRect: r }).catch(() => {}); }
+    // ===== 全景：每一排是一個多邊形（可加點、拖點，貼合透視的層架） =====
+    function savePanoPoly(p) { updateDoc(doc(db, "warehouse_pages", p.id), { panoPoly: p.panoPoly.map(([x, y]) => ({ x: +x.toFixed(2), y: +y.toFixed(2) })) }).catch(() => {}); }
+    function panoPolyOf(p, i) {
+        if (Array.isArray(p.panoPoly) && p.panoPoly.length >= 3) return p.panoPoly.map(pt => Array.isArray(pt) ? pt : [pt.x, pt.y]);
+        const w = 90 / pages.length;
+        const r = p.panoRect || { x: 5 + i * w, y: 35, w: w - 2, h: 30 };      // 舊的方框 → 轉成四個角
+        return [[r.x, r.y], [r.x + r.w, r.y], [r.x + r.w, r.y + r.h], [r.x, r.y + r.h]];
+    }
+    const polyCenter = pts => {        // 多邊形重心（放標籤）
+        let a = 0, cx = 0, cy = 0;
+        pts.forEach((p, k) => { const q = pts[(k + 1) % pts.length]; const f = p[0] * q[1] - q[0] * p[1]; a += f; cx += (p[0] + q[0]) * f; cy += (p[1] + q[1]) * f; });
+        if (Math.abs(a) < 1e-6) return pts.reduce((m, p) => [m[0] + p[0] / pts.length, m[1] + p[1] / pts.length], [0, 0]);
+        return [cx / (3 * a), cy / (3 * a)];
+    };
 
     function renderPanorama() {
         const img = document.getElementById('pano-img');
@@ -3519,58 +3541,102 @@
         const layer = document.getElementById('pano-layer');
         layer.innerHTML = '';
         const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-        const apply = (s, r) => { s.style.left = r.x + '%'; s.style.top = r.y + '%'; s.style.width = r.w + '%'; s.style.height = r.h + '%'; };
+        const NS = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('viewBox', '0 0 100 100'); svg.setAttribute('preserveAspectRatio', 'none');
+        svg.setAttribute('class', 'pano-svg');
+        layer.appendChild(svg);
+        const toPct = (ev) => { const L = layer.getBoundingClientRect(); return [clamp((ev.clientX - L.left) / L.width * 100, 0, 100), clamp((ev.clientY - L.top) / L.height * 100, 0, 100)]; };
 
         pages.forEach((p, i) => {
-            const w = 90 / pages.length;
-            const r = p.panoRect = p.panoRect || { x: 5 + i * w, y: 35, w: w - 2, h: 30 };
-            const s = document.createElement('div');
-            s.className = 'pano-spot' + (isContentEditActive ? ' editing' : '');
-            apply(s, r);
-            s.innerHTML = `<span class="pano-spot-label">${escapeHtml(p.name)}</span>`;
-            s.onclick = () => { if (s.dataset.moved) return; if (!isContentEditActive) switchToPage(i); };
+            p.panoPoly = panoPolyOf(p, i);
+            const pts = p.panoPoly;
+            const poly = document.createElementNS(NS, 'polygon');
+            poly.setAttribute('class', 'pano-poly' + (isContentEditActive ? ' editing' : ''));
+            const draw = () => {
+                poly.setAttribute('points', pts.map(q => q.join(',')).join(' '));
+                const c = polyCenter(pts); lab.style.left = c[0] + '%'; lab.style.top = c[1] + '%';
+                handles.forEach((h, k) => { h.style.left = pts[k][0] + '%'; h.style.top = pts[k][1] + '%'; });
+                mids.forEach((m, k) => { const a = pts[k], b = pts[(k + 1) % pts.length]; m.style.left = (a[0] + b[0]) / 2 + '%'; m.style.top = (a[1] + b[1]) / 2 + '%'; });
+            };
+            svg.appendChild(poly);
 
-            if (isContentEditActive) {
-                const eb = document.createElement('button');
-                eb.className = 'pano-edit-btn'; eb.innerText = '✎';
-                eb.onpointerdown = e => e.stopPropagation();
-                eb.onclick = e => { e.stopPropagation(); renamePage(i); };
-                s.appendChild(eb);
+            const lab = document.createElement('div');
+            lab.className = 'pano-poly-label';
+            lab.innerHTML = `<span>${escapeHtml(p.name)}</span>`;
+            layer.appendChild(lab);
+            const handles = [], mids = [];
 
-                const h = document.createElement('div');
-                h.className = 'pano-h';
-                s.appendChild(h);
-
-                s.onpointerdown = e => {
-                    if (e.target === h || e.target === eb) return;
-                    s.setPointerCapture(e.pointerId);
-                    const L = layer.getBoundingClientRect();
-                    const sx = e.clientX, sy = e.clientY, r0 = { ...r };
-                    s.dataset.moved = '';
-                    s.onpointermove = ev => {
-                        const dx = (ev.clientX - sx) / L.width * 100, dy = (ev.clientY - sy) / L.height * 100;
-                        if (Math.abs(ev.clientX - sx) > 4 || Math.abs(ev.clientY - sy) > 4) s.dataset.moved = '1';
-                        r.x = clamp(r0.x + dx, 0, 100 - r.w); r.y = clamp(r0.y + dy, 0, 100 - r.h);
-                        apply(s, r);
-                    };
-                    s.onpointerup = () => { s.onpointermove = null; s.onpointerup = null; if (s.dataset.moved) savePanoRect(p, r); };
-                };
-                h.onpointerdown = e => {
-                    e.stopPropagation();
-                    h.setPointerCapture(e.pointerId);
-                    const L = layer.getBoundingClientRect();
-                    const sx = e.clientX, sy = e.clientY, r0 = { ...r };
-                    h.onpointermove = ev => {
-                        r.w = clamp(r0.w + (ev.clientX - sx) / L.width * 100, 5, 100 - r.x);
-                        r.h = clamp(r0.h + (ev.clientY - sy) / L.height * 100, 5, 100 - r.y);
-                        apply(s, r);
-                    };
-                    h.onpointerup = () => { h.onpointermove = null; h.onpointerup = null; savePanoRect(p, r); };
-                };
+            if (!isContentEditActive) {
+                poly.onclick = () => switchToPage(i);
+                lab.onclick = () => switchToPage(i);
+                lab.style.pointerEvents = 'auto'; lab.style.cursor = 'pointer';
+                draw();
+                return;
             }
-            layer.appendChild(s);
+
+            // 編輯：✎ 改名
+            const eb = document.createElement('button');
+            eb.className = 'pano-edit-btn pano-poly-edit'; eb.innerText = '✎';
+            eb.onclick = e => { e.stopPropagation(); renamePage(i); };
+            lab.appendChild(eb);
+            lab.style.pointerEvents = 'auto';
+
+            // 拖整塊
+            const dragAll = e => {
+                e.preventDefault(); e.stopPropagation();
+                const start = toPct(e), p0 = pts.map(q => q.slice());
+                const minX = Math.min(...p0.map(q => q[0])), maxX = Math.max(...p0.map(q => q[0])), minY = Math.min(...p0.map(q => q[1])), maxY = Math.max(...p0.map(q => q[1]));
+                let moved = false;
+                const mv = ev => { const c = toPct(ev); const dx = clamp(c[0] - start[0], -minX, 100 - maxX), dy = clamp(c[1] - start[1], -minY, 100 - maxY);
+                    if (Math.abs(dx) + Math.abs(dy) > .3) moved = true; p0.forEach((q, k) => { pts[k][0] = q[0] + dx; pts[k][1] = q[1] + dy; }); draw(); };
+                const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); if (moved) savePanoPoly(p); };
+                window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+            };
+            poly.onpointerdown = dragAll;
+            lab.onpointerdown = e => { if (e.target === eb) return; dragAll(e); };
+
+            const build = () => {
+                handles.splice(0).forEach(h => h.remove()); mids.splice(0).forEach(m => m.remove());
+                pts.forEach((q, k) => {
+                    // 角點：拖曳移動；連點兩下刪除（至少留 3 點）
+                    const h = document.createElement('div');
+                    h.className = 'pano-vtx';
+                    let lastTap = 0;
+                    h.onpointerdown = e => {
+                        e.preventDefault(); e.stopPropagation();
+                        const now = Date.now();
+                        if (now - lastTap < 350 && pts.length > 3) { pts.splice(k, 1); build(); draw(); savePanoPoly(p); return; }
+                        lastTap = now;
+                        const mv = ev => { const c = toPct(ev); pts[k][0] = c[0]; pts[k][1] = c[1]; draw(); };
+                        const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); savePanoPoly(p); };
+                        window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+                    };
+                    layer.appendChild(h); handles.push(h);
+                    // 邊的中點：按住拖 = 新增一個點
+                    const m = document.createElement('div');
+                    m.className = 'pano-mid'; m.innerText = '+';
+                    m.onpointerdown = e => {
+                        e.preventDefault(); e.stopPropagation();
+                        const at = k + 1;
+                        pts.splice(at, 0, toPct(e));
+                        build(); draw();
+                        const mv = ev => { const c = toPct(ev); pts[at][0] = c[0]; pts[at][1] = c[1]; draw(); };
+                        const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); savePanoPoly(p); };
+                        window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+                    };
+                    layer.appendChild(m); mids.push(m);
+                });
+            };
+            build(); draw();
         });
 
+        if (isContentEditActive && pages.length) {
+            const tip = document.createElement('div');
+            tip.className = 'pano-tip';
+            tip.innerText = '拖橘點調角・拖＋加點・點兩下橘點刪除・拖框內整塊移動';
+            layer.appendChild(tip);
+        }
     }
 
     // 點地圖空白處 = 取消選取箱子
