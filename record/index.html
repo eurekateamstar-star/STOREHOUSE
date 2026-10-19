@@ -1506,7 +1506,8 @@
         const j = await res.json();
         const a = j.address || {};
         const house = a.house_number ? (/^\d+$/.test(a.house_number) ? a.house_number + '號' : a.house_number) : '';
-        const raw = [a.county || a.city || a.state, a.city_district || a.suburb || a.town, a.village || a.neighbourhood, a.road, house];
+        // 台灣地址格式：縣市＋區＋路＋號。「里／村」（例如社後里）不寫進地址；只有找不到路名時才用里名幫忙定位
+        const raw = [a.county || a.city || a.state, a.city_district || a.suburb || a.town || a.township, a.road ? '' : (a.village || a.neighbourhood || a.hamlet), a.road, a.road ? house : ''];
         const parts = raw.filter((v, i) => v && v !== raw[i - 1]);
         let addr = parts.join('');
         if (!addr && j.display_name) addr = j.display_name.split(',').map(x => x.trim()).reverse().join('');
