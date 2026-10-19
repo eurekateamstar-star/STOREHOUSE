@@ -168,7 +168,8 @@
   #rs-table td.c-serial, #rs-table td.c-joinYear, #rs-table td.c-name, #rs-table td.c-birthdayRaw, #rs-table td.c-idCard,
   #rs-table td.c-phone, #rs-table td.c-emName, #rs-table td.c-emRelation, #rs-table td.c-emPhone, #rs-table td.c-shirtSize, #rs-table td.c-pantsSize { white-space: nowrap; word-break: normal; }
   #rs-table td.c-certText { min-width: 64px; } #rs-table td.c-address { min-width: 130px; } #rs-table td.c-education, #rs-table td.c-notes { min-width: 90px; }
-  #rs-table .mini-av { display: none; }
+  #rs-table .nm-cell .mini-av { display: none; }
+  #rs-table .line-who .mini-av { display: inline-flex; }
   #rs-table .pill { font-size: 11px; padding: 1px 6px; }
   .nm-cell { display: inline-flex; align-items: center; gap: 8px; }
   table.tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -185,6 +186,9 @@
   .pill.pending { background: #fef3c7; color: #92400e; }
   .pill.admin { background: #ede9fe; color: #5b21b6; }
   .pill.red { background: #fee2e2; color: #991b1b; }
+  .red-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #ef4444; margin-left: 5px; vertical-align: middle; box-shadow: 0 0 0 2px #fff; flex-shrink: 0; }
+  .line-who { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #166534; white-space: nowrap; }
+  .line-who .mini-av { width: 24px; height: 24px; font-size: 11px; }
   .adm-box { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; background: #f5f3ff; border-radius: 14px; padding: 12px; font-size: 14px; font-weight: 700; }
   .adm-box label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
   .adm-box input { width: 18px; height: 18px; accent-color: var(--violet); }
@@ -348,7 +352,7 @@
 
     <div class="card tabs">
       <button class="tab" data-tab="pending">⏳ 待審核<span class="c hidden" id="tab-pending-c"></span></button>
-      <button class="tab on" data-tab="roster">📋 團員名冊</button>
+      <button class="tab on" data-tab="roster">📋 團員名冊<span class="c hidden" id="tab-roster-c"></span></button>
       <button class="tab" data-tab="users">👥 系統會員</button>
     </div>
 
@@ -734,7 +738,7 @@
     }, () => {});
     if (!rosterUnsub) rosterUnsub = onSnapshot(collection(db, ROSTER), s => {
       rosterCache = s.docs.map(d => ({ id: d.id, ...d.data() }));
-      if (adminOn) renderAdmin();
+      updateAdminDot(); if (adminOn) renderAdmin();
     }, () => toast('讀取名冊失敗'));
   }
   function stopAdminWatch() {
@@ -742,7 +746,7 @@
     if (rosterUnsub) { rosterUnsub(); rosterUnsub = null; }
   }
   function updateAdminDot() {
-    const n = usersCache.filter(u => (u.status || 'pending') === 'pending').length + appsCache.filter(a => a.status === 'pending').length;
+    const n = usersCache.filter(u => (u.status || 'pending') === 'pending').length + appsCache.filter(a => a.status === 'pending').length + rosterCache.filter(unseen).length;
     $('admin-dot').textContent = n; $('admin-dot').classList.toggle('hidden', !n);
   }
   const userById = id => usersCache.find(u => u.id === id);
@@ -755,6 +759,7 @@
     const pendApps = appsCache.filter(a => a.status === 'pending').length;
     $('st-pending').textContent = pend.length + pendApps;
     $('st-users').textContent = usersCache.filter(u => u.status === 'approved').length;
+    { const n = rosterCache.filter(unseen).length; $('tab-roster-c').textContent = n; $('tab-roster-c').classList.toggle('hidden', !n); }
     $('tab-pending-c').textContent = pend.length + pendApps; $('tab-pending-c').classList.toggle('hidden', !(pend.length + pendApps));
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === curTab));
     ['pending', 'roster', 'users', 'import'].forEach(k => $('tab-' + k).classList.toggle('hidden', k !== curTab));
@@ -875,12 +880,17 @@
   const rv = (r, k) => k === 'name' ? (r.nameRaw || r.name) : k === 'idCard' ? (r.idCardRaw || r.idCard) : k === 'birthdayRaw' ? (r.birthdayRaw || r.birthday) : r[k];
   const rosterOrder = (a, b) => (Number(a.rowIndex) || 1e9) - (Number(b.rowIndex) || 1e9) || (Number(a.serial) || 1e9) - (Number(b.serial) || 1e9);
 
+  // 本人改過資料、管理員還沒點開看過 → 紅點
+  const lastSelfEdit = r => { const l = (r.editLog || []).find(x => x.role === 'self' && !x.action); return l ? Number(l.at) || 0 : 0; };
+  const unseen = r => { const t = lastSelfEdit(r); return t > 0 && t > tsMs(r.adminSeenAt); };
+  const redDot = r => unseen(r) ? '<span class="red-dot" title="本人有修改資料，尚未查看"></span>' : '';
   function renderRoster() {
     const certs = {}; rosterCache.forEach(r => { const c = r.cert || '未填'; certs[c] = (certs[c] || 0) + 1; });
     const bound = rosterCache.filter(r => r.boundUserId).length;
     const chip = (k, t) => `<button class="chip ${rsFilter === k ? 'on' : ''}" data-f="${esc(k)}">${esc(t)}</button>`;
     const selfUpd = rosterCache.filter(r => r.updatedByRole === 'self').length;
-    $('rs-chips').innerHTML = chip('all', `全部 (${rosterCache.length})`) + chip('bound', `已綁定 (${bound})`) + chip('unbound', `未綁定 (${rosterCache.length - bound})`)
+    const nUnseen = rosterCache.filter(unseen).length;
+    $('rs-chips').innerHTML = (nUnseen ? chip('unseen', `🔴 未查看的修改 (${nUnseen})`) : '') + chip('all', `全部 (${rosterCache.length})`) + chip('bound', `已綁定 (${bound})`) + chip('unbound', `未綁定 (${rosterCache.length - bound})`)
       + (selfUpd ? chip('self', `🙋 本人更新 (${selfUpd})`) : '') + chip('updated', `✏️ 有更新 (${rosterCache.filter(r => r.updatedAt).length})`)
       + Object.keys(certs).sort().map(c => chip('c:' + c, `${c} (${certs[c]})`)).join('');
     $('rs-chips').querySelectorAll('[data-f]').forEach(b => b.onclick = () => { rsFilter = b.dataset.f; renderRoster(); });
@@ -888,24 +898,27 @@
     let list = rosterCache.slice();
     if (rsFilter === 'bound') list = list.filter(r => r.boundUserId);
     else if (rsFilter === 'unbound') list = list.filter(r => !r.boundUserId);
+    else if (rsFilter === 'unseen') list = list.filter(unseen).sort((a, b) => lastSelfEdit(b) - lastSelfEdit(a));
     else if (rsFilter === 'self') list = list.filter(r => r.updatedByRole === 'self').sort((a, b) => tsMs(b.updatedAt) - tsMs(a.updatedAt));
     else if (rsFilter === 'updated') list = list.filter(r => r.updatedAt);
     else if (rsFilter.startsWith('c:')) list = list.filter(r => (r.cert || '未填') === rsFilter.slice(2));
     if (rsQuery) list = list.filter(r => [r.name, r.phone, r.lineName, r.introducer, r.certText, r.job].join(' ').toLowerCase().includes(rsQuery));
-    if (rsFilter !== 'self') list.sort(rosterOrder);   // 依 Excel 原本的順序
+    if (rsFilter !== 'self' && rsFilter !== 'unseen') list.sort(rosterOrder);   // 依 Excel 原本的順序
 
     if (!rosterCache.length) {
       const e = '<div class="empty">名冊是空的</div>';
       $('rs-table').innerHTML = `<tr><td>${e}</td></tr>`; $('rs-cards').innerHTML = `<div class="card">${e}</div>`; return;
     }
     const st = r => { const u = r.boundUserId && userById(r.boundUserId);
-      return r.boundUserId ? `<span class="pill bound" title="${u ? esc(u.lineDisplayName || '') : ''}">✔ 已綁定</span>` : '<span class="pill unbound">未綁定</span>'; };
+      if (!r.boundUserId) return '<span class="pill unbound">未綁定</span>';
+      if (!u) return '<span class="pill bound">✔ 已綁定</span>';
+      return `<span class="line-who">${miniAv(u.pictureUrl, u.lineDisplayName || u.realName)}<span>${esc(u.lineDisplayName || u.realName || '已綁定')}</span></span>`; };
     const av = r => { const u = r.boundUserId && userById(r.boundUserId); return miniAv(u && u.pictureUrl, r.name); };
     $('rs-table').innerHTML = `<thead><tr>${ROSTER_COLS.map(([k, t]) => `<th>${esc(t)}</th>`).join('')}<th>LINE 綁定</th><th>最後更新</th></tr></thead><tbody>`
-      + (list.map(r => `<tr data-r="${r.id}">${ROSTER_COLS.map(([k]) => `<td class="c-${k}">${k === 'name' ? `<span class="nm-cell">${av(r)}<b>${esc(rv(r, k) || '')}</b></span>` : esc(rv(r, k) || '')}</td>`).join('')}<td>${st(r)}</td><td>${updText(r, true)}${confText(r)}</td></tr>`).join('')
+      + (list.map(r => `<tr data-r="${r.id}">${ROSTER_COLS.map(([k]) => `<td class="c-${k}">${k === 'name' ? `<span class="nm-cell">${av(r)}<b>${esc(rv(r, k) || '')}</b>${redDot(r)}</span>` : esc(rv(r, k) || '')}</td>`).join('')}<td>${st(r)}</td><td>${updText(r, true)}${confText(r)}</td></tr>`).join('')
         || `<tr><td colspan="${ROSTER_COLS.length + 2}"><div class="empty">沒有符合的資料</div></td></tr>`) + '</tbody>';
     $('rs-cards').innerHTML = list.map(r => `<div class="card r-card" data-r="${r.id}">${av(r)}
-        <div class="main"><div class="nm">${r.serial ? `<span style="color:var(--sub);font-size:13px;">${esc(r.serial)}</span>` : ''}${esc(rv(r, 'name'))} ${r.cert ? `<span class="pill cert">${esc(r.cert)}</span>` : ''}</div>
+        <div class="main"><div class="nm">${r.serial ? `<span style="color:var(--sub);font-size:13px;">${esc(r.serial)}</span>` : ''}${esc(rv(r, 'name'))}${redDot(r)} ${r.cert ? `<span class="pill cert">${esc(r.cert)}</span>` : ''}</div>
         <div class="sub">${esc(r.phone || '無電話')}　${esc(rv(r, 'birthdayRaw') || '')}</div>${updText(r, true)}${confText(r)}</div>${st(r)}</div>`).join('')
       || '<div class="card empty">沒有符合的資料</div>';
     document.querySelectorAll('#rs-table [data-r], #rs-cards [data-r]').forEach(e => e.onclick = () => openRoster(e.dataset.r));
@@ -915,6 +928,7 @@
   function openRoster(rid) {
     const r = rosterById(rid); if (!r) return;
     if (sheetRid !== rid) sheetShowId = false;
+    if (unseen(r)) updateDoc(doc(db, ROSTER, rid), { adminSeenAt: serverTimestamp(), adminSeenBy: user.realName || '' }).catch(() => {});
     sheetRid = rid;
     const u = r.boundUserId && userById(r.boundUserId);
     const row = (k, v) => `<div class="row"><span class="k">${k}</span><span class="v">${v || '—'}</span></div>`;
