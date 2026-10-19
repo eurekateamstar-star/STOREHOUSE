@@ -165,7 +165,7 @@
   #rs-table { table-layout: auto; font-size: 12px; }
   #rs-table th { font-size: 11px; padding: 8px 5px; white-space: nowrap; }
   #rs-table td { padding: 7px 5px; line-height: 1.35; word-break: break-all; }
-  #rs-table td.c-serial, #rs-table td.c-joinYear, #rs-table td.c-name, #rs-table td.c-birthdayRaw, #rs-table td.c-idCard,
+  #rs-table td.c-serial, #rs-table td.c-position, #rs-table td.c-joinYear, #rs-table td.c-name, #rs-table td.c-birthdayRaw, #rs-table td.c-idCard,
   #rs-table td.c-phone, #rs-table td.c-emName, #rs-table td.c-emRelation, #rs-table td.c-emPhone, #rs-table td.c-shirtSize, #rs-table td.c-pantsSize { white-space: nowrap; word-break: normal; }
   #rs-table td.c-certText { min-width: 64px; } #rs-table td.c-address { min-width: 130px; } #rs-table td.c-education, #rs-table td.c-notes { min-width: 90px; }
   #rs-table .nm-cell .mini-av { display: none; }
@@ -203,6 +203,7 @@
   .ins-check input { width: 22px; height: 22px; margin-top: 1px; accent-color: #16a34a; flex-shrink: 0; }
   #cp-ok:disabled { opacity: .45; }
   .link-btn { background: none; border: none; color: #9ca3af; font-size: 13px; text-decoration: underline; cursor: pointer; font-family: inherit; }
+  .pos-sel { width: 100%; padding: 10px 12px; font-size: 15px; border-radius: 12px; border: 1.5px solid #e5e7eb; background: #fff; font-family: inherit; }
   .adm-box { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; background: #f5f3ff; border-radius: 14px; padding: 12px; font-size: 14px; font-weight: 700; }
   .adm-box label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
   .adm-box input { width: 18px; height: 18px; accent-color: var(--violet); }
@@ -888,17 +889,19 @@
   }
 
   // ---------- 團員名冊 ----------
-  const ROSTER_COLS = [['serial', '序號'], ['joinYear', '加入年份'], ['name', '姓名'], ['lineName', 'Line名稱'], ['birthdayRaw', '出生日期'],
+  const POSITIONS = ['團員', '教官團', '顧問', '行政組', '物資盤點組', '器材組', '後勤補給組', '指揮官', '媒體文宣紀錄組', '車輛組', '機車組'];
+  const ROSTER_COLS = [['serial', '序號'], ['position', '職位'], ['joinYear', '加入年份'], ['name', '姓名'], ['lineName', 'Line名稱'], ['birthdayRaw', '出生日期'],
     ['idCard', '身份證字號'], ['phone', '本人聯絡電話'], ['emName', '緊急聯絡人姓名'], ['emRelation', '緊急連絡人關係'], ['emPhone', '緊急聯絡人電話'],
     ['shirtSize', '衣服尺寸'], ['pantsSize', '褲子尺寸'], ['certText', '證照'], ['address', '地址'], ['job', '職業'], ['introducer', '介紹人'],
     ['education', '學歷 . 經歷'], ['notes', '更新-備註']];
-  const rv = (r, k) => k === 'name' ? (r.nameRaw || r.name) : k === 'idCard' ? (r.idCardRaw || r.idCard) : k === 'birthdayRaw' ? (r.birthdayRaw || r.birthday) : r[k];
+  const rv = (r, k) => k === 'position' ? (r.position || '團員') : k === 'name' ? (r.nameRaw || r.name) : k === 'idCard' ? (r.idCardRaw || r.idCard) : k === 'birthdayRaw' ? (r.birthdayRaw || r.birthday) : r[k];
   const rosterOrder = (a, b) => (Number(a.rowIndex) || 1e9) - (Number(b.rowIndex) || 1e9) || (Number(a.serial) || 1e9) - (Number(b.serial) || 1e9);
 
   // 本人改過資料、管理員還沒點開看過 → 紅點
   const lastSelfEdit = r => { const l = (r.editLog || []).find(x => x.role === 'self' && !x.action); return l ? Number(l.at) || 0 : 0; };
   const unseen = r => { const t = lastSelfEdit(r); return t > 0 && t > tsMs(r.adminSeenAt); };
   const redDot = r => unseen(r) ? '<span class="red-dot" title="本人有修改資料，尚未查看"></span>' : '';
+  const isConfirmed = r => { const u = r.boundUserId && userById(r.boundUserId); return !!(u && u.profileConfirmedAt); };
   function renderRoster() {
     const certs = {}; rosterCache.forEach(r => { const c = r.cert || '未填'; certs[c] = (certs[c] || 0) + 1; });
     const bound = rosterCache.filter(r => r.boundUserId).length;
@@ -906,8 +909,10 @@
     const selfUpd = rosterCache.filter(r => r.updatedByRole === 'self').length;
     const nUnseen = rosterCache.filter(unseen).length;
     $('rs-chips').innerHTML = (nUnseen ? chip('unseen', `🔴 未查看的修改 (${nUnseen})`) : '') + chip('all', `全部 (${rosterCache.length})`) + chip('bound', `已綁定 (${bound})`) + chip('unbound', `未綁定 (${rosterCache.length - bound})`)
-      + (selfUpd ? chip('self', `🙋 本人更新 (${selfUpd})`) : '') + chip('updated', `✏️ 有更新 (${rosterCache.filter(r => r.updatedAt).length})`)
-      + Object.keys(certs).sort().map(c => chip('c:' + c, `${c} (${certs[c]})`)).join('');
+      + chip('updated', `✏️ 有更新 (${rosterCache.filter(r => r.updatedAt).length})`) + chip('confirmed', `✅ 已確認 (${rosterCache.filter(isConfirmed).length})`)
+      + Object.keys(certs).sort().map(c => chip('c:' + c, `${c} (${certs[c]})`)).join('')
+      + (() => { const pc = {}; rosterCache.forEach(r => { const p = rv(r, 'position'); if (p !== '團員') pc[p] = (pc[p] || 0) + 1; });
+                 return POSITIONS.filter(p => pc[p]).concat(Object.keys(pc).filter(p => !POSITIONS.includes(p))).map(p => chip('p:' + p, `👔 ${p} (${pc[p]})`)).join(''); })();
     $('rs-chips').querySelectorAll('[data-f]').forEach(b => b.onclick = () => { rsFilter = b.dataset.f; renderRoster(); });
 
     let list = rosterCache.slice();
@@ -916,6 +921,8 @@
     else if (rsFilter === 'unseen') list = list.filter(unseen).sort((a, b) => lastSelfEdit(b) - lastSelfEdit(a));
     else if (rsFilter === 'self') list = list.filter(r => r.updatedByRole === 'self').sort((a, b) => tsMs(b.updatedAt) - tsMs(a.updatedAt));
     else if (rsFilter === 'updated') list = list.filter(r => r.updatedAt);
+    else if (rsFilter === 'confirmed') list = list.filter(isConfirmed);
+    else if (rsFilter.startsWith('p:')) list = list.filter(r => rv(r, 'position') === rsFilter.slice(2));
     else if (rsFilter.startsWith('c:')) list = list.filter(r => (r.cert || '未填') === rsFilter.slice(2));
     if (rsQuery) list = list.filter(r => [r.name, r.phone, r.lineName, r.introducer, r.certText, r.job].join(' ').toLowerCase().includes(rsQuery));
     if (rsFilter !== 'self' && rsFilter !== 'unseen') list.sort(rosterOrder);   // 依 Excel 原本的順序
@@ -933,7 +940,7 @@
       + (list.map(r => `<tr data-r="${r.id}">${ROSTER_COLS.map(([k]) => `<td class="c-${k}">${k === 'name' ? `<span class="nm-cell">${av(r)}<b>${esc(rv(r, k) || '')}</b>${redDot(r)}</span>` : esc(rv(r, k) || '')}</td>`).join('')}<td>${st(r)}</td><td>${updText(r, true)}${confText(r)}</td></tr>`).join('')
         || `<tr><td colspan="${ROSTER_COLS.length + 2}"><div class="empty">沒有符合的資料</div></td></tr>`) + '</tbody>';
     $('rs-cards').innerHTML = list.map(r => `<div class="card r-card" data-r="${r.id}">${av(r)}
-        <div class="main"><div class="nm">${r.serial ? `<span style="color:var(--sub);font-size:13px;">${esc(r.serial)}</span>` : ''}${esc(rv(r, 'name'))}${redDot(r)} ${r.cert ? `<span class="pill cert">${esc(r.cert)}</span>` : ''}</div>
+        <div class="main"><div class="nm">${r.serial ? `<span style="color:var(--sub);font-size:13px;">${esc(r.serial)}</span>` : ''}${esc(rv(r, 'name'))}${redDot(r)} ${rv(r, 'position') !== '團員' ? `<span class="pill admin">${esc(rv(r, 'position'))}</span> ` : ''}${r.cert ? `<span class="pill cert">${esc(r.cert)}</span>` : ''}</div>
         <div class="sub">${esc(r.phone || '無電話')}　${esc(rv(r, 'birthdayRaw') || '')}</div>${updText(r, true)}${confText(r)}</div>${st(r)}</div>`).join('')
       || '<div class="card empty">沒有符合的資料</div>';
     document.querySelectorAll('#rs-table [data-r], #rs-cards [data-r]').forEach(e => e.onclick = () => openRoster(e.dataset.r));
@@ -1020,7 +1027,7 @@
   function updText(r, short) {
     const ms = tsMs(r && r.updatedAt);
     if (!ms) return '';
-    const who = r.updatedByRole === 'self' ? '🙋 本人' : '🛠 管理員';
+    const who = short ? '✏️ 更新' : (r.updatedByRole === 'self' ? '🙋 本人' : '🛠 管理員');
     const d = new Date(ms), p = n => String(n).padStart(2, '0');
     const when = short ? `${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}` : fmtAt(ms);
     return `<span class="upd ${r.updatedByRole === 'self' ? 'self' : 'admin'}">${who}${short ? '' : '（' + esc(r.updatedBy || '') + '）'} ${when}</span>`;
@@ -1119,6 +1126,7 @@
     const fields = role === 'admin' ? ROSTER_COLS : SELF_FIELDS.map(k => [k, SELF_LABEL[k] || (ROSTER_COLS.find(c => c[0] === k) || [k, k])[1]]);
     const inp = ([k, t]) => {
       const v = esc(curVal(r, k));
+      if (k === 'position') return `<div class="field"><label>${esc(t)}</label><select data-k="position" class="pos-sel">${POSITIONS.concat(POSITIONS.includes(curVal(r, k)) ? [] : [curVal(r, k)]).map(p => `<option ${p === curVal(r, k) ? 'selected' : ''}>${esc(p)}</option>`).join('')}</select></div>`;
       if (k === 'birthdayISO') return `<div class="field"><label>${esc(t)}</label><input type="date" data-k="${k}" value="${v}"></div>`;
       return `<div class="field ${LONG_FIELDS.includes(k) ? 'full' : ''}"><label>${esc(t)}</label>${LONG_FIELDS.includes(k)
         ? `<textarea data-k="${k}">${v}</textarea>` : `<input data-k="${k}" value="${v}">`}</div>`;
