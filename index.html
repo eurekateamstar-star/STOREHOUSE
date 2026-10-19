@@ -1480,7 +1480,7 @@
         return { ...d, id, userId: id,
             account: d.realName || '',
             displayName: d.lineDisplayName || '',
-            role: d.role === 'admin' ? 'admin' : 'member',
+            role: (d.role === 'admin' || d.adminWarehouse === true) ? 'admin' : 'member',   // 倉庫管理員（權限在會員中心設定）
             createdAt: tsMs(d.createdAt),
             lastLoginAt: tsMs(d.warehouseLastLoginAt),
             bstLoginAt: tsMs(d.bstLastLoginAt),
@@ -1727,7 +1727,7 @@
         const admin = isAdmin();
         const setDisp = (id, on) => { const e = _el(id); if (e) e.style.display = on ? '' : 'none'; };
         setDisp('mode-btn-edit', admin);
-        setDisp('menu-card-users', admin);
+        setDisp('menu-card-users', false);   // 會員的踢除／停權／管理員權限統一在會員中心管理
         setDisp('btn-logs-edit', admin);
         setDisp('btn-edit-groups', admin);
         ['in', 'out', 'logs', 'lookup'].forEach(k => setDisp('menu-card-' + k, admin));

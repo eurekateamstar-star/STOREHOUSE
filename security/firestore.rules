@@ -10,8 +10,13 @@ service cloud.firestore {
     function rosterPath(id) { return /databases/$(database)/documents/member_roster/$(id); }
     function myData() { return get(userPath(me())).data; }
     function approved() { return signedIn() && exists(userPath(me())) && myData().get('status', '') == 'approved'; }
-    function isAdmin() { return approved() && myData().get('role', '') == 'admin'; }
+    // 管理員權限分三個系統：role == 'admin' 表示三個都是；否則看 adminMember / adminWarehouse / adminRecord
+    function isSuper() { return approved() && myData().get('role', '') == 'admin'; }
+    function isAdmin() { return isSuper() || (approved() && myData().get('adminMember', false) == true); }      // 會員中心
     function inWarehouse() { return approved() && myData().get('warehouseRemoved', false) != true; }
+    function whAdmin() { return inWarehouse() && (myData().get('role', '') == 'admin' || myData().get('adminWarehouse', false) == true); }
+    function recAdmin() { return isSuper() || (approved() && myData().get('adminRecord', false) == true); }
+    function anyAdmin() { return isAdmin() || whAdmin() || recAdmin(); }
     function cleanName(s) { return s.replace(' ', '').replace('　', ''); }
 
     // 本人用「姓名＋身分證＋生日」對上管理員匯入的名冊，才可自動開通
@@ -27,7 +32,7 @@ service cloud.firestore {
 
     // 本人不能自己改的欄位（權限、審核、移出倉庫）
     function lockedKeys() {
-      return ['role', 'status', 'verifiedBy', 'rosterId', 'approvedAt', 'approvedBy', 'rejectReason',
+      return ['role', 'adminMember', 'adminWarehouse', 'adminRecord', 'status', 'verifiedBy', 'rosterId', 'approvedAt', 'approvedBy', 'rejectReason',
               'warehouseRemoved', 'warehouseRemovedBy', 'warehouseRemovedAt', 'lineUserId'];
     }
 
@@ -35,7 +40,7 @@ service cloud.firestore {
       let d = request.resource.data;
       let o = resource.data;
       let changed = d.diff(o).affectedKeys();
-      let hard = ['role', 'approvedBy', 'warehouseRemoved', 'warehouseRemovedBy', 'warehouseRemovedAt', 'lineUserId'];
+      let hard = ['role', 'adminMember', 'adminWarehouse', 'adminRecord', 'approvedBy', 'warehouseRemoved', 'warehouseRemovedBy', 'warehouseRemovedAt', 'lineUserId'];
       return
         // 一般更新：頭貼、登入時間、姓名、證照…
         !changed.hasAny(lockedKeys())
@@ -53,14 +58,14 @@ service cloud.firestore {
     function selfCreateOk() {
       let d = request.resource.data;
       return d.get('role', 'user') == 'user'
-        && !d.keys().hasAny(['approvedBy', 'warehouseRemoved'])
+        && !d.keys().hasAny(['approvedBy', 'warehouseRemoved', 'adminMember', 'adminWarehouse', 'adminRecord'])
         && (d.get('status', 'pending') == 'pending' || (d.get('status', '') == 'approved' && rosterMatches(d)));
     }
 
     // ===== 會員帳號（三個系統共用）=====
     match /users/{userId} {
-      allow get: if signedIn() && (me() == userId || isAdmin());
-      allow list: if isAdmin();
+      allow get: if signedIn() && (me() == userId || anyAdmin());
+      allow list: if anyAdmin();
       allow create: if isAdmin() || (signedIn() && me() == userId && selfCreateOk());
       allow update: if isAdmin() || (signedIn() && me() == userId && selfUpdateOk());
       allow delete: if isAdmin();
@@ -115,18 +120,18 @@ service cloud.firestore {
     // ===== 救護紀錄表 =====
     match /medical_records/{id} {
       allow create: if approved();
-      allow read, update, delete: if isAdmin();
+      allow read, update, delete: if recAdmin();
     }
     match /system_configs/{id} {
       allow read: if signedIn();
-      allow write: if isAdmin();
+      allow write: if recAdmin();
     }
 
     // ===== 倉庫 =====
-    match /warehouse_boxes/{id} { allow read: if inWarehouse(); allow write: if isAdmin(); }
-    match /warehouse_pages/{id} { allow read: if inWarehouse(); allow write: if isAdmin(); }
-    match /warehouse_logs/{id}  { allow read: if inWarehouse(); allow write: if isAdmin(); }
-    match /settings/{id}        { allow read: if inWarehouse(); allow write: if isAdmin(); }
+    match /warehouse_boxes/{id} { allow read: if inWarehouse(); allow write: if whAdmin(); }
+    match /warehouse_pages/{id} { allow read: if inWarehouse(); allow write: if whAdmin(); }
+    match /warehouse_logs/{id}  { allow read: if inWarehouse(); allow write: if whAdmin(); }
+    match /settings/{id}        { allow read: if inWarehouse(); allow write: if whAdmin(); }
 
     // 其他沒列出的集合一律拒絕
   }

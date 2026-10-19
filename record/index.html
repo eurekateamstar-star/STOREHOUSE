@@ -943,7 +943,7 @@
         <div class="console-tab active" id="cTab-list" onclick="window.switchConsoleTab('list')">📋 清單</div>
         <div class="console-tab" id="cTab-stats" onclick="window.switchConsoleTab('stats')">📈 統計</div>
         <div class="console-tab" id="cTab-map" onclick="window.switchConsoleTab('map')">🗺 地圖</div>
-        <div class="console-tab" id="cTab-users" onclick="window.switchConsoleTab('users')">👥 人員</div>
+        <div class="console-tab" id="cTab-users" style="display:none" onclick="window.switchConsoleTab('users')">👥 人員</div>
       </div>
 
       <!-- 分頁 1: 案件清單 -->
@@ -1037,6 +1037,7 @@
     const app = initializeApp(firebaseConfig);
     const analytics = getAnalytics(app);
     const db = initializeFirestore(app, { localCache: persistentLocalCache() });
+    const recAdmin = d => !!d && (d.role === 'admin' || d.adminRecord === true);   // 救護紀錄表管理員（權限在會員中心設定）
 
     // ===== Firebase 身分驗證：LINE → 驗證伺服器（Cloudflare）→ Firebase，資料庫規則靠這個認人 =====
     const AUTH_URL = 'https://bst-auth.eurekateamstar.workers.dev';   // Cloudflare Worker 網址
@@ -1270,8 +1271,8 @@
         }
 
         // 管理員權限即時切換
-        if ((d.role === 'admin') !== (old.role === 'admin')) {
-          const isAdminNow = d.role === 'admin';
+        if (recAdmin(d) !== recAdmin(old)) {
+          const isAdminNow = recAdmin(d);
           updateAdminAdjustBtn();
           document.querySelector('.admin-console-btn').style.display = isAdminNow ? 'block' : 'none';
           if (isAdminNow) {
@@ -1305,7 +1306,7 @@
       document.getElementById('personnelInput').value = userData.realName;
 
       // 檢查是否為管理員
-      if (userData.role === 'admin') {
+      if (recAdmin(userData)) {
         updateAdminAdjustBtn();
         document.querySelector('.admin-console-btn').style.display = 'block';
         if (!isOffline) startAdminUsersLive();   // ★ 人員名單即時同步
@@ -1666,7 +1667,7 @@
     function updateAdminAdjustBtn() {
       const btn = document.querySelector('.admin-top-btn');
       if (!btn) return;
-      const isAdm = !!(currentUserData && currentUserData.role === 'admin');
+      const isAdm = recAdmin(currentUserData);
       const onPage = steps[currentStep] === 'treatment';
       btn.style.display = (isAdm && onPage) ? 'block' : 'none';
       // 主控台靠右；管理員調整出現時，主控台往左讓位
