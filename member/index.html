@@ -527,7 +527,8 @@
   function bdayText(iso) {
     if (!iso) return '—';
     const [y, m, d] = iso.split('-').map(Number);
-    return `${y}/${m}/${d}（民國 ${y - 1911} 年）`;
+    const p = n => String(n).padStart(2, '0');
+    return `${y}/${p(m)}/${p(d)}（民國 ${y - 1911} 年）`;
   }
   async function rosterKey(idCard, bday) {
     const data = new TextEncoder().encode(`${normId(idCard)}|${bday || ''}`);
@@ -1196,7 +1197,9 @@
   $('btn-confirm-ok').onclick = () => { confirmPopKey = null; maybeConfirmPopup(); };   // 一定要在確認畫面逐項核對、勾選後才算確認
 
   // 未確認 → 跳出確認畫面（每次需要確認時跳一次）
-  let confirmPopKey = null, myRosterReady = false, confirmLock = false;
+  let confirmPopKey = null, myRosterReady = false, confirmLock = false, editFromConfirm = false;
+  // 改完資料 → 回到確認畫面再核對一次
+  function backToConfirm() { editFromConfirm = false; confirmPopKey = null; setTimeout(() => { confirmPopKey = null; maybeConfirmPopup(); }, 800); }
   function maybeConfirmPopup() {
     if (!user || user.status !== 'approved' || user.profileConfirmedAt || adminOn) return;
     if (user.rosterId && !myRosterReady) return;   // 等名冊資料載入完再跳，避免顯示空白
@@ -1232,7 +1235,7 @@
     $('sheet').scrollTop = 0;
     $('cp-agree').onchange = e => { $('cp-ok').disabled = !e.target.checked; };
     $('cp-ok').onclick = () => { if (!$('cp-agree').checked) return toast('請先勾選確認'); confirmLock = false; confirmOk(); };
-    $('cp-edit').onclick = () => { confirmLock = false; editMe(); };
+    $('cp-edit').onclick = () => { confirmLock = false; editFromConfirm = true; editMe(); };
     $('cp-later').onclick = () => { confirmLock = false; closeSheet(); toast('⚠️ 請記得盡快確認，進香保險需要正確資料'); };
   }
   const rocBday = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? `${+m[1] - 1911}.${m[2]}.${m[3]}` : ''; };
@@ -1255,7 +1258,7 @@
       if (/^[A-Z][0-9A-Z]\d{8}$/.test(nid0) && rosterById(await rosterKey(nid0, nbd0))) return toast('名冊已有相同身分證＋生日的團員');
     }
     if (!changed.length) {
-      if (role === 'self') { confirmOk(); return; }
+      if (role === 'self') { closeSheet(); if (editFromConfirm || !user.profileConfirmedAt) backToConfirm(); else toast('沒有修改'); return; }
       toast('沒有修改'); return;
     }
     const upd = {};
@@ -1271,7 +1274,6 @@
     const labels = changed.map(k => SELF_LABEL[k] || (ROSTER_COLS.find(c => c[0] === k) || [k, k])[1]);
     const by = user.realName || profile.displayName || '';
     upd.updatedAt = serverTimestamp(); upd.updatedBy = by; upd.updatedByRole = role;
-    if (role === 'self') upd.confirmedAt = serverTimestamp();
     const cut = v => { v = String(v || ''); return v.length > 60 ? v.slice(0, 60) + '…' : v; };
     const changes = changed.map((k, i) => ({ f: labels[i], from: cut(curVal(r, k)), to: cut(vals[k]) }));
     upd.editLog = [r.isNew ? { at: Date.now(), by, role, action: 'create', fromApp: !!r.fromApp, fields: [] } : { at: Date.now(), by, role, fields: labels, changes }, ...(r.editLog || [])].slice(0, 30);
@@ -1303,12 +1305,12 @@
         if (upd.idCard !== undefined && idOk) su.idCard = upd.idCard;
         if (upd.birthday) su.birthday = upd.birthday;
         if (upd.cert) { su.certification = upd.cert; su.category = upd.cert; su.warehouseCategory = upd.cert; }
-        if (role === 'self') { su.profileConfirmedAt = serverTimestamp(); su.confirmRequestedAt = deleteField(); su.confirmRequestedBy = deleteField(); }
+        if (role === 'self') su.profileConfirmedAt = deleteField();   // 資料改過 → 要重新核對確認
         await updateDoc(doc(db, 'users', uid), su).catch(() => {});
       }
       toast('✅ 已儲存');
       if (r.fromApp) await updateDoc(doc(db, 'roster_applications', r.fromApp), { status: 'approved', rosterId: rid, reviewedBy: by, reviewedAt: serverTimestamp() }).catch(() => {});
-      if (role === 'admin') setTimeout(() => openRoster(rid), 300); else closeSheet();
+      if (role === 'admin') setTimeout(() => openRoster(rid), 300); else { closeSheet(); backToConfirm(); }
     } catch (e) {
       btn.disabled = false; btn.textContent = '儲存';
       toast('❌ 儲存失敗');
@@ -1316,7 +1318,8 @@
   }
 
   function closeSheet() { $('sheet-close').classList.remove('hidden'); confirmLock = false; document.body.classList.remove('sheet-open'); sheetRid = null; sheetUid = null; $('sheet-bg').style.display = 'none'; $('sheet').style.display = 'none'; }
-  $('sheet-bg').onclick = () => { if (!confirmLock) closeSheet(); }; $('sheet-close').onclick = closeSheet;
+  const closeAny = () => { const back = editFromConfirm && editCtx && editCtx.role === 'self' && $('ed-save'); closeSheet(); if (back) backToConfirm(); };
+  $('sheet-bg').onclick = () => { if (!confirmLock) closeAny(); }; $('sheet-close').onclick = closeAny;
 
   // ---------- 系統會員 ----------
   function renderUsers() {
