@@ -144,8 +144,8 @@
   .log-del { position: absolute; right: 0; top: 4px; width: 24px; height: 24px; border: none; border-radius: 50%; background: #fee2e2; color: #dc2626; font-size: 12px; font-weight: 900; cursor: pointer; line-height: 24px; padding: 0; }
   .log-ch { margin: 3px 0 0 14px; font-size: 12px; color: var(--sub); line-height: 1.5; word-break: break-all; }
   .log-ch .f { font-weight: 800; color: #555; } .log-ch s { color: #9ca3af; } .log-ch b { color: #15803d; }
-  .confirm-card { background: linear-gradient(135deg,#fff7ed,#fff); border: 1.5px solid #fdba74; border-radius: 20px; padding: 16px 16px 14px; margin-top: 16px; box-shadow: var(--shadow); }
-  .confirm-card .t { font-size: 16px; font-weight: 900; color: #c2410c; }
+  .confirm-card { background: linear-gradient(135deg,#fee2e2,#fff); border: 2px solid #ef4444; border-radius: 20px; padding: 16px 16px 14px; margin-top: 16px; box-shadow: var(--shadow); }
+  .confirm-card .t { font-size: 17px; font-weight: 900; color: #b91c1c; }
   .confirm-card .d { font-size: 13px; color: #6b7280; margin: 6px 0 12px; line-height: 1.6; }
   .confirm-card .b { display: flex; gap: 8px; }
   .confirm-card .b button { flex: 1; border: none; border-radius: 12px; padding: 11px 8px; font-size: 14px; font-weight: 800; cursor: pointer; font-family: inherit; }
@@ -189,6 +189,20 @@
   .red-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #ef4444; margin-left: 5px; vertical-align: middle; box-shadow: 0 0 0 2px #fff; flex-shrink: 0; }
   .line-who { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #166534; white-space: nowrap; }
   .line-who .mini-av { width: 24px; height: 24px; font-size: 11px; }
+  .ins-alert { background: linear-gradient(135deg, #fee2e2, #fff1f2); border: 2px solid #ef4444; border-radius: 16px; padding: 14px 14px 12px; animation: insPulse 1.6s ease-in-out 2; }
+  .ins-alert .ins-t { font-size: 20px; font-weight: 900; color: #b91c1c; letter-spacing: 1px; }
+  .ins-alert .ins-d { font-size: 14px; color: #7f1d1d; line-height: 1.7; margin-top: 6px; }
+  .ins-alert b { color: #b91c1c; }
+  @keyframes insPulse { 50% { box-shadow: 0 0 0 6px rgba(239,68,68,0.18); } }
+  .ins-key { border: 2px solid #f59e0b; background: #fffbeb; border-radius: 16px; padding: 10px 14px; }
+  .ins-key-t { font-size: 13px; font-weight: 900; color: #b45309; margin-bottom: 4px; }
+  .ins-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px dashed #fcd34d; font-size: 15px; }
+  .ins-row:last-child { border-bottom: none; }
+  .ins-row span { color: #92400e; font-weight: 800; } .ins-row b { font-size: 18px; color: #1f2430; letter-spacing: 1px; text-align: right; }
+  .ins-check { display: flex; gap: 10px; align-items: flex-start; margin-top: 14px; padding: 12px; border-radius: 14px; background: #f0fdf4; border: 1.5px solid #86efac; font-size: 14px; font-weight: 800; color: #166534; line-height: 1.6; cursor: pointer; }
+  .ins-check input { width: 22px; height: 22px; margin-top: 1px; accent-color: #16a34a; flex-shrink: 0; }
+  #cp-ok:disabled { opacity: .45; }
+  .link-btn { background: none; border: none; color: #9ca3af; font-size: 13px; text-decoration: underline; cursor: pointer; font-family: inherit; }
   .adm-box { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; background: #f5f3ff; border-radius: 14px; padding: 12px; font-size: 14px; font-weight: 700; }
   .adm-box label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
   .adm-box input { width: 18px; height: 18px; accent-color: var(--violet); }
@@ -313,8 +327,8 @@
       </div>
 
       <div class="confirm-card hidden" id="confirm-card">
-        <div class="t">📝 請確認你的團員資料</div>
-        <div class="d">第一次登入請先檢查你的資料（電話、緊急聯絡人、尺寸、證照…），有錯請按「編輯資料」修改；確認都正確就按「資料正確」，之後不會再提示。</div>
+        <div class="t">⚠️ 重要‼️ 請確認你的團員資料</div>
+        <div class="d">這份資料將用於<b style="color:#b91c1c">進香活動投保</b>，姓名、生日、身分證錯誤可能導致保險無效。請逐項檢查，有錯請按「編輯資料」，確認正確再按「資料正確」。</div>
         <div class="b"><button class="p" id="btn-confirm-edit">✏️ 編輯資料</button><button class="s" id="btn-confirm-ok">✅ 資料正確</button></div>
       </div>
 
@@ -638,7 +652,7 @@
     $('f-status').innerHTML = '<span class="ok">✅ 已核准</span>' + (user.verifiedBy === 'roster' ? '（名冊自動驗證）' : '');
     $('f-line').textContent = user.lineDisplayName || profile.displayName || '—';
     $('confirm-card').classList.toggle('hidden', !!user.profileConfirmedAt);
-    $('confirm-card').querySelector('.t').textContent = user.confirmRequestedBy ? `🔔 管理員 ${user.confirmRequestedBy} 請你重新確認資料` : '📝 請確認你的團員資料';
+    $('confirm-card').querySelector('.t').textContent = user.confirmRequestedBy ? `⚠️ 重要‼️ 管理員 ${user.confirmRequestedBy} 請你重新確認資料` : '⚠️ 重要‼️ 請確認你的團員資料';
     setTimeout(maybeConfirmPopup, 0);
     show('v-member');
   }
@@ -1179,10 +1193,10 @@
       closeSheet(); toast('✅ 已確認，謝謝！');
     } catch (e) { toast('❌ 儲存失敗'); }
   }
-  $('btn-confirm-ok').onclick = confirmOk;
+  $('btn-confirm-ok').onclick = () => { confirmPopKey = null; maybeConfirmPopup(); };   // 一定要在確認畫面逐項核對、勾選後才算確認
 
   // 未確認 → 跳出確認畫面（每次需要確認時跳一次）
-  let confirmPopKey = null, myRosterReady = false;
+  let confirmPopKey = null, myRosterReady = false, confirmLock = false;
   function maybeConfirmPopup() {
     if (!user || user.status !== 'approved' || user.profileConfirmedAt || adminOn) return;
     if (user.rosterId && !myRosterReady) return;   // 等名冊資料載入完再跳，避免顯示空白
@@ -1192,18 +1206,34 @@
     const r = myRoster || { name: user.realName, idCard: user.idCard, birthday: user.birthday, certText: user.certification || '' };
     const row = (t, v) => `<div class="row"><span class="k">${esc(t)}</span><span class="v">${esc(v || '—')}</span></div>`;
     const req = user.confirmRequestedBy ? `管理員 ${esc(user.confirmRequestedBy)} 請你重新確認資料。` : '第一次登入，請確認你的團員資料。';
+    const KEY = ['name', 'birthdayISO', 'idCard'];   // 保險一定要對的三項
+    const val = k => k === 'birthdayISO' ? (r.birthday ? bdayText(r.birthday) : '') : k === 'idCard' ? (normId(r.idCard) || '') : rv(r, k);
+    const lab = k => SELF_LABEL[k] || (ROSTER_COLS.find(c => c[0] === k) || [k, k])[1];
     $('sheet-body').innerHTML = `
-      <h3>📝 請確認你的資料</h3>
-      <div style="font-size:13px; color:var(--sub); margin:4px 0 10px; line-height:1.6;">${req}<br>都正確請按「資料正確」，有錯請按「編輯資料」。</div>
-      <div class="rows">${SELF_FIELDS.map(k => row(SELF_LABEL[k] || (ROSTER_COLS.find(c => c[0] === k) || [k, k])[1], k === 'birthdayISO' ? (r.birthday ? bdayText(r.birthday) : '') : k === 'idCard' ? maskId(r.idCard) : rv(r, k))).join('')}</div>
-      <div class="p-actions" style="display:flex; gap:8px; margin-top:14px;">
-        <button class="sbtn pri" id="cp-edit" style="flex:1">✏️ 編輯資料</button>
-        <button class="sbtn" id="cp-ok" style="flex:1; background:#16a34a; color:#fff;">✅ 資料正確</button>
-      </div>`;
+      <div class="ins-alert">
+        <div class="ins-t">⚠️ 重要‼️ 請務必確認</div>
+        <div class="ins-d">這份資料將用於<b>進香活動投保</b>。<br>姓名、出生日期、身分證字號<b>任何一個錯誤，都可能導致保險無效、無法理賠</b>。</div>
+      </div>
+      <div style="font-size:13px; color:var(--sub); margin:10px 2px 8px; line-height:1.6;">${req}</div>
+      <div class="ins-key">
+        <div class="ins-key-t">🛡️ 保險必要資料</div>
+        ${KEY.map(k => `<div class="ins-row"><span>${esc(lab(k))}</span><b>${esc(val(k) || '（未填）')}</b></div>`).join('')}
+      </div>
+      <div class="grp">其他資料</div>
+      <div class="rows">${SELF_FIELDS.filter(k => !KEY.includes(k)).map(k => row(lab(k), val(k))).join('')}</div>
+      <label class="ins-check"><input type="checkbox" id="cp-agree"> 我已逐項核對，以上資料正確無誤，同意作為進香保險使用。</label>
+      <div class="p-actions" style="display:flex; gap:8px; margin-top:10px;">
+        <button class="sbtn pri" id="cp-edit" style="flex:1; padding:12px;">✏️ 有錯，我要修改</button>
+        <button class="sbtn" id="cp-ok" style="flex:1; padding:12px; background:#16a34a; color:#fff;" disabled>✅ 資料正確</button>
+      </div>
+      <div style="text-align:center; margin-top:10px;"><button class="link-btn" id="cp-later">稍後再確認</button></div>`;
+    $('sheet-close').classList.add('hidden'); confirmLock = true;
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open');
     $('sheet').scrollTop = 0;
-    $('cp-ok').onclick = confirmOk;
-    $('cp-edit').onclick = editMe;
+    $('cp-agree').onchange = e => { $('cp-ok').disabled = !e.target.checked; };
+    $('cp-ok').onclick = () => { if (!$('cp-agree').checked) return toast('請先勾選確認'); confirmLock = false; confirmOk(); };
+    $('cp-edit').onclick = () => { confirmLock = false; editMe(); };
+    $('cp-later').onclick = () => { confirmLock = false; closeSheet(); toast('⚠️ 請記得盡快確認，進香保險需要正確資料'); };
   }
   const rocBday = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? `${+m[1] - 1911}.${m[2]}.${m[3]}` : ''; };
 
@@ -1285,8 +1315,8 @@
     }
   }
 
-  function closeSheet() { document.body.classList.remove('sheet-open'); sheetRid = null; sheetUid = null; $('sheet-bg').style.display = 'none'; $('sheet').style.display = 'none'; }
-  $('sheet-bg').onclick = closeSheet; $('sheet-close').onclick = closeSheet;
+  function closeSheet() { $('sheet-close').classList.remove('hidden'); confirmLock = false; document.body.classList.remove('sheet-open'); sheetRid = null; sheetUid = null; $('sheet-bg').style.display = 'none'; $('sheet').style.display = 'none'; }
+  $('sheet-bg').onclick = () => { if (!confirmLock) closeSheet(); }; $('sheet-close').onclick = closeSheet;
 
   // ---------- 系統會員 ----------
   function renderUsers() {
