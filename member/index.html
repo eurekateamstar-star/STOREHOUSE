@@ -430,25 +430,29 @@
     const AUTH_URL = 'https://bst-auth.eurekateamstar.workers.dev';   // Cloudflare Worker 網址
     const auth = getAuth(app);
     const liffUid = () => { try { const t = liff.getDecodedIDToken(); return (t && t.sub) || null; } catch (e) { return null; } };
+    let fbAuthError = '';
     async function fbSignIn(uid) {
+      const timeout = (ms, what) => new Promise((_, rej) => setTimeout(() => rej(new Error(what + '逾時')), ms));
       try {
-        await new Promise(res => { const off = onAuthStateChanged(auth, () => { off(); res(); }); });
+        await Promise.race([new Promise(res => { const off = onAuthStateChanged(auth, () => { off(); res(); }); }), timeout(6000, '登入狀態')]);
         if (auth.currentUser && (!uid || auth.currentUser.uid === uid)) return true;
         if (!AUTH_URL) return false;
         const at = liff.getAccessToken();
-        if (!at) return false;
-        const r = await fetch(AUTH_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accessToken: at }) });
+        if (!at) throw new Error('沒有 LINE 憑證');
+        const r = await Promise.race([fetch(AUTH_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accessToken: at }) }), timeout(10000, '驗證伺服器')]);
         const j = await r.json().catch(() => ({}));
-        if (r.status === 401) {   // LINE 憑證過期 → 重新登入一次
+        if (r.status === 401) {   // LINE 憑證過期 → 重新登入一次（LINE App 內不能 login，就直接回報錯誤）
           let tried = false;
           try { tried = sessionStorage.getItem('fbRelogin') === '1'; sessionStorage.setItem('fbRelogin', '1'); } catch (e) {}
-          if (!tried) { try { liff.logout(); } catch (e) {} liff.login({ redirectUri: location.origin + location.pathname }); return new Promise(() => {}); }
+          let inClient = false; try { inClient = liff.isInClient(); } catch (e) {}
+          if (!tried && !inClient) { try { liff.logout(); } catch (e) {} liff.login({ redirectUri: location.origin + location.pathname }); return new Promise(() => {}); }
         }
-        if (!j.token) throw new Error(j.error || 'auth failed');
-        await signInWithCustomToken(auth, j.token);
+        if (!j.token) throw new Error(j.error || ('驗證伺服器回應 ' + r.status));
+        await Promise.race([signInWithCustomToken(auth, j.token), timeout(10000, 'Firebase 登入')]);
         try { sessionStorage.removeItem('fbRelogin'); } catch (e) {}
+        fbAuthError = '';
         return true;
-      } catch (e) { console.warn('Firebase 登入失敗', e); return false; }
+      } catch (e) { fbAuthError = (e && e.message) || String(e); console.warn('Firebase 登入失敗', e); return false; }
     }
 
 
@@ -1472,6 +1476,7 @@
     $('loading-text').textContent = '讀取會員資料…';
     try { await fbP; } catch (e) {}
     if (!auth.currentUser || auth.currentUser.uid !== profile.userId) await fbSignIn(profile.userId);
+    if (!auth.currentUser) return fail('登入驗證失敗，請關閉後重新開啟。\n（' + (fbAuthError || '未知原因') + '）');
     const ref = doc(db, 'users', profile.userId);
     let first = true;
     // 即時同步：管理員核准、退回、改名、改分類、設為管理員，這裡都會馬上更新
