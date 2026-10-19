@@ -1040,7 +1040,7 @@
     const what = l.action === 'confirm' ? '✅ 確認資料無誤（未修改）'
       : l.action === 'request' ? '🔔 要求本人重新確認資料'
       : l.action === 'create' ? (l.fromApp ? '➕ 新增團員（新人申請表審核通過）' : '➕ 新增團員')
-      : '修改：' + esc((l.fields || []).join('、'));
+      : '修改：' + esc((l.fields || []).join('、')) + (l.confirmed ? '　<span class="ok">✅ 已確認</span>' : (l.role === 'self' ? '　<span class="warn" style="font-size:11px">（尚未確認）</span>' : ''));
     const ch = (l.changes || []).map(c => `<div class="log-ch"><span class="f">${esc(c.f)}</span>　<s>${esc(c.from || '（空白）')}</s> → <b>${esc(c.to || '（空白）')}</b></div>`).join('');
     return `<div class="log-item">${i != null ? `<button class="log-del" data-li="${i}" title="刪除這筆紀錄">✕</button>` : ''}<b>${esc(fmtAt(l.at))}</b>　${who}（${esc(l.by || '')}）${what}${ch}</div>`;
   }
@@ -1183,13 +1183,20 @@
     const maxNum = k => rosterCache.reduce((m, r) => Math.max(m, Number(r[k]) || 0), 0);
     openEditForm({ id: null, isNew: true, serial: String(maxNum('serial') + 1), rowIndex: maxNum('rowIndex') + 1 }, 'admin');
   };
+  // 確認紀錄：剛剛有修改（還沒確認過）→ 在那筆修改上註記「已確認」；沒修改 → 記一筆「確認無誤（未修改）」
+  function confirmLog(log, by) {
+    const top = log[0];
+    if (top && top.role === 'self' && !top.action && !top.confirmed)
+      return [{ ...top, confirmed: true, confirmedAt: Date.now() }, ...log.slice(1)].slice(0, 30);
+    return [{ at: Date.now(), by, role: 'self', action: 'confirm', fields: [] }, ...log].slice(0, 30);
+  }
   async function confirmOk() {
     const by = user.realName || profile.displayName || '';
     try {
       await updateDoc(doc(db, 'users', profile.userId), { profileConfirmedAt: serverTimestamp(), confirmRequestedAt: deleteField(), confirmRequestedBy: deleteField() });
       if (myRoster && myRoster.id) await updateDoc(doc(db, ROSTER, myRoster.id), {
         confirmedAt: serverTimestamp(), updatedAt: serverTimestamp(), updatedBy: by, updatedByRole: 'self',
-        editLog: [{ at: Date.now(), by, role: 'self', action: 'confirm', fields: [] }, ...(myRoster.editLog || [])].slice(0, 30) }).catch(e => console.warn('確認紀錄寫入失敗', e));
+        editLog: confirmLog(myRoster.editLog || [], by) }).catch(e => console.warn('確認紀錄寫入失敗', e));
       closeSheet(); toast('✅ 已確認，謝謝！');
     } catch (e) { toast('❌ 儲存失敗'); }
   }
