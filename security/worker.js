@@ -6,8 +6,8 @@
 
 const LINE_CHANNEL_ID = '2011820105';
 const ALLOWED_ORIGINS = ['https://eurekateamstar-star.github.io'];
-// Cloudflare Pages：bst-app-xxx.pages.dev、bst-record-xxx.pages.dev（含預覽網址）
-const PAGES_RE = /^https:\/\/([a-z0-9]+\.)?(bst-app-41d|bst-record)\.pages\.dev$/;
+// Cloudflare Pages：正式網址 tsushin-buishatun.pages.dev（bst-app-41d、bst-record 為搬家前舊網址）
+const PAGES_RE = /^https:\/\/([a-z0-9]+\.)?(tsushin-buishatun|bst-app-41d|bst-record)\.pages\.dev$/;
 const originOk = o => ALLOWED_ORIGINS.includes(o) || PAGES_RE.test(o);
 const PROJECT_ID = 'linebot-firebase-b1242';
 const AI_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
