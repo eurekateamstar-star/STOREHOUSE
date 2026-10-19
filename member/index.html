@@ -328,8 +328,8 @@
 
       <div class="confirm-card hidden" id="confirm-card">
         <div class="t">⚠️ 重要‼️ 請確認你的團員資料</div>
-        <div class="d">這份資料將用於<b style="color:#b91c1c">進香活動投保</b>，姓名、生日、身分證錯誤可能導致保險無效。請逐項檢查，有錯請按「編輯資料」，確認正確再按「資料正確」。</div>
-        <div class="b"><button class="p" id="btn-confirm-edit">✏️ 編輯資料</button><button class="s" id="btn-confirm-ok">✅ 資料正確</button></div>
+        <div class="d">這份資料將用於<b style="color:#b91c1c">進香活動投保</b>，姓名、生日、身分證錯誤可能導致保險無效。請按下方按鈕查看並逐項核對。</div>
+        <div class="b"><button class="p" id="btn-confirm-ok" style="padding:13px; font-size:16px;">🔍 查看資料並確認</button></div>
       </div>
 
       <div class="sec" style="display:flex; justify-content:space-between; align-items:center;">基本資料<button class="edit-btn" id="btn-edit-me">✏️ 編輯資料</button></div>
@@ -1183,7 +1183,6 @@
     const maxNum = k => rosterCache.reduce((m, r) => Math.max(m, Number(r[k]) || 0), 0);
     openEditForm({ id: null, isNew: true, serial: String(maxNum('serial') + 1), rowIndex: maxNum('rowIndex') + 1 }, 'admin');
   };
-  $('btn-confirm-edit').onclick = editMe;
   async function confirmOk() {
     const by = user.realName || profile.displayName || '';
     try {
