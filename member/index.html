@@ -1461,6 +1461,7 @@
   const ATT_SHORT = { yes: '✅ 出席', join: '⚠️ 不出席但參與進香', no: '❌ 不參與' };
   const LUNCH = ['葷', '素（方便素）', '自行處理'];
   const eventLink = id => `https://tsushin-buishatun.pages.dev/attend/?e=${encodeURIComponent(id)}`;   // 公開表單：不用先綁會員中心
+  let evPaid = {};
   let evDraw = {}, evDrawBy = {}, evOver = {}, drawSheetEid = null, drSel = null;
   let eventsCache = [], eventsUnsub = null, myResp = {}, evRespCache = {}, evRespUnsub = null, evOpenId = null, evFilter = 'all';
   // 連結 liff.line.me/…?e=活動ID：LIFF 開啟時參數可能包在 liff.state 裡
@@ -1562,7 +1563,7 @@
       evRespCache[eid] = s.docs.map(d => ({ id: d.id, ...d.data() }));
       if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid);
     }, () => toast('讀取回覆失敗'));
-    const u2 = onSnapshot(doc(db, 'events', eid, 'admin', 'draw'), s => { const d = s.exists() ? s.data() : {}; evDraw[eid] = d.map || {}; evDrawBy[eid] = d.by2 || {}; evOver[eid] = d.groupOverride || {}; if (drawSheetEid === eid) renderDrawSheet(eid); }, () => {});
+    const u2 = onSnapshot(doc(db, 'events', eid, 'admin', 'draw'), s => { const d = s.exists() ? s.data() : {}; evDraw[eid] = d.map || {}; evDrawBy[eid] = d.by2 || {}; evOver[eid] = d.groupOverride || {}; evPaid[eid] = d.paid || {}; if (drawSheetEid === eid) renderDrawSheet(eid); }, () => {});
     evRespUnsub = () => { u1(); u2(); };
     evRespUnsub._eid = eid;
   }
@@ -1702,7 +1703,7 @@
     return groups;
   }
   const saveDraw = (eid, map, by2, over) => setDoc(doc(db, 'events', eid, 'admin', 'draw'),
-    { map, by2, groupOverride: over, at: serverTimestamp(), by: user.realName || profile.displayName || '' });
+    { map, by2, groupOverride: over, paid: evPaid[eid] || {}, at: serverTimestamp(), by: user.realName || profile.displayName || '' });
   const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   // 某一組還剩哪些位置（依人數平分的目標扣掉已抽的）
   const slotsLeft = (ppl, map) => { const tg = slotTargets(ppl.length), bag = []; SLOTS.forEach(sl => { const left = tg[sl] - ppl.filter(p => map[p.key] === sl).length; for (let i = 0; i < left; i++) bag.push(sl); }); return bag; };
@@ -1732,7 +1733,7 @@
     const missing = DRAW_GROUPS.reduce((n, g) => n + groups[g].filter(p => !map[p.key]).length, 0);
     const done = total - missing;
     const avOf = p => { const u = p.ro && p.ro.boundUserId && userById(p.ro.boundUserId); return u && u.pictureUrl ? `<img class="dr-av" src="${esc(u.pictureUrl)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ''; };
-    const nm = p => `<button class="dr-n ${drSel === p.key ? 'sel' : ''}" data-dk="${esc(p.key)}">${avOf(p)}${esc(p.name)}${p.r.attend === 'join' ? '<i>請假</i>' : ''}${by2[p.key] === 'admin' ? '<i class="ad">代抽</i>' : ''}${over[p.key] ? '<i class="mv">手動</i>' : ''}</button>`;
+    const nm = p => `<button class="dr-n ${drSel === p.key ? 'sel' : ''}" data-dk="${esc(p.key)}">${avOf(p)}${esc(p.name)}${p.r.attend === 'join' ? '<i>請假</i>' : ''}${by2[p.key] === 'admin' ? '<i class="ad">代抽</i>' : ''}${over[p.key] ? '<i class="mv">手動</i>' : ''}${(evPaid[eid] || {})[p.key] ? '<i class="pd">已繳</i>' : ''}</button>`;
     const editor = (p, g) => `<div class="dr-ed">
         <div class="dr-ed-t">✏️ ${esc(p.name)}　<span>${esc(p.ro ? rv(p.ro, 'position') + '・' + (p.ro.cert || '') : '未對應名冊')}</span></div>
         <div class="dr-ed-l">換到哪一組</div>
@@ -1742,12 +1743,14 @@
         <div class="dr-chips">${SLOTS.map(sl => `<button class="dr-c ${map[p.key] === sl ? 'on' : ''}" data-sl="${sl}">${sl}</button>`).join('')}
           <button class="dr-c" data-sl="__rand" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;border:none;">🎲 代抽籤</button>
           ${map[p.key] ? '<button class="dr-c" data-sl="__clear">清除</button>' : ''}</div>
+        <div class="dr-ed-l">團費</div>
+        <div class="dr-chips"><button class="dr-c ${(evPaid[eid] || {})[p.key] ? 'on' : ''}" data-paid="1" style="${(evPaid[eid] || {})[p.key] ? 'background:#16a34a;border-color:#16a34a;' : ''}">${(evPaid[eid] || {})[p.key] ? '✅ 已繳團費' : '☐ 未繳團費（點一下改成已繳）'}</button></div>
         <button class="dr-c" data-close="1" style="margin-top:8px;">完成</button></div>`;
     const grp = g => { const ppl = groups[g]; if (!ppl.length) return '';
       const tg = slotTargets(ppl.length), sel = ppl.find(p => p.key === drSel);
       const col = sl => `<div class="dr-col"><div class="dr-h">${sl}<span>${ppl.filter(p => map[p.key] === sl).length}/${tg[sl]}</span></div>${ppl.filter(p => map[p.key] === sl).map(nm).join('')}</div>`;
       const un = ppl.filter(p => !map[p.key]);
-      return `<div class="dr-g"><div class="dr-t">${esc(g)}<span>${ppl.length} 人　前 ${tg['前']}・中 ${tg['中']}・後 ${tg['後']}</span></div>
+      return `<div class="dr-g"><div class="dr-t">${esc(g)}<span>${ppl.length} 人　前 ${tg['前']}・中 ${tg['中']}・後 ${tg['後']}　<b style="color:#16a34a">已繳 ${ppl.filter(p => (evPaid[eid] || {})[p.key]).length}</b></span></div>
         ${sel ? editor(sel, g) : ''}
         ${un.length ? `<div class="dr-ul">還沒抽籤（${un.length}）</div><div class="dr-un">${un.map(nm).join('')}</div>` : ''}
         ${done ? `<div class="dr-cols">${SLOTS.map(col).join('')}</div>` : ''}</div>`; };
@@ -1762,7 +1765,7 @@
         .dr-un .dr-n{display:inline-flex;width:auto;background:#fff7ed;border:1px solid #fed7aa;margin:3px 4px 0 0;padding:4px 8px}
         .dr-n.sel{background:#fde8ea !important;outline:2px solid var(--primary)}
         .dr-av{width:22px;height:22px;flex-shrink:0;border-radius:50%;object-fit:cover;margin-right:3px;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.15)}
-        .dr-n i{font-style:normal;font-size:9px;letter-spacing:-.5px;color:#b45309;margin-left:1px;flex-shrink:0}.dr-n i.ad{color:#2563eb}.dr-n i.mv{color:#7c3aed}
+        .dr-n i{font-style:normal;font-size:9px;letter-spacing:-.5px;color:#b45309;margin-left:1px;flex-shrink:0}.dr-n i.ad{color:#2563eb}.dr-n i.pd{color:#fff;background:#16a34a;border-radius:6px;padding:0 4px}.dr-n i.mv{color:#7c3aed}
         .dr-ul{font-size:12px;color:#b45309;font-weight:800;margin-top:8px}
         .dr-ed{background:#fff7f5;border:1.5px solid #f5c2c8;border-radius:14px;padding:10px 12px;margin-top:8px}
         .dr-ed-t{font-weight:900}.dr-ed-t span{font-size:12px;color:var(--sub);font-weight:600}.dr-ed-l{font-size:12px;color:var(--sub);margin:8px 0 4px;font-weight:700}
@@ -1771,7 +1774,7 @@
       </style>
       <h3>🎲 分組與抽籤（前／中／後）</h3>
       <div style="font-size:13px;color:var(--sub);line-height:1.7;margin-top:4px;">${esc(e.title || '')}<br>
-        出席＋不出席但參與進香 共 <b>${total}</b> 人，已抽 <b>${done}</b>、還沒抽 <b>${missing}</b>。每組平分成三份，多的放後面（10 人 → 3、3、4）。<br>
+        出席＋不出席但參與進香 共 <b>${total}</b> 人，已抽 <b>${done}</b>、還沒抽 <b>${missing}</b>；團費已繳 <b style="color:#16a34a">${DRAW_GROUPS.reduce((n, g) => n + groups[g].filter(p => (evPaid[eid] || {})[p.key]).length, 0)}</b> 人。每組平分成三份，多的放後面（10 人 → 3、3、4）。<br>
         👆 <b>點名字</b>可以換組、指定時段或代抽籤。</div>
       <div class="dr-top"><div>
       <div class="dr-ed" style="margin-top:10px;background:${e.selfDraw ? '#ecfdf5' : '#f8fafc'};border-color:${e.selfDraw ? '#86efac' : '#e2e8f0'};">
@@ -1788,6 +1791,12 @@
     document.querySelectorAll('[data-dk]').forEach(b => b.onclick = () => { drSel = drSel === b.dataset.dk ? null : b.dataset.dk; renderDrawSheet(eid); });
     const write = async (fn, msg) => { const m = { ...map }, b = { ...by2 }, o = { ...over }; fn(m, b, o); try { await saveDraw(eid, m, b, o); evDraw[eid] = m; evDrawBy[eid] = b; evOver[eid] = o; if (msg) toast(msg); renderDrawSheet(eid); } catch (err) { console.error(err); toast('❌ 儲存失敗（Firestore 規則可能還沒更新）'); } };
     document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => { drSel = null; renderDrawSheet(eid); });
+    document.querySelectorAll('[data-paid]').forEach(b => b.onclick = async () => {
+      const k = drSel, pd = { ...(evPaid[eid] || {}) };
+      if (pd[k]) delete pd[k]; else pd[k] = Date.now();
+      evPaid[eid] = pd;
+      try { await saveDraw(eid, { ...map }, { ...by2 }, { ...over }); toast(pd[k] ? '✅ 已繳團費' : '已改回未繳'); renderDrawSheet(eid); } catch (err) { console.error(err); toast('❌ 儲存失敗'); }
+    });
     document.querySelectorAll('[data-mv]').forEach(b => b.onclick = () => {
       const k = drSel, to = b.dataset.mv;
       write((m, by, o) => { if (to === '__auto') delete o[k]; else o[k] = to; delete m[k]; delete by[k]; }, to === '__auto' ? '已改回依名冊分組' : `已換到「${to}」（時段要重新抽）`);
@@ -1861,7 +1870,7 @@
         return [i + 1, p.name, p.r.attend === 'join' ? '請假' : '', lunch.startsWith('葷') ? 1 : null, lunch.startsWith('素') ? 1 : null, lunch === '自行處理' ? '不訂餐' : ''];
       }, (a, z) => [null, '合計', null, { formula: `SUM(D${a}:D${z})` }, { formula: `SUM(E${a}:E${z})` }, null]);
       block('繳費紀錄表', ['序 號', '姓名', '團費', '服裝', '合計', '收費確認'],
-        (p, i, rn) => [i + 1, p.name, 2500, null, { formula: `SUM(C${rn}:D${rn})` }, ''],
+        (p, i, rn) => [i + 1, p.name, 2500, null, { formula: `SUM(C${rn}:D${rn})` }, (evPaid[eid] || {})[p.key] ? '✔ 已繳' : ''],
         (a, z) => [null, '合計', { formula: `SUM(C${a}:C${z})` }, { formula: `SUM(D${a}:D${z})` }, { formula: `SUM(E${a}:E${z})` }, null]);
       ws.pageSetup.printArea = `A1:F${cur}`;
       totals.push([g, ws.name, tr, ppl.length]);
