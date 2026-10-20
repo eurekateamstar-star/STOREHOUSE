@@ -1999,7 +1999,7 @@
         return `<tr class="${cls}"><th class="xl ${mv ? 'mv' : ''}" ${mv ? `data-mvd="${d}" data-mvl="${t.l}" title="移到這組"` : ''}>${mv ? '⬅ ' : ''}${t.l}</th>${cells}<td class="xn"><div class="xnote ${t.note ? '' : 'emp'}" data-nd="${d}" data-nl="${t.l}">${t.note ? eqHtml(t.note) : '＋裝備'}</div>${extra}</td></tr>`; }).join('');
       return `<div class="xd" data-day="${d}"><table class="xt"><thead><tr><th class="xc">組別</th><th colspan="${NC}" class="xdate">${dd.getMonth() + 1}月${dd.getDate()}日(${WK[dd.getDay()]})<small>${SLOTS.filter(sl => inRange(sl, d)).join('、')}・${pres.length} 人・${ts.length} 組</small></th><th class="xcmd">指揮官:${esc(cmd)}<button class="xshot" data-shot="${d}">📷 存圖</button></th></tr></thead>
         <tbody>${rows || `<tr><td colspan="${NC + 2}" class="sc-empty">按「自動排班」</td></tr>`}
-        ${dutyLines(info[d]).map(t => `<tr><td colspan="${NC + 2}" class="xf" data-duty="${d}">${esc(t)}</td></tr>`).join('')}</tbody></table>
+        ${dutyLines(info[d]).map(([a, b]) => `<tr><td colspan="${NC + 2}" class="xf" data-duty="${d}">${esc(a)}${b ? `<span style="color:#dc2626">${esc(b)}</span>` : ''}</td></tr>`).join('')}</tbody></table>
         ${miss.length && ts.length ? `<div class="sc-miss">未排入：${miss.map(k => chip(k, false, d)).join('')}</div>` : ''}</div>`; };
     $('sheet-body').innerHTML = `
       <style>
@@ -2020,7 +2020,7 @@
         .xt tr.xb>*{border-top:2px solid #e9b8bf}
         .xshot{margin-left:8px;border:none;border-radius:8px;background:#1f2430;color:#fff;font:inherit;font-size:11px;font-weight:800;padding:3px 8px;cursor:pointer;vertical-align:middle}
         .xd.shooting .xshot,.xd.shooting .sc-miss,.xd.shooting .xnote.emp{visibility:hidden}.xsub{color:#6b7280;font-size:.9em}
-        .xt .xf{cursor:pointer;white-space:normal;height:auto!important;padding:5px 14px!important;line-height:1.5}.xt tr:has(.xf)+tr .xf{padding-top:0!important}.xt .xf:hover{background:#fff1f2}
+        .xt .xf{cursor:pointer;white-space:normal;height:auto!important;padding:5px 14px!important;line-height:1.5;font-size:12px!important}.xt tr:has(.xf)+tr .xf{padding-top:0!important}.xt .xf:hover{background:#fff1f2}
         .eq-box input[data-f],.eq-box textarea[data-f]{width:100%;padding:8px 10px;border-radius:10px;border:1.5px solid #e5ddd9;font:inherit;font-size:14px}.eq-box [data-f].on{border-color:var(--primary);background:#fff7f5}
         .du-n{display:flex;flex-wrap:wrap;gap:4px;max-height:160px;overflow:auto;margin-bottom:10px}.du-n button{border:1px solid #eadfdb;background:#fff;border-radius:8px;padding:4px 8px;font:inherit;font-size:13px;cursor:pointer}
         .eq-ov{position:fixed;inset:0;z-index:9500;background:rgba(31,36,48,.45);display:flex;align-items:center;justify-content:center;padding:16px}
@@ -2037,7 +2037,7 @@
           .xt thead th{height:44px}.xt .xc{width:38px;font-size:10px}.xt .xdate{font-size:16px;padding-left:2px}.xt .xdate small{display:block;margin:0;font-size:10px}
           .xt .xcmd{width:96px;font-size:10px;padding-right:4px;white-space:normal;line-height:1.2}
           .xt .xl{font-size:11px;letter-spacing:-.5px}.xt td.xm{padding:2px 1px}.xt td.xm>span{padding:4px 0;font-size:11.5px;border-radius:6px;letter-spacing:-.8px;overflow:hidden}
-          .xt .xn{width:96px}.xnote{font-size:10px;padding:2px}.xshot{display:block;margin:3px 0 0 auto;font-size:10px;padding:2px 6px}.xt .xf{font-size:11px;padding:6px 8px}
+          .xt .xn{width:96px}.xnote{font-size:10px;padding:2px}.xshot{display:block;margin:3px 0 0 auto;font-size:10px;padding:2px 6px}.xt .xf{font-size:10.5px!important;padding:4px 8px!important}
         }.xt .xn{width:150px;color:var(--sub);font-size:12px}
         .xt .xf{text-align:left;font-size:13px;padding:10px 14px;color:var(--sub);background:#fcfaf9;border-bottom:none}.sc-tg{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;align-items:start}
         .sc-day{background:#faf6f4;border-radius:16px;padding:10px}.sc-dh{font-weight:900;font-size:16px;margin-bottom:6px;display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap}.sc-dh span{font-size:12px;color:var(--sub);font-weight:700}
@@ -2150,7 +2150,7 @@
         if (isBack) firstBack = false;
         ws.getRow(r).height = 20; ws.getRow(r + 1).height = 13; r += 2;
       });
-      dutyLines((sc.info || {})[d]).forEach(t => { ws.mergeCells(all('A', 'H', r)); Object.assign(ws.getCell(`A${r}`), { value: t, font: font({ size: 11 }), border }); ws.getRow(r).height = 18; r++; });
+      dutyLines((sc.info || {})[d]).map(([a, b]) => ({ richText: [{ text: a, font: font({ size: 11 }) }, ...(b ? [{ text: b, font: font({ size: 11, color: { argb: 'FFFF0000' } }) }] : [])] })).forEach(t => { ws.mergeCells(all('A', 'H', r)); Object.assign(ws.getCell(`A${r}`), { value: t, font: font({ size: 11 }), border }); ws.getRow(r).height = 18; r++; });
       // 外框粗線
       for (let rr = top; rr < r; rr++) { const a1 = ws.getRow(rr).getCell(1), h1 = ws.getRow(rr).getCell(8); a1.border = { ...a1.border, left: med }; h1.border = { ...h1.border, right: med }; }
       for (let col = 1; col <= 8; col++) { const c = ws.getRow(top).getCell(col); c.border = { ...c.border, top: med }; const c2 = ws.getRow(r - 1).getCell(col); c2.border = { ...c2.border, bottom: med }; }
@@ -2174,8 +2174,11 @@
   }
   // ===== 每天的值日生、到達時間、洗衣服 =====
   const DUTY = [['bus', '中巴'], ['stay', '住宿'], ['stock', '物資車盤點'], ['wash', '洗衣服'], ['arrive', '到達時間']];
+  // 每一行是 [一般文字, 紅字]；洗衣服接在值日生後面（紅字），沒填的行不顯示
   const dutyLines = v => { v = v || {};
-    return [`◎值日生：中巴－${v.bus || '　　'}。住宿－${v.stay || '　　'}。物資車盤點－${v.stock || '　　'}`, `◎${v.arrive || ''}`, `◎洗衣服：${v.wash || ''}`]; };
+    const out = [[`◎值日生：中巴－${v.bus || '　　'}。住宿－${v.stay || '　　'}。物資車盤點－${v.stock || '　　'}`, v.wash ? `　◎洗衣服：${v.wash}` : '']];
+    if (v.arrive) out.push([`◎${v.arrive}`, '']);
+    return out; };
   function dutyEditor(title, cur, names) {
     return new Promise(res => {
       const v = { bus: '', stay: '', stock: '', wash: '', arrive: '', ...(cur || {}) };
