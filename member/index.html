@@ -1993,7 +1993,7 @@
       const NC = Math.max(5, ...ts.map(t => t.m.length));
       const rows = ts.map(t => { const ms = t.m.filter(k => ppl[k]), back = t.l.startsWith('轎後'), cls = back && firstBack ? 'xb' : ''; if (back) firstBack = false;
         const cells = Array.from({ length: NC }, (_, j) => { const k = ms[j], p = k && ppl[k];
-          return p ? `<td class="xm ${schSel && schSel.k === k && schSel.d === d ? 'sel' : ''}" data-sd="${d}" data-sk="${esc(k)}"><span style="background:${CAT_BG[p.cat]};${j === 0 ? 'font-weight:900;' : ''}">${esc(p.name)}</span>${(t.pn || {})[k] ? `<em class="xpn">${esc(t.pn[k])}</em>` : ''}</td>` : '<td class="xm"></td>'; }).join('');
+          return p ? `<td class="xm ${schSel && schSel.k === k && schSel.d === d ? 'sel' : ''}" data-sd="${d}" data-sk="${esc(k)}"><span style="background:${CAT_BG[p.cat]};${j === 0 ? 'font-weight:900;' : ''}">${esc(p.name)}</span><em class="xpn">${(t.pn || {})[k] ? esc(t.pn[k]) : '&nbsp;'}</em></td>` : '<td class="xm"><span style="visibility:hidden">　</span><em class="xpn">&nbsp;</em></td>'; }).join('');
         const extra = ms.length > NC ? `<div style="font-size:11px;color:#b91c1c">＋${ms.slice(NC).map(k => esc(ppl[k].name)).join('、')}</div>` : '';
         const mv = schSel && schSel.d === d;
         return `<tr class="${cls}"><th class="xl ${mv ? 'mv' : ''}" ${mv ? `data-mvd="${d}" data-mvl="${t.l}" title="移到這組"` : ''}>${mv ? '⬅ ' : ''}${t.l}</th>${cells}<td class="xn"><div class="xnote ${t.note ? '' : 'emp'}" data-nd="${d}" data-nl="${t.l}">${t.note ? eqHtml(t.note) : '＋裝備'}</div>${extra}</td></tr>`; }).join('');
@@ -2021,7 +2021,7 @@
         .sc-days.shootall{display:flex!important;flex-direction:column;width:760px;gap:14px;padding:10px;background:#fff}
         .xshot{margin-left:8px;border:none;border-radius:8px;background:#1f2430;color:#fff;font:inherit;font-size:11px;font-weight:800;padding:3px 8px;cursor:pointer;vertical-align:middle}
         .xd.shooting .xshot,.xd.shooting .sc-miss,.xd.shooting .xnote.emp{visibility:hidden}.xsub{color:#6b7280;font-size:.9em}
-        .xpn{display:block;font-style:normal;font-size:9.5px;font-weight:700;color:#dc2626;line-height:1.2;margin-top:2px;white-space:nowrap;overflow:hidden;letter-spacing:-.3px;background:#fff}.xcap .xpn{font-size:7.5px}@media (max-width:760px){.xpn{font-size:7.5px;letter-spacing:-.5px}}.xt td.xm{vertical-align:top}
+        .xpn{display:block;font-style:normal;font-size:8.5px;font-weight:700;color:#dc2626;height:11px;line-height:11px;margin-top:1px;white-space:nowrap;overflow:hidden;letter-spacing:-.3px;background:#fff}.xcap .xpn{font-size:6.5px;height:9px;line-height:9px}@media (max-width:760px){.xpn{font-size:6.5px;height:9px;line-height:9px;letter-spacing:-.5px}}.xt td.xm{vertical-align:top}
         .sc-bar{position:sticky;bottom:0;z-index:5;display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px -4px -4px;padding:10px 14px;border-radius:16px;background:#1f2430;color:#fff;box-shadow:0 -6px 20px rgba(0,0,0,.15)}
         .sc-bar span{font-size:12px;color:#cbd5e1;flex:1}.sc-bar button{border:none;border-radius:10px;padding:8px 12px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}#sb-note{background:linear-gradient(90deg,#D65A68,#F08339);color:#fff}#sb-x{background:#334155;color:#fff}
         .xt .xf{cursor:pointer;white-space:normal;height:auto!important;padding:5px 14px!important;line-height:1.5;font-size:11px!important}.xt .xf b{color:#1f2430}.xt tr:has(.xf)+tr .xf{padding-top:0!important}.xt .xf:hover{background:#fff1f2}
