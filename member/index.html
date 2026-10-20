@@ -1998,7 +1998,7 @@
         const extra = ms.length > NC ? `<div style="font-size:11px;color:#b91c1c">＋${ms.slice(NC).map(k => esc(ppl[k].name)).join('、')}</div>` : '';
         const mv = schSel && schSel.d === d;
         return `<tr class="${cls}"><th class="xl ${mv ? 'mv' : ''}" ${mv ? `data-mvd="${d}" data-mvl="${t.l}" title="移到這組"` : ''}>${mv ? '⬅ ' : ''}${t.l}</th>${cells}<td class="xn"><div class="xnote ${t.note ? '' : 'emp'}" data-nd="${d}" data-nl="${t.l}">${t.note ? eqHtml(t.note) : '＋裝備'}</div>${extra}</td></tr>`; }).join('');
-      return `<div class="xd" data-day="${d}"><table class="xt"><thead><tr><th class="xc">組別</th><th colspan="${NC}" class="xdate">${dd.getMonth() + 1}月${dd.getDate()}日(${WK[dd.getDay()]})<small>${SLOTS.filter(sl => inRange(sl, d)).join('、')}・${pres.length} 人・${ts.length} 組</small></th><th class="xcmd">指揮官:${esc(cmd)}<button class="xshot" data-shot="${d}">📷 存圖</button></th></tr></thead>
+      return `<div class="xd" data-day="${d}"><table class="xt"><thead><tr><th class="xc">組別</th><th colspan="${NC}" class="xdate"><span class="xtag ${(info[d] || {}).tag ? '' : 'emp'}" data-tag="${d}">${esc((info[d] || {}).tag || '＋標記')}</span>${dd.getMonth() + 1}月${dd.getDate()}日(${WK[dd.getDay()]})</th><th class="xcmd">指揮官:${esc(cmd)}<button class="xshot" data-shot="${d}">📷 存圖</button></th></tr></thead>
         <tbody>${rows || `<tr><td colspan="${NC + 2}" class="sc-empty">按「自動排班」</td></tr>`}
         ${dutyHtml(info[d]).map(h => `<tr><td colspan="${NC + 2}" class="xf" data-duty="${d}">${h}</td></tr>`).join('')}</tbody></table>
         ${miss.length && ts.length ? `<div class="sc-miss">未排入：${miss.map(k => chip(k, false, d)).join('')}</div>` : ''}</div>`; };
@@ -2022,6 +2022,9 @@
         .sc-days.shootall{display:flex!important;flex-direction:column;width:760px;gap:14px;padding:10px;background:#fff}
         .xshot{margin-left:8px;border:none;border-radius:8px;background:#1f2430;color:#fff;font:inherit;font-size:11px;font-weight:800;padding:3px 8px;cursor:pointer;vertical-align:middle}
         .xd.shooting .xshot,.xd.shooting .sc-miss,.xd.shooting .xnote.emp{visibility:hidden}.xsub{color:#6b7280;font-size:.9em}
+        .xt .xdate{text-align:center!important;padding-left:0!important}
+        .xtag{display:inline-block;margin-right:10px;padding:2px 10px;border-radius:8px;background:#1d4ed8;color:#fff;font-size:.7em;font-weight:900;vertical-align:middle;cursor:pointer}
+        .xtag.emp{background:none;color:#cbb7b1;border:1px dashed #e5d5d0;font-weight:600}.xd.shooting .xtag.emp{display:none}
         .xpn{display:block;font-style:normal;font-size:8.5px;font-weight:700;color:#dc2626;height:11px;line-height:11px;margin-top:1px;white-space:nowrap;overflow:hidden;letter-spacing:-.3px;background:#fff}.xcap .xpn{font-size:6.5px;height:9px;line-height:9px}@media (max-width:760px){.xpn{font-size:6.5px;height:9px;line-height:9px;letter-spacing:-.5px}}.xt td.xm{vertical-align:top}.xt td.xn{height:1px}.xt .xnote:not(.emp){max-height:42px;overflow:hidden;line-height:1.2;font-size:10.5px}@media (max-width:760px){.xt .xnote:not(.emp){max-height:34px;font-size:8px;line-height:1.1}.xt .xnote .xsub{font-size:7.5px}}.xcap .xt .xnote:not(.emp){max-height:34px;font-size:8px;line-height:1.1}
         .sc-bar{position:sticky;bottom:0;z-index:5;display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px -4px -4px;padding:10px 14px;border-radius:16px;background:#1f2430;color:#fff;box-shadow:0 -6px 20px rgba(0,0,0,.15)}
         .sc-bar span{font-size:12px;color:#cbd5e1;flex:1}.sc-bar button{border:none;border-radius:10px;padding:8px 12px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}#sb-note{background:linear-gradient(90deg,#D65A68,#F08339);color:#fff}#sb-x{background:#334155;color:#fff}.sb-mv{background:#fff;color:#1f2430}
@@ -2132,6 +2135,10 @@
       const v = await dutyEditor(`${dLabel(d)} 值日生／到達／洗衣服`, info[d] || {}, names);
       if (v) save({ info: { ...info, [d]: v } }, '已儲存');
     });
+    document.querySelectorAll('[data-tag]').forEach(el => el.onclick = async () => {
+      const d = el.dataset.tag, v = await tagPicker(`${dLabel(d)} 標記`, (info[d] || {}).tag || '');
+      if (v !== null) save({ info: { ...info, [d]: { ...(info[d] || {}), tag: v } } }, v ? '已標記' : '已清除');
+    });
     document.querySelectorAll('[data-shot]').forEach(b => b.onclick = e2 => { e2.stopPropagation(); shotDay(b.dataset.shot); });
     if ($('sc-xlsx')) $('sc-xlsx').onclick = () => exportSchedXlsx(eid);
     if ($('sc-shotall')) $('sc-shotall').onclick = () => shotAll();
@@ -2165,7 +2172,9 @@
       const top = r;
       // 標題列
       Object.assign(ws.getCell(`A${r}`), { value: '　　日期\n組別', font: font({ size: 9 }), alignment: { wrapText: true, vertical: 'middle' }, border });
-      ws.mergeCells(all('B', 'G', r)); Object.assign(ws.getCell(`B${r}`), { value: `${dd.getMonth() + 1}月${dd.getDate()}日(${WK[dd.getDay()]})`, font: font({ size: 16, bold: true }), alignment: { horizontal: 'center', vertical: 'middle' }, border });
+      const tag = ((sc.info || {})[d] || {}).tag;
+      if (tag) Object.assign(ws.getCell(`B${r}`), { value: tag, font: font({ size: 14, bold: true, color: { argb: 'FF0000FF' } }), alignment: { horizontal: 'center', vertical: 'middle' }, border });
+      ws.mergeCells(all(tag ? 'C' : 'B', 'G', r)); Object.assign(ws.getCell(`${tag ? 'C' : 'B'}${r}`), { value: `${dd.getMonth() + 1}月${dd.getDate()}日(${WK[dd.getDay()]})`, font: font({ size: 16, bold: true }), alignment: { horizontal: 'center', vertical: 'middle' }, border });
       Object.assign(ws.getCell(`H${r}`), { value: `指揮官:${cmd}`, font: font({ size: 11, bold: true }), alignment: { vertical: 'middle' }, border });
       ws.getRow(r).height = 30; r++;
       let firstBack = true;
@@ -2234,6 +2243,21 @@
         else { const a = f.value.split('、').map(x => x.trim()).filter(Boolean); if (!a.includes(n)) a.push(n); f.value = a.join('、'); } });
       ov.querySelector('#eq-no').onclick = () => { ov.remove(); res(null); };
       ov.querySelector('#eq-ok').onclick = () => { DUTY.forEach(([k]) => v[k] = fld(k).value.trim()); ov.remove(); res(v); };
+    });
+  }
+  function tagPicker(title, cur) {
+    return new Promise(res => {
+      const ov = document.createElement('div'); ov.className = 'eq-ov';
+      ov.innerHTML = `<div class="eq-box"><div class="eq-t">${esc(title)}</div>
+        <div class="du-n">${['起駕', '到北港', '進火', '回宮', '駐駕', '回駕'].map(x => `<button data-p="${x}">${x}</button>`).join('')}</div>
+        <div class="eq-l">或自己輸入</div><input id="eq-text" value="${esc(cur)}">
+        <div class="eq-btn" style="margin-top:12px"><button id="eq-no">取消</button>${cur ? '<button id="pn-del" style="background:#fef2f2;color:#b91c1c">清除</button>' : ''}<button id="eq-ok">儲存</button></div></div>`;
+      document.body.appendChild(ov);
+      const inp = ov.querySelector('#eq-text');
+      ov.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { ov.remove(); res(b.dataset.p); });
+      ov.querySelector('#eq-no').onclick = () => { ov.remove(); res(null); };
+      if (ov.querySelector('#pn-del')) ov.querySelector('#pn-del').onclick = () => { ov.remove(); res(''); };
+      ov.querySelector('#eq-ok').onclick = () => { ov.remove(); res(inp.value.trim()); };
     });
   }
   // 個人備註（幾點到、駐駕退…）
