@@ -1391,7 +1391,7 @@
   const ATT = [['yes', '✅ 出席', ''], ['join', '⚠️ 無法出席，但要參與團隊進香', '有不可抗力原因，請在下方說明，交由幹部團決議通融方案'], ['no', '❌ 不出席，也不參與團隊進香', '']];
   const ATT_SHORT = { yes: '✅ 出席', join: '⚠️ 不出席但參與進香', no: '❌ 不參與' };
   const LUNCH = ['葷', '素（方便素）', '自行處理'];
-  const eventLink = id => `https://liff.line.me/${LIFF_ID}?e=${encodeURIComponent(id)}`;
+  const eventLink = id => `https://tsushin-buishatun.pages.dev/attend/?e=${encodeURIComponent(id)}`;   // 公開表單：不用先綁會員中心
   let eventsCache = [], eventsUnsub = null, myResp = {}, evRespCache = {}, evRespUnsub = null, evOpenId = null;
   // 連結 liff.line.me/…?e=活動ID：LIFF 開啟時參數可能包在 liff.state 裡
   const readEventParam = () => { try { const q = new URLSearchParams(location.search); if (q.get('e')) return q.get('e');
@@ -1402,12 +1402,8 @@
     if (eventsUnsub) return;
     eventsUnsub = onSnapshot(collection(db, 'events'), async s => {
       eventsCache = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => tsMs(b.createdAt) - tsMs(a.createdAt));
-      await Promise.all(eventsCache.filter(e => e.open).map(async e => {
-        try { const r = await getDoc(doc(db, 'events', e.id, 'responses', profile.userId)); myResp[e.id] = r.exists() ? r.data() : null; } catch (err) {}
-      }));
       renderAttendCards();
       if (adminOn && curTab === 'events') renderEvents();
-      if (pendingEventId && user && user.status === 'approved') { const id = pendingEventId; pendingEventId = ''; const e = eventsCache.find(x => x.id === id); if (e) setTimeout(() => openAttendForm(e), 300); }
     }, () => {});
   }
 
@@ -1415,49 +1411,13 @@
     const el = $('attend-cards'); if (!el) return;
     const list = eventsCache.filter(e => e.open);
     el.innerHTML = list.map(e => {
-      const r = myResp[e.id];
-      return `<div class="att-card ${r ? 'done' : ''}">
+      return `<div class="att-card">
         <div class="t">📅 ${esc(e.title || '出席調查')}</div>
-        <div class="d">${e.date ? esc(e.date) + '　' : ''}${r ? `你已回覆：<b>${ATT_SHORT[r.attend] || ''}</b>${r.lunch ? '　午膳：' + esc(r.lunch) : ''}` : '請回覆是否出席'}</div>
-        <button class="sbtn ${r ? '' : 'pri'}" data-att="${e.id}" style="width:100%; padding:11px;">${r ? '✏️ 修改回覆' : '📝 立即回覆'}</button>
+        <div class="d">${e.date ? esc(e.date) + '　' : ''}請回覆是否出席（已回覆過可以重填，以最後一次為準）</div>
+        <button class="sbtn pri" data-att="${e.id}" style="width:100%; padding:11px;">📝 前往回覆</button>
       </div>`;
     }).join('');
-    el.querySelectorAll('[data-att]').forEach(b => b.onclick = () => { const e = eventsCache.find(x => x.id === b.dataset.att); if (e) openAttendForm(e); });
-  }
-
-  function openAttendForm(e) {
-    if (!e.open) return toast('這個出席調查已經截止');
-    const r = myResp[e.id] || {};
-    let att = r.attend || '', lunch = r.lunch || '';
-    $('sheet-body').innerHTML = `
-      <h3>📅 ${esc(e.title || '出席調查')}</h3>
-      ${e.date ? `<div style="font-size:14px; font-weight:800; color:var(--primary); margin-top:4px;">${esc(e.date)}</div>` : ''}
-      ${e.desc ? `<div style="font-size:13px; color:var(--sub); margin:6px 0 4px; line-height:1.7; white-space:pre-wrap;">${esc(e.desc)}</div>` : ''}
-      <div style="font-size:13px; margin:10px 0;">回覆者：<b>${esc(user.realName || profile.displayName || '')}</b>（LINE：${esc(profile.displayName || '')}）</div>
-      <div class="grp">是否出席</div>
-      ${ATT.map(([k, t, sub]) => `<button class="att-opt ${att === k ? 'on' : ''}" data-v="${k}">${t}${sub ? `<small>${esc(sub)}</small>` : ''}</button>`).join('')}
-      <div id="att-reason-box" class="field ${att === 'join' ? '' : 'hidden'}"><label>無法出席的原因</label><textarea id="att-reason" class="inp" style="min-height:70px">${esc(r.reason || '')}</textarea></div>
-      ${e.askLunch === false ? '' : `<div class="grp">午膳</div><div class="cat-row" id="att-lunch">${LUNCH.map(l => `<button class="chip-s ${lunch === l ? 'on' : ''}" data-l="${esc(l)}">${esc(l)}</button>`).join('')}</div>`}
-      <div class="field" style="margin-top:12px;"><label>其他意見及建議（選填）</label><textarea id="att-comment" class="inp" style="min-height:60px" placeholder="對團隊運作的建議，或想加強學習的內容">${esc(r.comment || '')}</textarea></div>
-      <button class="btn" id="att-submit" style="margin-top:6px;">送出回覆</button>`;
-    $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open'); $('sheet').scrollTop = 0;
-    document.querySelectorAll('.att-opt').forEach(b => b.onclick = () => {
-      att = b.dataset.v; document.querySelectorAll('.att-opt').forEach(x => x.classList.toggle('on', x === b));
-      $('att-reason-box').classList.toggle('hidden', att !== 'join');
-    });
-    document.querySelectorAll('#att-lunch [data-l]').forEach(b => b.onclick = () => { lunch = b.dataset.l; document.querySelectorAll('#att-lunch [data-l]').forEach(x => x.classList.toggle('on', x === b)); });
-    $('att-submit').onclick = async () => {
-      if (!att) return toast('請選擇是否出席');
-      if (att === 'join' && !$('att-reason').value.trim()) return toast('請填寫無法出席的原因');
-      const btn = $('att-submit'); btn.disabled = true; btn.textContent = '送出中…';
-      const data = { uid: profile.userId, name: user.realName || '', lineName: profile.displayName || '', rosterId: user.rosterId || '',
-        attend: att, lunch: att === 'no' ? '' : lunch, reason: att === 'join' ? $('att-reason').value.trim() : '', comment: $('att-comment').value.trim(),
-        updatedAt: serverTimestamp(), ...(myResp[e.id] ? {} : { createdAt: serverTimestamp() }) };
-      try {
-        await setDoc(doc(db, 'events', e.id, 'responses', profile.userId), data, { merge: true });
-        myResp[e.id] = data; renderAttendCards(); closeSheet(); toast('✅ 已送出，謝謝回覆！');
-      } catch (err) { btn.disabled = false; btn.textContent = '送出回覆'; toast('❌ 送出失敗'); }
-    };
+    el.querySelectorAll('[data-att]').forEach(b => b.onclick = () => { const url = eventLink(b.dataset.att); try { if (inLine()) { liff.openWindow({ url, external: false }); return; } } catch (e) {} location.href = url; });
   }
 
   // ---------- 管理員：出席調查 ----------
@@ -1482,15 +1442,19 @@
   function renderEventDetail(eid) {
     const e = eventsCache.find(x => x.id === eid); if (!e) { const keep = evOpenId; evOpenId = null; renderEvents(); evOpenId = keep; return; }   // 剛建立還沒同步到 → 先顯示清單
     watchEventResponses(eid);
-    const rs = (evRespCache[eid] || []).slice();
-    const rosterOf = r => (r.rosterId && rosterById(r.rosterId)) || null;
-    rs.sort((a, b) => { const ra = rosterOf(a), rb = rosterOf(b); return (ra ? rosterOrder(ra, rb || {}) : 1) || 0; });
+    // 同一個人填很多次 → 以最後一次為準（姓名去空白比對）
+    const latest = {};
+    (evRespCache[eid] || []).forEach(r => { const k = normName(r.name); if (!latest[k] || tsMs(r.createdAt || r.updatedAt) >= tsMs(latest[k].createdAt || latest[k].updatedAt)) latest[k] = r; });
+    const rs = Object.values(latest);
+    const byName = {}; rosterCache.forEach(r => { (byName[normName(r.name)] = byName[normName(r.name)] || []).push(r); });
+    const rosterOf = r => (r.rosterId && rosterById(r.rosterId)) || ((byName[normName(r.name)] || [])[0]) || null;
+    rs.sort((a, b) => { const ra = rosterOf(a), rb = rosterOf(b); if (ra && rb) return rosterOrder(ra, rb); return ra ? -1 : rb ? 1 : 0; });
     const cnt = k => rs.filter(r => r.attend === k).length;
     const lc = l => rs.filter(r => r.attend !== 'no' && r.lunch === l).length;
-    const answered = new Set(rs.map(r => r.uid || r.id));
-    const notYet = usersCache.filter(u => u.status === 'approved' && !answered.has(u.id));
+    const answeredRoster = new Set(rs.map(r => { const ro = rosterOf(r); return ro && ro.id; }).filter(Boolean));
+    const notYet = rosterCache.filter(r => !answeredRoster.has(r.id)).sort(rosterOrder);
     const row = r => { const ro = rosterOf(r); return `<tr><td><b>${esc(r.name || '')}</b>${ro ? `<div style="font-size:11px;color:var(--sub)">${esc(rv(ro, 'position'))}・${esc(ro.cert || '')}</div>` : '<div style="font-size:11px;color:#b45309">未對應名冊</div>'}</td>
-        <td>${ATT_SHORT[r.attend] || ''}</td><td>${esc(r.lunch || '')}</td><td>${esc(r.reason || '')}</td><td>${esc(r.comment || '')}</td><td style="font-size:11px;color:var(--sub);white-space:nowrap">${esc(fmtAt(tsMs(r.updatedAt)))}</td></tr>`; };
+        <td>${ATT_SHORT[r.attend] || ''}</td><td>${esc(r.lunch || '')}</td><td>${esc(r.reason || '')}</td><td>${esc(r.comment || '')}</td><td style="font-size:12px">${esc(r.lineName || '')}</td><td style="font-size:11px;color:var(--sub);white-space:nowrap">${esc(fmtAt(tsMs(r.createdAt || r.updatedAt)))}</td></tr>`; };
     $('ev-list').innerHTML = `
       <button class="sbtn" id="ev-back" style="margin-bottom:10px;">← 所有出席調查</button>
       <div class="card" style="padding:16px;">
@@ -1502,23 +1466,24 @@
           <button class="sbtn violet" id="ev-edit">編輯</button><button class="sbtn" id="ev-csv">⬇ 匯出</button></div></div>
         <div class="ev-stats">
           <div>出席<b style="color:var(--green)">${cnt('yes')}</b></div><div>不出席但參與進香<b style="color:#b45309">${cnt('join')}</b></div>
-          <div>不參與<b style="color:var(--red)">${cnt('no')}</b></div><div>已回覆<b>${rs.length}</b></div><div>LINE 會員未回覆<b>${notYet.length}</b></div>
+          <div>不參與<b style="color:var(--red)">${cnt('no')}</b></div><div>已回覆<b>${rs.length}</b></div><div>名冊中未回覆<b>${notYet.length}</b></div>
           ${e.askLunch === false ? '' : LUNCH.map(l => `<div>午膳・${esc(l)}<b>${lc(l)}</b></div>`).join('')}
         </div>
       </div>
       <div class="card tbl-wrap" style="padding:8px 10px; margin-top:10px; overflow-x:auto;">
-        <table class="ev-tbl"><thead><tr><th>姓名</th><th>出席</th><th>午膳</th><th>無法出席原因</th><th>意見</th><th>回覆時間</th></tr></thead>
-        <tbody>${rs.map(row).join('') || '<tr><td colspan="6"><div class="empty">還沒有人回覆</div></td></tr>'}</tbody></table>
+        <table class="ev-tbl"><thead><tr><th>姓名</th><th>出席</th><th>午膳</th><th>無法出席原因</th><th>意見</th><th>LINE 名稱</th><th>回覆時間</th></tr></thead>
+        <tbody>${rs.map(row).join('') || '<tr><td colspan="7"><div class="empty">還沒有人回覆</div></td></tr>'}</tbody></table>
       </div>
-      ${notYet.length ? `<div class="grp-t">尚未回覆的 LINE 會員（${notYet.length}）</div><div class="card" style="padding:12px 14px; font-size:13px; line-height:2;">${notYet.map(u => esc(u.realName || u.lineDisplayName || '')).join('、')}</div>` : ''}`;
+      ${notYet.length ? `<details class="card" style="padding:12px 14px; margin-top:10px;"><summary style="font-weight:800; cursor:pointer;">名冊中尚未回覆（${notYet.length}）</summary><div style="font-size:13px; line-height:2; margin-top:8px;">${notYet.map(r => esc(r.name || '')).join('、')}</div></details>` : ''}
+      <div style="font-size:12px; color:var(--sub); margin:8px 4px;">※ 依「姓名」自動對應名冊；同一人重複填寫以最後一次為準。顯示「未對應名冊」的，可能是名字寫法不同或尚未加入名冊。</div>`;
     $('ev-back').onclick = () => { evOpenId = null; renderEvents(); };
     $('ev-copy').onclick = async () => { try { await navigator.clipboard.writeText(eventLink(e.id)); toast('🔗 已複製回覆連結'); } catch (err) { await dialog({ title: '回覆連結', msg: eventLink(e.id), okText: '好' }); } };
     $('ev-toggle').onclick = async () => { try { await updateDoc(doc(db, 'events', e.id), { open: !e.open }); toast(e.open ? '已截止回覆' : '已重新開放'); } catch (err) { toast('❌ 操作失敗'); } };
     $('ev-edit').onclick = () => openEventForm(e);
     $('ev-csv').onclick = () => {
       const head = ['序號', '職位', '姓名', '證照', '出席', '午膳', '無法出席原因', '意見', 'LINE名稱', '回覆時間'];
-      const lines = [head].concat(rs.map(r => { const ro = rosterOf(r); return [ro ? ro.serial || '' : '', ro ? rv(ro, 'position') : '', r.name || '', ro ? ro.cert || '' : '', ATT_SHORT[r.attend] || '', r.lunch || '', r.reason || '', r.comment || '', r.lineName || '', fmtAt(tsMs(r.updatedAt))]; }))
-        .concat(notYet.map(u => ['', '', u.realName || '', u.certification || '', '未回覆', '', '', '', u.lineDisplayName || '', '']));
+      const lines = [head].concat(rs.map(r => { const ro = rosterOf(r); return [ro ? ro.serial || '' : '', ro ? rv(ro, 'position') : '', r.name || '', ro ? ro.cert || '' : '', ATT_SHORT[r.attend] || '', r.lunch || '', r.reason || '', r.comment || '', r.lineName || '', fmtAt(tsMs(r.createdAt || r.updatedAt))]; }))
+        .concat(notYet.map(r => [r.serial || '', rv(r, 'position'), r.name || '', r.cert || '', '未回覆', '', '', '', r.lineName || '', '']));
       const csv = '﻿' + lines.map(l => l.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
       const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = `${e.title || '出席調查'}.csv`; a.click();
     };
@@ -1855,7 +1820,7 @@
       }
       first = false;
       watchMyRoster(user && user.status === 'approved' ? user.rosterId : null);
-      if (user && user.status === 'approved') { if (!pendingEventId) pendingEventId = readEventParam(); watchEvents(); }
+      if (user && user.status === 'approved') watchEvents();
       if (isAdmin()) startAdminWatch();
       else if (wasAdmin) { stopAdminWatch(); adminOn = false; }
       if (user && user.status === 'approved') isResubmit = false;

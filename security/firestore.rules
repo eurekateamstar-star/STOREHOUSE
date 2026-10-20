@@ -117,16 +117,21 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
-    // ===== 出席調查：會員用 LINE 回覆自己的出席，管理員看全部 =====
+    // ===== 出席調查：公開表單，不用登入就能回覆；只有管理員看得到回覆 =====
     match /events/{eid} {
-      allow read: if signedIn();
+      allow get: if true;
+      allow list: if signedIn();
       allow write: if isAdmin();
-      match /responses/{uid} {
-        allow read: if isAdmin() || (signedIn() && me() == uid);
-        allow create, update: if approved() && me() == uid
-          && get(/databases/$(database)/documents/events/$(eid)).data.get('open', false) == true
-          && request.resource.data.get('uid', '') == me();
-        allow delete: if isAdmin();
+      match /responses/{rid} {
+        allow create: if get(/databases/$(database)/documents/events/$(eid)).data.get('open', false) == true
+          && request.resource.data.keys().hasOnly(['name', 'lineName', 'attend', 'lunch', 'reason', 'comment', 'createdAt', 'src'])
+          && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 20
+          && request.resource.data.attend in ['yes', 'join', 'no']
+          && request.resource.data.createdAt == request.time
+          && shortStr(request.resource.data, 'lineName', 40) && shortStr(request.resource.data, 'lunch', 10)
+          && shortStr(request.resource.data, 'reason', 300) && shortStr(request.resource.data, 'comment', 500)
+          && shortStr(request.resource.data, 'src', 10);
+        allow read, update, delete: if isAdmin();
       }
     }
 

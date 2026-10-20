@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#D65A68">
+<title>白沙屯醫護團 - 出席調查</title>
+<meta property="og:title" content="白沙屯醫護團｜出席調查">
+<meta property="og:description" content="請回覆是否出席，謝謝！">
+<style>
+  :root {
+    --primary: #D65A68; --accent: #F08339; --gold: #B68D40;
+    --ink: #1f2430; --sub: #6b7280; --line: #ece7e5;
+    --green: #16a34a; --red: #dc2626;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: #f6f3f2; color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif; }
+  body::before { content: ''; position: fixed; top: -20%; left: -20%; width: 80%; height: 70%; z-index: -1;
+    background: radial-gradient(circle, rgba(214,90,104,0.16) 0%, rgba(255,255,255,0) 70%); }
+  body::after { content: ''; position: fixed; bottom: -20%; right: -20%; width: 80%; height: 70%; z-index: -1;
+    background: radial-gradient(circle, rgba(240,131,57,0.14) 0%, rgba(255,255,255,0) 70%); }
+  .wrap { max-width: 560px; margin: 0 auto; padding: calc(20px + env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom)); }
+
+  .hero { position: relative; overflow: hidden; border-radius: 26px; padding: 26px 22px 22px; color: #fff;
+    background: linear-gradient(135deg, #D65A68 0%, #E97452 55%, #F08339 100%); box-shadow: 0 18px 36px rgba(214,90,104,0.30); }
+  .hero::after { content: ''; position: absolute; right: -70px; top: -70px; width: 220px; height: 220px; border-radius: 50%; background: rgba(255,255,255,0.11); }
+  .hero::before { content: ''; position: absolute; left: -40px; bottom: -80px; width: 180px; height: 180px; border-radius: 50%; background: rgba(255,255,255,0.07); }
+  .hero .org { font-size: 12px; font-weight: 800; letter-spacing: 3px; opacity: 0.9; position: relative; z-index: 1; }
+  .hero h1 { margin: 6px 0 8px; font-size: 28px; font-weight: 900; letter-spacing: 1px; position: relative; z-index: 1; }
+  .hero p { margin: 0; font-size: 14px; line-height: 1.7; opacity: 0.95; position: relative; z-index: 1; }
+  .steps { display: flex; gap: 6px; margin-top: 16px; position: relative; z-index: 1; flex-wrap: wrap; }
+  .steps span { font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.35); }
+
+  .card { background: rgba(255,255,255,0.88); border: 1px solid #fff; border-radius: 22px; box-shadow: 0 10px 30px rgba(31,38,135,0.07);
+    padding: 18px 16px 6px; margin-top: 16px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+  .card h2 { margin: 0 0 14px; font-size: 15px; font-weight: 900; color: var(--gold); letter-spacing: 1px; display: flex; align-items: center; gap: 6px; }
+  .grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 0 12px; }
+  .full { grid-column: 1 / -1; }
+  @media (max-width: 420px) { .grid { grid-template-columns: minmax(0,1fr); } }
+
+  .field { margin-bottom: 14px; min-width: 0; }
+  .field label { display: block; font-size: 13px; font-weight: 800; color: #4b5563; margin: 0 0 6px 2px; }
+  .field label .req { color: var(--primary); margin-left: 2px; }
+  .field label .hint { font-weight: 600; color: #9ca3af; font-size: 12px; margin-left: 4px; }
+  .field input, .field textarea { width: 100%; max-width: 100%; display: block; padding: 12px 14px; font-size: 16px; border-radius: 14px;
+    border: 1.5px solid #e5e7eb; background: #fff; outline: none; font-family: inherit; color: var(--ink); -webkit-appearance: none; appearance: none; }
+  .field input[type=date] { height: 48px; text-align: left; }
+  .field textarea { min-height: 76px; resize: vertical; }
+  .field input:focus, .field textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(214,90,104,0.10); }
+  .field.bad input, .field.bad textarea, .field.bad .chips { border-color: var(--red); }
+  .field .err { display: none; color: var(--red); font-size: 12px; font-weight: 700; margin: 5px 2px 0; }
+  .field.bad .err { display: block; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; border-radius: 14px; border: 1.5px solid transparent; }
+  .chip { border: 1.5px solid #e5e7eb; background: #fff; color: #374151; border-radius: 999px; padding: 9px 14px; font-size: 14px; font-weight: 800;
+    cursor: pointer; font-family: inherit; min-width: 48px; }
+  .chip.on { border-color: var(--primary); background: var(--primary); color: #fff; box-shadow: 0 6px 14px rgba(214,90,104,0.25); }
+  .chip-other { margin-top: 8px; }
+
+  .consent { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.7; color: #4b5563; padding: 4px 2px 14px; cursor: pointer; }
+  .consent input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--primary); flex-shrink: 0; }
+
+  .submit { width: 100%; border: none; border-radius: 16px; padding: 16px; margin-top: 18px; font-size: 17px; font-weight: 900; color: #fff; cursor: pointer;
+    background: linear-gradient(90deg, var(--primary), var(--accent)); box-shadow: 0 12px 26px rgba(214,90,104,0.32); font-family: inherit; letter-spacing: 1px; }
+  .submit:disabled { opacity: 0.6; }
+  .foot { text-align: center; font-size: 11px; color: #9ca3af; margin-top: 16px; line-height: 1.7; }
+
+  .done { text-align: center; padding: 34px 20px 28px; }
+  .done .ic { width: 84px; height: 84px; border-radius: 50%; margin: 0 auto 14px; display: flex; align-items: center; justify-content: center; font-size: 42px;
+    background: linear-gradient(135deg, #dcfce7, #bbf7d0); box-shadow: 0 10px 24px rgba(22,163,74,0.2); }
+  .done h2 { justify-content: center; color: var(--ink); font-size: 22px; }
+  .done p { color: var(--sub); font-size: 14px; line-height: 1.8; margin: 0 0 6px; }
+  .hidden { display: none !important; }
+  .toast { position: fixed; left: 50%; bottom: calc(30px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: rgba(31,36,48,0.94); color: #fff;
+    padding: 11px 18px; border-radius: 14px; font-size: 14px; font-weight: 700; z-index: 99; display: none; max-width: 88vw; text-align: center; }
+  .opt { display: block; width: 100%; text-align: left; border: 2px solid #e5e7eb; background: #fff; border-radius: 16px; padding: 13px 14px; margin-bottom: 10px; font-size: 16px; font-weight: 800; cursor: pointer; font-family: inherit; color: var(--ink); line-height: 1.5; }
+  .opt small { display: block; font-size: 12px; font-weight: 600; color: var(--sub); margin-top: 2px; }
+  .opt.on { border-color: var(--primary); background: #fff1f2; box-shadow: 0 6px 14px rgba(214,90,104,0.15); }
+  .field.bad .opts .opt { border-color: #fca5a5; }
+  .bind { margin-top: 16px; padding: 16px; border-radius: 18px; background: linear-gradient(135deg,#ecfdf5,#fff); border: 2px solid #86efac; text-align: left; }
+  .bind b { color: #166534; font-size: 16px; } .bind p { margin: 6px 0 12px; font-size: 13px; color: #4b5563; line-height: 1.7; }
+  .bind a { display: block; text-align: center; text-decoration: none; background: #06c755; color: #fff; font-weight: 900; padding: 13px; border-radius: 14px; font-size: 16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <div class="org">白沙屯拱天宮進香醫護團</div>
+    <h1 id="ev-title">出席調查</h1>
+    <p id="ev-date"></p>
+    <p id="ev-desc" style="white-space:pre-wrap; margin-top:6px;"></p>
+  </div>
+
+  <div class="card done hidden" id="msg"><div class="ic" id="msg-ic">⏳</div><h2 id="msg-t">載入中…</h2><p id="msg-d"></p></div>
+
+  <form id="f" class="hidden" novalidate>
+    <div class="card">
+      <h2>👤 基本資料</h2>
+      <div class="field"><label>姓名<span class="req">*</span></label><input name="name" maxlength="20" autocomplete="name"><div class="err">請填寫姓名</div></div>
+      <div class="field"><label>您 LINE 上的名稱<span class="req">*</span></label><input name="lineName" maxlength="40"><div class="err">請填寫 LINE 名稱</div></div>
+    </div>
+    <div class="card">
+      <h2>📅 是否出席</h2>
+      <div class="field" data-f="attend"><div class="opts">
+        <button type="button" class="opt" data-v="yes">✅ 是，出席</button>
+        <button type="button" class="opt" data-v="join">⚠️ 否，有不可抗力原因無法出席，但要參與團隊進香活動<small>請在下方說明原因，交由幹部團決議通融方案</small></button>
+        <button type="button" class="opt" data-v="no">❌ 否，無法出席，亦不參與團隊進香活動</button>
+      </div><div class="err">請選擇是否出席</div></div>
+      <div class="field hidden" id="reason-box"><label>無法出席的原因<span class="req">*</span></label><textarea name="reason" maxlength="300"></textarea><div class="err">請說明原因</div></div>
+    </div>
+    <div class="card" id="lunch-card">
+      <h2>🍱 午膳</h2>
+      <div class="field" data-f="lunch"><div class="chips">
+        <button type="button" class="chip">葷</button><button type="button" class="chip">素（方便素）</button><button type="button" class="chip">自行處理</button>
+      </div></div>
+    </div>
+    <div class="card">
+      <h2>💬 其他意見及建議</h2>
+      <div class="field"><label>如對團隊運作有任何建議，或行前教育訓練想加強學習的內容，請在此留言（選填）</label><textarea name="comment" maxlength="500"></textarea></div>
+    </div>
+    <button class="submit" id="btn-submit" type="submit">送出回覆</button>
+    <div class="foot">© 2026 白沙屯慈昕醫護文化協會 版權所有</div>
+  </form>
+</div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  const app = initializeApp({
+    apiKey: "AIzaSyA_5hmnIBCeLszWW8kIjgOZelv-c6-ALfY", authDomain: "linebot-firebase-b1242.firebaseapp.com", projectId: "linebot-firebase-b1242",
+    storageBucket: "linebot-firebase-b1242.firebasestorage.app", messagingSenderId: "1002268658683", appId: "1:1002268658683:web:739adcd7819f8c9393595e"
+  });
+  const db = getFirestore(app);
+  const MEMBER_LINK = 'https://liff.line.me/2011820105-x1KU6xLW';
+  const $ = id => document.getElementById(id);
+  const f = $('f');
+  const toast = (m, ms = 2200) => { const t = $('toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(toast._t); toast._t = setTimeout(() => t.style.display = 'none', ms); };
+  const msg = (ic, t, d) => { $('msg-ic').textContent = ic; $('msg-t').textContent = t; $('msg-d').innerHTML = d || ''; $('msg').classList.remove('hidden'); };
+  const eid = new URLSearchParams(location.search).get('e') || '';
+  let ev = null, attend = '', lunch = '';
+
+  (async () => {
+    msg('⏳', '載入中…');
+    if (!eid) return msg('⚠️', '連結不完整', '請向管理員索取正確的出席調查連結。');
+    try {
+      const s = await getDoc(doc(db, 'events', eid));
+      if (!s.exists()) return msg('⚠️', '找不到這個出席調查', '可能已經被刪除，請向管理員確認。');
+      ev = s.data();
+    } catch (e) { return msg('⚠️', '讀取失敗', '請檢查網路後重新整理。'); }
+    $('ev-title').textContent = ev.title || '出席調查';
+    $('ev-date').textContent = ev.date || '';
+    $('ev-desc').textContent = ev.desc || '';
+    document.title = (ev.title || '出席調查') + '｜白沙屯醫護團';
+    if (!ev.open) return msg('🔒', '已截止回覆', '這個出席調查已經截止，如需更改請直接聯絡管理員。');
+    if (ev.askLunch === false) $('lunch-card').classList.add('hidden');
+    $('msg').classList.add('hidden'); f.classList.remove('hidden');
+    try { const last = JSON.parse(localStorage.getItem('attend_me') || '{}'); if (last.name) f.elements.name.value = last.name; if (last.lineName) f.elements.lineName.value = last.lineName; } catch (e) {}
+  })();
+
+  document.querySelectorAll('.opt').forEach(b => b.onclick = () => {
+    attend = b.dataset.v; document.querySelectorAll('.opt').forEach(x => x.classList.toggle('on', x === b));
+    $('reason-box').classList.toggle('hidden', attend !== 'join');
+    b.closest('.field').classList.remove('bad');
+    $('lunch-card').classList.toggle('hidden', attend === 'no' || (ev && ev.askLunch === false));
+  });
+  document.querySelectorAll('[data-f="lunch"] .chip').forEach(c => c.onclick = () => {
+    lunch = c.classList.contains('on') ? '' : c.textContent;
+    document.querySelectorAll('[data-f="lunch"] .chip').forEach(x => x.classList.toggle('on', x === c && !!lunch));
+  });
+  f.querySelectorAll('input,textarea').forEach(i => i.addEventListener('input', () => i.closest('.field') && i.closest('.field').classList.remove('bad')));
+
+  f.onsubmit = async e => {
+    e.preventDefault();
+    const v = n => f.elements[n].value.trim();
+    const bad = [];
+    const mark = (el, ok) => { el.classList.toggle('bad', !ok); if (!ok) bad.push(el); };
+    mark(f.elements.name.closest('.field'), !!v('name'));
+    mark(f.elements.lineName.closest('.field'), !!v('lineName'));
+    mark(document.querySelector('[data-f="attend"]'), !!attend);
+    if (attend === 'join') mark($('reason-box'), !!v('reason'));
+    if (bad.length) { bad[0].scrollIntoView({ behavior: 'smooth', block: 'center' }); return toast('還有欄位沒填好'); }
+    const btn = $('btn-submit'); btn.disabled = true; btn.textContent = '送出中…';
+    try {
+      await addDoc(collection(db, 'events', eid, 'responses'), {
+        name: v('name'), lineName: v('lineName'), attend, lunch: attend === 'no' ? '' : lunch,
+        reason: attend === 'join' ? v('reason') : '', comment: v('comment'), createdAt: serverTimestamp(), src: 'form'
+      });
+      try { localStorage.setItem('attend_me', JSON.stringify({ name: v('name'), lineName: v('lineName') })); } catch (err) {}
+      f.classList.add('hidden'); window.scrollTo(0, 0);
+      const label = { yes: '✅ 出席', join: '⚠️ 無法出席，但參與團隊進香', no: '❌ 不出席，亦不參與進香' }[attend];
+      msg('✅', '已收到你的回覆，謝謝！', `<b>${v('name').replace(/</g, '&lt;')}</b>：${label}${lunch && attend !== 'no' ? '<br>午膳：' + lunch : ''}<br><span style="font-size:12px">要更改的話，重新填寫一次即可，以最後一次為準。</span>`
+        + (attend !== 'no' ? `<div class="bind"><b>📲 下一步：加入會員中心</b><p>要參加的團員請用 LINE 加入會員中心，輸入姓名、身分證、生日即可自動對應名冊，之後保險資料確認、物資借用都在這裡。</p><a href="${MEMBER_LINK}">用 LINE 加入會員中心</a></div>` : ''));
+    } catch (err) {
+      console.error(err); btn.disabled = false; btn.textContent = '送出回覆'; toast('送出失敗，請稍後再試');
+    }
+  };
+</script>
+</body>
+</html>
