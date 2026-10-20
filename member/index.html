@@ -1698,7 +1698,8 @@
     const total = DRAW_GROUPS.reduce((n, g) => n + groups[g].length, 0);
     const missing = DRAW_GROUPS.reduce((n, g) => n + groups[g].filter(p => !map[p.key]).length, 0);
     const done = total - missing;
-    const nm = p => `<button class="dr-n ${drSel === p.key ? 'sel' : ''}" data-dk="${esc(p.key)}">${esc(p.name)}${p.r.attend === 'join' ? '<i>請假</i>' : ''}${by2[p.key] === 'self' ? '<i class="me">自抽</i>' : ''}${over[p.key] ? '<i class="mv">手動</i>' : ''}</button>`;
+    const avOf = p => { const u = p.ro && p.ro.boundUserId && userById(p.ro.boundUserId); return u && u.pictureUrl ? `<img class="dr-av" src="${esc(u.pictureUrl)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ''; };
+    const nm = p => `<button class="dr-n ${drSel === p.key ? 'sel' : ''}" data-dk="${esc(p.key)}">${avOf(p)}${esc(p.name)}${p.r.attend === 'join' ? '<i>請假</i>' : ''}${by2[p.key] === 'self' ? '<i class="me">自抽</i>' : ''}${over[p.key] ? '<i class="mv">手動</i>' : ''}</button>`;
     const editor = (p, g) => `<div class="dr-ed">
         <div class="dr-ed-t">✏️ ${esc(p.name)}　<span>${esc(p.ro ? rv(p.ro, 'position') + '・' + (p.ro.cert || '') : '未對應名冊')}</span></div>
         <div class="dr-ed-l">換到哪一組</div>
@@ -1727,6 +1728,7 @@
         .dr-n{display:block;width:100%;text-align:left;border:none;background:none;font:inherit;font-size:13px;padding:4px 4px;border-radius:8px;cursor:pointer;color:var(--ink)}
         .dr-un .dr-n{display:inline-block;width:auto;background:#fff7ed;border:1px solid #fed7aa;margin:3px 4px 0 0;padding:4px 8px}
         .dr-n.sel{background:#fde8ea !important;outline:2px solid var(--primary)}
+        .dr-av{width:22px;height:22px;border-radius:50%;object-fit:cover;vertical-align:-6px;margin-right:5px;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.15)}
         .dr-n i{font-style:normal;font-size:10px;color:#b45309;margin-left:4px}.dr-n i.me{color:#15803d}.dr-n i.mv{color:#7c3aed}
         .dr-ul{font-size:12px;color:#b45309;font-weight:800;margin-top:8px}
         .dr-ed{background:#fff7f5;border:1.5px solid #f5c2c8;border-radius:14px;padding:10px 12px;margin-top:8px}
