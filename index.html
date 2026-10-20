@@ -557,6 +557,9 @@
         .u-view-toggle{background:#ece7e4;} .u-view-toggle button{color:#4b5563;} .u-view-toggle button.on{background:#fff;color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.08);}
         .cert-btn.on{background:var(--primary) !important;border-color:var(--primary) !important;}
 
+        /* 照片整張顯示，旁邊空白用同一張照片放大模糊填滿 */
+        .photo-blur{position:absolute;inset:-40px;background-size:cover;background-position:center;filter:blur(28px) brightness(.92) saturate(1.1);transform:scale(1.08);pointer-events:none;opacity:0;transition:opacity .3s;}
+        .photo-blur.on{opacity:1;}
         /* 照片不要被瀏覽器當成拖曳圖片（會打斷手指拖曳） */
         #warehouse-img,#pano-img{-webkit-user-drag:none;user-select:none;-webkit-user-select:none;pointer-events:none;}
         #map-container,#pano-stage{user-select:none;-webkit-user-select:none;}
@@ -862,6 +865,7 @@
             </div>
 
             <div class="image-map-container" id="map-container">
+                <div class="photo-blur" id="map-blur"></div>
                 <div id="map-canvas">
                     <img id="warehouse-img" src="" alt="請點擊換底圖">
                     <div id="boxes-layer"></div>
@@ -885,6 +889,7 @@
             <!-- 🏠 倉庫全景 -->
             <div id="panorama-view">
                 <div id="pano-stage">
+                    <div class="photo-blur" id="pano-blur"></div>
                     <div id="pano-wrap">
                         <img id="pano-img" alt="">
                         <div id="pano-empty">尚未設定全景圖<br>進入「✏️ 編輯」後按 ＋ → 更換底圖</div>
@@ -1495,7 +1500,9 @@
         })));
     }
     
+    function setBlur(id, url) { const el = document.getElementById(id); if (!el) return; el.style.backgroundImage = url ? `url("${url}")` : ''; el.classList.toggle('on', !!url); }
     function setBackgroundImage(url) {
+        setBlur('map-blur', url);
         const imgEl = document.getElementById('warehouse-img');
         const overlay = document.getElementById('map-loading-overlay');
         if (!url) {
@@ -3521,6 +3528,7 @@
 
         // 1) 先在背景準備好：尺寸 + 解碼完成（畫面此時完全不動）
         await loadPageDims(p);
+        setBlur('map-blur', p.imageUrl || '');
         if (p.imageUrl) {
             if (imgEl.getAttribute('src') !== p.imageUrl) imgEl.src = p.imageUrl;
             try { await imgEl.decode(); } catch (e) {}
@@ -3639,7 +3647,7 @@
         else {
             const cover = !isContentEditActive;
             const top = cover ? 0 : 70, bot = cover ? 0 : 30;
-            const s = cover ? Math.max(pCW / img.naturalWidth, pCH / img.naturalHeight) : Math.min(pCW / img.naturalWidth, (pCH - top - bot) / img.naturalHeight);
+            const s = Math.min(pCW / img.naturalWidth, (pCH - top - bot) / img.naturalHeight);
             pW = img.naturalWidth * s; pH = img.naturalHeight * s;
             const k = panoImg + '|' + cover; if (k !== pKey) { pKey = k; pFx = 0; pFy = cover ? 0 : (top - bot) / 2; }
         }
@@ -3664,6 +3672,7 @@
     function renderPanorama() {
         const img = document.getElementById('pano-img');
         const empty = document.getElementById('pano-empty');
+        setBlur('pano-blur', panoImg);
         if (panoImg) { img.onload = fitPano; img.src = panoImg; img.style.display = 'block'; empty.style.display = 'none'; }
         else { img.removeAttribute('src'); img.style.display = 'none'; empty.style.display = 'flex'; }
         setTimeout(fitPano, 0);
@@ -3863,7 +3872,7 @@
 
     // 檢視時照片滿版（cover，可拖曳看左右）；編輯／佈局時整張顯示（contain）。箱子 % 就是圖片 %
     let fillKey = '', fillX = 0, fillY = 0, fillW = 0, fillH = 0, fillCW = 0, fillCH = 0;
-    const isViewFill = () => !isContentEditActive && !isLayoutMode;
+    const isViewFill = () => false;   // 整張顯示（空白處用同一張照片的模糊版填滿）
     function clampFill() {
         const mx = Math.max(0, (fillW - fillCW) / 2), my = Math.max(0, (fillH - fillCH) / 2);
         fillX = Math.max(-mx, Math.min(mx, fillX)); fillY = Math.max(-my, Math.min(my, fillY));
