@@ -1947,7 +1947,7 @@
     return out;
   }
   // 每天：當天值班的人（時段涵蓋那天）組成 轎前1～4、轎後1～6，大約每組 size 人；前一天已經在某組的人盡量留在同一組
-  const LBL_ORDER = l => (l.startsWith('轎前') ? -(+l.slice(2)) : 10 + (+l.slice(2)));
+  const LBL_ORDER = l => (l.startsWith('轎前') ? +l.slice(2) : 10 + (+l.slice(2)));   // 轎前1、2、3…再轎後1、2…
   function buildDay(present, prevTeams, size, ppl) {
     const n = present.length; if (!n) return [];
     const k = Math.max(1, Math.min(10, Math.round(n / size))), F = Math.min(4, Math.max(k > 1 ? 1 : 0, Math.round(k * 0.4))), B = Math.min(6, k - F);
@@ -1994,7 +1994,7 @@
           return p ? `<td class="xm ${schSel && schSel.k === k && schSel.d === d ? 'sel' : ''}" data-sd="${d}" data-sk="${esc(k)}"><span style="background:${CAT_BG[p.cat]};${j === 0 ? 'font-weight:900;' : ''}">${j === 0 ? '★' : ''}${esc(p.name)}</span></td>` : '<td class="xm"></td>'; }).join('');
         const extra = ms.length > 6 ? `<div style="font-size:11px;color:#b91c1c">＋${ms.slice(6).map(k => esc(ppl[k].name)).join('、')}</div>` : '';
         const mv = schSel && schSel.d === d;
-        return `<tr class="${cls}"><th class="xl ${mv ? 'mv' : ''}" ${mv ? `data-mvd="${d}" data-mvl="${t.l}" title="移到這組"` : ''}>${mv ? '⬅ ' : ''}${t.l}</th>${cells}<td class="xn">${extra}</td></tr>`; }).join('');
+        return `<tr class="${cls}"><th class="xl ${mv ? 'mv' : ''}" ${mv ? `data-mvd="${d}" data-mvl="${t.l}" title="移到這組"` : ''}>${mv ? '⬅ ' : ''}${t.l}</th>${cells}<td class="xn"><input class="xnote" data-nd="${d}" data-nl="${t.l}" value="${esc(t.note || '')}" placeholder="攜帶裝備／備註">${extra}</td></tr>`; }).join('');
       return `<div class="xd"><table class="xt"><thead><tr><th class="xc">組別</th><th colspan="6" class="xdate">${dd.getMonth() + 1}月${dd.getDate()}日(${WK[dd.getDay()]})<small>${SLOTS.filter(sl => inRange(sl, d)).join('、')}・${pres.length} 人・${ts.length} 組</small></th><th class="xcmd">指揮官:${esc(cmd)}</th></tr></thead>
         <tbody>${rows || '<tr><td colspan="8" class="sc-empty">按「自動排班」</td></tr>'}
         <tr><td colspan="8" class="xf">◎值日生：中巴－　　　住宿－　　　物資車盤點－</td></tr></tbody></table>
@@ -2016,6 +2016,7 @@
         .xt .xl{font-size:15px;font-weight:900;color:var(--primary)}.xt .xl.mv{cursor:pointer;background:#fde8ea;outline:2px dashed var(--primary);outline-offset:-4px;border-radius:10px}
         .xt td.xm{padding:4px 3px}.xt td.xm>span{display:block;border-radius:10px;padding:6px 2px;font-size:14px;cursor:pointer}.xt td.xm.sel>span{outline:2.5px solid var(--primary);outline-offset:1px}
         .xt tr.xb>*{border-top:2px solid #e9b8bf}
+        .xnote{width:100%;border:1px dashed #e5d5d0;border-radius:8px;padding:5px 6px;font:inherit;font-size:12px;color:#7c2d12;background:#fffaf8}.xnote:focus{outline:none;border-style:solid;border-color:var(--primary);background:#fff}
         @media (max-width:760px){
           .xd{border-radius:16px}.xt,.xt thead,.xt tbody{display:block}.xt thead tr{display:flex;align-items:center;flex-wrap:wrap;padding:10px 12px;gap:4px 10px}
           .xt thead th{display:block;height:auto;border:none;padding:0}.xt .xc{display:none!important}.xt .xdate{font-size:19px;padding:0;flex:1}.xt .xdate small{display:block;margin:2px 0 0}
@@ -2023,7 +2024,7 @@
           .xt tbody tr{display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:8px 10px;border-bottom:1px solid #f3ece9}
           .xt tbody tr>*{display:block;height:auto;border:none!important;padding:0;width:auto}
           .xt .xl{width:100%!important;text-align:left;font-size:14px;margin-bottom:2px}.xt td.xm:empty,.xt .xn:empty{display:none}
-          .xt td.xm{padding:0}.xt td.xm>span{padding:5px 10px;font-size:14px;white-space:nowrap}
+          .xt td.xm{padding:0;flex:0 0 calc((100% - 16px) / 5);min-width:0}.xt td.xm>span{padding:6px 1px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:clip;letter-spacing:-.5px}.xt .xn{width:100%!important;margin-top:4px}
           .xt tbody tr.xb{border-top:2px solid #e9b8bf}.xt .xf{width:100%;white-space:normal;padding:4px 0}
         }.xt .xn{width:150px;color:var(--sub);font-size:12px}
         .xt .xf{text-align:left;font-size:13px;padding:10px 14px;color:var(--sub);background:#fcfaf9;border-bottom:none}.sc-tg{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;align-items:start}
@@ -2068,7 +2069,7 @@
       if (!sc.start || !sc.end) return toast('請先填進香開始和結束日期');
       if (Object.keys(dt).length && !(await dialog({ title: '重新自動排班？', msg: '每天的小組會全部重排（包含你手動換過的）。', okText: '重新排班', danger: true }))) return;
       const size = Math.max(2, Math.min(6, +$('sc-size').value || 5)), out = {}; let prev = null;
-      days.forEach(d => { out[d] = buildDay(presentOn(d), prev, size, ppl); prev = out[d]; });
+      days.forEach(d => { out[d] = buildDay(presentOn(d), prev, size, ppl).map(t => ({ ...t, note: ((dt[d] || []).find(x => x.l === t.l) || (prev || []).find(x => x.l === t.l) || {}).note || '' })); prev = out[d]; });
       save({ size, days: out }, '🔀 已自動排班');
     };
     document.querySelectorAll('[data-sd][data-sk]').forEach(b => b.onclick = () => { const k = b.dataset.sk, d = b.dataset.sd; schSel = schSel && schSel.k === k && schSel.d === d ? null : { k, d }; renderSched(eid); });
@@ -2076,6 +2077,10 @@
       const { k, d } = schSel, ts = (dt[d] || []).map(t => ({ l: t.l, m: t.m.filter(x => x !== k) }));
       const t = ts.find(x => x.l === b.dataset.mvl); if (t) t.m.push(k);
       schSel = null; save({ days: { ...dt, [d]: ts.filter(x => x.m.length) } }, '已換組');
+    });
+    document.querySelectorAll('.xnote').forEach(inp => inp.onchange = () => {
+      const d = inp.dataset.nd, ts = (dt[d] || []).map(t => t.l === inp.dataset.nl ? { ...t, note: inp.value.trim() } : t);
+      save({ days: { ...dt, [d]: ts } }, '已儲存');
     });
     if ($('sc-xlsx')) $('sc-xlsx').onclick = () => exportSchedXlsx(eid);
   }
@@ -2115,7 +2120,7 @@
       ts.forEach(t => {
         const ms = t.m.filter(k => ppl[k]).slice(0, MAXP), isBack = t.l.startsWith('轎後');
         ws.mergeCells(`A${r}:A${r + 1}`); Object.assign(ws.getCell(`A${r}`), { value: t.l, font: font({ size: 14 }), alignment: { horizontal: 'center', vertical: 'middle' }, fill: fillC('FFD9D9D9') });
-        ws.mergeCells(`H${r}:H${r + 1}`);
+        ws.mergeCells(`H${r}:H${r + 1}`); Object.assign(ws.getCell(`H${r}`), { value: t.note || '', font: font({ size: 10, color: { argb: 'FFC00000' } }), alignment: { horizontal: 'center', vertical: 'middle', wrapText: true } });
         for (let j = 0; j < MAXP; j++) {
           const c = ws.getRow(r).getCell(2 + j), c2 = ws.getRow(r + 1).getCell(2 + j), p = ppl[ms[j]];
           c.alignment = { horizontal: 'center', vertical: 'middle' }; c2.alignment = { horizontal: 'center' }; c2.font = font({ size: 9, color: { argb: 'FFFF0000' } });
