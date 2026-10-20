@@ -1738,7 +1738,7 @@
           <button class="sbtn ${e.selfDraw ? 'red' : 'green'}" id="dr-self">${e.selfDraw ? '關閉自己抽籤' : '開放自己抽籤'}</button></div></div></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-content:flex-start;">
         ${missing ? `<button class="sbtn" id="dr-go" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">🎲 管理員代抽：還沒抽的 ${missing} 人</button>` : ''}
-        ${done ? '<button class="sbtn" id="dr-redo" style="background:#fef2f2;color:#b91c1c;">全部重抽</button>' : ''}
+        ${done ? '<button class="sbtn" id="dr-redo" style="background:#fef2f2;color:#b91c1c;">全部重抽</button><button class="sbtn" id="dr-clear" style="background:#f1f5f9;color:#334155;">全部取消抽籤</button>' : ''}
         <button class="sbtn" id="dr-xlsx" style="background:#1f2430;color:#fff;">⬇ 下載 Excel（簽到表・繳費紀錄）</button>
       </div></div>
       <div class="dr-grid" style="margin-top:10px;">${DRAW_GROUPS.map(grp).join('') || '<div class="card empty">還沒有人回覆出席</div>'}</div>
@@ -1766,6 +1766,10 @@
     if ($('dr-redo')) $('dr-redo').onclick = async () => {
       if (!(await dialog({ title: '全部重抽？', msg: '所有人的前／中／後都會重新抽（包含自己抽的），原本的結果會消失。', okText: '重抽', danger: true }))) return;
       try { await runDraw(eid, true); toast('🎲 已重新抽籤'); } catch (err) { toast('❌ 抽籤失敗'); }
+    };
+    if ($('dr-clear')) $('dr-clear').onclick = async () => {
+      if (!(await dialog({ title: '全部取消抽籤？', msg: `已抽的 ${done} 人（包含自己抽的）時段都會清空，回到還沒抽的狀態。\n手動換組的設定會保留。`, okText: '全部取消', danger: true }))) return;
+      try { await saveDraw(eid, {}, {}, evOver[eid] || {}); evDraw[eid] = {}; evDrawBy[eid] = {}; toast('已全部取消抽籤'); renderDrawSheet(eid); } catch (err) { toast('❌ 操作失敗'); }
     };
     $('dr-xlsx').onclick = () => exportDrawXlsx(eid);
   }
