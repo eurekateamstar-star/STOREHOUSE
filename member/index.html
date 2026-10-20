@@ -1417,7 +1417,9 @@
 
   function renderAttendCards() {
     const el = $('attend-cards'); if (!el) return;
-    const list = eventsCache.filter(e => e.open);
+    // 會員中心首頁先不顯示出席調查卡片（改用公開連結填寫）；要恢復把 SHOW_ATTEND_CARD 改成 true
+    const SHOW_ATTEND_CARD = false;
+    const list = SHOW_ATTEND_CARD ? eventsCache.filter(e => e.open) : [];
     el.innerHTML = list.map(e => {
       return `<div class="att-card">
         <div class="t">📅 ${esc(e.title || '出席調查')}</div>
