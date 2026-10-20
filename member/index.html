@@ -1802,6 +1802,7 @@
         ${missing ? `<button class="sbtn" id="dr-go" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">🎲 管理員代抽：還沒抽的 ${missing} 人</button>` : ''}
         ${done ? '<button class="sbtn" id="dr-redo" style="background:#fef2f2;color:#b91c1c;">全部重抽</button><button class="sbtn" id="dr-clear" style="background:#f1f5f9;color:#334155;">全部取消抽籤</button>' : ''}
         <button class="sbtn" id="dr-pay" style="${drPayMode ? 'background:#16a34a;color:#fff;box-shadow:0 0 0 3px #bbf7d0;' : 'background:#dcfce7;color:#166534;'}">${drPayMode ? '✅ 繳費模式中（按這裡結束）' : '💰 繳費模式：點名字就打勾'}</button>
+        <button class="sbtn" id="dr-pdf" style="background:#b91c1c;color:#fff;">🖨 列印全部／存 PDF</button>
         <button class="sbtn" id="dr-xlsx" style="background:#1f2430;color:#fff;">⬇ 下載 Excel（簽到表・繳費紀錄）</button>
       </div></div>
       ${drPayMode ? '<div style="margin-top:10px;padding:10px 14px;border-radius:12px;background:#16a34a;color:#fff;font-weight:800;">💰 繳費模式：直接點名字 → 變綠底＝已繳；再點一次取消。完成後按上面的按鈕結束。</div>' : ''}
@@ -1852,6 +1853,46 @@
       try { await saveDraw(eid, {}, {}, evOver[eid] || {}); evDraw[eid] = {}; evDrawBy[eid] = {}; toast('已全部取消抽籤'); renderDrawSheet(eid); } catch (err) { toast('❌ 操作失敗'); }
     };
     $('dr-xlsx').onclick = () => exportDrawXlsx(eid);
+    $('dr-pdf').onclick = () => printDrawAll(eid);
+  }
+  // 一次列印全部（瀏覽器列印 → 可選「另存為 PDF」）：每組 簽到表、繳費紀錄 各自從新的一頁開始，表頭每頁自動重複
+  function printDrawAll(eid) {
+    const e = eventsCache.find(x => x.id === eid) || {};
+    const m = String(e.date || '').match(/(\d{3})/) || String(e.title || '').match(/(\d{3})\s*年/);
+    const roc = m ? +m[1] : (new Date().getFullYear() - 1911), yt = `${ganzhi(roc)}${roc}年`;
+    const groups = drawPeople(eid), paid = evPaid[eid] || {};
+    const T = (title, g, head, rows, foot) => `<section><table><thead>
+        <tr><th colspan="6" class="tt">白沙屯拱天宮進香醫護團<br>${yt}${title}</th></tr>
+        <tr><th colspan="6" class="gp">${esc(g)}</th></tr>
+        <tr class="hd">${head.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+        <tbody>${rows}</tbody><tfoot><tr class="ft">${foot.map(v => `<td>${v}</td>`).join('')}</tr></tfoot></table></section>`;
+    let html = '', sum = [];
+    DRAW_GROUPS.forEach(g => {
+      const ppl = groups[g]; if (!ppl.length) return;
+      let hun = 0, veg = 0;
+      const r1 = ppl.map((p, i) => { const l = p.r.lunch || '', h = l.startsWith('葷'), v = l.startsWith('素'); if (h) hun++; if (v) veg++;
+        return `<tr><td>${i + 1}</td><td>${esc(p.name)}</td><td>${p.r.attend === 'join' ? '請假' : ''}</td><td>${h ? 1 : ''}</td><td>${v ? 1 : ''}</td><td>${l === '自行處理' ? '不訂餐' : ''}</td></tr>`; }).join('');
+      html += T('行前教育訓練簽到表', g, ['序 號', '姓名', '簽　　到', '葷食', '素食', '領年曆'], r1, ['', '合計', '', hun, veg, '']);
+      const r2 = ppl.map((p, i) => `<tr><td>${i + 1}</td><td>${esc(p.name)}</td><td>2500</td><td></td><td>2500</td><td>${paid[p.key] ? '✔ 已繳' : ''}</td></tr>`).join('');
+      html += T('繳費紀錄表', g, ['序 號', '姓名', '團費', '服裝', '合計', '收費確認'], r2, ['', '合計', 2500 * ppl.length, '', 2500 * ppl.length, `已繳 ${ppl.filter(p => paid[p.key]).length}`]);
+      sum.push([g, hun, veg, ppl.length]);
+    });
+    if (!html) return toast('還沒有人回覆出席');
+    const tot = sum.reduce((a, x) => [a[0] + x[1], a[1] + x[2], a[2] + x[3]], [0, 0, 0]);
+    html += `<section><table><thead><tr><th colspan="4" class="tt">${esc((e.date || '') + ' ' + (e.title || ''))}<br>便當統計</th></tr><tr class="hd"><th>類別</th><th>葷食</th><th>素食</th><th>人數</th></tr></thead>
+      <tbody>${sum.map(x => `<tr><td>${esc(x[0])}</td><td>${x[1]}</td><td>${x[2]}</td><td>${x[3]}</td></tr>`).join('')}</tbody>
+      <tfoot><tr class="ft"><td>小計</td><td>${tot[0]}</td><td>${tot[1]}</td><td>${tot[2]}</td></tr></tfoot></table></section>`;
+    const css = `@page{size:A4 portrait;margin:12mm 10mm}*{box-sizing:border-box}body{margin:0;font-family:"Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif;color:#000}
+      section{page-break-after:always;break-after:page}section:last-child{page-break-after:auto;break-after:auto}
+      table{width:100%;border-collapse:collapse;font-size:15pt}th,td{border:1px solid #333;text-align:center;padding:0 4px;height:11.4mm}
+      th.tt{border:none;font-size:19pt;font-weight:900;line-height:1.35;height:auto;padding-bottom:4px}th.gp{border:none;text-align:left;font-size:15pt;height:9mm}
+      tr.hd th{background:#f1ebe8;font-size:13pt;height:9mm}tr.ft td{font-weight:900}tr{break-inside:avoid;page-break-inside:avoid}
+      thead{display:table-header-group}tfoot{display:table-row-group}`;
+    const f = document.createElement('iframe'); f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+    document.body.appendChild(f);
+    const d = f.contentDocument; d.open(); d.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(e.title || '出席調查')}_簽到表_繳費紀錄</title><style>${css}</style></head><body>${html}</body></html>`); d.close();
+    setTimeout(() => { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (err) { toast('❌ 無法開啟列印'); } setTimeout(() => f.remove(), 60000); }, 400);
+    toast('🖨 列印視窗中，印表機選「另存為 PDF」就能存成 PDF', 4000);
   }
   const loadExcelJS = () => window.ExcelJS ? Promise.resolve() : new Promise((ok, bad) => { const sc = document.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js'; sc.onload = ok; sc.onerror = bad; document.head.appendChild(sc); });
   const ganzhi = roc => { const y = roc + 1911; return '甲乙丙丁戊己庚辛壬癸'[(y - 4) % 10] + '子丑寅卯辰巳午未申酉戌亥'[(y - 4) % 12]; };
