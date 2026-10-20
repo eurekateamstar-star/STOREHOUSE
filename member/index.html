@@ -182,6 +182,7 @@
   #rs-table .nm-cell .mini-av { display: none; }
   #rs-table .line-who .mini-av { display: inline-flex; }
   #rs-table .pill { font-size: 11px; padding: 1px 6px; }
+  #rs-table td.c-upd .upd { display: inline-block; margin: 0 6px 0 0; } #rs-table td.c-upd .upd .tm { display: none; }
   .nm-cell { display: inline-flex; align-items: center; gap: 8px; }
   table.tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
   .tbl th { text-align: left; font-size: 12px; color: var(--sub); font-weight: 800; padding: 12px 14px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,0.6); position: sticky; top: 0; }
@@ -1038,7 +1039,7 @@
       return `<span class="line-who">${miniAv(u.pictureUrl, u.lineDisplayName || u.realName)}<span>${esc(u.lineDisplayName || u.realName || '已綁定')}</span></span>`; };
     const av = r => { const u = r.boundUserId && userById(r.boundUserId); return miniAv(u && u.pictureUrl, r.name); };
     $('rs-table').innerHTML = rosterHead() + '<tbody>'
-      + (list.map(r => `<tr data-r="${r.id}">${ROSTER_COLS.map(([k]) => `<td class="c-${k}">${k === 'name' ? `<span class="nm-cell">${av(r)}<b>${esc(rv(r, k) || '')}</b>${redDot(r)}</span>` : esc(rv(r, k) || '')}</td>`).join('')}<td>${st(r)}</td><td>${updText(r, true)}${confText(r)}</td></tr>`).join('')
+      + (list.map(r => `<tr data-r="${r.id}">${ROSTER_COLS.map(([k]) => `<td class="c-${k}">${k === 'name' ? `<span class="nm-cell">${av(r)}<b>${esc(rv(r, k) || '')}</b>${redDot(r)}</span>` : esc(rv(r, k) || '')}</td>`).join('')}<td>${st(r)}</td><td class="c-upd">${updText(r, true)}${confText(r)}</td></tr>`).join('')
         || `<tr><td colspan="${ROSTER_COLS.length + 2}"><div class="empty">沒有符合的資料</div></td></tr>`) + '</tbody>';
     $('rs-cards').innerHTML = list.map(r => `<div class="card r-card" data-r="${r.id}">${av(r)}
         <div class="main"><div class="nm">${r.serial ? `<span style="color:var(--sub);font-size:13px;">${esc(r.serial)}</span>` : ''}${esc(rv(r, 'name'))}${redDot(r)} <span class="pill ${rv(r, 'position') === '團員' ? 'pos-m' : 'admin'}">${esc(rv(r, 'position'))}</span> ${r.cert ? `<span class="pill cert">${esc(r.cert)}</span>` : ''}</div>
@@ -1131,7 +1132,7 @@
     const who = short ? '✏️ 更新' : (r.updatedByRole === 'self' ? '🙋 本人' : '🛠 管理員');
     const d = new Date(ms), p = n => String(n).padStart(2, '0');
     const when = short ? `${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}` : fmtAt(ms);
-    return `<span class="upd ${r.updatedByRole === 'self' ? 'self' : 'admin'}">${who}${short ? '' : '（' + esc(r.updatedBy || '') + '）'} ${when}</span>`;
+    return `<span class="upd ${r.updatedByRole === 'self' ? 'self' : 'admin'}">${who}${short ? '' : '（' + esc(r.updatedBy || '') + '）'} <span class="tm">${when}</span></span>`;
   }
 
   // 本人確認狀態（從綁定的會員帳號讀）
@@ -1139,7 +1140,7 @@
     if (!r.boundUserId) return '';
     const u = userById(r.boundUserId); if (!u) return '';
     const ms = tsMs(u.profileConfirmedAt);
-    if (ms) { const d = new Date(ms), p = n => String(n).padStart(2, '0'); return `<span class="upd conf">✅ 已確認 ${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}</span>`; }
+    if (ms) { const d = new Date(ms), p = n => String(n).padStart(2, '0'); return `<span class="upd conf">✅ 已確認 <span class="tm">${d.getMonth() + 1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}</span></span>`; }
     return u.confirmRequestedAt ? '<span class="upd req">🔔 待本人確認</span>' : '<span class="upd none">未確認</span>';
   }
   // 更新紀錄文字：修改／確認無誤／管理員要求重新確認
