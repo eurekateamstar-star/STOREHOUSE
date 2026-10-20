@@ -109,11 +109,11 @@ async function parseRoute(req, env, json) {
 // 兩種選單：guest（預設，沒開通的人）、member（審核通過的團員）。用 alias 記住目前的選單 ID，不用另外存。
 const SITE = 'https://tsushin-buishatun.pages.dev';
 const LIFF = id => 'https://liff.line.me/' + id;
-// 圖片 2500×843。分頁式選單上方 104px 是分頁列（左：團員專區、右：一般資訊），下面三格按鈕
-const MW = 2500, MH = 843, TAB = 104;
-const cols3 = (acts, top) => acts.map((a, i) => {
+// 一般民眾選單 2500×843；團員兩頁 2500×925，上方 186px 是分頁列（左：團員專區、右：一般資訊），下面三格按鈕
+const MW = 2500, MH = 843, TH = 925, TAB = 186;
+const cols3 = (acts, top, h) => acts.map((a, i) => {
   const cw = Math.floor(MW / 3), x = i * cw;
-  return { bounds: { x, y: top, width: i === 2 ? MW - x : cw, height: MH - top }, action: a };
+  return { bounds: { x, y: top, width: i === 2 ? MW - x : cw, height: h - top }, action: a };
 });
 const tabs = () => [
   { bounds: { x: 0, y: 0, width: MW / 2, height: TAB }, action: { type: 'richmenuswitch', richMenuAliasId: 'bst-member', data: 'tab=member' } },
@@ -131,9 +131,9 @@ const MEMBER = [
   { type: 'uri', label: '倉儲管理', uri: LIFF('2011820105-ofRs4ehy') },
 ];
 const MENUS = {
-  guest:   { alias: 'bst-guest',    name: '白沙屯醫護團｜一般民眾', img: 'guest.jpg',   areas: cols3(PUBLIC, 0) },
-  member:  { alias: 'bst-member',   name: '白沙屯醫護團｜團員專區', img: 'member.jpg',  areas: [...tabs(), ...cols3(MEMBER, TAB)] },
-  member2: { alias: 'bst-member-b', name: '白沙屯醫護團｜一般資訊', img: 'member2.jpg', areas: [...tabs(), ...cols3(PUBLIC, TAB)] },
+  guest:   { alias: 'bst-guest',    name: '白沙屯醫護團｜一般民眾', img: 'guest.jpg',   h: MH, areas: cols3(PUBLIC, 0, MH) },
+  member:  { alias: 'bst-member',   name: '白沙屯醫護團｜團員專區', img: 'member.jpg',  h: TH, areas: [...tabs(), ...cols3(MEMBER, TAB, TH)] },
+  member2: { alias: 'bst-member-b', name: '白沙屯醫護團｜一般資訊', img: 'member2.jpg', h: TH, areas: [...tabs(), ...cols3(PUBLIC, TAB, TH)] },
 };
 const lineApi = (env, path, opt = {}) => fetch((opt.data ? 'https://api-data.line.me' : 'https://api.line.me') + path, {
   method: opt.method || 'GET',
@@ -188,7 +188,7 @@ async function menuSetupRoute(req, env, json) {
     // 1) 先把三個選單都建好、上傳圖片
     const made = {};
     for (const [key, m] of Object.entries(MENUS)) {
-      const body = { size: { width: MW, height: MH }, selected: true, name: m.name, chatBarText: '選單', areas: m.areas };
+      const body = { size: { width: MW, height: m.h }, selected: true, name: m.name, chatBarText: '選單', areas: m.areas };
       const c = await lineApi(env, '/v2/bot/richmenu', { method: 'POST', type: 'application/json', body: JSON.stringify(body) });
       if (!c.ok) return json({ error: `建立 ${key} 失敗：` + await c.text() }, 502);
       const id = (await c.json()).richMenuId;
