@@ -216,6 +216,14 @@
   .ev-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; margin: 10px 0; }
   .ev-stats div { background: #f8fafc; border-radius: 12px; padding: 8px 10px; font-size: 12px; color: var(--sub); }
   .ev-stats b { display: block; font-size: 20px; color: var(--ink); }
+  .ev-st { cursor: pointer; border: 2px solid transparent; transition: border-color .15s; }
+  .ev-st.on { border-color: var(--primary); background: #fff1f2 !important; }
+  .ev-cards { display: none; }
+  .ev-rc { background: var(--card); border: 1px solid var(--card-border); border-radius: 16px; box-shadow: var(--shadow); padding: 12px 14px; margin-bottom: 8px; }
+  .ev-rc .n { font-size: 16px; } .ev-rc .a { font-size: 13px; font-weight: 800; }
+  .ev-rc .s { font-size: 12px; color: var(--sub); margin-top: 3px; } .ev-rc .x { font-size: 13px; margin-top: 4px; line-height: 1.6; }
+  .ev-rc .t { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+  @media (max-width: 760px) { .ev-cards { display: block; } .ev-tbl-wrap { display: none; } }
   .ev-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
   .ev-tbl th, .ev-tbl td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
   .ev-tbl th { font-size: 12px; color: var(--sub); }
@@ -1392,7 +1400,7 @@
   const ATT_SHORT = { yes: '✅ 出席', join: '⚠️ 不出席但參與進香', no: '❌ 不參與' };
   const LUNCH = ['葷', '素（方便素）', '自行處理'];
   const eventLink = id => `https://tsushin-buishatun.pages.dev/attend/?e=${encodeURIComponent(id)}`;   // 公開表單：不用先綁會員中心
-  let eventsCache = [], eventsUnsub = null, myResp = {}, evRespCache = {}, evRespUnsub = null, evOpenId = null;
+  let eventsCache = [], eventsUnsub = null, myResp = {}, evRespCache = {}, evRespUnsub = null, evOpenId = null, evFilter = 'all';
   // 連結 liff.line.me/…?e=活動ID：LIFF 開啟時參數可能包在 liff.state 裡
   const readEventParam = () => { try { const q = new URLSearchParams(location.search); if (q.get('e')) return q.get('e');
     const st = q.get('liff.state'); if (st) return new URLSearchParams(st.replace(/^[^?]*\?/, '')).get('e') || ''; } catch (e) {} return ''; };
@@ -1453,6 +1461,13 @@
     const lc = l => rs.filter(r => r.attend !== 'no' && r.lunch === l).length;
     const answeredRoster = new Set(rs.map(r => { const ro = rosterOf(r); return ro && ro.id; }).filter(Boolean));
     const notYet = rosterCache.filter(r => !answeredRoster.has(r.id)).sort(rosterOrder);
+    const st = (k, t, n, c) => `<div class="ev-st ${evFilter === k ? 'on' : ''}" data-evf="${esc(k)}">${esc(t)}<b ${c ? `style="color:${c}"` : ''}>${n}</b></div>`;
+    const shown = evFilter === 'all' || evFilter === 'none' ? rs : evFilter.startsWith('l:') ? rs.filter(r => r.attend !== 'no' && r.lunch === evFilter.slice(2)) : rs.filter(r => r.attend === evFilter);
+    const fTitle = { all: '全部回覆', yes: '出席', join: '不出席但參與進香', no: '不參與', none: '名冊中未回覆' }[evFilter] || ('午膳・' + evFilter.slice(2));
+    const card = r => { const ro = rosterOf(r); return `<div class="ev-rc"><div class="n"><b>${esc(r.name || '')}</b> <span class="a">${ATT_SHORT[r.attend] || ''}</span></div>
+        <div class="s">${ro ? esc(rv(ro, 'position')) + '・' + esc(ro.cert || '') : '<span style="color:#b45309">未對應名冊</span>'}${r.lunch ? '　🍱 ' + esc(r.lunch) : ''}${r.lineName ? '　LINE：' + esc(r.lineName) : ''}</div>
+        ${r.reason ? `<div class="x">原因：${esc(r.reason)}</div>` : ''}${r.comment ? `<div class="x">意見：${esc(r.comment)}</div>` : ''}
+        <div class="t">${esc(fmtAt(tsMs(r.createdAt || r.updatedAt)))}</div></div>`; };
     const row = r => { const ro = rosterOf(r); return `<tr><td><b>${esc(r.name || '')}</b>${ro ? `<div style="font-size:11px;color:var(--sub)">${esc(rv(ro, 'position'))}・${esc(ro.cert || '')}</div>` : '<div style="font-size:11px;color:#b45309">未對應名冊</div>'}</td>
         <td>${ATT_SHORT[r.attend] || ''}</td><td>${esc(r.lunch || '')}</td><td>${esc(r.reason || '')}</td><td>${esc(r.comment || '')}</td><td style="font-size:12px">${esc(r.lineName || '')}</td><td style="font-size:11px;color:var(--sub);white-space:nowrap">${esc(fmtAt(tsMs(r.createdAt || r.updatedAt)))}</td></tr>`; };
     $('ev-list').innerHTML = `
@@ -1465,18 +1480,22 @@
           <button class="sbtn ${e.open ? 'red' : 'green'}" id="ev-toggle">${e.open ? '截止回覆' : '重新開放'}</button>
           <button class="sbtn violet" id="ev-edit">編輯</button><button class="sbtn" id="ev-csv">⬇ 匯出</button></div></div>
         <div class="ev-stats">
-          <div>出席<b style="color:var(--green)">${cnt('yes')}</b></div><div>不出席但參與進香<b style="color:#b45309">${cnt('join')}</b></div>
-          <div>不參與<b style="color:var(--red)">${cnt('no')}</b></div><div>已回覆<b>${rs.length}</b></div><div>名冊中未回覆<b>${notYet.length}</b></div>
-          ${e.askLunch === false ? '' : LUNCH.map(l => `<div>午膳・${esc(l)}<b>${lc(l)}</b></div>`).join('')}
+          ${st('all', '已回覆', rs.length)}${st('yes', '出席', cnt('yes'), 'var(--green)')}${st('join', '不出席但參與進香', cnt('join'), '#b45309')}
+          ${st('no', '不參與', cnt('no'), 'var(--red)')}${st('none', '名冊中未回覆', notYet.length)}
+          ${e.askLunch === false ? '' : LUNCH.map(l => st('l:' + l, '午膳・' + l, lc(l))).join('')}
         </div>
+        <div style="font-size:12px; color:var(--sub);">👆 點上面的數字，下方就只列出那一類的人</div>
       </div>
-      <div class="card tbl-wrap" style="padding:8px 10px; margin-top:10px; overflow-x:auto;">
+      <div class="grp-t">📋 ${esc(fTitle)}（${evFilter === 'none' ? notYet.length : shown.length}）</div>
+      ${evFilter === 'none' ? `<div class="card" style="padding:12px 14px; font-size:14px; line-height:2;">${notYet.map(r => esc(r.name || '')).join('、') || '全部都回覆了 🎉'}</div>` : `
+      <div class="ev-cards">${shown.map(card).join('') || '<div class="card empty">沒有資料</div>'}</div>
+      <div class="card ev-tbl-wrap" style="padding:8px 10px; overflow-x:auto;">
         <table class="ev-tbl"><thead><tr><th>姓名</th><th>出席</th><th>午膳</th><th>無法出席原因</th><th>意見</th><th>LINE 名稱</th><th>回覆時間</th></tr></thead>
-        <tbody>${rs.map(row).join('') || '<tr><td colspan="7"><div class="empty">還沒有人回覆</div></td></tr>'}</tbody></table>
-      </div>
-      ${notYet.length ? `<details class="card" style="padding:12px 14px; margin-top:10px;"><summary style="font-weight:800; cursor:pointer;">名冊中尚未回覆（${notYet.length}）</summary><div style="font-size:13px; line-height:2; margin-top:8px;">${notYet.map(r => esc(r.name || '')).join('、')}</div></details>` : ''}
+        <tbody>${shown.map(row).join('') || '<tr><td colspan="7"><div class="empty">沒有資料</div></td></tr>'}</tbody></table>
+      </div>`}
       <div style="font-size:12px; color:var(--sub); margin:8px 4px;">※ 依「姓名」自動對應名冊；同一人重複填寫以最後一次為準。顯示「未對應名冊」的，可能是名字寫法不同或尚未加入名冊。</div>`;
-    $('ev-back').onclick = () => { evOpenId = null; renderEvents(); };
+    $('ev-back').onclick = () => { evOpenId = null; evFilter = 'all'; renderEvents(); };
+    document.querySelectorAll('[data-evf]').forEach(b => b.onclick = () => { evFilter = evFilter === b.dataset.evf && b.dataset.evf !== 'all' ? 'all' : b.dataset.evf; renderEventDetail(eid); });
     $('ev-copy').onclick = async () => { try { await navigator.clipboard.writeText(eventLink(e.id)); toast('🔗 已複製回覆連結'); } catch (err) { await dialog({ title: '回覆連結', msg: eventLink(e.id), okText: '好' }); } };
     $('ev-toggle').onclick = async () => { try { await updateDoc(doc(db, 'events', e.id), { open: !e.open }); toast(e.open ? '已截止回覆' : '已重新開放'); } catch (err) { toast('❌ 操作失敗'); } };
     $('ev-edit').onclick = () => openEventForm(e);
