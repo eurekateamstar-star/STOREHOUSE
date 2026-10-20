@@ -133,6 +133,10 @@ service cloud.firestore {
           && shortStr(request.resource.data, 'src', 10);
         allow read, update, delete: if isAdmin();
       }
+      // 只有管理員看得到的資料（分組抽籤結果）
+      match /admin/{doc} {
+        allow read, write: if isAdmin();
+      }
     }
 
     // ===== 救護紀錄表 =====

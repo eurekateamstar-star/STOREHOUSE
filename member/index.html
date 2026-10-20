@@ -1374,7 +1374,7 @@
     }
   }
 
-  function closeSheet() { $('sheet-close').classList.remove('hidden'); confirmLock = false; document.body.classList.remove('sheet-open'); sheetRid = null; sheetUid = null; $('sheet-bg').style.display = 'none'; $('sheet').style.display = 'none'; }
+  function closeSheet() { drawSheetEid = null; $('sheet-close').classList.remove('hidden'); confirmLock = false; document.body.classList.remove('sheet-open'); sheetRid = null; sheetUid = null; $('sheet-bg').style.display = 'none'; $('sheet').style.display = 'none'; }
   const closeAny = () => { const back = editFromConfirm && editCtx && editCtx.role === 'self' && $('ed-save'); closeSheet(); if (back) backToConfirm(); };
   $('sheet-bg').onclick = () => { if (!confirmLock) closeAny(); }; $('sheet-close').onclick = closeAny;
 
@@ -1411,6 +1411,7 @@
   const ATT_SHORT = { yes: '✅ 出席', join: '⚠️ 不出席但參與進香', no: '❌ 不參與' };
   const LUNCH = ['葷', '素（方便素）', '自行處理'];
   const eventLink = id => `https://tsushin-buishatun.pages.dev/attend/?e=${encodeURIComponent(id)}`;   // 公開表單：不用先綁會員中心
+  let evDraw = {}, drawSheetEid = null;
   let eventsCache = [], eventsUnsub = null, myResp = {}, evRespCache = {}, evRespUnsub = null, evOpenId = null, evFilter = 'all';
   // 連結 liff.line.me/…?e=活動ID：LIFF 開啟時參數可能包在 liff.state 裡
   const readEventParam = () => { try { const q = new URLSearchParams(location.search); if (q.get('e')) return q.get('e');
@@ -1454,10 +1455,12 @@
   function watchEventResponses(eid) {
     if (evRespUnsub && evRespUnsub._eid === eid) return;
     if (evRespUnsub) evRespUnsub();
-    evRespUnsub = onSnapshot(collection(db, 'events', eid, 'responses'), s => {
+    const u1 = onSnapshot(collection(db, 'events', eid, 'responses'), s => {
       evRespCache[eid] = s.docs.map(d => ({ id: d.id, ...d.data() }));
       if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid);
     }, () => toast('讀取回覆失敗'));
+    const u2 = onSnapshot(doc(db, 'events', eid, 'admin', 'draw'), s => { evDraw[eid] = s.exists() ? (s.data().map || {}) : {}; if (drawSheetEid === eid) renderDrawSheet(eid); }, () => {});
+    evRespUnsub = () => { u1(); u2(); };
     evRespUnsub._eid = eid;
   }
   function renderEventDetail(eid) {
@@ -1494,6 +1497,7 @@
           <button class="sbtn ${e.open ? 'red' : 'green'}" id="ev-toggle">${e.open ? '截止回覆' : '重新開放'}</button>
           <button class="sbtn violet" id="ev-edit">編輯</button><button class="sbtn" id="ev-csv">⬇ 匯出</button></div>
           <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; padding-top:8px; border-top:1px dashed rgba(0,0,0,.12);">
+            <button class="sbtn" id="ev-draw" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">🎲 分組抽籤／簽到表・繳費表</button>
             <button class="sbtn" id="ev-test-add" style="background:#ecfeff;color:#0e7490;">🧪 產生測試回覆（名冊 9 成）</button>
             ${testN ? `<button class="sbtn" id="ev-test-clear" style="background:#fef2f2;color:#b91c1c;">🧹 清除測試回覆（${testN}）</button>` : ''}</div></div>
         <div class="ev-stats">
@@ -1516,6 +1520,7 @@
     $('ev-copy').onclick = async () => { try { await navigator.clipboard.writeText(eventLink(e.id)); toast('🔗 已複製回覆連結'); } catch (err) { await dialog({ title: '回覆連結', msg: eventLink(e.id), okText: '好' }); } };
     $('ev-toggle').onclick = async () => { try { await updateDoc(doc(db, 'events', e.id), { open: !e.open }); toast(e.open ? '已截止回覆' : '已重新開放'); } catch (err) { toast('❌ 操作失敗'); } };
     $('ev-edit').onclick = () => openEventForm(e);
+    $('ev-draw').onclick = () => openDrawSheet(e.id);
     // 測試用：名冊裡約 9 成還沒回覆的人，隨機產生回覆（標記 src: test，可一鍵清除）
     $('ev-test-add').onclick = async () => {
       if (!e.open) return toast('請先「重新開放」回覆，才能產生測試資料');
@@ -1555,6 +1560,151 @@
       const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = `${e.title || '出席調查'}.csv`; a.click();
     };
   }
+  // ===================== 分組抽籤 + 簽到表 / 抽籤紀錄 / 繳費紀錄 =====================
+  const DRAW_GROUPS = ['教官及長官', '護理師', 'EMTP、EMT2', 'EMT1', '指揮官及汽機車組', '專業人員及志工', '未對應名冊'];
+  const SLOTS = ['前', '中', '後'];
+  const certKey = c => String(c || '').toUpperCase().replace(/[-\s]/g, '');
+  function groupOf(ro) {
+    if (!ro) return '未對應名冊';
+    const pos = rv(ro, 'position'), c = certKey(ro.cert);
+    if (['團長', '秘書長', '教官團', '顧問'].includes(pos)) return '教官及長官';
+    if (['指揮官', '車輛組', '機車組'].includes(pos)) return '指揮官及汽機車組';
+    if (c.includes('護理') || c.includes('醫師')) return '護理師';
+    if (c === 'EMTP' || c === 'EMT2' || c.includes('EMTP') || c.includes('EMT2')) return 'EMTP、EMT2';
+    if (c.includes('EMT1')) return 'EMT1';
+    return '專業人員及志工';
+  }
+  // 每組人數平分成 前／中／後，多的放後面：10 人 → 3、3、4；11 人 → 3、4、4
+  const slotTargets = n => { const b = Math.floor(n / 3), m = n % 3; return { 前: b, 中: b + (m >= 2 ? 1 : 0), 後: b + (m >= 1 ? 1 : 0) }; };
+  // 出席＋不出席但參與進香 的人（同一人以最後一次為準），依組別分好
+  function drawPeople(eid) {
+    const latest = {};
+    (evRespCache[eid] || []).forEach(r => { const k = normName(r.name); if (!k) return; if (!latest[k] || tsMs(r.createdAt) >= tsMs(latest[k].createdAt)) latest[k] = r; });
+    const byName = {}; rosterCache.forEach(r => { (byName[normName(r.name)] = byName[normName(r.name)] || []).push(r); });
+    const groups = {}; DRAW_GROUPS.forEach(g => groups[g] = []);
+    Object.values(latest).filter(r => r.attend === 'yes' || r.attend === 'join').forEach(r => {
+      const ro = (r.rosterId && rosterById(r.rosterId)) || (byName[normName(r.name)] || [])[0] || null;
+      groups[groupOf(ro)].push({ key: normName(r.name), name: (ro && ro.name) || r.name, ro, r });
+    });
+    DRAW_GROUPS.forEach(g => groups[g].sort((a, b) => a.ro && b.ro ? rosterOrder(a.ro, b.ro) : a.ro ? -1 : b.ro ? 1 : 0));
+    return groups;
+  }
+  // 抽籤：已經抽過的人保留，只幫還沒抽的人補（補到各位置的目標人數）；all=true 全部重抽
+  async function runDraw(eid, all) {
+    const groups = drawPeople(eid), old = all ? {} : (evDraw[eid] || {}), map = {};
+    const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+    DRAW_GROUPS.forEach(g => {
+      const ppl = groups[g]; if (!ppl.length) return;
+      const tg = slotTargets(ppl.length), cur = { 前: 0, 中: 0, 後: 0 };
+      ppl.forEach(p => { const v = old[p.key]; if (SLOTS.includes(v) && cur[v] < tg[v]) { map[p.key] = v; cur[v]++; } });
+      const need = []; SLOTS.forEach(sl => { for (let i = cur[sl]; i < tg[sl]; i++) need.push(sl); });
+      shuffle(need); shuffle(ppl.filter(p => !map[p.key])).forEach((p, i) => map[p.key] = need[i]);
+    });
+    await setDoc(doc(db, 'events', eid, 'admin', 'draw'), { map, at: serverTimestamp(), by: user.realName || profile.displayName || '' });
+    evDraw[eid] = map;
+  }
+  function openDrawSheet(eid) {
+    drawSheetEid = eid;
+    $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open'); $('sheet').scrollTop = 0;
+    renderDrawSheet(eid);
+  }
+  function renderDrawSheet(eid) {
+    if ($('sheet').style.display === 'none') { drawSheetEid = null; return; }
+    const e = eventsCache.find(x => x.id === eid) || {};
+    const groups = drawPeople(eid), map = evDraw[eid] || {};
+    const total = DRAW_GROUPS.reduce((n, g) => n + groups[g].length, 0);
+    const missing = DRAW_GROUPS.reduce((n, g) => n + groups[g].filter(p => !map[p.key]).length, 0);
+    const drawn = Object.keys(map).length > 0;
+    const grp = g => { const ppl = groups[g]; if (!ppl.length) return '';
+      const tg = slotTargets(ppl.length);
+      const col = sl => `<div class="dr-col"><div class="dr-h">${sl}<span>${ppl.filter(p => map[p.key] === sl).length}/${tg[sl]}</span></div>${ppl.filter(p => map[p.key] === sl).map(p => `<div class="dr-n">${esc(p.name)}${p.r.attend === 'join' ? '<i>請假</i>' : ''}</div>`).join('')}</div>`;
+      const un = ppl.filter(p => !map[p.key]);
+      return `<div class="dr-g"><div class="dr-t">${esc(g)}<span>${ppl.length} 人</span></div>
+        ${drawn ? `<div class="dr-cols">${SLOTS.map(col).join('')}</div>` : `<div class="dr-wait">${ppl.map(p => esc(p.name)).join('、')}</div>`}
+        ${drawn && un.length ? `<div class="dr-un">尚未抽籤：${un.map(p => esc(p.name)).join('、')}</div>` : ''}</div>`; };
+    $('sheet-body').innerHTML = `
+      <style>
+        .dr-g{border:1px solid #eee5e1;border-radius:16px;padding:12px;margin-top:10px;background:#fff}
+        .dr-t{font-weight:900;font-size:15px;display:flex;justify-content:space-between}.dr-t span{font-size:12px;color:var(--sub);font-weight:700}
+        .dr-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+        .dr-col{background:#faf6f4;border-radius:12px;padding:8px}.dr-h{font-weight:900;color:var(--primary);display:flex;justify-content:space-between;margin-bottom:4px}
+        .dr-h span{font-size:11px;color:var(--sub)}.dr-n{font-size:13px;padding:2px 0}.dr-n i{font-style:normal;font-size:10px;color:#b45309;margin-left:4px}
+        .dr-wait{font-size:13px;color:var(--sub);margin-top:6px;line-height:1.8}.dr-un{font-size:12px;color:#b45309;margin-top:6px}
+      </style>
+      <h3>🎲 分組抽籤（前／中／後）</h3>
+      <div style="font-size:13px;color:var(--sub);line-height:1.7;margin-top:4px;">${esc(e.title || '')}<br>
+        出席＋不出席但參與進香 共 <b>${total}</b> 人。每組平分成三份，多的放後面（例：10 人 → 3、3、4）。</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
+        ${!drawn ? `<button class="sbtn" id="dr-go" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">🎲 開始抽籤</button>`
+          : `${missing ? `<button class="sbtn" id="dr-go" style="background:#16a34a;color:#fff;">🎲 幫新加入的 ${missing} 人補抽</button>` : ''}
+             <button class="sbtn" id="dr-redo" style="background:#fef2f2;color:#b91c1c;">全部重抽</button>`}
+        <button class="sbtn" id="dr-xlsx" style="background:#1f2430;color:#fff;">⬇ 下載 Excel（簽到表・抽籤・繳費）</button>
+      </div>
+      ${DRAW_GROUPS.map(grp).join('') || '<div class="card empty">還沒有人回覆出席</div>'}
+      <div style="font-size:12px;color:var(--sub);margin:10px 2px;">※ 分組依名冊的「職位」與「證照」：團長／秘書長／教官團／顧問 → 教官及長官；指揮官／車輛組／機車組 → 指揮官及汽機車組；其他依證照。分錯了到名冊改職位或證照即可。<br>※ 抽籤結果會存起來，下次打開一樣；之後才回覆的人可以按「補抽」。</div>`;
+    if ($('dr-go')) $('dr-go').onclick = async () => { try { await runDraw(eid, false); toast('🎲 抽籤完成'); renderDrawSheet(eid); } catch (err) { console.error(err); toast('❌ 抽籤失敗（Firestore 規則可能還沒更新）'); } };
+    if ($('dr-redo')) $('dr-redo').onclick = async () => {
+      if (!(await dialog({ title: '全部重抽？', msg: '所有人的前／中／後都會重新抽，原本的結果會消失。', okText: '重抽', danger: true }))) return;
+      try { await runDraw(eid, true); toast('🎲 已重新抽籤'); renderDrawSheet(eid); } catch (err) { toast('❌ 抽籤失敗'); }
+    };
+    $('dr-xlsx').onclick = () => exportDrawXlsx(eid);
+  }
+  const loadExcelJS = () => window.ExcelJS ? Promise.resolve() : new Promise((ok, bad) => { const sc = document.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js'; sc.onload = ok; sc.onerror = bad; document.head.appendChild(sc); });
+  const ganzhi = roc => { const y = roc + 1911; return '甲乙丙丁戊己庚辛壬癸'[(y - 4) % 10] + '子丑寅卯辰巳午未申酉戌亥'[(y - 4) % 12]; };
+  async function exportDrawXlsx(eid) {
+    try { await loadExcelJS(); } catch (err) { return toast('❌ 無法載入 Excel 元件，請檢查網路'); }
+    const e = eventsCache.find(x => x.id === eid) || {};
+    const m = String(e.date || '').match(/(\d{3})/) || String(e.title || '').match(/(\d{3})\s*年/);
+    const roc = m ? +m[1] : (new Date().getFullYear() - 1911);
+    const yt = `${ganzhi(roc)}${roc}年`;
+    const groups = drawPeople(eid), map = evDraw[eid] || {};
+    const wb = new ExcelJS.Workbook();
+    const thin = { style: 'thin', color: { argb: 'FF555555' } }, border = { top: thin, left: thin, bottom: thin, right: thin };
+    const font = (o = {}) => ({ name: '微軟正黑體', size: 12, ...o });
+    const totals = [];
+    DRAW_GROUPS.forEach(g => {
+      const ppl = groups[g]; if (!ppl.length) return;
+      const ws = wb.addWorksheet(g.replace(/[\\/?*[\]:]/g, ''), { pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: .3, right: .3, top: .4, bottom: .4, header: .2, footer: .2 } } });
+      ws.columns = [6, 11, 20, 6, 6, 9, 6, 11, 26, 6, 11, 8, 8, 9, 11].map(w => ({ width: w }));
+      const T = ['白沙屯拱天宮進香醫護團\n' + yt + '行前教育訓練簽到表', '白沙屯拱天宮進香醫護團\n' + yt + '進香時段抽籤紀錄表', '白沙屯拱天宮進香醫護團\n' + yt + '繳費紀錄表'];
+      [['A1:F1', 'A2:F2', 'A1', 'A2', 0], ['G1:I1', 'G2:I2', 'G1', 'G2', 1], ['J1:O1', 'J2:O2', 'J1', 'J2', 2]].forEach(([r1, r2, c1, c2, i]) => {
+        ws.mergeCells(r1); ws.mergeCells(r2);
+        Object.assign(ws.getCell(c1), { value: T[i], font: font({ size: 14, bold: true }), alignment: { wrapText: true, horizontal: 'center', vertical: 'middle' } });
+        Object.assign(ws.getCell(c2), { value: g === '指揮官及汽機車組' ? '指揮官及汽機車組' : g, font: font({ size: 13, bold: true }), alignment: { horizontal: 'center', vertical: 'middle' } });
+      });
+      ws.getRow(1).height = 42; ws.getRow(2).height = 22;
+      const H = ['序 號', '姓名', '簽　　到', '葷食', '素食', '領年曆', '序 號', '姓名', '抽　　籤', '序 號', '姓名', '團費', '服裝', '合計', '收費確認'];
+      const hr = ws.getRow(3); H.forEach((h, i) => { const c = hr.getCell(i + 1); c.value = h; c.font = font({ bold: true }); c.alignment = { horizontal: 'center', vertical: 'middle' }; c.border = border; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3EDEA' } }; });
+      ppl.forEach((p, i) => {
+        const rn = 4 + i, row = ws.getRow(rn), sl = map[p.key];
+        const lunch = p.r.lunch || '';
+        const v = [i + 1, p.name, p.r.attend === 'join' ? '請假' : '', lunch.startsWith('葷') ? 1 : null, lunch.startsWith('素') ? 1 : null, lunch === '自行處理' ? '不訂餐' : '',
+          i + 1, p.name, SLOTS.map(x => (x === sl ? '■' : '□') + x).join('　　'), i + 1, p.name, 2500, null, { formula: `SUM(L${rn}:M${rn})` }, ''];
+        v.forEach((val, k) => { const c = row.getCell(k + 1); c.value = val; c.font = font(k === 8 && sl ? { bold: true } : {}); c.border = border; c.alignment = { horizontal: 'center', vertical: 'middle' }; });
+        row.height = 26;
+      });
+      const tr = 4 + ppl.length, last = tr - 1, row = ws.getRow(tr);
+      const tv = { 2: '合計', 4: { formula: `SUM(D4:D${last})` }, 5: { formula: `SUM(E4:E${last})` }, 11: '合計', 12: { formula: `SUM(L4:L${last})` }, 13: { formula: `SUM(M4:M${last})` }, 14: { formula: `SUM(N4:N${last})` } };
+      for (let k = 1; k <= 15; k++) { const c = row.getCell(k); c.value = tv[k] ?? null; c.font = font({ bold: true }); c.border = border; c.alignment = { horizontal: 'center', vertical: 'middle' }; }
+      row.height = 26;
+      ws.views = [{ state: 'frozen', ySplit: 3 }];
+      ws.pageSetup.printTitlesRow = '1:3';
+      totals.push([g, ws.name, tr]);
+    });
+    // 便當統計
+    const sm = wb.addWorksheet('便當統計');
+    sm.columns = [{ width: 20 }, { width: 10 }, { width: 10 }, { width: 10 }];
+    sm.mergeCells('A1:D1'); Object.assign(sm.getCell('A1'), { value: `${e.date || ''} ${e.title || ''} 便當統計`, font: font({ size: 14, bold: true }), alignment: { horizontal: 'center' } });
+    ['類別', '葷食', '素食', '人數'].forEach((h, i) => { const c = sm.getRow(3).getCell(i + 1); c.value = h; c.font = font({ bold: true }); c.border = border; c.alignment = { horizontal: 'center' }; });
+    totals.forEach(([g, n, tr], i) => { const r = sm.getRow(4 + i); [g, { formula: `'${n}'!D${tr}` }, { formula: `'${n}'!E${tr}` }, tr - 4].forEach((v, k) => { const c = r.getCell(k + 1); c.value = v; c.font = font(); c.border = border; c.alignment = { horizontal: 'center' }; }); });
+    const sr = sm.getRow(4 + totals.length), L = 3 + totals.length;
+    ['小計', { formula: `SUM(B4:B${L})` }, { formula: `SUM(C4:C${L})` }, { formula: `SUM(D4:D${L})` }].forEach((v, k) => { const c = sr.getCell(k + 1); c.value = v; c.font = font({ bold: true }); c.border = border; c.alignment = { horizontal: 'center' }; });
+    const buf = await wb.xlsx.writeBuffer();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    a.download = `${e.title || '出席調查'}_簽到表_抽籤_繳費.xlsx`; a.click();
+    toast('⬇ 已下載 Excel');
+  }
+
   function openEventForm(e) {
     const isNew = !e;
     e = e || { title: '', date: '', desc: '', askLunch: true, open: true };
