@@ -30,6 +30,7 @@ export default {
     if (req.method !== 'POST') return json({ ok: true, service: 'bst-auth', configured: !!env.SERVICE_ACCOUNT, ai: !!env.AI, lineBot: !!env.LINE_BOT_TOKEN, webhook: !!env.LINE_CHANNEL_SECRET });
     const path = new URL(req.url).pathname;
     if (path === '/webhook') return webhookRoute(req, env);
+    if (path === '/lot') return lotRoute(req, env, json);
     if (path === '/parse') return parseRoute(req, env, json);
     if (path === '/menu') return menuRoute(req, env, json);
     if (path === '/menu-setup') return menuSetupRoute(req, env, json);
@@ -266,6 +267,105 @@ async function webhookRoute(req, env) {
     });
   }
   return ok();
+}
+
+// ===== 出席調查：團員自己抽籤（前／中／後）=====
+// 由伺服器亂數，名額照「每組平分、多的放後面」；用服務帳戶讀寫 Firestore（團員看不到別人的資料）
+const FS = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+let saTok = null;
+async function saToken(env) {
+  if (saTok && saTok.exp > Date.now() + 60000) return saTok.t;
+  const sa = JSON.parse(env.SERVICE_ACCOUNT), now = Math.floor(Date.now() / 1000);
+  const jwt = await signJwt(sa, { iss: sa.client_email, scope: 'https://www.googleapis.com/auth/datastore', aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 });
+  const r = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'grant_type=' + encodeURIComponent('urn:ietf:params:oauth:grant-type:jwt-bearer') + '&assertion=' + jwt });
+  const j = await r.json(); if (!j.access_token) throw new Error('service token failed');
+  saTok = { t: j.access_token, exp: Date.now() + (j.expires_in || 3600) * 1000 }; return saTok.t;
+}
+const fv = v => v == null ? null : 'stringValue' in v ? v.stringValue : 'booleanValue' in v ? v.booleanValue : 'integerValue' in v ? +v.integerValue
+  : 'doubleValue' in v ? v.doubleValue : 'timestampValue' in v ? Date.parse(v.timestampValue) : 'nullValue' in v ? null
+  : 'mapValue' in v ? fobj(v.mapValue.fields || {}) : 'arrayValue' in v ? (v.arrayValue.values || []).map(fv) : null;
+const fobj = f => Object.fromEntries(Object.entries(f || {}).map(([k, v]) => [k, fv(v)]));
+const tv = v => v === null || v === undefined ? { nullValue: null } : typeof v === 'boolean' ? { booleanValue: v } : typeof v === 'number' ? { integerValue: String(Math.round(v)) }
+  : typeof v === 'string' ? { stringValue: v } : Array.isArray(v) ? { arrayValue: { values: v.map(tv) } } : { mapValue: { fields: Object.fromEntries(Object.entries(v).map(([k, x]) => [k, tv(x)])) } };
+async function fsGet(tok, path) { const r = await fetch(`${FS}/${path}`, { headers: { Authorization: 'Bearer ' + tok } }); if (r.status === 404) return null; if (!r.ok) throw new Error('read ' + path + ' ' + r.status); return r.json(); }
+async function fsList(tok, path) {
+  let out = [], pt = '';
+  do { const r = await fetch(`${FS}/${path}?pageSize=300${pt ? '&pageToken=' + pt : ''}`, { headers: { Authorization: 'Bearer ' + tok } });
+       if (!r.ok) throw new Error('list ' + path); const j = await r.json(); out = out.concat(j.documents || []); pt = j.nextPageToken || ''; } while (pt);
+  return out.map(d => ({ id: d.name.split('/').pop(), ...fobj(d.fields) }));
+}
+const normName = s => String(s || '').replace(/[\s　]+/g, '');
+const SLOTS = ['前', '中', '後'];
+const slotTargets = n => { const b = Math.floor(n / 3), m = n % 3; return { 前: b, 中: b + (m >= 2 ? 1 : 0), 後: b + (m >= 1 ? 1 : 0) }; };
+function groupOf(ro) {     // 要跟會員中心的 groupOf 一樣
+  if (!ro) return '未對應名冊';
+  const pos = ro.position || '團員', c = String(ro.cert || '').toUpperCase().replace(/[-\s]/g, '');
+  if (['團長', '秘書長', '教官團', '顧問'].includes(pos)) return '教官及長官';
+  if (['指揮官', '車輛組', '機車組'].includes(pos)) return '指揮官及汽機車組';
+  if (c.includes('護理') || c.includes('醫師')) return '護理師';
+  if (c.includes('EMTP') || c.includes('EMT2')) return 'EMTP、EMT2';
+  if (c.includes('EMT1')) return 'EMT1';
+  return '專業人員及志工';
+}
+async function lotRoute(req, env, json) {
+  try {
+    const { idToken, eid, action } = await req.json();
+    if (!idToken || !eid || !/^[A-Za-z0-9_-]{1,64}$/.test(eid)) return json({ error: 'missing' }, 400);
+    // 用本人的權杖讀自己的會員資料 → 確認身分（權杖假的話 Firestore 會拒絕）
+    const uid = JSON.parse(atob(idToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).user_id;
+    const me = await fetch(`${FS}/users/${encodeURIComponent(uid)}`, { headers: { Authorization: 'Bearer ' + idToken } });
+    if (!me.ok) return json({ error: 'not signed in' }, 401);
+    const u = fobj((await me.json()).fields);
+    if (u.status !== 'approved' || !u.rosterId) return json({ state: 'unbound' });
+    const tok = await saToken(env);
+    const ev = await fsGet(tok, `events/${eid}`); if (!ev) return json({ error: 'no event' }, 404);
+    const e = fobj(ev.fields);
+    const roster = await fsList(tok, 'member_roster');
+    const meRo = roster.find(x => x.id === u.rosterId); if (!meRo) return json({ state: 'unbound' });
+    const myKey = normName(meRo.name);
+    for (let tries = 0; tries < 5; tries++) {
+      const drawDoc = await fsGet(tok, `events/${eid}/admin/draw`);
+      const d = drawDoc ? fobj(drawDoc.fields) : {};
+      const map = d.map || {}, by = d.by2 || {}, over = d.groupOverride || {};
+      // 出席名單（同一人以最後一次為準）
+      const latest = {};
+      (await fsList(tok, `events/${eid}/responses`)).forEach(x => { const k = normName(x.name); if (k && (!latest[k] || (x.createdAt || 0) >= (latest[k].createdAt || 0))) latest[k] = x; });
+      const mine = latest[myKey];
+      if (!mine || !['yes', 'join'].includes(mine.attend)) return json({ state: 'noreply', name: meRo.name });
+      const byName = {}; roster.forEach(x => { const k = normName(x.name); if (!byName[k]) byName[k] = x; });
+      const gOf = k => over[k] || groupOf(byName[k] || null);
+      const myG = gOf(myKey);
+      if (SLOTS.includes(map[myKey])) return json({ state: 'done', slot: map[myKey], group: myG, name: meRo.name, selfDraw: !!e.selfDraw });
+      if (action !== 'draw' || !e.selfDraw) return json({ state: 'ready', group: myG, name: meRo.name, selfDraw: !!e.selfDraw });
+      const members = Object.keys(latest).filter(k => ['yes', 'join'].includes(latest[k].attend) && gOf(k) === myG);
+      const tg = slotTargets(members.length), left = {};
+      SLOTS.forEach(sl => left[sl] = Math.max(0, tg[sl] - members.filter(k => map[k] === sl).length));
+      const bag = []; SLOTS.forEach(sl => { for (let i = 0; i < left[sl]; i++) bag.push(sl); });
+      const rnd = new Uint32Array(1); crypto.getRandomValues(rnd);
+      const slot = bag.length ? bag[rnd[0] % bag.length] : SLOTS[rnd[0] % 3];
+      const nd = { ...d, map: { ...map, [myKey]: slot }, by2: { ...by, [myKey]: 'self' }, at: Date.now() };
+      // 有人同時抽 → 用版本號避免互相覆蓋，衝突就重來
+      const pre = drawDoc ? `&currentDocument.updateTime=${encodeURIComponent(drawDoc.updateTime)}` : '&currentDocument.exists=false';
+      const w = await fetch(`${FS}/events/${eid}/admin/draw?updateMask.fieldPaths=map&updateMask.fieldPaths=by2&updateMask.fieldPaths=at${pre}`, {
+        method: 'PATCH', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: { map: tv(nd.map), by2: tv(nd.by2), at: { timestampValue: new Date().toISOString() } } }) });
+      if (w.ok) return json({ state: 'done', slot, group: myG, name: meRo.name, fresh: true, selfDraw: true });
+      if (w.status !== 400 && w.status !== 409 && w.status !== 412) return json({ error: 'write failed ' + w.status }, 500);
+    }
+    return json({ error: '太多人同時抽，請再試一次' }, 409);
+  } catch (e) {
+    return json({ error: String((e && e.message) || e) }, 500);
+  }
+}
+async function signJwt(sa, payload) {
+  const enc = (o) => b64url(new TextEncoder().encode(JSON.stringify(o)));
+  const data = enc({ alg: 'RS256', typ: 'JWT' }) + '.' + enc(payload);
+  const pem = sa.private_key.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '');
+  const der = Uint8Array.from(atob(pem), (c) => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey('pkcs8', der, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(data));
+  return data + '.' + b64url(new Uint8Array(sig));
 }
 
 async function firebaseCustomToken(sa, uid) {

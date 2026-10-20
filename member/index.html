@@ -204,6 +204,7 @@
   #cp-ok:disabled { opacity: .45; }
   .link-btn { background: none; border: none; color: #9ca3af; font-size: 13px; text-decoration: underline; cursor: pointer; font-family: inherit; }
   .pos-sel { width: 100%; padding: 10px 12px; font-size: 15px; border-radius: 12px; border: 1.5px solid #e5e7eb; background: #fff; font-family: inherit; }
+  .lot-res { font-size: 64px; font-weight: 900; line-height: 1.2; margin: 4px 0 2px; background: linear-gradient(90deg, var(--primary), var(--accent)); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .att-card { margin-top: 14px; border-radius: 20px; padding: 16px; background: linear-gradient(135deg,#eff6ff,#fff); border: 2px solid #60a5fa; box-shadow: var(--shadow); }
   .att-card.done { border-color: #86efac; background: linear-gradient(135deg,#f0fdf4,#fff); }
   .att-card .t { font-size: 16px; font-weight: 900; color: #1d4ed8; } .att-card.done .t { color: #166534; }
@@ -1411,7 +1412,7 @@
   const ATT_SHORT = { yes: '✅ 出席', join: '⚠️ 不出席但參與進香', no: '❌ 不參與' };
   const LUNCH = ['葷', '素（方便素）', '自行處理'];
   const eventLink = id => `https://tsushin-buishatun.pages.dev/attend/?e=${encodeURIComponent(id)}`;   // 公開表單：不用先綁會員中心
-  let evDraw = {}, drawSheetEid = null;
+  let evDraw = {}, evDrawBy = {}, evOver = {}, drawSheetEid = null, drSel = null;
   let eventsCache = [], eventsUnsub = null, myResp = {}, evRespCache = {}, evRespUnsub = null, evOpenId = null, evFilter = 'all';
   // 連結 liff.line.me/…?e=活動ID：LIFF 開啟時參數可能包在 liff.state 裡
   const readEventParam = () => { try { const q = new URLSearchParams(location.search); if (q.get('e')) return q.get('e');
@@ -1440,6 +1441,45 @@
       </div>`;
     }).join('');
     el.querySelectorAll('[data-att]').forEach(b => b.onclick = () => { const url = eventLink(b.dataset.att); try { if (inLine()) { liff.openWindow({ url, external: false }); return; } } catch (e) {} location.href = url; });
+    renderLotCards();
+  }
+  // ===== 首頁：自己抽籤（管理員在出席調查「開放自己抽籤」後才會出現）=====
+  const lotState = {};      // eid → 伺服器回來的狀態
+  async function lotCall(eid, action) {
+    const idToken = await auth.currentUser.getIdToken();
+    const r = await fetch(AUTH_URL + '/lot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, eid, action }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || j.error) throw new Error(j.error || ('HTTP ' + r.status));
+    return j;
+  }
+  function renderLotCards() {
+    let box = $('lot-cards');
+    if (!box) { box = document.createElement('div'); box.id = 'lot-cards'; $('attend-cards').after(box); }
+    if (!user || user.status !== 'approved' || !user.rosterId || !auth.currentUser) { box.innerHTML = ''; return; }
+    const evs = eventsCache.filter(e => e.selfDraw);
+    evs.forEach(e => { if (!lotState[e.id]) { lotState[e.id] = { state: 'loading' }; lotCall(e.id, 'status').then(j => { lotState[e.id] = j; renderLotCards(); }).catch(() => { lotState[e.id] = { state: 'err' }; renderLotCards(); }); } });
+    box.innerHTML = evs.map(e => {
+      const st = lotState[e.id] || {};
+      if (st.state === 'noreply' || st.state === 'unbound' || st.state === 'err') return '';
+      const head = `<div class="t">🎲 ${esc(e.title || '進香時段抽籤')}</div>`;
+      if (st.state === 'loading') return `<div class="att-card">${head}<div class="d">讀取中…</div></div>`;
+      if (st.state === 'done') return `<div class="att-card" style="text-align:center;">${head}
+        <div class="d">${esc(st.group || '')}　${esc(st.name || '')}</div>
+        <div style="font-size:15px;font-weight:800;color:var(--sub);margin-top:6px;">你抽到的時段</div>
+        <div class="lot-res">${esc(st.slot)}</div></div>`;
+      return `<div class="att-card">${head}
+        <div class="d">你在「${esc(st.group || '')}」組。按下按鈕抽出你的進香時段（前／中／後），抽完不能更改。</div>
+        <button class="sbtn pri" data-lot="${e.id}" style="width:100%; padding:13px; font-size:16px;">🎲 抽籤</button></div>`;
+    }).join('');
+    box.querySelectorAll('[data-lot]').forEach(b => b.onclick = async () => {
+      const eid = b.dataset.lot;
+      if (!(await dialog({ title: '確定要抽籤嗎？', msg: '抽到的時段會直接登記，不能自己更改；有問題請聯絡管理員。', okText: '抽籤' }))) return;
+      b.disabled = true; b.textContent = '抽籤中…';
+      try {
+        const j = await lotCall(eid, 'draw'); lotState[eid] = j; renderLotCards();
+        if (j.state === 'done') toast(`🎉 你抽到「${j.slot}」`, 3000); else toast('目前還不能抽籤');
+      } catch (err) { b.disabled = false; b.textContent = '🎲 抽籤'; toast('❌ ' + (err.message || '抽籤失敗')); }
+    });
   }
 
   // ---------- 管理員：出席調查 ----------
@@ -1459,7 +1499,7 @@
       evRespCache[eid] = s.docs.map(d => ({ id: d.id, ...d.data() }));
       if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid);
     }, () => toast('讀取回覆失敗'));
-    const u2 = onSnapshot(doc(db, 'events', eid, 'admin', 'draw'), s => { evDraw[eid] = s.exists() ? (s.data().map || {}) : {}; if (drawSheetEid === eid) renderDrawSheet(eid); }, () => {});
+    const u2 = onSnapshot(doc(db, 'events', eid, 'admin', 'draw'), s => { const d = s.exists() ? s.data() : {}; evDraw[eid] = d.map || {}; evDrawBy[eid] = d.by2 || {}; evOver[eid] = d.groupOverride || {}; if (drawSheetEid === eid) renderDrawSheet(eid); }, () => {});
     evRespUnsub = () => { u1(); u2(); };
     evRespUnsub._eid = eid;
   }
@@ -1497,7 +1537,7 @@
           <button class="sbtn ${e.open ? 'red' : 'green'}" id="ev-toggle">${e.open ? '截止回覆' : '重新開放'}</button>
           <button class="sbtn violet" id="ev-edit">編輯</button><button class="sbtn" id="ev-csv">⬇ 匯出</button></div>
           <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; padding-top:8px; border-top:1px dashed rgba(0,0,0,.12);">
-            <button class="sbtn" id="ev-draw" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">🎲 分組抽籤／簽到表・繳費表</button>
+            <button class="sbtn" id="ev-draw" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">👥 分組名單・抽籤・簽到表</button>
             <button class="sbtn" id="ev-test-add" style="background:#ecfeff;color:#0e7490;">🧪 產生測試回覆（名冊 9 成）</button>
             ${testN ? `<button class="sbtn" id="ev-test-clear" style="background:#fef2f2;color:#b91c1c;">🧹 清除測試回覆（${testN}）</button>` : ''}</div></div>
         <div class="ev-stats">
@@ -1584,68 +1624,116 @@
     const groups = {}; DRAW_GROUPS.forEach(g => groups[g] = []);
     Object.values(latest).filter(r => r.attend === 'yes' || r.attend === 'join').forEach(r => {
       const ro = (r.rosterId && rosterById(r.rosterId)) || (byName[normName(r.name)] || [])[0] || null;
-      groups[groupOf(ro)].push({ key: normName(r.name), name: (ro && ro.name) || r.name, ro, r });
+      const key = normName(r.name), g = (evOver[eid] || {})[key];
+      groups[DRAW_GROUPS.includes(g) ? g : groupOf(ro)].push({ key, name: (ro && ro.name) || r.name, ro, r });
     });
     DRAW_GROUPS.forEach(g => groups[g].sort((a, b) => a.ro && b.ro ? rosterOrder(a.ro, b.ro) : a.ro ? -1 : b.ro ? 1 : 0));
     return groups;
   }
-  // 抽籤：已經抽過的人保留，只幫還沒抽的人補（補到各位置的目標人數）；all=true 全部重抽
+  const saveDraw = (eid, map, by2, over) => setDoc(doc(db, 'events', eid, 'admin', 'draw'),
+    { map, by2, groupOverride: over, at: serverTimestamp(), by: user.realName || profile.displayName || '' });
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  // 某一組還剩哪些位置（依人數平分的目標扣掉已抽的）
+  const slotsLeft = (ppl, map) => { const tg = slotTargets(ppl.length), bag = []; SLOTS.forEach(sl => { const left = tg[sl] - ppl.filter(p => map[p.key] === sl).length; for (let i = 0; i < left; i++) bag.push(sl); }); return bag; };
+  // 管理員抽籤：已經抽過的人保留，只幫還沒抽的人補；all=true 全部重抽
   async function runDraw(eid, all) {
-    const groups = drawPeople(eid), old = all ? {} : (evDraw[eid] || {}), map = {};
-    const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+    const groups = drawPeople(eid), old = all ? {} : { ...(evDraw[eid] || {}) }, by2 = all ? {} : { ...(evDrawBy[eid] || {}) }, map = {};
     DRAW_GROUPS.forEach(g => {
       const ppl = groups[g]; if (!ppl.length) return;
       const tg = slotTargets(ppl.length), cur = { 前: 0, 中: 0, 後: 0 };
       ppl.forEach(p => { const v = old[p.key]; if (SLOTS.includes(v) && cur[v] < tg[v]) { map[p.key] = v; cur[v]++; } });
       const need = []; SLOTS.forEach(sl => { for (let i = cur[sl]; i < tg[sl]; i++) need.push(sl); });
-      shuffle(need); shuffle(ppl.filter(p => !map[p.key])).forEach((p, i) => map[p.key] = need[i]);
+      shuffle(need); shuffle(ppl.filter(p => !map[p.key])).forEach((p, i) => { map[p.key] = need[i]; by2[p.key] = 'admin'; });
     });
-    await setDoc(doc(db, 'events', eid, 'admin', 'draw'), { map, at: serverTimestamp(), by: user.realName || profile.displayName || '' });
-    evDraw[eid] = map;
+    Object.keys(by2).forEach(k => { if (!map[k]) delete by2[k]; });
+    await saveDraw(eid, map, by2, evOver[eid] || {});
   }
   function openDrawSheet(eid) {
-    drawSheetEid = eid;
+    drawSheetEid = eid; drSel = null;
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open'); $('sheet').scrollTop = 0;
     renderDrawSheet(eid);
   }
   function renderDrawSheet(eid) {
     if ($('sheet').style.display === 'none') { drawSheetEid = null; return; }
     const e = eventsCache.find(x => x.id === eid) || {};
-    const groups = drawPeople(eid), map = evDraw[eid] || {};
+    const groups = drawPeople(eid), map = evDraw[eid] || {}, by2 = evDrawBy[eid] || {}, over = evOver[eid] || {};
     const total = DRAW_GROUPS.reduce((n, g) => n + groups[g].length, 0);
     const missing = DRAW_GROUPS.reduce((n, g) => n + groups[g].filter(p => !map[p.key]).length, 0);
-    const drawn = Object.keys(map).length > 0;
+    const done = total - missing;
+    const nm = p => `<button class="dr-n ${drSel === p.key ? 'sel' : ''}" data-dk="${esc(p.key)}">${esc(p.name)}${p.r.attend === 'join' ? '<i>請假</i>' : ''}${by2[p.key] === 'self' ? '<i class="me">自抽</i>' : ''}${over[p.key] ? '<i class="mv">手動</i>' : ''}</button>`;
+    const editor = (p, g) => `<div class="dr-ed">
+        <div class="dr-ed-t">✏️ ${esc(p.name)}　<span>${esc(p.ro ? rv(p.ro, 'position') + '・' + (p.ro.cert || '') : '未對應名冊')}</span></div>
+        <div class="dr-ed-l">換到哪一組</div>
+        <div class="dr-chips">${DRAW_GROUPS.filter(x => x !== '未對應名冊' || g === '未對應名冊').map(x => `<button class="dr-c ${x === g ? 'on' : ''}" data-mv="${esc(x)}">${esc(x)}</button>`).join('')}
+          ${over[p.key] ? '<button class="dr-c" data-mv="__auto">↩ 依名冊自動</button>' : ''}</div>
+        <div class="dr-ed-l">時段</div>
+        <div class="dr-chips">${SLOTS.map(sl => `<button class="dr-c ${map[p.key] === sl ? 'on' : ''}" data-sl="${sl}">${sl}</button>`).join('')}
+          <button class="dr-c" data-sl="__rand" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;border:none;">🎲 代抽籤</button>
+          ${map[p.key] ? '<button class="dr-c" data-sl="__clear">清除</button>' : ''}</div>
+        <button class="dr-c" data-close="1" style="margin-top:8px;">完成</button></div>`;
     const grp = g => { const ppl = groups[g]; if (!ppl.length) return '';
-      const tg = slotTargets(ppl.length);
-      const col = sl => `<div class="dr-col"><div class="dr-h">${sl}<span>${ppl.filter(p => map[p.key] === sl).length}/${tg[sl]}</span></div>${ppl.filter(p => map[p.key] === sl).map(p => `<div class="dr-n">${esc(p.name)}${p.r.attend === 'join' ? '<i>請假</i>' : ''}</div>`).join('')}</div>`;
+      const tg = slotTargets(ppl.length), sel = ppl.find(p => p.key === drSel);
+      const col = sl => `<div class="dr-col"><div class="dr-h">${sl}<span>${ppl.filter(p => map[p.key] === sl).length}/${tg[sl]}</span></div>${ppl.filter(p => map[p.key] === sl).map(nm).join('')}</div>`;
       const un = ppl.filter(p => !map[p.key]);
-      return `<div class="dr-g"><div class="dr-t">${esc(g)}<span>${ppl.length} 人</span></div>
-        ${drawn ? `<div class="dr-cols">${SLOTS.map(col).join('')}</div>` : `<div class="dr-wait">${ppl.map(p => esc(p.name)).join('、')}</div>`}
-        ${drawn && un.length ? `<div class="dr-un">尚未抽籤：${un.map(p => esc(p.name)).join('、')}</div>` : ''}</div>`; };
+      return `<div class="dr-g"><div class="dr-t">${esc(g)}<span>${ppl.length} 人　前 ${tg['前']}・中 ${tg['中']}・後 ${tg['後']}</span></div>
+        ${sel ? editor(sel, g) : ''}
+        ${un.length ? `<div class="dr-ul">還沒抽籤（${un.length}）</div><div class="dr-un">${un.map(nm).join('')}</div>` : ''}
+        ${done ? `<div class="dr-cols">${SLOTS.map(col).join('')}</div>` : ''}</div>`; };
     $('sheet-body').innerHTML = `
       <style>
         .dr-g{border:1px solid #eee5e1;border-radius:16px;padding:12px;margin-top:10px;background:#fff}
-        .dr-t{font-weight:900;font-size:15px;display:flex;justify-content:space-between}.dr-t span{font-size:12px;color:var(--sub);font-weight:700}
+        .dr-t{font-weight:900;font-size:15px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}.dr-t span{font-size:12px;color:var(--sub);font-weight:700}
         .dr-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
-        .dr-col{background:#faf6f4;border-radius:12px;padding:8px}.dr-h{font-weight:900;color:var(--primary);display:flex;justify-content:space-between;margin-bottom:4px}
-        .dr-h span{font-size:11px;color:var(--sub)}.dr-n{font-size:13px;padding:2px 0}.dr-n i{font-style:normal;font-size:10px;color:#b45309;margin-left:4px}
-        .dr-wait{font-size:13px;color:var(--sub);margin-top:6px;line-height:1.8}.dr-un{font-size:12px;color:#b45309;margin-top:6px}
+        .dr-col{background:#faf6f4;border-radius:12px;padding:8px;min-width:0}.dr-h{font-weight:900;color:var(--primary);display:flex;justify-content:space-between;margin-bottom:4px}
+        .dr-h span{font-size:11px;color:var(--sub)}
+        .dr-n{display:block;width:100%;text-align:left;border:none;background:none;font:inherit;font-size:13px;padding:4px 4px;border-radius:8px;cursor:pointer;color:var(--ink)}
+        .dr-un .dr-n{display:inline-block;width:auto;background:#fff7ed;border:1px solid #fed7aa;margin:3px 4px 0 0;padding:4px 8px}
+        .dr-n.sel{background:#fde8ea !important;outline:2px solid var(--primary)}
+        .dr-n i{font-style:normal;font-size:10px;color:#b45309;margin-left:4px}.dr-n i.me{color:#15803d}.dr-n i.mv{color:#7c3aed}
+        .dr-ul{font-size:12px;color:#b45309;font-weight:800;margin-top:8px}
+        .dr-ed{background:#fff7f5;border:1.5px solid #f5c2c8;border-radius:14px;padding:10px 12px;margin-top:8px}
+        .dr-ed-t{font-weight:900}.dr-ed-t span{font-size:12px;color:var(--sub);font-weight:600}.dr-ed-l{font-size:12px;color:var(--sub);margin:8px 0 4px;font-weight:700}
+        .dr-chips{display:flex;gap:6px;flex-wrap:wrap}.dr-c{border:1.5px solid #e5ddd9;background:#fff;border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;color:var(--ink)}
+        .dr-c.on{background:var(--primary);border-color:var(--primary);color:#fff}
       </style>
-      <h3>🎲 分組抽籤（前／中／後）</h3>
+      <h3>🎲 分組與抽籤（前／中／後）</h3>
       <div style="font-size:13px;color:var(--sub);line-height:1.7;margin-top:4px;">${esc(e.title || '')}<br>
-        出席＋不出席但參與進香 共 <b>${total}</b> 人。每組平分成三份，多的放後面（例：10 人 → 3、3、4）。</div>
+        出席＋不出席但參與進香 共 <b>${total}</b> 人，已抽 <b>${done}</b>、還沒抽 <b>${missing}</b>。每組平分成三份，多的放後面（10 人 → 3、3、4）。<br>
+        👆 <b>點名字</b>可以換組、指定時段或代抽籤。</div>
+      <div class="dr-ed" style="margin-top:10px;background:${e.selfDraw ? '#ecfdf5' : '#f8fafc'};border-color:${e.selfDraw ? '#86efac' : '#e2e8f0'};">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+          <div><b>${e.selfDraw ? '🟢 團員可以自己抽籤' : '⚪ 團員自己抽籤：關閉'}</b><div style="font-size:12px;color:var(--sub);margin-top:2px;">開啟後，有綁定會員中心、已回覆出席的人，會在會員中心首頁看到「🎲 抽籤」</div></div>
+          <button class="sbtn ${e.selfDraw ? 'red' : 'green'}" id="dr-self">${e.selfDraw ? '關閉自己抽籤' : '開放自己抽籤'}</button></div></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
-        ${!drawn ? `<button class="sbtn" id="dr-go" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">🎲 開始抽籤</button>`
-          : `${missing ? `<button class="sbtn" id="dr-go" style="background:#16a34a;color:#fff;">🎲 幫新加入的 ${missing} 人補抽</button>` : ''}
-             <button class="sbtn" id="dr-redo" style="background:#fef2f2;color:#b91c1c;">全部重抽</button>`}
-        <button class="sbtn" id="dr-xlsx" style="background:#1f2430;color:#fff;">⬇ 下載 Excel（簽到表・抽籤・繳費）</button>
+        ${missing ? `<button class="sbtn" id="dr-go" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">🎲 管理員代抽：還沒抽的 ${missing} 人</button>` : ''}
+        ${done ? '<button class="sbtn" id="dr-redo" style="background:#fef2f2;color:#b91c1c;">全部重抽</button>' : ''}
+        <button class="sbtn" id="dr-xlsx" style="background:#1f2430;color:#fff;">⬇ 下載 Excel（簽到表・繳費紀錄）</button>
       </div>
       ${DRAW_GROUPS.map(grp).join('') || '<div class="card empty">還沒有人回覆出席</div>'}
-      <div style="font-size:12px;color:var(--sub);margin:10px 2px;">※ 分組依名冊的「職位」與「證照」：團長／秘書長／教官團／顧問 → 教官及長官；指揮官／車輛組／機車組 → 指揮官及汽機車組；其他依證照。分錯了到名冊改職位或證照即可。<br>※ 抽籤結果會存起來，下次打開一樣；之後才回覆的人可以按「補抽」。</div>`;
-    if ($('dr-go')) $('dr-go').onclick = async () => { try { await runDraw(eid, false); toast('🎲 抽籤完成'); renderDrawSheet(eid); } catch (err) { console.error(err); toast('❌ 抽籤失敗（Firestore 規則可能還沒更新）'); } };
+      <div style="font-size:12px;color:var(--sub);margin:10px 2px;line-height:1.7;">※ 分組依名冊的「職位」與「證照」：團長／秘書長／教官團／顧問 → 教官及長官；指揮官／車輛組／機車組 → 指揮官及汽機車組；其他依證照。標「手動」的是你換過組的人。<br>※ 標「自抽」是團員自己在會員中心抽的。建議回覆截止、名單確定後再開放抽籤，名額才準。</div>`;
+    document.querySelectorAll('[data-dk]').forEach(b => b.onclick = () => { drSel = drSel === b.dataset.dk ? null : b.dataset.dk; renderDrawSheet(eid); });
+    const write = async (fn, msg) => { const m = { ...map }, b = { ...by2 }, o = { ...over }; fn(m, b, o); try { await saveDraw(eid, m, b, o); evDraw[eid] = m; evDrawBy[eid] = b; evOver[eid] = o; if (msg) toast(msg); renderDrawSheet(eid); } catch (err) { console.error(err); toast('❌ 儲存失敗（Firestore 規則可能還沒更新）'); } };
+    document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => { drSel = null; renderDrawSheet(eid); });
+    document.querySelectorAll('[data-mv]').forEach(b => b.onclick = () => {
+      const k = drSel, to = b.dataset.mv;
+      write((m, by, o) => { if (to === '__auto') delete o[k]; else o[k] = to; delete m[k]; delete by[k]; }, to === '__auto' ? '已改回依名冊分組' : `已換到「${to}」（時段要重新抽）`);
+    });
+    document.querySelectorAll('[data-sl]').forEach(b => b.onclick = () => {
+      const k = drSel, v = b.dataset.sl;
+      if (v === '__clear') return write((m, by) => { delete m[k]; delete by[k]; }, '已清除時段');
+      if (v === '__rand') {
+        const g = DRAW_GROUPS.find(x => groups[x].some(p => p.key === k));
+        const bag = slotsLeft(groups[g].filter(p => p.key !== k), Object.fromEntries(Object.entries(map).filter(([kk]) => kk !== k)));
+        const pick = bag.length ? bag[Math.floor(Math.random() * bag.length)] : SLOTS[Math.floor(Math.random() * 3)];
+        return write((m, by) => { m[k] = pick; by[k] = 'admin'; }, `🎲 抽到「${pick}」`);
+      }
+      write((m, by) => { m[k] = v; by[k] = 'admin'; }, `已指定「${v}」`);
+    });
+    $('dr-self').onclick = async () => { try { await updateDoc(doc(db, 'events', eid), { selfDraw: !e.selfDraw }); toast(e.selfDraw ? '已關閉自己抽籤' : '🟢 已開放團員自己抽籤'); } catch (err) { toast('❌ 操作失敗'); } };
+    if ($('dr-go')) $('dr-go').onclick = async () => { try { await runDraw(eid, false); toast('🎲 抽籤完成'); } catch (err) { console.error(err); toast('❌ 抽籤失敗（Firestore 規則可能還沒更新）'); } };
     if ($('dr-redo')) $('dr-redo').onclick = async () => {
-      if (!(await dialog({ title: '全部重抽？', msg: '所有人的前／中／後都會重新抽，原本的結果會消失。', okText: '重抽', danger: true }))) return;
-      try { await runDraw(eid, true); toast('🎲 已重新抽籤'); renderDrawSheet(eid); } catch (err) { toast('❌ 抽籤失敗'); }
+      if (!(await dialog({ title: '全部重抽？', msg: '所有人的前／中／後都會重新抽（包含自己抽的），原本的結果會消失。', okText: '重抽', danger: true }))) return;
+      try { await runDraw(eid, true); toast('🎲 已重新抽籤'); } catch (err) { toast('❌ 抽籤失敗'); }
     };
     $('dr-xlsx').onclick = () => exportDrawXlsx(eid);
   }
@@ -1657,7 +1745,7 @@
     const m = String(e.date || '').match(/(\d{3})/) || String(e.title || '').match(/(\d{3})\s*年/);
     const roc = m ? +m[1] : (new Date().getFullYear() - 1911);
     const yt = `${ganzhi(roc)}${roc}年`;
-    const groups = drawPeople(eid), map = evDraw[eid] || {};
+    const groups = drawPeople(eid);
     const wb = new ExcelJS.Workbook();
     const thin = { style: 'thin', color: { argb: 'FF555555' } }, border = { top: thin, left: thin, bottom: thin, right: thin };
     const font = (o = {}) => ({ name: '微軟正黑體', size: 12, ...o });
@@ -1665,27 +1753,27 @@
     DRAW_GROUPS.forEach(g => {
       const ppl = groups[g]; if (!ppl.length) return;
       const ws = wb.addWorksheet(g.replace(/[\\/?*[\]:]/g, ''), { pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: .3, right: .3, top: .4, bottom: .4, header: .2, footer: .2 } } });
-      ws.columns = [6, 11, 20, 6, 6, 9, 6, 11, 26, 6, 11, 8, 8, 9, 11].map(w => ({ width: w }));
-      const T = ['白沙屯拱天宮進香醫護團\n' + yt + '行前教育訓練簽到表', '白沙屯拱天宮進香醫護團\n' + yt + '進香時段抽籤紀錄表', '白沙屯拱天宮進香醫護團\n' + yt + '繳費紀錄表'];
-      [['A1:F1', 'A2:F2', 'A1', 'A2', 0], ['G1:I1', 'G2:I2', 'G1', 'G2', 1], ['J1:O1', 'J2:O2', 'J1', 'J2', 2]].forEach(([r1, r2, c1, c2, i]) => {
+      ws.columns = [6, 12, 22, 7, 7, 10, 6, 12, 9, 9, 10, 12].map(w => ({ width: w }));
+      const T = ['白沙屯拱天宮進香醫護團\n' + yt + '行前教育訓練簽到表', '白沙屯拱天宮進香醫護團\n' + yt + '繳費紀錄表'];
+      [['A1:F1', 'A2:F2', 'A1', 'A2', 0], ['G1:L1', 'G2:L2', 'G1', 'G2', 1]].forEach(([r1, r2, c1, c2, i]) => {
         ws.mergeCells(r1); ws.mergeCells(r2);
         Object.assign(ws.getCell(c1), { value: T[i], font: font({ size: 14, bold: true }), alignment: { wrapText: true, horizontal: 'center', vertical: 'middle' } });
         Object.assign(ws.getCell(c2), { value: g === '指揮官及汽機車組' ? '指揮官及汽機車組' : g, font: font({ size: 13, bold: true }), alignment: { horizontal: 'center', vertical: 'middle' } });
       });
       ws.getRow(1).height = 42; ws.getRow(2).height = 22;
-      const H = ['序 號', '姓名', '簽　　到', '葷食', '素食', '領年曆', '序 號', '姓名', '抽　　籤', '序 號', '姓名', '團費', '服裝', '合計', '收費確認'];
+      const H = ['序 號', '姓名', '簽　　到', '葷食', '素食', '領年曆', '序 號', '姓名', '團費', '服裝', '合計', '收費確認'];
       const hr = ws.getRow(3); H.forEach((h, i) => { const c = hr.getCell(i + 1); c.value = h; c.font = font({ bold: true }); c.alignment = { horizontal: 'center', vertical: 'middle' }; c.border = border; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3EDEA' } }; });
       ppl.forEach((p, i) => {
-        const rn = 4 + i, row = ws.getRow(rn), sl = map[p.key];
+        const rn = 4 + i, row = ws.getRow(rn);
         const lunch = p.r.lunch || '';
         const v = [i + 1, p.name, p.r.attend === 'join' ? '請假' : '', lunch.startsWith('葷') ? 1 : null, lunch.startsWith('素') ? 1 : null, lunch === '自行處理' ? '不訂餐' : '',
-          i + 1, p.name, SLOTS.map(x => (x === sl ? '■' : '□') + x).join('　　'), i + 1, p.name, 2500, null, { formula: `SUM(L${rn}:M${rn})` }, ''];
-        v.forEach((val, k) => { const c = row.getCell(k + 1); c.value = val; c.font = font(k === 8 && sl ? { bold: true } : {}); c.border = border; c.alignment = { horizontal: 'center', vertical: 'middle' }; });
+          i + 1, p.name, 2500, null, { formula: `SUM(I${rn}:J${rn})` }, ''];
+        v.forEach((val, k) => { const c = row.getCell(k + 1); c.value = val; c.font = font(); c.border = border; c.alignment = { horizontal: 'center', vertical: 'middle' }; });
         row.height = 26;
       });
       const tr = 4 + ppl.length, last = tr - 1, row = ws.getRow(tr);
-      const tv = { 2: '合計', 4: { formula: `SUM(D4:D${last})` }, 5: { formula: `SUM(E4:E${last})` }, 11: '合計', 12: { formula: `SUM(L4:L${last})` }, 13: { formula: `SUM(M4:M${last})` }, 14: { formula: `SUM(N4:N${last})` } };
-      for (let k = 1; k <= 15; k++) { const c = row.getCell(k); c.value = tv[k] ?? null; c.font = font({ bold: true }); c.border = border; c.alignment = { horizontal: 'center', vertical: 'middle' }; }
+      const tv = { 2: '合計', 4: { formula: `SUM(D4:D${last})` }, 5: { formula: `SUM(E4:E${last})` }, 8: '合計', 9: { formula: `SUM(I4:I${last})` }, 10: { formula: `SUM(J4:J${last})` }, 11: { formula: `SUM(K4:K${last})` } };
+      for (let k = 1; k <= 12; k++) { const c = row.getCell(k); c.value = tv[k] ?? null; c.font = font({ bold: true }); c.border = border; c.alignment = { horizontal: 'center', vertical: 'middle' }; }
       row.height = 26;
       ws.views = [{ state: 'frozen', ySplit: 3 }];
       ws.pageSetup.printTitlesRow = '1:3';
@@ -1701,7 +1789,7 @@
     ['小計', { formula: `SUM(B4:B${L})` }, { formula: `SUM(C4:C${L})` }, { formula: `SUM(D4:D${L})` }].forEach((v, k) => { const c = sr.getCell(k + 1); c.value = v; c.font = font({ bold: true }); c.border = border; c.alignment = { horizontal: 'center' }; });
     const buf = await wb.xlsx.writeBuffer();
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-    a.download = `${e.title || '出席調查'}_簽到表_抽籤_繳費.xlsx`; a.click();
+    a.download = `${e.title || '出席調查'}_簽到表_繳費紀錄.xlsx`; a.click();
     toast('⬇ 已下載 Excel');
   }
 
