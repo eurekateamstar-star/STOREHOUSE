@@ -373,7 +373,7 @@
             <div class="badges" id="m-badges"></div>
           </div>
         </div>
-        <div class="member-foot"><span id="m-since"></span><span>白沙屯醫護團 會員</span></div>
+        <div class="member-foot"><span id="m-since"></span><span id="m-pos">白沙屯醫護團 團員</span></div>
       </div>
 
       <div id="attend-cards"></div>
@@ -710,6 +710,7 @@
       + (user.rosterId ? '<span class="badge">✔ 名冊已驗證</span>' : '')
       + (adminList(user).length ? '<span class="badge">⭐ 管理員</span>' : '');
     const created = tsMs(user.createdAt);
+    $('m-pos').textContent = '白沙屯醫護團 ' + (myRoster ? (rv(myRoster, 'position') || '團員') : '會員');
     $('m-since').textContent = joinText(myRoster && myRoster.joinYear) || (created ? '加入於 ' + new Date(created).toLocaleDateString('zh-TW') : '');
     $('f-name').innerHTML = `<b>${esc(name || '—')}</b>`;
     $('f-id').textContent = showId ? (user.idCard || '—') : maskId(user.idCard);
