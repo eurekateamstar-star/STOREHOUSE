@@ -177,7 +177,7 @@
   /* 長的欄位只顯示一行，多的用「…」，點進去看完整內容 */
   #rs-table td { white-space: nowrap; word-break: normal; }
   #rs-table td.c-certText, #rs-table td.c-address, #rs-table td.c-job, #rs-table td.c-introducer, #rs-table td.c-education, #rs-table td.c-notes, #rs-table td.c-lineName { overflow: hidden; text-overflow: ellipsis; }
-  #rs-table td.c-certText { max-width: 90px; } #rs-table td.c-address { max-width: 190px; } #rs-table td.c-job { max-width: 90px; } #rs-table td.c-introducer { max-width: 60px; }
+  #rs-table td.c-certText { max-width: 70px; } #rs-table td.c-address { max-width: 140px; } #rs-table td.c-job { max-width: 90px; } #rs-table td.c-introducer { max-width: 60px; }
   #rs-table td.c-education { max-width: 110px; } #rs-table td.c-notes { max-width: 110px; font-size: 11px; color: #6b7280; } #rs-table td.c-lineName { max-width: 90px; }
   #rs-table .nm-cell .mini-av { display: none; }
   #rs-table .line-who .mini-av { display: inline-flex; }
@@ -987,10 +987,14 @@
     phone: '電話', emName: '姓名', emRelation: '關係', emPhone: '電話', shirtSize: '衣服', pantsSize: '褲子', certText: '證照', address: '地址',
     job: '職業', introducer: '介紹人', education: '學經歷', notes: '備註' };
   const TH_GROUP = { emName: '緊急聯絡人', emRelation: '緊急聯絡人', emPhone: '緊急聯絡人', shirtSize: '尺寸', pantsSize: '尺寸' };
+  // 表格不顯示的欄位（資料還在，點進去看得到、也能編輯）
+  const TBL_HIDE = new Set(['joinYear', 'introducer', 'education']);
+  const TBL_COLS = () => ROSTER_COLS.filter(([k]) => !TBL_HIDE.has(k));
   function rosterHead() {
     let r1 = '', r2 = '';
-    ROSTER_COLS.forEach(([k], i) => {
-      const g = TH_GROUP[k], prev = i ? TH_GROUP[ROSTER_COLS[i - 1][0]] : null;
+    const cols = TBL_COLS();
+    cols.forEach(([k], i) => {
+      const g = TH_GROUP[k], prev = i ? TH_GROUP[cols[i - 1][0]] : null;
       if (!g) r1 += `<th rowspan="2" class="h-${k}">${esc(TH_SHORT[k] || k)}</th>`;
       else { if (g !== prev) r1 += `<th colspan="${ROSTER_COLS.filter(([x]) => TH_GROUP[x] === g).length}" class="grp">${esc(g)}</th>`; r2 += `<th class="sub">${esc(TH_SHORT[k])}</th>`; }
     });
@@ -1039,8 +1043,8 @@
       return `<span class="line-who">${miniAv(u.pictureUrl, u.lineDisplayName || u.realName)}<span>${esc(u.lineDisplayName || u.realName || '已綁定')}</span></span>`; };
     const av = r => { const u = r.boundUserId && userById(r.boundUserId); return miniAv(u && u.pictureUrl, r.name); };
     $('rs-table').innerHTML = rosterHead() + '<tbody>'
-      + (list.map(r => `<tr data-r="${r.id}">${ROSTER_COLS.map(([k]) => `<td class="c-${k}">${k === 'name' ? `<span class="nm-cell">${av(r)}<b>${esc(rv(r, k) || '')}</b>${redDot(r)}</span>` : esc(rv(r, k) || '')}</td>`).join('')}<td>${st(r)}</td><td class="c-upd">${updText(r, true)}${confText(r)}</td></tr>`).join('')
-        || `<tr><td colspan="${ROSTER_COLS.length + 2}"><div class="empty">沒有符合的資料</div></td></tr>`) + '</tbody>';
+      + (list.map(r => `<tr data-r="${r.id}">${TBL_COLS().map(([k]) => `<td class="c-${k}">${k === 'name' ? `<span class="nm-cell">${av(r)}<b>${esc(rv(r, k) || '')}</b>${redDot(r)}</span>` : esc(rv(r, k) || '')}</td>`).join('')}<td>${st(r)}</td><td class="c-upd">${updText(r, true)}${confText(r)}</td></tr>`).join('')
+        || `<tr><td colspan="${TBL_COLS().length + 2}"><div class="empty">沒有符合的資料</div></td></tr>`) + '</tbody>';
     $('rs-cards').innerHTML = list.map(r => `<div class="card r-card" data-r="${r.id}">${av(r)}
         <div class="main"><div class="nm">${r.serial ? `<span style="color:var(--sub);font-size:13px;">${esc(r.serial)}</span>` : ''}${esc(rv(r, 'name'))}${redDot(r)} <span class="pill ${rv(r, 'position') === '團員' ? 'pos-m' : 'admin'}">${esc(rv(r, 'position'))}</span> ${r.cert ? `<span class="pill cert">${esc(r.cert)}</span>` : ''}</div>
         <div class="sub">${esc(r.phone || '無電話')}　${esc(rv(r, 'birthdayRaw') || '')}</div>${updText(r, true)}${confText(r)}</div>${st(r)}</div>`).join('')
