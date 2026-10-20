@@ -291,8 +291,8 @@
     left: 0; right: 0; bottom: 0; max-height: 88vh; border-radius: 22px 22px 0 0; padding: 20px 18px calc(20px + env(safe-area-inset-bottom)); }
   @media (min-width: 761px) { .sheet { left: 50%; right: auto; bottom: auto; top: 50%; transform: translate(-50%, -50%); width: 560px; max-height: 86vh; border-radius: 22px; } }
   /* 後台字級整體放大一號 */
-  body.admin-wide #v-admin, body.admin-wide .sheet { zoom: 1.25; }
-  @media (min-width: 900px) { body.admin-wide .sheet.wide { width: calc(98vw / 1.25); max-height: calc(96vh / 1.25); } body.admin-wide .sheet:not(.wide) { max-height: calc(86vh / 1.25); } }
+  @media (min-width: 900px) { body.admin-wide #v-admin, body.admin-wide .sheet { zoom: 1.12; }
+    body.admin-wide .sheet.wide { width: calc(98vw / 1.12); max-height: calc(96vh / 1.12); } body.admin-wide .sheet:not(.wide) { max-height: calc(86vh / 1.12); } }
   /* 分組抽籤：電腦上用大視窗，各組橫向排開，一眼看完 */
   @media (min-width: 900px) {
     .sheet.wide { width: 98vw; max-width: none; max-height: 96vh; padding: 22px 28px; }
