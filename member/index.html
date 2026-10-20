@@ -1563,9 +1563,10 @@
     const card = r => { const ro = rosterOf(r); return `<div class="ev-rc"><div class="n"><b>${esc(r.name || '')}</b> <span class="a">${ATT_SHORT[r.attend] || ''}</span></div>
         <div class="s">${ro ? esc(rv(ro, 'position')) + '・' + esc(ro.cert || '') : '<span style="color:#b45309">未對應名冊</span>'}${r.lunch ? '　🍱 ' + esc(r.lunch) : ''}${r.lineName ? '　LINE：' + esc(r.lineName) : ''}</div>
         ${r.reason ? `<div class="x">原因：${esc(r.reason)}</div>` : ''}${r.comment ? `<div class="x">意見：${esc(r.comment)}</div>` : ''}
-        <div class="t">${esc(fmtAt(tsMs(r.createdAt || r.updatedAt)))}</div></div>`; };
+        <div class="t">${esc(fmtAt(tsMs(r.createdAt || r.updatedAt)))}<span style="float:right"><button class="sbtn" data-rede="${r.id}" style="padding:4px 10px;font-size:12px;">編輯</button> <button class="sbtn red" data-rdel="${r.id}" style="padding:4px 10px;font-size:12px;">刪除</button></span></div></div>`; };
     const row = r => { const ro = rosterOf(r); return `<tr><td><b>${esc(r.name || '')}</b>${ro ? `<div style="font-size:11px;color:var(--sub)">${esc(rv(ro, 'position'))}・${esc(ro.cert || '')}</div>` : '<div style="font-size:11px;color:#b45309">未對應名冊</div>'}</td>
-        <td>${ATT_SHORT[r.attend] || ''}</td><td>${esc(r.lunch || '')}</td><td>${esc(r.reason || '')}</td><td>${esc(r.comment || '')}</td><td style="font-size:12px">${esc(r.lineName || '')}</td><td style="font-size:11px;color:var(--sub);white-space:nowrap">${esc(fmtAt(tsMs(r.createdAt || r.updatedAt)))}</td></tr>`; };
+        <td>${ATT_SHORT[r.attend] || ''}</td><td>${esc(r.lunch || '')}</td><td>${esc(r.reason || '')}</td><td>${esc(r.comment || '')}</td><td style="font-size:12px">${esc(r.lineName || '')}</td><td style="font-size:11px;color:var(--sub);white-space:nowrap">${esc(fmtAt(tsMs(r.createdAt || r.updatedAt)))}</td>
+        <td style="white-space:nowrap"><button class="sbtn" data-rede="${r.id}" style="padding:4px 10px;font-size:12px;">編輯</button> <button class="sbtn red" data-rdel="${r.id}" style="padding:4px 10px;font-size:12px;">刪除</button></td></tr>`; };
     $('ev-list').innerHTML = `
       <button class="sbtn" id="ev-back" style="margin-bottom:10px;">← 所有出席調查</button>
       <div class="card" style="padding:16px;">
@@ -1590,8 +1591,8 @@
       ${evFilter === 'none' ? `<div class="card" style="padding:12px 14px; font-size:14px; line-height:2;">${notYet.map(r => esc(r.name || '')).join('、') || '全部都回覆了 🎉'}</div>` : `
       <div class="ev-cards">${shown.map(card).join('') || '<div class="card empty">沒有資料</div>'}</div>
       <div class="card ev-tbl-wrap" style="padding:8px 10px; overflow-x:auto;">
-        <table class="ev-tbl"><thead><tr><th>姓名</th><th>出席</th><th>午膳</th><th>無法出席原因</th><th>意見</th><th>LINE 名稱</th><th>回覆時間</th></tr></thead>
-        <tbody>${shown.map(row).join('') || '<tr><td colspan="7"><div class="empty">沒有資料</div></td></tr>'}</tbody></table>
+        <table class="ev-tbl"><thead><tr><th>姓名</th><th>出席</th><th>午膳</th><th>無法出席原因</th><th>意見</th><th>LINE 名稱</th><th>回覆時間</th><th></th></tr></thead>
+        <tbody>${shown.map(row).join('') || '<tr><td colspan="8"><div class="empty">沒有資料</div></td></tr>'}</tbody></table>
       </div>`}
       <div style="font-size:12px; color:var(--sub); margin:8px 4px;">※ 依「姓名」自動對應名冊；同一人重複填寫以最後一次為準。顯示「未對應名冊」的，可能是名字寫法不同或尚未加入名冊。</div>`;
     $('ev-back').onclick = () => { evOpenId = null; evFilter = 'all'; renderEvents(); };
@@ -1600,6 +1601,13 @@
     $('ev-toggle').onclick = async () => { try { await updateDoc(doc(db, 'events', e.id), { open: !e.open }); toast(e.open ? '已截止回覆' : '已重新開放'); } catch (err) { toast('❌ 操作失敗'); } };
     $('ev-edit').onclick = () => openEventForm(e);
     $('ev-draw').onclick = () => openDrawSheet(e.id);
+    document.querySelectorAll('[data-rede]').forEach(b => b.onclick = () => openRespForm(e, (evRespCache[eid] || []).find(x => x.id === b.dataset.rede)));
+    document.querySelectorAll('[data-rdel]').forEach(b => b.onclick = async () => {
+      const r0 = (evRespCache[eid] || []).find(x => x.id === b.dataset.rdel); if (!r0) return;
+      const same = (evRespCache[eid] || []).filter(x => normName(x.name) === normName(r0.name));
+      if (!(await dialog({ title: `刪除「${r0.name}」的回覆？`, msg: same.length > 1 ? `這個人填過 ${same.length} 次，會全部刪掉。` : '刪掉後就像他沒有回覆過，可以再重新填寫。', okText: '刪除', danger: true }))) return;
+      try { const bt = writeBatch(db); same.forEach(x => bt.delete(doc(db, 'events', e.id, 'responses', x.id))); await bt.commit(); toast('已刪除'); } catch (err) { console.error(err); toast('❌ 刪除失敗'); }
+    });
     // 測試用：名冊裡約 9 成還沒回覆的人，隨機產生回覆（標記 src: test，可一鍵清除）
     $('ev-test-add').onclick = async () => {
       if (!e.open) return toast('請先「重新開放」回覆，才能產生測試資料');
@@ -1839,6 +1847,30 @@
     toast('⬇ 已下載 Excel');
   }
 
+  function openRespForm(e, r0) {
+    if (!r0) return;
+    $('sheet-body').innerHTML = `
+      <h3>✏️ 編輯回覆</h3>
+      <div class="edit-form" style="margin-top:10px;">
+        <div class="field"><label>姓名</label><input id="rf-name" value="${esc(r0.name || '')}" maxlength="20"></div>
+        <div class="field"><label>LINE 名稱</label><input id="rf-line" value="${esc(r0.lineName || '')}" maxlength="40"></div>
+        <div class="field"><label>是否出席</label><select id="rf-att" class="pos-sel">${Object.entries(ATT_SHORT).map(([k, t]) => `<option value="${k}" ${r0.attend === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+        <div class="field"><label>午膳</label><select id="rf-lunch" class="pos-sel"><option value="">（無）</option>${LUNCH.map(l => `<option ${r0.lunch === l ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+        <div class="field"><label>無法出席原因</label><input id="rf-reason" value="${esc(r0.reason || '')}" maxlength="300"></div>
+        <div class="field"><label>意見</label><input id="rf-comment" value="${esc(r0.comment || '')}" maxlength="500"></div>
+      </div>
+      <button class="btn" id="rf-save" style="margin-top:12px;">儲存</button>`;
+    $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open'); $('sheet').scrollTop = 0;
+    $('rf-save').onclick = async () => {
+      const name = $('rf-name').value.trim(); if (!name) return toast('請填姓名');
+      const attend = $('rf-att').value;
+      try {
+        await updateDoc(doc(db, 'events', e.id, 'responses', r0.id), { name, lineName: $('rf-line').value.trim(), attend,
+          lunch: attend === 'no' ? '' : $('rf-lunch').value, reason: $('rf-reason').value.trim(), comment: $('rf-comment').value.trim() });
+        closeSheet(); toast('✅ 已更新');
+      } catch (err) { console.error(err); toast('❌ 儲存失敗'); }
+    };
+  }
   function openEventForm(e) {
     const isNew = !e;
     e = e || { title: '', date: '', desc: '', askLunch: true, open: true };
