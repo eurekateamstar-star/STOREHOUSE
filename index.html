@@ -384,9 +384,9 @@
 
         /* ===== 倉庫全景 ===== */
         #panorama-view{display:none;position:absolute;inset:0;background:#000;z-index:70;}
-        #pano-stage{position:absolute;top:70px;left:0;right:0;bottom:30px;display:flex;align-items:center;justify-content:center;padding:0 8px;}
-        #pano-wrap{position:relative;display:inline-block;line-height:0;min-width:260px;min-height:160px;max-width:100%;}
-        #pano-img{display:block;max-width:100%;max-height:calc(100vh - 110px);margin:0 auto;}
+        #pano-stage{position:absolute;inset:0;overflow:hidden;touch-action:none;}
+        #pano-wrap{position:absolute;line-height:0;min-width:260px;min-height:160px;}
+        #pano-img{display:block;width:100%;height:100%;}
         #pano-layer{position:absolute;inset:0;}
         #pano-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.6;font-size:13px;color:#8e8e93;padding:20px;}
         .pano-spot{position:absolute;border:1.5px solid rgba(130,190,255,.55);background:rgba(10,132,255,.10);box-shadow:0 0 0 .5px rgba(0,0,0,.35),inset 0 0 14px rgba(10,132,255,.12);border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;touch-action:none;line-height:1.3;}
@@ -557,6 +557,9 @@
         .u-view-toggle{background:#ece7e4;} .u-view-toggle button{color:#4b5563;} .u-view-toggle button.on{background:#fff;color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.08);}
         .cert-btn.on{background:var(--primary) !important;border-color:var(--primary) !important;}
 
+        /* 照片不要被瀏覽器當成拖曳圖片（會打斷手指拖曳） */
+        #warehouse-img,#pano-img{-webkit-user-drag:none;user-select:none;-webkit-user-select:none;pointer-events:none;}
+        #map-container,#pano-stage{user-select:none;-webkit-user-select:none;}
         /* 頁面內直接寫死的深色字／底，改成淺色主題對應色 */
         [style*="color:#8e8e93"],[style*="color: #8e8e93"]{color:var(--sub) !important;}
         [style*="color:#0a84ff"],[style*="color: #0a84ff"]{color:var(--primary) !important;}
@@ -3451,6 +3454,7 @@
     window.toggleContentEditMode = function() {
         if (!isContentEditActive && !isAdmin()) return showToast('🔒 只有管理員可以編輯', 'error', 1200);
         isContentEditActive = !isContentEditActive;
+        setTimeout(() => { fitCanvas(); if (isPanoActive) fitPano(); }, 0);
         const btn = document.getElementById('mode-btn-edit');
         if (btn) {
             setBtn(btn, isContentEditActive ? 'lock' : 'pencil', isContentEditActive ? '鎖定' : '編輯');
@@ -3489,6 +3493,7 @@
         if (isPanoActive) return showToast('請先進入某一排再調整佈局', 'error', 1200);
         isLayoutMode = !isLayoutMode;
         if (!isLayoutMode) { scale = 1; panX = 0; panY = 0; updateCanvasTransform(); }
+        setTimeout(fitCanvas, 0);
         const moveBtn = document.getElementById('btn-move-mode');
         if (moveBtn) moveBtn.classList.toggle('active', isLayoutMode);
         const indicator = document.getElementById('mode-indicator');
@@ -3622,11 +3627,46 @@
         return [cx / (3 * a), cy / (3 * a)];
     };
 
+    // 全景：檢視時滿版（可拖曳），編輯時整張顯示
+    let pFx = 0, pFy = 0, pW = 0, pH = 0, pCW = 0, pCH = 0, pKey = '';
+    function pClamp() { const mx = Math.max(0, (pW - pCW) / 2), my = Math.max(0, (pH - pCH) / 2); pFx = Math.max(-mx, Math.min(mx, pFx)); pFy = Math.max(-my, Math.min(my, pFy)); }
+    function pPlace() { const w = document.getElementById('pano-wrap'); w.style.left = ((pCW - pW) / 2 + pFx) + 'px'; w.style.top = ((pCH - pH) / 2 + pFy) + 'px'; }
+    function fitPano() {
+        const st = document.getElementById('pano-stage'), wrap = document.getElementById('pano-wrap'), img = document.getElementById('pano-img');
+        if (!st || !wrap) return;
+        pCW = st.clientWidth; pCH = st.clientHeight; if (!pCW || !pCH) return;
+        if (!panoImg || !img.naturalWidth) { pW = Math.min(pCW - 32, 340); pH = 200; }
+        else {
+            const cover = !isContentEditActive;
+            const top = cover ? 0 : 70, bot = cover ? 0 : 30;
+            const s = cover ? Math.max(pCW / img.naturalWidth, pCH / img.naturalHeight) : Math.min(pCW / img.naturalWidth, (pCH - top - bot) / img.naturalHeight);
+            pW = img.naturalWidth * s; pH = img.naturalHeight * s;
+            const k = panoImg + '|' + cover; if (k !== pKey) { pKey = k; pFx = 0; pFy = cover ? 0 : (top - bot) / 2; }
+        }
+        wrap.style.width = pW + 'px'; wrap.style.height = pH + 'px';
+        pClamp(); pPlace();
+    }
+    window.addEventListener('resize', () => { if (isPanoActive) fitPano(); });
+    document.addEventListener('dragstart', e => { if (e.target && e.target.tagName === 'IMG' && e.target.closest('#map-container,#pano-stage')) e.preventDefault(); });
+    (function initPanoDrag() {
+        const st = document.getElementById('pano-stage'); if (!st) return;
+        let sx = 0, sy = 0, fx0 = 0, fy0 = 0, on = false, moved = false;
+        st.addEventListener('pointerdown', e => { on = e.isPrimary && !isContentEditActive; sx = e.clientX; sy = e.clientY; fx0 = pFx; fy0 = pFy; moved = false; });
+        st.addEventListener('pointermove', e => {
+            if (!on) return; const dx = e.clientX - sx, dy = e.clientY - sy;
+            if (!moved && Math.hypot(dx, dy) < 6) return; moved = true;
+            pFx = fx0 + dx; pFy = fy0 + dy; pClamp(); pPlace();
+        });
+        st.addEventListener('pointerup', () => { if (on && moved) swipeBlockUntil = Date.now() + 300; on = false; });
+        st.addEventListener('pointercancel', () => { on = false; });
+    })();
+
     function renderPanorama() {
         const img = document.getElementById('pano-img');
         const empty = document.getElementById('pano-empty');
-        if (panoImg) { img.src = panoImg; img.style.display = 'block'; empty.style.display = 'none'; }
+        if (panoImg) { img.onload = fitPano; img.src = panoImg; img.style.display = 'block'; empty.style.display = 'none'; }
         else { img.removeAttribute('src'); img.style.display = 'none'; empty.style.display = 'flex'; }
+        setTimeout(fitPano, 0);
 
         const layer = document.getElementById('pano-layer');
         layer.innerHTML = '';
@@ -3658,8 +3698,8 @@
             const handles = [], mids = [];
 
             if (!isContentEditActive) {
-                poly.onclick = () => switchToPage(i);
-                lab.onclick = () => switchToPage(i);
+                poly.onclick = () => { if (Date.now() < swipeBlockUntil) return; switchToPage(i); };
+                lab.onclick = () => { if (Date.now() < swipeBlockUntil) return; switchToPage(i); };
                 lab.style.pointerEvents = 'auto'; lab.style.cursor = 'pointer';
                 draw();
                 return;
@@ -3821,7 +3861,15 @@
         });
     }
 
-    // 讓畫布剛好貼住圖片（contain），箱子 % 就是圖片 %
+    // 檢視時照片滿版（cover，可拖曳看左右）；編輯／佈局時整張顯示（contain）。箱子 % 就是圖片 %
+    let fillKey = '', fillX = 0, fillY = 0, fillW = 0, fillH = 0, fillCW = 0, fillCH = 0;
+    const isViewFill = () => !isContentEditActive && !isLayoutMode;
+    function clampFill() {
+        const mx = Math.max(0, (fillW - fillCW) / 2), my = Math.max(0, (fillH - fillCH) / 2);
+        fillX = Math.max(-mx, Math.min(mx, fillX)); fillY = Math.max(-my, Math.min(my, fillY));
+        return { mx, my };
+    }
+    window.fitCanvasNow = () => fitCanvas();
     function fitCanvas() {
         const cont = document.getElementById('map-container');
         const canvas = document.getElementById('map-canvas');
@@ -3830,13 +3878,17 @@
         if (!cw || !ch) return;
         const p = pages[currentPageIndex];
         let w = cw, h = ch;
+        const cover = isViewFill();
         if (p && p._nw && p._nh) {
-            const s = Math.min(cw / p._nw, ch / p._nh);
+            const s = cover ? Math.max(cw / p._nw, ch / p._nh) : Math.min(cw / p._nw, ch / p._nh);
             w = p._nw * s; h = p._nh * s;
         }
+        if (fillKey !== currentPageIndex + '|' + cover) { fillKey = currentPageIndex + '|' + cover; fillX = 0; fillY = 0; }
+        fillW = w; fillH = h; fillCW = cw; fillCH = ch;
+        clampFill();
         canvas.dataset.fitted = (p && (p._nw || !p.imageUrl)) ? '1' : '';
-        canvas.style.left = ((cw - w) / 2) + 'px';
-        canvas.style.top = ((ch - h) / 2) + 'px';
+        canvas.style.left = ((cw - w) / 2 + fillX) + 'px';
+        canvas.style.top = ((ch - h) / 2 + fillY) + 'px';
         canvas.style.width = w + 'px';
         canvas.style.height = h + 'px';
         updateCanvasTransform();
@@ -3897,16 +3949,31 @@
     // ===== 滑動手勢：在檢視模式左右滑動換排 =====
     (function initSwipe() {
         const c = document.getElementById('map-container');
-        let sx = 0, sy = 0, t0 = 0, tracking = false;
+        let sx = 0, sy = 0, t0 = 0, tracking = false, fx0 = 0, fy0 = 0, panned = false;
         c.addEventListener('pointerdown', e => {
-            tracking = e.isPrimary && !isContentEditActive && !isLayoutMode;
-            sx = e.clientX; sy = e.clientY; t0 = Date.now();
+            tracking = e.isPrimary && !isContentEditActive && !isLayoutMode && !isPanoActive;
+            sx = e.clientX; sy = e.clientY; t0 = Date.now(); fx0 = fillX; fy0 = fillY; panned = false;
+        });
+        c.addEventListener('pointermove', e => {
+            if (!tracking) return;
+            const dx = e.clientX - sx, dy = e.clientY - sy;
+            if (!panned && Math.hypot(dx, dy) < 6) return;
+            panned = true;
+            fillX = fx0 + dx; fillY = fy0 + dy; clampFill();
+            const cv = document.getElementById('map-canvas');
+            cv.style.left = ((fillCW - fillW) / 2 + fillX) + 'px';
+            cv.style.top = ((fillCH - fillH) / 2 + fillY) + 'px';
+            positionToolbars();
         });
         c.addEventListener('pointerup', e => {
             if (!tracking) return;
             tracking = false;
             const dx = e.clientX - sx, dy = e.clientY - sy;
-            if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5 && Date.now() - t0 < 700) {
+            if (panned) swipeBlockUntil = Date.now() + 300;
+            // 照片已經拉到最邊邊，再往同方向滑 → 換排
+            const { mx } = clampFill();
+            const atEdge = dx < 0 ? fx0 <= -mx + 1 : fx0 >= mx - 1;
+            if (atEdge && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5 && Date.now() - t0 < 700) {
                 swipeBlockUntil = Date.now() + 350;
                 goToPage(dx < 0 ? 1 : -1);
             }
