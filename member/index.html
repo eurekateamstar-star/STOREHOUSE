@@ -283,6 +283,14 @@
   .sheet { position: fixed; z-index: 81; display: none; background: #fff; overflow-y: auto; box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
     left: 0; right: 0; bottom: 0; max-height: 88vh; border-radius: 22px 22px 0 0; padding: 20px 18px calc(20px + env(safe-area-inset-bottom)); }
   @media (min-width: 761px) { .sheet { left: 50%; right: auto; bottom: auto; top: 50%; transform: translate(-50%, -50%); width: 560px; max-height: 86vh; border-radius: 22px; } }
+  /* 分組抽籤：電腦上用大視窗，各組橫向排開，一眼看完 */
+  @media (min-width: 900px) {
+    .sheet.wide { width: 96vw; max-width: 1600px; max-height: 92vh; padding: 22px 26px; }
+    .sheet.wide .dr-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+    .sheet.wide .dr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; align-items: start; }
+    .sheet.wide .dr-grid .dr-g { margin-top: 0; }
+    .sheet.wide .dr-n { font-size: 14px; }
+  }
   .sheet h3 { margin: 0 0 4px; font-size: 20px; }
   .sheet .rows .row { padding: 11px 4px; }
   .sheet .grp { font-size: 12px; font-weight: 800; color: var(--gold); margin: 16px 2px 2px; }
@@ -1384,7 +1392,7 @@
     }
   }
 
-  function closeSheet() { drawSheetEid = null; $('sheet-close').classList.remove('hidden'); confirmLock = false; document.body.classList.remove('sheet-open'); sheetRid = null; sheetUid = null; $('sheet-bg').style.display = 'none'; $('sheet').style.display = 'none'; }
+  function closeSheet() { drawSheetEid = null; $('sheet').classList.remove('wide'); $('sheet-close').classList.remove('hidden'); confirmLock = false; document.body.classList.remove('sheet-open'); sheetRid = null; sheetUid = null; $('sheet-bg').style.display = 'none'; $('sheet').style.display = 'none'; }
   const closeAny = () => { const back = editFromConfirm && editCtx && editCtx.role === 'self' && $('ed-save'); closeSheet(); if (back) backToConfirm(); };
   $('sheet-bg').onclick = () => { if (!confirmLock) closeAny(); }; $('sheet-close').onclick = closeAny;
 
@@ -1672,7 +1680,7 @@
     await saveDraw(eid, map, by2, evOver[eid] || {});
   }
   function openDrawSheet(eid) {
-    drawSheetEid = eid; drSel = null;
+    drawSheetEid = eid; drSel = null; $('sheet').classList.add('wide');
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open'); $('sheet').scrollTop = 0;
     renderDrawSheet(eid);
   }
@@ -1723,16 +1731,17 @@
       <div style="font-size:13px;color:var(--sub);line-height:1.7;margin-top:4px;">${esc(e.title || '')}<br>
         出席＋不出席但參與進香 共 <b>${total}</b> 人，已抽 <b>${done}</b>、還沒抽 <b>${missing}</b>。每組平分成三份，多的放後面（10 人 → 3、3、4）。<br>
         👆 <b>點名字</b>可以換組、指定時段或代抽籤。</div>
+      <div class="dr-top"><div>
       <div class="dr-ed" style="margin-top:10px;background:${e.selfDraw ? '#ecfdf5' : '#f8fafc'};border-color:${e.selfDraw ? '#86efac' : '#e2e8f0'};">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
           <div><b>${e.selfDraw ? '🟢 團員可以自己抽籤' : '⚪ 團員自己抽籤：關閉'}</b><div style="font-size:12px;color:var(--sub);margin-top:2px;">開啟後，有綁定會員中心、已回覆出席的人，會在會員中心首頁看到「🎲 抽籤」</div></div>
-          <button class="sbtn ${e.selfDraw ? 'red' : 'green'}" id="dr-self">${e.selfDraw ? '關閉自己抽籤' : '開放自己抽籤'}</button></div></div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
+          <button class="sbtn ${e.selfDraw ? 'red' : 'green'}" id="dr-self">${e.selfDraw ? '關閉自己抽籤' : '開放自己抽籤'}</button></div></div></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-content:flex-start;">
         ${missing ? `<button class="sbtn" id="dr-go" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">🎲 管理員代抽：還沒抽的 ${missing} 人</button>` : ''}
         ${done ? '<button class="sbtn" id="dr-redo" style="background:#fef2f2;color:#b91c1c;">全部重抽</button>' : ''}
         <button class="sbtn" id="dr-xlsx" style="background:#1f2430;color:#fff;">⬇ 下載 Excel（簽到表・繳費紀錄）</button>
-      </div>
-      ${DRAW_GROUPS.map(grp).join('') || '<div class="card empty">還沒有人回覆出席</div>'}
+      </div></div>
+      <div class="dr-grid" style="margin-top:10px;">${DRAW_GROUPS.map(grp).join('') || '<div class="card empty">還沒有人回覆出席</div>'}</div>
       <div style="font-size:12px;color:var(--sub);margin:10px 2px;line-height:1.7;">※ 分組依名冊的「職位」與「證照」：團長／秘書長／教官團／顧問 → 教官及長官；指揮官／車輛組／機車組 → 指揮官及汽機車組；其他依證照。標「手動」的是你換過組的人。<br>※ 標「自抽」是團員自己在會員中心抽的。建議回覆截止、名單確定後再開放抽籤，名額才準。</div>`;
     document.querySelectorAll('[data-dk]').forEach(b => b.onclick = () => { drSel = drSel === b.dataset.dk ? null : b.dataset.dk; renderDrawSheet(eid); });
     const write = async (fn, msg) => { const m = { ...map }, b = { ...by2 }, o = { ...over }; fn(m, b, o); try { await saveDraw(eid, m, b, o); evDraw[eid] = m; evDrawBy[eid] = b; evOver[eid] = o; if (msg) toast(msg); renderDrawSheet(eid); } catch (err) { console.error(err); toast('❌ 儲存失敗（Firestore 規則可能還沒更新）'); } };
