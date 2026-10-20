@@ -71,13 +71,16 @@
     background: linear-gradient(135deg, #dcfce7, #bbf7d0); box-shadow: 0 10px 24px rgba(22,163,74,0.2); }
   .done h2 { justify-content: center; color: var(--ink); font-size: 22px; }
   .done p { color: var(--sub); font-size: 14px; line-height: 1.8; margin: 0 0 6px; }
+  .done-act { display: flex; gap: 10px; margin-top: 18px; }
+  .btn2 { flex: 1; border: 2px solid var(--primary); background: #fff; color: var(--primary); border-radius: 14px; padding: 13px; font-size: 16px; font-weight: 900; cursor: pointer; font-family: inherit; }
+  .btn2.close { border-color: transparent; color: #fff; background: linear-gradient(90deg, var(--primary), var(--accent)); }
   .hidden { display: none !important; }
   .toast { position: fixed; left: 50%; bottom: calc(30px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: rgba(31,36,48,0.94); color: #fff;
     padding: 11px 18px; border-radius: 14px; font-size: 14px; font-weight: 700; z-index: 99; display: none; max-width: 88vw; text-align: center; }
   .opt { display: block; width: 100%; text-align: left; border: 2px solid #e5e7eb; background: #fff; border-radius: 16px; padding: 13px 14px; margin-bottom: 10px; font-size: 16px; font-weight: 800; cursor: pointer; font-family: inherit; color: var(--ink); line-height: 1.5; }
   .opt small { display: block; font-size: 12px; font-weight: 600; color: var(--sub); margin-top: 2px; }
   .opt.on { border-color: var(--primary); background: #fff1f2; box-shadow: 0 6px 14px rgba(214,90,104,0.15); }
-  .field.bad .opts .opt { border-color: #fca5a5; }
+  .field.bad .opts .opt, .field.bad .chip { border-color: #fca5a5; }
   .bind { margin-top: 16px; padding: 16px; border-radius: 18px; background: linear-gradient(135deg,#ecfdf5,#fff); border: 2px solid #86efac; text-align: left; }
   .bind b { color: #166534; font-size: 16px; } .bind p { margin: 6px 0 12px; font-size: 13px; color: #4b5563; line-height: 1.7; }
   .bind a { display: block; text-align: center; text-decoration: none; background: #06c755; color: #fff; font-weight: 900; padding: 13px; border-radius: 14px; font-size: 16px; }
@@ -92,7 +95,8 @@
     <p id="ev-desc" style="white-space:pre-wrap; margin-top:6px;"></p>
   </div>
 
-  <div class="card done hidden" id="msg"><div class="ic" id="msg-ic">⏳</div><h2 id="msg-t">載入中…</h2><p id="msg-d"></p></div>
+  <div class="card done hidden" id="msg"><div class="ic" id="msg-ic">⏳</div><h2 id="msg-t">載入中…</h2><p id="msg-d"></p>
+    <div class="done-act hidden" id="done-act"><button type="button" class="btn2" id="btn-again">✏️ 重新填寫</button><button type="button" class="btn2 close" id="btn-close">關閉</button></div></div>
 
   <form id="f" class="hidden" novalidate>
     <div class="card">
@@ -110,10 +114,10 @@
       <div class="field hidden" id="reason-box"><label>無法出席的原因<span class="req">*</span></label><textarea name="reason" maxlength="300"></textarea><div class="err">請說明原因</div></div>
     </div>
     <div class="card" id="lunch-card">
-      <h2>🍱 午膳</h2>
+      <h2>🍱 午膳<span class="req">*</span></h2>
       <div class="field" data-f="lunch"><div class="chips">
         <button type="button" class="chip">葷</button><button type="button" class="chip">素（方便素）</button><button type="button" class="chip">自行處理</button>
-      </div></div>
+      </div><div class="err">請選擇午膳</div></div>
     </div>
     <div class="card">
       <h2>💬 其他意見及建議</h2>
@@ -137,7 +141,7 @@
   const $ = id => document.getElementById(id);
   const f = $('f');
   const toast = (m, ms = 2200) => { const t = $('toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(toast._t); toast._t = setTimeout(() => t.style.display = 'none', ms); };
-  const msg = (ic, t, d) => { $('msg-ic').textContent = ic; $('msg-t').textContent = t; $('msg-d').innerHTML = d || ''; $('msg').classList.remove('hidden'); };
+  const msg = (ic, t, d) => { $('done-act').classList.add('hidden'); $('msg-ic').textContent = ic; $('msg-t').textContent = t; $('msg-d').innerHTML = d || ''; $('msg').classList.remove('hidden'); };
   const eid = new URLSearchParams(location.search).get('e') || '';
   let ev = null, attend = '', lunch = '';
 
@@ -166,10 +170,20 @@
     $('lunch-card').classList.toggle('hidden', attend === 'no' || (ev && ev.askLunch === false));
   });
   document.querySelectorAll('[data-f="lunch"] .chip').forEach(c => c.onclick = () => {
-    lunch = c.classList.contains('on') ? '' : c.textContent;
-    document.querySelectorAll('[data-f="lunch"] .chip').forEach(x => x.classList.toggle('on', x === c && !!lunch));
+    lunch = c.textContent; c.closest('.field').classList.remove('bad');
+    document.querySelectorAll('[data-f="lunch"] .chip').forEach(x => x.classList.toggle('on', x === c));
   });
   f.querySelectorAll('input,textarea').forEach(i => i.addEventListener('input', () => i.closest('.field') && i.closest('.field').classList.remove('bad')));
+
+  $('btn-again').onclick = () => {
+    $('msg').classList.add('hidden'); f.classList.remove('hidden');
+    const btn = $('btn-submit'); btn.disabled = false; btn.textContent = '送出回覆';
+    window.scrollTo(0, 0);
+  };
+  $('btn-close').onclick = () => {
+    try { window.close(); } catch (e) {}
+    setTimeout(() => toast('請按右上角的 ✕ 關閉頁面'), 300);
+  };
 
   f.onsubmit = async e => {
     e.preventDefault();
@@ -180,6 +194,7 @@
     mark(f.elements.lineName.closest('.field'), !!v('lineName'));
     mark(document.querySelector('[data-f="attend"]'), !!attend);
     if (attend === 'join') mark($('reason-box'), !!v('reason'));
+    if (!$('lunch-card').classList.contains('hidden')) mark(document.querySelector('[data-f="lunch"]'), !!lunch);
     if (bad.length) { bad[0].scrollIntoView({ behavior: 'smooth', block: 'center' }); return toast('還有欄位沒填好'); }
     const btn = $('btn-submit'); btn.disabled = true; btn.textContent = '送出中…';
     try {
@@ -192,6 +207,7 @@
       const label = { yes: '✅ 出席', join: '⚠️ 無法出席，但參與團隊進香', no: '❌ 不出席，亦不參與進香' }[attend];
       msg('✅', '已收到你的回覆，謝謝！', `<b>${v('name').replace(/</g, '&lt;')}</b>：${label}${lunch && attend !== 'no' ? '<br>午膳：' + lunch : ''}<br><span style="font-size:12px">要更改的話，重新填寫一次即可，以最後一次為準。</span>`
         );
+      $('done-act').classList.remove('hidden');
     } catch (err) {
       console.error(err); btn.disabled = false; btn.textContent = '送出回覆'; toast('送出失敗，請稍後再試');
     }
