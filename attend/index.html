@@ -191,7 +191,7 @@
       f.classList.add('hidden'); window.scrollTo(0, 0);
       const label = { yes: '✅ 出席', join: '⚠️ 無法出席，但參與團隊進香', no: '❌ 不出席，亦不參與進香' }[attend];
       msg('✅', '已收到你的回覆，謝謝！', `<b>${v('name').replace(/</g, '&lt;')}</b>：${label}${lunch && attend !== 'no' ? '<br>午膳：' + lunch : ''}<br><span style="font-size:12px">要更改的話，重新填寫一次即可，以最後一次為準。</span>`
-        + (attend !== 'no' ? `<div class="bind"><b>📲 下一步：加入會員中心</b><p>要參加的團員請用 LINE 加入會員中心，輸入姓名、身分證、生日即可自動對應名冊，之後保險資料確認、物資借用都在這裡。</p><a href="${MEMBER_LINK}">用 LINE 加入會員中心</a></div>` : ''));
+        );
     } catch (err) {
       console.error(err); btn.disabled = false; btn.textContent = '送出回覆'; toast('送出失敗，請稍後再試');
     }
