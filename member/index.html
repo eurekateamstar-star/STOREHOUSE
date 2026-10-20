@@ -1993,7 +1993,7 @@
       const NC = Math.max(5, ...ts.map(t => t.m.length));
       const rows = ts.map(t => { const ms = t.m.filter(k => ppl[k]), back = t.l.startsWith('轎後'), cls = back && firstBack ? 'xb' : ''; if (back) firstBack = false;
         const cells = Array.from({ length: NC }, (_, j) => { const k = ms[j], p = k && ppl[k];
-          return p ? `<td class="xm ${schSel && schSel.k === k && schSel.d === d ? 'sel' : ''}" data-sd="${d}" data-sk="${esc(k)}"><span style="background:${CAT_BG[p.cat]};${j === 0 ? 'font-weight:900;' : ''}">${esc(p.name)}</span></td>` : '<td class="xm"></td>'; }).join('');
+          return p ? `<td class="xm ${schSel && schSel.k === k && schSel.d === d ? 'sel' : ''}" data-sd="${d}" data-sk="${esc(k)}"><span style="background:${CAT_BG[p.cat]};${j === 0 ? 'font-weight:900;' : ''}">${esc(p.name)}${(t.pn || {})[k] ? `<em class="xpn">${esc(t.pn[k])}</em>` : ''}</span></td>` : '<td class="xm"></td>'; }).join('');
         const extra = ms.length > NC ? `<div style="font-size:11px;color:#b91c1c">＋${ms.slice(NC).map(k => esc(ppl[k].name)).join('、')}</div>` : '';
         const mv = schSel && schSel.d === d;
         return `<tr class="${cls}"><th class="xl ${mv ? 'mv' : ''}" ${mv ? `data-mvd="${d}" data-mvl="${t.l}" title="移到這組"` : ''}>${mv ? '⬅ ' : ''}${t.l}</th>${cells}<td class="xn"><div class="xnote ${t.note ? '' : 'emp'}" data-nd="${d}" data-nl="${t.l}">${t.note ? eqHtml(t.note) : '＋裝備'}</div>${extra}</td></tr>`; }).join('');
@@ -2021,6 +2021,9 @@
         .sc-days.shootall{display:flex!important;flex-direction:column;width:760px;gap:14px;padding:10px;background:#fff}
         .xshot{margin-left:8px;border:none;border-radius:8px;background:#1f2430;color:#fff;font:inherit;font-size:11px;font-weight:800;padding:3px 8px;cursor:pointer;vertical-align:middle}
         .xd.shooting .xshot,.xd.shooting .sc-miss,.xd.shooting .xnote.emp{visibility:hidden}.xsub{color:#6b7280;font-size:.9em}
+        .xpn{display:block;font-style:normal;font-size:10px;font-weight:700;color:#dc2626;line-height:1.1;margin-top:1px}.xcap .xpn{font-size:8.5px}
+        .sc-bar{position:sticky;bottom:0;z-index:5;display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px -4px -4px;padding:10px 14px;border-radius:16px;background:#1f2430;color:#fff;box-shadow:0 -6px 20px rgba(0,0,0,.15)}
+        .sc-bar span{font-size:12px;color:#cbd5e1;flex:1}.sc-bar button{border:none;border-radius:10px;padding:8px 12px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}#sb-note{background:linear-gradient(90deg,#D65A68,#F08339);color:#fff}#sb-x{background:#334155;color:#fff}
         .xt .xf{cursor:pointer;white-space:normal;height:auto!important;padding:5px 14px!important;line-height:1.5;font-size:11px!important}.xt .xf b{color:#1f2430}.xt tr:has(.xf)+tr .xf{padding-top:0!important}.xt .xf:hover{background:#fff1f2}
         .eq-box input[data-f],.eq-box textarea[data-f]{width:100%;padding:8px 10px;border-radius:10px;border:1.5px solid #e5ddd9;font:inherit;font-size:14px}.eq-box [data-f].on{border-color:var(--primary);background:#fff7f5}
         .du-n{display:flex;flex-wrap:wrap;gap:4px;max-height:160px;overflow:auto;margin-bottom:10px}.du-n button{border:1px solid #eadfdb;background:#fff;border-radius:8px;padding:4px 8px;font:inherit;font-size:13px;cursor:pointer}
@@ -2090,9 +2093,25 @@
       save({ size, days: out }, '🔀 已自動排班');
     };
     document.querySelectorAll('[data-sd][data-sk]').forEach(b => b.onclick = () => { const k = b.dataset.sk, d = b.dataset.sd; schSel = schSel && schSel.k === k && schSel.d === d ? null : { k, d }; renderSched(eid); });
+    // 選了某人 → 下方工具列：點組別換組／加備註（幾點到、駐駕退…）
+    document.querySelectorAll('.sc-bar').forEach(x => x.remove());
+    if (schSel && ppl[schSel.k]) {
+      const bar = document.createElement('div'); bar.className = 'sc-bar';
+      const tm = (dt[schSel.d] || []).find(t => t.m.includes(schSel.k)), cur = tm && (tm.pn || {})[schSel.k];
+      bar.innerHTML = `<b>${esc(ppl[schSel.k].name)}</b><span>${dLabel(schSel.d)}・點組別可換組</span><button id="sb-note">📝 ${cur ? '改備註' : '加備註'}</button><button id="sb-x">取消</button>`;
+      $('sheet').appendChild(bar);
+      bar.querySelector('#sb-x').onclick = () => { schSel = null; renderSched(eid); };
+      bar.querySelector('#sb-note').onclick = async () => {
+        const { k, d } = schSel, v = await pnPicker(`${ppl[k].name}　${dLabel(d)}`, cur || '');
+        if (v === null) return;
+        const ts = (dt[d] || []).map(t => { if (!t.m.includes(k)) return t; const pn = { ...(t.pn || {}) }; if (v) pn[k] = v; else delete pn[k]; return { ...t, pn }; });
+        schSel = null; save({ days: { ...dt, [d]: ts } }, v ? '已加備註' : '已清除備註');
+      };
+    }
     document.querySelectorAll('[data-mvd]').forEach(b => b.onclick = () => {
-      const { k, d } = schSel, ts = (dt[d] || []).map(t => ({ l: t.l, m: t.m.filter(x => x !== k) }));
-      const t = ts.find(x => x.l === b.dataset.mvl); if (t) t.m.push(k);
+      const { k, d } = schSel, old = (dt[d] || []).find(t => t.m.includes(k)), note = old && (old.pn || {})[k];
+      const ts = (dt[d] || []).map(t => { const pn = { ...(t.pn || {}) }; delete pn[k]; return { ...t, m: t.m.filter(x => x !== k), pn }; });
+      const t = ts.find(x => x.l === b.dataset.mvl); if (t) { t.m.push(k); if (note) t.pn[k] = note; }
       schSel = null; save({ days: { ...dt, [d]: ts.filter(x => x.m.length) } }, '已換組');
     });
     document.querySelectorAll('.xnote').forEach(el => el.onclick = async () => {
@@ -2150,7 +2169,7 @@
         for (let j = 0; j < MAXP; j++) {
           const c = ws.getRow(r).getCell(2 + j), c2 = ws.getRow(r + 1).getCell(2 + j), p = ppl[ms[j]];
           c.alignment = { horizontal: 'center', vertical: 'middle' }; c2.alignment = { horizontal: 'center' }; c2.font = font({ size: 9, color: { argb: 'FFFF0000' } });
-          if (p) { c.value = p.name; c.font = font({ size: 12, bold: j === 0 }); if (p.cat !== 'O' || p.g !== '專業人員及志工') c.fill = fillC(XF[p.cat]); else c.fill = fillC(XF.O); }
+          if (p) { c.value = p.name; c.font = font({ size: 12, bold: j === 0 }); c2.value = (t.pn || {})[ms[j]] || null; if (p.cat !== 'O' || p.g !== '專業人員及志工') c.fill = fillC(XF[p.cat]); else c.fill = fillC(XF.O); }
         }
         [r, r + 1].forEach(rr => { for (let col = 1; col <= 8; col++) { const c = ws.getRow(rr).getCell(col); c.border = { left: thin, right: thin, top: rr === r ? (isBack && firstBack ? med : thin) : undefined, bottom: rr === r + 1 ? thin : undefined }; } });
         if (isBack) firstBack = false;
@@ -2208,6 +2227,24 @@
         else { const a = f.value.split('、').map(x => x.trim()).filter(Boolean); if (!a.includes(n)) a.push(n); f.value = a.join('、'); } });
       ov.querySelector('#eq-no').onclick = () => { ov.remove(); res(null); };
       ov.querySelector('#eq-ok').onclick = () => { DUTY.forEach(([k]) => v[k] = fld(k).value.trim()); ov.remove(); res(v); };
+    });
+  }
+  // 個人備註（幾點到、駐駕退…）
+  function pnPicker(title, cur) {
+    return new Promise(res => {
+      const ov = document.createElement('div'); ov.className = 'eq-ov';
+      const P = ['上午到', '中午到', '下午到', '晚上到', '出發前到', '駐駕退', '回苑裡退', '上午退', '下午退'];
+      ov.innerHTML = `<div class="eq-box"><div class="eq-t">${esc(title)} 備註</div>
+        <div class="du-n">${P.map(x => `<button data-p="${x}">${x}</button>`).join('')}</div>
+        <div class="eq-l">時間</div><div class="du-n">${['07:00', '08:00', '09:00', '10:00', '12:00', '14:00', '18:00', '20:00', '21:00', '22:00'].map(x => `<button data-p="${x}到">${x}到</button>`).join('')}</div>
+        <div class="eq-l">或自己輸入</div><input id="eq-text" value="${esc(cur)}" placeholder="例如：9:00到、駐駕退">
+        <div class="eq-btn" style="margin-top:12px"><button id="eq-no">取消</button>${cur ? '<button id="pn-del" style="background:#fef2f2;color:#b91c1c">清除</button>' : ''}<button id="eq-ok">儲存</button></div></div>`;
+      document.body.appendChild(ov);
+      const inp = ov.querySelector('#eq-text');
+      ov.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { inp.value = b.dataset.p; });
+      ov.querySelector('#eq-no').onclick = () => { ov.remove(); res(null); };
+      if (ov.querySelector('#pn-del')) ov.querySelector('#pn-del').onclick = () => { ov.remove(); res(''); };
+      ov.querySelector('#eq-ok').onclick = () => { ov.remove(); res(inp.value.trim()); };
     });
   }
   // ===== 器材：救護包×n、AMBU包×n（藍色）、儀器包×n＋自己填 =====
