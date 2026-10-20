@@ -4,6 +4,7 @@
 //   SERVICE_ACCOUNT = Firebase 服務帳戶 JSON 檔「整個內容」
 // AI 智慧貼上（/parse，只有管理員能用）需要：Settings → Bindings → Workers AI，名稱 AI
 // LINE 圖文選單（/menu、/menu-setup）需要 Secret：LINE_BOT_TOKEN = 官方帳號 Messaging API 的 Channel access token（長期）
+// LINE 訊息自動回覆（/webhook）需要 Secret：LINE_CHANNEL_SECRET = 官方帳號 Messaging API 頻道的 Channel secret（Basic settings 裡）
 
 const LINE_CHANNEL_ID = '2011820105';
 const ALLOWED_ORIGINS = ['https://eurekateamstar-star.github.io'];
@@ -26,8 +27,9 @@ export default {
       new Response(JSON.stringify(o), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
-    if (req.method !== 'POST') return json({ ok: true, service: 'bst-auth', configured: !!env.SERVICE_ACCOUNT, ai: !!env.AI, lineBot: !!env.LINE_BOT_TOKEN });
+    if (req.method !== 'POST') return json({ ok: true, service: 'bst-auth', configured: !!env.SERVICE_ACCOUNT, ai: !!env.AI, lineBot: !!env.LINE_BOT_TOKEN, webhook: !!env.LINE_CHANNEL_SECRET });
     const path = new URL(req.url).pathname;
+    if (path === '/webhook') return webhookRoute(req, env);
     if (path === '/parse') return parseRoute(req, env, json);
     if (path === '/menu') return menuRoute(req, env, json);
     if (path === '/menu-setup') return menuSetupRoute(req, env, json);
@@ -218,6 +220,52 @@ async function menuSetupRoute(req, env, json) {
   } catch (e) {
     return json({ error: String((e && e.message) || e) }, e && e.code || 500);
   }
+}
+
+// ===== LINE 訊息自動回覆（Webhook）=====
+// 官方帳號收到訊息 → LINE 呼叫這裡 → 認得的關鍵字就回卡片；其他訊息不回（交給官方帳號後台的自動回應／真人回覆）
+const FB_URL = 'https://www.facebook.com/tszshinems/';
+const REPLIES = {
+  '認識醫療團': () => ({
+    type: 'flex', altText: '認識白沙屯慈昕醫護文化協會',
+    contents: {
+      type: 'bubble', size: 'giga',
+      hero: { type: 'image', url: SITE + '/richmenu/about-banner.jpg', size: 'full', aspectRatio: '1179:422', aspectMode: 'cover',
+              action: { type: 'uri', label: 'Facebook', uri: FB_URL } },
+      body: { type: 'box', layout: 'vertical', spacing: 'sm', paddingAll: '18px', contents: [
+        { type: 'text', text: '白沙屯慈昕醫護文化協會', weight: 'bold', size: 'lg', color: '#1f2430', wrap: true },
+        { type: 'text', text: '聖容慈悲心　佑民護萬年', size: 'sm', color: '#B68D40', weight: 'bold' },
+        { type: 'separator', margin: 'md' },
+        { type: 'text', margin: 'md', wrap: true, size: 'sm', color: '#4b5563',
+          text: '我們是白沙屯媽祖進香的醫護志工團隊，一路隨香提供救護、衛教與 CPR／AED 推廣。想多認識我們，歡迎追蹤粉絲專頁！' },
+      ] },
+      footer: { type: 'box', layout: 'vertical', paddingAll: '14px', contents: [
+        { type: 'button', style: 'primary', color: '#D65A68', height: 'md',
+          action: { type: 'uri', label: '前往 Facebook 粉絲專頁', uri: FB_URL } },
+      ] },
+    },
+  }),
+};
+async function webhookRoute(req, env) {
+  const ok = () => new Response('ok');
+  if (req.method !== 'POST' || !env.LINE_CHANNEL_SECRET || !env.LINE_BOT_TOKEN) return ok();
+  const body = await req.text();
+  // 確認真的是 LINE 送來的（簽章）
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.LINE_CHANNEL_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body)))));
+  if (sig !== req.headers.get('x-line-signature')) return new Response('bad signature', { status: 401 });
+  let events = [];
+  try { events = JSON.parse(body).events || []; } catch (e) { return ok(); }
+  for (const ev of events) {
+    if (ev.type !== 'message' || ev.message?.type !== 'text' || !ev.replyToken) continue;
+    const make = REPLIES[String(ev.message.text).trim()];
+    if (!make) continue;
+    await fetch('https://api.line.me/v2/bot/message/reply', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + env.LINE_BOT_TOKEN },
+      body: JSON.stringify({ replyToken: ev.replyToken, messages: [make()] }),
+    });
+  }
+  return ok();
 }
 
 async function firebaseCustomToken(sa, uid) {
