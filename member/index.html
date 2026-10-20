@@ -1926,6 +1926,7 @@
       const ppl = groups[g]; if (!ppl.length) return;
       // 每組一個工作表：先簽到表、再繳費紀錄。每頁 20 人，換頁時標題和表頭會重印一次；一張表印完才換下一張
       const PER = 20;
+      const nHun = ppl.filter(p => (p.r.lunch || '').startsWith('葷')).length, nVeg = ppl.filter(p => (p.r.lunch || '').startsWith('素')).length, nFee = 2500 * ppl.length;
       const ws = wb.addWorksheet(g.replace(/[\\/?*[\]:]/g, '').slice(0, 31), { pageSetup: { orientation: 'portrait', paperSize: 9, fitToPage: false, scale: 100, horizontalCentered: true,
         margins: { left: .35, right: .35, top: .45, bottom: .5, header: .2, footer: .25 } }, headerFooter: { oddFooter: '&C第 &P 頁，共 &N 頁' } });
       ws.columns = [8, 18, 26, 15, 15, 16].map(w => ({ width: w }));
@@ -1953,21 +1954,21 @@
       const tr = block('行前教育訓練簽到表', ['序 號', '姓名', '簽　　到', '葷食', '素食', '領年曆'], (p, i) => {
         const lunch = p.r.lunch || '';
         return [i + 1, p.name, p.r.attend === 'join' ? '請假' : '', lunch.startsWith('葷') ? 1 : lunch === '自行處理' ? '不訂餐' : null, lunch.startsWith('素') ? 1 : null, ''];
-      }, (a, z) => [null, '合計', null, { formula: `SUM(D${a}:D${z})` }, { formula: `SUM(E${a}:E${z})` }, null]);
+      }, (a, z) => [null, '合計', null, { formula: `SUM(D${a}:D${z})`, result: nHun }, { formula: `SUM(E${a}:E${z})`, result: nVeg }, null]);
       block('繳費紀錄表', ['序 號', '姓名', '團費', '服裝', '合計', '收費確認'],
-        (p, i, rn) => [i + 1, p.name, 2500, null, { formula: `SUM(C${rn}:D${rn})` }, (evPaid[eid] || {})[p.key] ? '✔ 已繳' : ''],
-        (a, z) => [null, '合計', { formula: `SUM(C${a}:C${z})` }, { formula: `SUM(D${a}:D${z})` }, { formula: `SUM(E${a}:E${z})` }, null]);
+        (p, i, rn) => [i + 1, p.name, 2500, null, { formula: `SUM(C${rn}:D${rn})`, result: 2500 }, (evPaid[eid] || {})[p.key] ? '✔ 已繳' : ''],
+        (a, z) => [null, '合計', { formula: `SUM(C${a}:C${z})`, result: nFee }, { formula: `SUM(D${a}:D${z})`, result: 0 }, { formula: `SUM(E${a}:E${z})`, result: nFee }, null]);
       ws.pageSetup.printArea = `A1:F${cur}`;
-      totals.push([g, ws.name, tr, ppl.length]);
+      totals.push([g, ws.name, tr, ppl.length, nHun, nVeg]);
     });
     // 便當統計
     const sm = wb.addWorksheet('便當統計');
     sm.columns = [{ width: 20 }, { width: 10 }, { width: 10 }, { width: 10 }];
     sm.mergeCells('A1:D1'); Object.assign(sm.getCell('A1'), { value: `${e.date || ''} ${e.title || ''} 便當統計`, font: font({ size: 14, bold: true }), alignment: { horizontal: 'center' } });
     ['類別', '葷食', '素食', '人數'].forEach((h, i) => { const c = sm.getRow(3).getCell(i + 1); c.value = h; c.font = font({ bold: true }); c.border = border; c.alignment = { horizontal: 'center' }; });
-    totals.forEach(([g, n, tr, cnt], i) => { const r = sm.getRow(4 + i); [g, { formula: `'${n}'!D${tr}` }, { formula: `'${n}'!E${tr}` }, cnt].forEach((v, k) => { const c = r.getCell(k + 1); c.value = v; c.font = font(); c.border = border; c.alignment = { horizontal: 'center' }; }); });
+    totals.forEach(([g, n, tr, cnt, h, v], i) => { const r = sm.getRow(4 + i); [g, { formula: `'${n}'!D${tr}`, result: h }, { formula: `'${n}'!E${tr}`, result: v }, cnt].forEach((v, k) => { const c = r.getCell(k + 1); c.value = v; c.font = font(); c.border = border; c.alignment = { horizontal: 'center' }; }); });
     const sr = sm.getRow(4 + totals.length), L = 3 + totals.length;
-    ['小計', { formula: `SUM(B4:B${L})` }, { formula: `SUM(C4:C${L})` }, { formula: `SUM(D4:D${L})` }].forEach((v, k) => { const c = sr.getCell(k + 1); c.value = v; c.font = font({ bold: true }); c.border = border; c.alignment = { horizontal: 'center' }; });
+    ['小計', { formula: `SUM(B4:B${L})`, result: totals.reduce((a, t) => a + t[4], 0) }, { formula: `SUM(C4:C${L})`, result: totals.reduce((a, t) => a + t[5], 0) }, { formula: `SUM(D4:D${L})`, result: totals.reduce((a, t) => a + t[3], 0) }].forEach((v, k) => { const c = sr.getCell(k + 1); c.value = v; c.font = font({ bold: true }); c.border = border; c.alignment = { horizontal: 'center' }; });
     const buf = await wb.xlsx.writeBuffer();
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
     a.download = `${e.title || '出席調查'}_簽到表_繳費紀錄.xlsx`; a.click();
