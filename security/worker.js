@@ -3,6 +3,7 @@
 // 需要的密鑰（Settings → Variables and Secrets → 類型選 Secret）：
 //   SERVICE_ACCOUNT = Firebase 服務帳戶 JSON 檔「整個內容」
 // AI 智慧貼上（/parse，只有管理員能用）需要：Settings → Bindings → Workers AI，名稱 AI
+// LINE 圖文選單（/menu、/menu-setup）需要 Secret：LINE_BOT_TOKEN = 官方帳號 Messaging API 的 Channel access token（長期）
 
 const LINE_CHANNEL_ID = '2011820105';
 const ALLOWED_ORIGINS = ['https://eurekateamstar-star.github.io'];
@@ -25,8 +26,11 @@ export default {
       new Response(JSON.stringify(o), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
-    if (req.method !== 'POST') return json({ ok: true, service: 'bst-auth', configured: !!env.SERVICE_ACCOUNT, ai: !!env.AI });
-    if (new URL(req.url).pathname === '/parse') return parseRoute(req, env, json);
+    if (req.method !== 'POST') return json({ ok: true, service: 'bst-auth', configured: !!env.SERVICE_ACCOUNT, ai: !!env.AI, lineBot: !!env.LINE_BOT_TOKEN });
+    const path = new URL(req.url).pathname;
+    if (path === '/parse') return parseRoute(req, env, json);
+    if (path === '/menu') return menuRoute(req, env, json);
+    if (path === '/menu-setup') return menuSetupRoute(req, env, json);
 
     try {
       const { accessToken } = await req.json();
@@ -98,6 +102,103 @@ async function parseRoute(req, env, json) {
     return json({ fields });
   } catch (e) {
     return json({ error: String((e && e.message) || e) }, 500);
+  }
+}
+
+// ===== LINE 圖文選單 =====
+// 兩種選單：guest（預設，沒開通的人）、member（審核通過的團員）。用 alias 記住目前的選單 ID，不用另外存。
+const SITE = 'https://tsushin-buishatun.pages.dev';
+const LIFF = id => 'https://liff.line.me/' + id;
+const MENUS = {
+  guest: { alias: 'bst-guest', name: '白沙屯醫護團｜訪客', areas: [
+    { type: 'uri', label: '會員中心', uri: LIFF('2011820105-x1KU6xLW') },
+    { type: 'uri', label: '入團申請', uri: SITE + '/join/' },
+    { type: 'message', label: '聯絡管理員', text: '聯絡管理員' },
+  ] },
+  member: { alias: 'bst-member', name: '白沙屯醫護團｜團員', areas: [
+    { type: 'uri', label: '會員中心', uri: LIFF('2011820105-x1KU6xLW') },
+    { type: 'uri', label: '物資倉庫', uri: LIFF('2011820105-ofRs4ehy') },
+    { type: 'uri', label: '救護紀錄表', uri: LIFF('2011820105-6oXAxIEi') },
+  ] },
+};
+const lineApi = (env, path, opt = {}) => fetch((opt.data ? 'https://api-data.line.me' : 'https://api.line.me') + path, {
+  method: opt.method || 'GET',
+  headers: { Authorization: 'Bearer ' + env.LINE_BOT_TOKEN, ...(opt.type ? { 'Content-Type': opt.type } : {}) },
+  body: opt.body,
+});
+const uidOfToken = t => JSON.parse(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).user_id;
+async function fsUser(idToken, uid) {
+  const r = await fetch(`https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/users/${encodeURIComponent(uid)}`,
+    { headers: { Authorization: 'Bearer ' + idToken } });
+  if (r.status === 404) return null;
+  if (!r.ok) throw Object.assign(new Error('not allowed'), { code: r.status === 403 ? 403 : 401 });
+  const f = (await r.json()).fields || {};
+  const v = k => f[k] && (f[k].stringValue ?? f[k].booleanValue);
+  return { role: v('role'), status: v('status'), adminMember: v('adminMember') === true };
+}
+const memberAdmin = u => !!u && u.status === 'approved' && (u.role === 'admin' || u.adminMember);
+
+// 依會員狀態切換某人的選單：{ idToken, uid? }，uid 省略＝自己；改別人要會員中心管理員
+async function menuRoute(req, env, json) {
+  try {
+    if (!env.LINE_BOT_TOKEN) return json({ error: 'LINE_BOT_TOKEN 尚未設定' }, 501);
+    const { idToken, uid } = await req.json();
+    if (!idToken) return json({ error: 'missing' }, 400);
+    const me = uidOfToken(idToken);
+    const meDoc = await fsUser(idToken, me);
+    const target = uid || me;
+    if (target !== me && !memberAdmin(meDoc)) return json({ error: 'admin only' }, 403);
+    const u = target === me ? meDoc : await fsUser(idToken, target);
+    const kind = u && u.status === 'approved' ? 'member' : 'guest';
+    let r;
+    if (kind === 'member') {
+      const a = await lineApi(env, '/v2/bot/richmenu/alias/' + MENUS.member.alias);
+      if (!a.ok) return json({ error: '選單還沒發佈（請管理員先按「發佈 LINE 圖文選單」）' }, 409);
+      r = await lineApi(env, `/v2/bot/user/${target}/richmenu/${(await a.json()).richMenuId}`, { method: 'POST' });
+    } else {
+      r = await lineApi(env, `/v2/bot/user/${target}/richmenu`, { method: 'DELETE' });   // 回到預設（訪客）選單
+    }
+    return json({ ok: r.ok, kind, line: r.ok ? undefined : await r.text() });
+  } catch (e) {
+    return json({ error: String((e && e.message) || e) }, e && e.code || 500);
+  }
+}
+
+// 建立／更新兩個選單（只有最高管理員）：上傳 SITE/richmenu/{guest,member}.png，訪客選單設為預設
+async function menuSetupRoute(req, env, json) {
+  try {
+    if (!env.LINE_BOT_TOKEN) return json({ error: 'LINE_BOT_TOKEN 尚未設定' }, 501);
+    const { idToken } = await req.json();
+    const meDoc = await fsUser(idToken, uidOfToken(idToken));
+    if (!meDoc || meDoc.status !== 'approved' || meDoc.role !== 'admin') return json({ error: 'admin only' }, 403);
+    const out = {};
+    for (const [key, m] of Object.entries(MENUS)) {
+      const W = 2500, H = 843, cw = Math.floor(W / m.areas.length);
+      const body = {
+        size: { width: W, height: H }, selected: true, name: m.name, chatBarText: '選單',
+        areas: m.areas.map((a, i) => ({ bounds: { x: i * cw, y: 0, width: i === m.areas.length - 1 ? W - i * cw : cw, height: H }, action: a })),
+      };
+      const c = await lineApi(env, '/v2/bot/richmenu', { method: 'POST', type: 'application/json', body: JSON.stringify(body) });
+      if (!c.ok) return json({ error: `建立 ${key} 失敗：` + await c.text() }, 502);
+      const id = (await c.json()).richMenuId;
+      const img = await fetch(`${SITE}/richmenu/${key}.png?v=${Date.now()}`);
+      if (!img.ok) return json({ error: `讀不到 ${key}.png` }, 502);
+      const up = await lineApi(env, `/v2/bot/richmenu/${id}/content`, { method: 'POST', data: true, type: 'image/png', body: await img.arrayBuffer() });
+      if (!up.ok) return json({ error: `上傳 ${key} 圖片失敗：` + await up.text() }, 502);
+      // alias 指到新選單，再刪掉舊的
+      const old = await lineApi(env, '/v2/bot/richmenu/alias/' + m.alias);
+      const oldId = old.ok ? (await old.json()).richMenuId : null;
+      const al = oldId
+        ? await lineApi(env, '/v2/bot/richmenu/alias/' + m.alias, { method: 'POST', type: 'application/json', body: JSON.stringify({ richMenuId: id }) })
+        : await lineApi(env, '/v2/bot/richmenu/alias', { method: 'POST', type: 'application/json', body: JSON.stringify({ richMenuAliasId: m.alias, richMenuId: id }) });
+      if (!al.ok) return json({ error: `設定 ${key} 別名失敗：` + await al.text() }, 502);
+      if (key === 'guest') await lineApi(env, '/v2/bot/user/all/richmenu/' + id, { method: 'POST' });
+      if (oldId && oldId !== id) await lineApi(env, '/v2/bot/richmenu/' + oldId, { method: 'DELETE' });
+      out[key] = id;
+    }
+    return json({ ok: true, menus: out });
+  } catch (e) {
+    return json({ error: String((e && e.message) || e) }, e && e.code || 500);
   }
 }
 

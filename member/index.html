@@ -429,6 +429,7 @@
       <div class="toolbar">
         <input class="inp" id="us-q" placeholder="🔍 搜尋姓名、LINE 名稱…">
         <button class="sbtn violet" id="btn-autopair">🔗 依身分證自動配對名冊</button>
+        <button class="sbtn" id="btn-richmenu" style="background:#06c755;color:#fff;">🧩 發佈 LINE 圖文選單</button>
       </div>
       <div class="card tbl-wrap"><table class="tbl" id="us-table"></table></div>
       <div class="cards-list" id="us-cards"></div>
@@ -489,6 +490,15 @@
 
     // ===== Firebase 身分驗證：LINE → 驗證伺服器（Cloudflare）→ Firebase，資料庫規則靠這個認人 =====
     const AUTH_URL = 'https://bst-auth.eurekateamstar.workers.dev';   // Cloudflare Worker 網址
+    // LINE 圖文選單：依會員狀態切換（訪客／團員）；uid 省略＝自己。失敗不影響其他功能
+    window.syncMenu = async (uid) => {
+      try {
+        if (!auth.currentUser) return null;
+        const idToken = await auth.currentUser.getIdToken();
+        const r = await fetch(AUTH_URL + '/menu', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, uid }) });
+        return await r.json().catch(() => null);
+      } catch (e) { return null; }
+    };
     const auth = initializeAuth(app, { persistence: [indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence] });   // 不載入彈出視窗登入模組，LINE 裡啟動快很多
     const liffUid = () => { try { const t = liff.getDecodedIDToken(); return (t && t.sub) || null; } catch (e) { return null; } };
     let fbAuthError = '';
@@ -910,14 +920,14 @@
         if (r.boundUserId && r.boundUserId !== uid) await updateDoc(doc(db, 'users', r.boundUserId), { rosterId: deleteField() }).catch(() => {});
         await updateDoc(doc(db, ROSTER, r.id), { boundUserId: uid, boundAt: serverTimestamp() });
       }
-      toast(`✅ 已核准 ${u.realName || ''}`);
+      toast(`✅ 已核准 ${u.realName || ''}`); syncMenu(uid);
     } catch (e) { toast('❌ 操作失敗'); }
   }
   async function rejectUser(uid) {
     const u = userById(uid); if (!u) return;
     const reason = await dialog({ title: `退回「${u.realName || ''}」`, msg: '請填寫退回原因，對方會看到並可以重新填寫。', input: { placeholder: '例如：生日與名冊不符，請確認' }, okText: '退回', danger: true });
     if (reason === null) return;
-    try { await updateDoc(doc(db, 'users', uid), { status: 'rejected', rejectReason: reason }); toast('已退回'); }
+    try { await updateDoc(doc(db, 'users', uid), { status: 'rejected', rejectReason: reason }); toast('已退回'); syncMenu(uid); }
     catch (e) { toast('❌ 操作失敗'); }
   }
 
@@ -1589,7 +1599,7 @@
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open');
     $('sheet').scrollTop = 0;
     const by = user.realName || profile.displayName || '';
-    const patch = async (data, msg) => { try { await updateDoc(doc(db, 'users', uid), data); toast(msg); setTimeout(() => { if (sheetUid === uid) openUser(uid); }, 300); } catch (e) { toast('❌ 操作失敗'); } };
+    const patch = async (data, msg) => { try { await updateDoc(doc(db, 'users', uid), data); toast(msg); if ('status' in data) syncMenu(uid); setTimeout(() => { if (sheetUid === uid) openUser(uid); }, 300); } catch (e) { toast('❌ 操作失敗'); } };
 
     // 管理員權限
     $('adm-all').onchange = e => document.querySelectorAll('[data-adm]').forEach(c => c.checked = e.target.checked);
@@ -1633,10 +1643,33 @@
       try {
         if (r && r.boundUserId === uid) await updateDoc(doc(db, ROSTER, r.id), { boundUserId: deleteField(), boundAt: deleteField() }).catch(() => {});
         await deleteDoc(doc(db, 'users', uid));
-        closeSheet(); toast('已踢出');
+        closeSheet(); toast('已踢出'); syncMenu(uid);
       } catch (e) { toast('❌ 操作失敗'); }
     };
   }
+
+  // 發佈 LINE 圖文選單（只有最高管理員）：建立訪客／團員兩種選單，再把所有已開通的人換成團員選單
+  $('btn-richmenu').onclick = async () => {
+    if (!user || user.role !== 'admin') return toast('只有最高管理員（全部系統）可以發佈');
+    const ok = await dialog({ title: '發佈 LINE 圖文選單？', msg: '會建立「訪客」「團員」兩種選單：\n・還沒開通的人看到：會員中心／入團申請／聯絡管理員\n・已開通的團員看到：會員中心／物資倉庫／救護紀錄表\n\n之後審核、停權、踢出都會自動切換。', okText: '發佈' });
+    if (!ok) return;
+    const btn = $('btn-richmenu'); btn.disabled = true; btn.textContent = '發佈中…';
+    try {
+      const idToken = await auth.currentUser.getIdToken();
+      const r = await fetch(AUTH_URL + '/menu-setup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+      const list = usersCache.filter(u => u.status === 'approved');
+      let n = 0;
+      for (let i = 0; i < list.length; i += 5) {
+        const res = await Promise.all(list.slice(i, i + 5).map(u => syncMenu(u.id)));
+        n += res.filter(x => x && x.ok).length;
+        btn.textContent = `套用中… ${Math.min(i + 5, list.length)}/${list.length}`;
+      }
+      toast(`✅ 已發佈，${n} 位團員已換成團員選單`, 3500);
+    } catch (e) { dialog({ title: '發佈失敗', msg: String(e.message || e) + (String(e.message).includes('LINE_BOT_TOKEN') ? '\n\n請先在 Cloudflare Worker 加上 Secret：LINE_BOT_TOKEN' : ''), okText: '知道了' }); }
+    btn.disabled = false; btn.textContent = '🧩 發佈 LINE 圖文選單';
+  };
 
   // 依身分證＋姓名，把已存在的會員自動配對到名冊
   $('btn-autopair').onclick = async () => {
@@ -1843,6 +1876,8 @@
       first = false;
       watchMyRoster(user && user.status === 'approved' ? user.rosterId : null);
       if (user && user.status === 'approved') watchEvents();
+      try { const k = 'bst_menu_' + profile.userId, v = user ? user.status : 'none';
+        if (localStorage.getItem(k) !== v && window.__menuSync !== v) (window.__menuSync = v, syncMenu()).then(res => { if (res && res.ok) try { localStorage.setItem(k, v); } catch (e) {} }); } catch (e) {}
       if (isAdmin()) startAdminWatch();
       else if (wasAdmin) { stopAdminWatch(); adminOn = false; }
       if (user && user.status === 'approved') isResubmit = false;
