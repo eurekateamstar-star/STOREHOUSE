@@ -110,13 +110,12 @@ async function parseRoute(req, env, json) {
 const SITE = 'https://tsushin-buishatun.pages.dev';
 const LIFF = id => 'https://liff.line.me/' + id;
 // 三張選單都是 LINE 標準大尺寸 2500×1686（非標準高度在手機上會被壓扁）
-// 上方 186px：標題列（一般民眾）或分頁列（團員：左 團員專區、右 一般資訊）；下面一張大卡＋兩張小卡
-const MW = 2500, MH = 1686, TAB = 186, ROW = 750;
-const grid3 = (acts, top) => [
-  { bounds: { x: 0, y: top, width: MW, height: TAB + ROW - top }, action: acts[0] },
-  { bounds: { x: 0, y: TAB + ROW, width: MW / 2, height: MH - TAB - ROW }, action: acts[1] },
-  { bounds: { x: MW / 2, y: TAB + ROW, width: MW / 2, height: MH - TAB - ROW }, action: acts[2] },
-];
+// 上方 186px：標題列（一般民眾）或分頁列（團員：左 團員專區、右 一般資訊）；下面一排三張直卡
+const MW = 2500, MH = 1686, TAB = 186;
+const grid3 = (acts, top) => acts.map((a, i) => {
+  const cw = Math.floor(MW / 3), x = i * cw;
+  return { bounds: { x, y: top, width: i === 2 ? MW - x : cw, height: MH - top }, action: a };
+});
 const tabs = () => [
   { bounds: { x: 0, y: 0, width: MW / 2, height: TAB }, action: { type: 'richmenuswitch', richMenuAliasId: 'bst-member', data: 'tab=member' } },
   { bounds: { x: MW / 2, y: 0, width: MW / 2, height: TAB }, action: { type: 'richmenuswitch', richMenuAliasId: 'bst-member-b', data: 'tab=public' } },
