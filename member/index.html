@@ -227,6 +227,10 @@
   @keyframes lotShake { 0%,100% { transform: rotate(-11deg) translateY(0); } 50% { transform: rotate(11deg) translateY(-6px); } }
   @keyframes lotOut { 0% { opacity: 1; transform: translateY(60px); } 100% { opacity: 1; transform: translateY(-120px) rotate(-6deg) scale(1.15); } }
   @keyframes lotPop { 0% { opacity: 0; transform: scale(.4); } 100% { opacity: 1; transform: scale(1.3); } }
+  .ev-av { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; flex-shrink: 0; margin-right: 6px; vertical-align: middle; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+  .ev-tag { display: inline-block; font-size: 12px; font-weight: 800; border-radius: 8px; padding: 2px 8px; white-space: nowrap; }
+  .ev-tag.lot { background: #fde8ea; color: var(--primary); } .ev-tag.none { background: #f1f5f9; color: #94a3b8; }
+  .ev-tag.paid { background: #dcfce7; color: #166534; } .ev-tag.unpaid { background: #fff7ed; color: #c2410c; }
   .lot-res { font-size: 64px; font-weight: 900; line-height: 1.2; margin: 4px 0 2px; background: linear-gradient(90deg, var(--primary), var(--accent)); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .att-card { margin-top: 14px; border-radius: 20px; padding: 16px; background: linear-gradient(135deg,#eff6ff,#fff); border: 2px solid #60a5fa; box-shadow: var(--shadow); }
   .att-card.done { border-color: #86efac; background: linear-gradient(135deg,#f0fdf4,#fff); }
@@ -1563,7 +1567,7 @@
       evRespCache[eid] = s.docs.map(d => ({ id: d.id, ...d.data() }));
       if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid);
     }, () => toast('讀取回覆失敗'));
-    const u2 = onSnapshot(doc(db, 'events', eid, 'admin', 'draw'), s => { const d = s.exists() ? s.data() : {}; evDraw[eid] = d.map || {}; evDrawBy[eid] = d.by2 || {}; evOver[eid] = d.groupOverride || {}; evPaid[eid] = d.paid || {}; if (drawSheetEid === eid) renderDrawSheet(eid); }, () => {});
+    const u2 = onSnapshot(doc(db, 'events', eid, 'admin', 'draw'), s => { const d = s.exists() ? s.data() : {}; evDraw[eid] = d.map || {}; evDrawBy[eid] = d.by2 || {}; evOver[eid] = d.groupOverride || {}; evPaid[eid] = d.paid || {}; if (drawSheetEid === eid) renderDrawSheet(eid); if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid); }, () => {});
     evRespUnsub = () => { u1(); u2(); };
     evRespUnsub._eid = eid;
   }
@@ -1585,12 +1589,16 @@
     const st = (k, t, n, c) => `<div class="ev-st ${evFilter === k ? 'on' : ''}" data-evf="${esc(k)}">${esc(t)}<b ${c ? `style="color:${c}"` : ''}>${n}</b></div>`;
     const shown = evFilter === 'all' || evFilter === 'none' ? rs : evFilter.startsWith('l:') ? rs.filter(r => r.attend !== 'no' && r.lunch === evFilter.slice(2)) : rs.filter(r => r.attend === evFilter);
     const fTitle = { all: '全部回覆', yes: '出席', join: '不出席但參與進香', no: '不參與', none: '名冊中未回覆' }[evFilter] || ('午膳・' + evFilter.slice(2));
-    const card = r => { const ro = rosterOf(r); return `<div class="ev-rc"><div class="n"><b>${esc(r.name || '')}</b> <span class="a">${ATT_SHORT[r.attend] || ''}</span></div>
+    const dmap = evDraw[eid] || {}, pmap = evPaid[eid] || {};
+    const avR = ro => { const u = ro && ro.boundUserId && userById(ro.boundUserId); return u && u.pictureUrl ? `<img class="ev-av" src="${esc(u.pictureUrl)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ''; };
+    const lotTag = r => { if (r.attend === 'no') return ''; const v = dmap[normName(r.name)]; return v ? `<span class="ev-tag lot">🎲 ${esc(v)}</span>` : '<span class="ev-tag none">未抽籤</span>'; };
+    const payTag = r => r.attend === 'no' ? '' : pmap[normName(r.name)] ? '<span class="ev-tag paid">✅ 已繳</span>' : '<span class="ev-tag unpaid">未繳</span>';
+    const card = r => { const ro = rosterOf(r); return `<div class="ev-rc"><div class="n">${avR(ro)}<b>${esc(r.name || '')}</b> <span class="a">${ATT_SHORT[r.attend] || ''}</span> ${lotTag(r)} ${payTag(r)}</div>
         <div class="s">${ro ? esc(rv(ro, 'position')) + '・' + esc(ro.cert || '') : '<span style="color:#b45309">未對應名冊</span>'}${r.lunch ? '　🍱 ' + esc(r.lunch) : ''}${r.lineName ? '　LINE：' + esc(r.lineName) : ''}</div>
         ${r.reason ? `<div class="x">原因：${esc(r.reason)}</div>` : ''}${r.comment ? `<div class="x">意見：${esc(r.comment)}</div>` : ''}
         <div class="t">${esc(fmtAt(tsMs(r.createdAt || r.updatedAt)))}<span style="float:right"><button class="sbtn" data-rede="${r.id}" style="padding:4px 10px;font-size:12px;">編輯</button> <button class="sbtn red" data-rdel="${r.id}" style="padding:4px 10px;font-size:12px;">刪除</button></span></div></div>`; };
-    const row = r => { const ro = rosterOf(r); return `<tr><td><b>${esc(r.name || '')}</b>${ro ? `<div style="font-size:11px;color:var(--sub)">${esc(rv(ro, 'position'))}・${esc(ro.cert || '')}</div>` : '<div style="font-size:11px;color:#b45309">未對應名冊</div>'}</td>
-        <td>${ATT_SHORT[r.attend] || ''}</td><td>${esc(r.lunch || '')}</td><td>${esc(r.reason || '')}</td><td>${esc(r.comment || '')}</td><td style="font-size:12px">${esc(r.lineName || '')}</td><td style="font-size:11px;color:var(--sub);white-space:nowrap">${esc(fmtAt(tsMs(r.createdAt || r.updatedAt)))}</td>
+    const row = r => { const ro = rosterOf(r); return `<tr><td><div style="display:flex;align-items:center;gap:8px;">${avR(ro)}<div><b>${esc(r.name || '')}</b>${ro ? `<div style="font-size:11px;color:var(--sub)">${esc(rv(ro, 'position'))}・${esc(ro.cert || '')}</div>` : '<div style="font-size:11px;color:#b45309">未對應名冊</div>'}</div></div></td>
+        <td>${ATT_SHORT[r.attend] || ''}</td><td>${lotTag(r)}</td><td>${payTag(r)}</td><td>${esc(r.lunch || '')}</td><td>${esc(r.reason || '')}</td><td>${esc(r.comment || '')}</td><td style="font-size:12px">${esc(r.lineName || '')}</td><td style="font-size:11px;color:var(--sub);white-space:nowrap">${esc(fmtAt(tsMs(r.createdAt || r.updatedAt)))}</td>
         <td style="white-space:nowrap"><button class="sbtn" data-rede="${r.id}" style="padding:4px 10px;font-size:12px;">編輯</button> <button class="sbtn red" data-rdel="${r.id}" style="padding:4px 10px;font-size:12px;">刪除</button></td></tr>`; };
     $('ev-list').innerHTML = `
       <button class="sbtn" id="ev-back" style="margin-bottom:10px;">← 所有出席調查</button>
@@ -1616,8 +1624,8 @@
       ${evFilter === 'none' ? `<div class="card" style="padding:12px 14px; font-size:14px; line-height:2;">${notYet.map(r => esc(r.name || '')).join('、') || '全部都回覆了 🎉'}</div>` : `
       <div class="ev-cards">${shown.map(card).join('') || '<div class="card empty">沒有資料</div>'}</div>
       <div class="card ev-tbl-wrap" style="padding:8px 10px; overflow-x:auto;">
-        <table class="ev-tbl"><thead><tr><th>姓名</th><th>出席</th><th>午膳</th><th>無法出席原因</th><th>意見</th><th>LINE 名稱</th><th>回覆時間</th><th></th></tr></thead>
-        <tbody>${shown.map(row).join('') || '<tr><td colspan="8"><div class="empty">沒有資料</div></td></tr>'}</tbody></table>
+        <table class="ev-tbl"><thead><tr><th>姓名</th><th>出席</th><th>抽籤</th><th>團費</th><th>午膳</th><th>無法出席原因</th><th>意見</th><th>LINE 名稱</th><th>回覆時間</th><th></th></tr></thead>
+        <tbody>${shown.map(row).join('') || '<tr><td colspan="10"><div class="empty">沒有資料</div></td></tr>'}</tbody></table>
       </div>`}
       <div style="font-size:12px; color:var(--sub); margin:8px 4px;">※ 依「姓名」自動對應名冊；同一人重複填寫以最後一次為準。顯示「未對應名冊」的，可能是名字寫法不同或尚未加入名冊。</div>`;
     $('ev-back').onclick = () => { evOpenId = null; evFilter = 'all'; renderEvents(); };
@@ -1733,7 +1741,7 @@
     const missing = DRAW_GROUPS.reduce((n, g) => n + groups[g].filter(p => !map[p.key]).length, 0);
     const done = total - missing;
     const avOf = p => { const u = p.ro && p.ro.boundUserId && userById(p.ro.boundUserId); return u && u.pictureUrl ? `<img class="dr-av" src="${esc(u.pictureUrl)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ''; };
-    const nm = p => `<button class="dr-n ${drSel === p.key ? 'sel' : ''} ${(evPaid[eid] || {})[p.key] ? 'paid' : ''}" data-dk="${esc(p.key)}">${(evPaid[eid] || {})[p.key] ? '<b class="pdk">✓</b>' : ''}${avOf(p)}${esc(p.name)}${p.r.attend === 'join' ? '<i>請假</i>' : ''}${by2[p.key] === 'admin' ? '<i class="ad">代抽</i>' : ''}${over[p.key] ? '<i class="mv">手動</i>' : ''}</button>`;
+    const nm = p => `<button class="dr-n ${drSel === p.key ? 'sel' : ''} ${(evPaid[eid] || {})[p.key] ? 'paid' : ''}" data-dk="${esc(p.key)}">${avOf(p)}${esc(p.name)}${p.r.attend === 'join' ? '<i>請假</i>' : ''}${by2[p.key] === 'admin' ? '<i class="ad">代抽</i>' : ''}${over[p.key] ? '<i class="mv">手動</i>' : ''}</button>`;
     const editor = (p, g) => `<div class="dr-ed">
         <div class="dr-ed-t">✏️ ${esc(p.name)}　<span>${esc(p.ro ? rv(p.ro, 'position') + '・' + (p.ro.cert || '') : '未對應名冊')}</span></div>
         <div class="dr-ed-l">換到哪一組</div>
@@ -1775,7 +1783,7 @@
       <h3>🎲 分組與抽籤（前／中／後）</h3>
       <div style="font-size:13px;color:var(--sub);line-height:1.7;margin-top:4px;">${esc(e.title || '')}<br>
         出席＋不出席但參與進香 共 <b>${total}</b> 人，已抽 <b>${done}</b>、還沒抽 <b>${missing}</b>；團費已繳 <b style="color:#16a34a">${DRAW_GROUPS.reduce((n, g) => n + groups[g].filter(p => (evPaid[eid] || {})[p.key]).length, 0)}</b> 人。每組平分成三份，多的放後面（10 人 → 3、3、4）。<br>
-        👆 <b>點名字</b>可以換組、指定時段、代抽籤或勾選繳費。<span style="background:#dcfce7;color:#166534;font-weight:800;border-radius:6px;padding:1px 6px;margin-left:6px;">✓ 綠底＝已繳團費</span></div>
+        👆 <b>點名字</b>可以換組、指定時段、代抽籤或勾選繳費。<span style="background:#dcfce7;color:#166534;font-weight:800;border-radius:6px;padding:1px 6px;margin-left:6px;">綠底＝已繳團費</span></div>
       <div class="dr-top"><div>
       <div class="dr-ed" style="margin-top:10px;background:${e.selfDraw ? '#ecfdf5' : '#f8fafc'};border-color:${e.selfDraw ? '#86efac' : '#e2e8f0'};">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
