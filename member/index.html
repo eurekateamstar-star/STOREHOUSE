@@ -243,6 +243,7 @@
   .r-card { display: flex; gap: 12px; align-items: center; padding: 13px 14px; margin-bottom: 8px; cursor: pointer; }
   .r-card .main { flex: 1; min-width: 0; }
   .r-card .nm { font-size: 16px; font-weight: 900; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .pill.pos-m { background: #f1f5f9; color: #475569; }
   .r-card .sub { font-size: 12px; color: var(--sub); margin-top: 3px; }
   .empty { text-align: center; color: #9ca3af; padding: 30px 10px; font-size: 14px; }
 
@@ -972,7 +973,7 @@
       + (list.map(r => `<tr data-r="${r.id}">${ROSTER_COLS.map(([k]) => `<td class="c-${k}">${k === 'name' ? `<span class="nm-cell">${av(r)}<b>${esc(rv(r, k) || '')}</b>${redDot(r)}</span>` : esc(rv(r, k) || '')}</td>`).join('')}<td>${st(r)}</td><td>${updText(r, true)}${confText(r)}</td></tr>`).join('')
         || `<tr><td colspan="${ROSTER_COLS.length + 2}"><div class="empty">沒有符合的資料</div></td></tr>`) + '</tbody>';
     $('rs-cards').innerHTML = list.map(r => `<div class="card r-card" data-r="${r.id}">${av(r)}
-        <div class="main"><div class="nm">${r.serial ? `<span style="color:var(--sub);font-size:13px;">${esc(r.serial)}</span>` : ''}${esc(rv(r, 'name'))}${redDot(r)} ${rv(r, 'position') !== '團員' ? `<span class="pill admin">${esc(rv(r, 'position'))}</span> ` : ''}${r.cert ? `<span class="pill cert">${esc(r.cert)}</span>` : ''}</div>
+        <div class="main"><div class="nm">${r.serial ? `<span style="color:var(--sub);font-size:13px;">${esc(r.serial)}</span>` : ''}${esc(rv(r, 'name'))}${redDot(r)} <span class="pill ${rv(r, 'position') === '團員' ? 'pos-m' : 'admin'}">${esc(rv(r, 'position'))}</span> ${r.cert ? `<span class="pill cert">${esc(r.cert)}</span>` : ''}</div>
         <div class="sub">${esc(r.phone || '無電話')}　${esc(rv(r, 'birthdayRaw') || '')}</div>${updText(r, true)}${confText(r)}</div>${st(r)}</div>`).join('')
       || '<div class="card empty">沒有符合的資料</div>';
     document.querySelectorAll('#rs-table [data-r], #rs-cards [data-r]').forEach(e => e.onclick = () => openRoster(e.dataset.r));
