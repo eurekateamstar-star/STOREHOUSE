@@ -110,7 +110,7 @@ async function parseRoute(req, env, json) {
 const SITE = 'https://tsushin-buishatun.pages.dev';
 const LIFF = id => 'https://liff.line.me/' + id;
 const MENUS = {
-  guest: { alias: 'bst-guest', name: '白沙屯醫護團｜訪客', img: 'guest.png', areas: [
+  guest: { alias: 'bst-guest', name: '白沙屯醫護團｜訪客', img: 'guest.jpg', areas: [
     { type: 'uri', label: '會員中心', uri: LIFF('2011820105-x1KU6xLW') },
     { type: 'uri', label: '入團申請', uri: SITE + '/join/' },
     { type: 'message', label: '聯絡管理員', text: '聯絡管理員' },
