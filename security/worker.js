@@ -110,8 +110,8 @@ async function parseRoute(req, env, json) {
 const SITE = 'https://tsushin-buishatun.pages.dev';
 const LIFF = id => 'https://liff.line.me/' + id;
 // 三張選單都是 LINE 標準大尺寸 2500×1686（非標準高度在手機上會被壓扁）
-// 上方 186px：標題列（一般民眾）或分頁列（團員：左 團員專區、右 一般資訊）；下面一排三張直卡
-const MW = 2500, MH = 1686, TAB = 186;
+// 團員兩頁上方 286px 是分頁列（左 團員專區、右 一般資訊）；一般民眾上方是標題列（整張卡都可按）；下面一排三張直卡
+const MW = 2500, MH = 1686, TAB = 286;
 const grid3 = (acts, top) => acts.map((a, i) => {
   const cw = Math.floor(MW / 3), x = i * cw;
   return { bounds: { x, y: top, width: i === 2 ? MW - x : cw, height: MH - top }, action: a };
