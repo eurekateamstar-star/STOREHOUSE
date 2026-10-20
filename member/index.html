@@ -1830,8 +1830,8 @@
     const totals = [];
     DRAW_GROUPS.forEach(g => {
       const ppl = groups[g]; if (!ppl.length) return;
-      // 每組一個工作表：先簽到表、再繳費紀錄。每頁 17 人，換頁時標題和表頭會重印一次；一張表印完才換下一張
-      const PER = 17;
+      // 每組一個工作表：先簽到表、再繳費紀錄。每頁 20 人，換頁時標題和表頭會重印一次；一張表印完才換下一張
+      const PER = 20;
       const ws = wb.addWorksheet(g.replace(/[\\/?*[\]:]/g, '').slice(0, 31), { pageSetup: { orientation: 'portrait', paperSize: 9, fitToPage: false, scale: 100, horizontalCentered: true,
         margins: { left: .35, right: .35, top: .45, bottom: .5, header: .2, footer: .25 } }, headerFooter: { oddFooter: '&C第 &P 頁，共 &N 頁' } });
       ws.columns = [8, 18, 26, 15, 15, 16].map(w => ({ width: w }));
@@ -1849,7 +1849,7 @@
           const hr = ws.getRow(cur + 2); hr.height = 28;
           H.forEach((h, i) => { const c = hr.getCell(i + 1); cellSet(c, h, { bold: true }); c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3EDEA' } }; });
           cur += 3;
-          ppl.slice(pg * PER, (pg + 1) * PER).forEach((p, j) => { const i = pg * PER + j, row = ws.getRow(cur); row.height = 34; rowVals(p, i, cur).forEach((v, k) => cellSet(row.getCell(k + 1), v)); dataRows.push(cur); cur++; });
+          ppl.slice(pg * PER, (pg + 1) * PER).forEach((p, j) => { const i = pg * PER + j, row = ws.getRow(cur); row.height = 32; rowVals(p, i, cur).forEach((v, k) => cellSet(row.getCell(k + 1), v)); dataRows.push(cur); cur++; });
         }
         const tr = cur, row = ws.getRow(tr); row.height = 30;
         totalVals(dataRows[0], dataRows[dataRows.length - 1]).forEach((v, k) => cellSet(row.getCell(k + 1), v, { bold: true }));
