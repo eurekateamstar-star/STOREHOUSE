@@ -174,7 +174,11 @@
   #rs-table td.c-emName, #rs-table td.c-shirtSize { border-left: 1px dashed #eadfdb; } #rs-table td.c-emPhone, #rs-table td.c-pantsSize { border-right: 1px dashed #eadfdb; }
   #rs-table td.c-serial, #rs-table td.c-position, #rs-table td.c-joinYear, #rs-table td.c-name, #rs-table td.c-birthdayRaw, #rs-table td.c-idCard,
   #rs-table td.c-phone, #rs-table td.c-emName, #rs-table td.c-emRelation, #rs-table td.c-emPhone, #rs-table td.c-shirtSize, #rs-table td.c-pantsSize { white-space: nowrap; word-break: normal; }
-  #rs-table td.c-certText { min-width: 60px; } #rs-table td.c-address { min-width: 170px; } #rs-table td.c-education { min-width: 90px; max-width: 180px; } #rs-table td.c-notes { min-width: 90px; max-width: 170px; font-size: 11px; color: #6b7280; }
+  /* 長的欄位只顯示一行，多的用「…」，點進去看完整內容 */
+  #rs-table td { white-space: nowrap; word-break: normal; }
+  #rs-table td.c-certText, #rs-table td.c-address, #rs-table td.c-job, #rs-table td.c-introducer, #rs-table td.c-education, #rs-table td.c-notes, #rs-table td.c-lineName { overflow: hidden; text-overflow: ellipsis; }
+  #rs-table td.c-certText { max-width: 90px; } #rs-table td.c-address { max-width: 190px; } #rs-table td.c-job { max-width: 90px; } #rs-table td.c-introducer { max-width: 60px; }
+  #rs-table td.c-education { max-width: 110px; } #rs-table td.c-notes { max-width: 110px; font-size: 11px; color: #6b7280; } #rs-table td.c-lineName { max-width: 90px; }
   #rs-table .nm-cell .mini-av { display: none; }
   #rs-table .line-who .mini-av { display: inline-flex; }
   #rs-table .pill { font-size: 11px; padding: 1px 6px; }
