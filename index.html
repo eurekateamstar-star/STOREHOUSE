@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#000000">
+    <meta name="theme-color" content="#f6f3f2">
     <title>智慧行動倉儲管理 App</title>
     <!-- 引入 html5-qrcode 掃描庫與 qrcode.js 產生庫 -->
     <!-- LINE LIFF SDK -->
@@ -479,6 +479,95 @@
         .cert-btn{border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:#f2f2f7;font-size:14px;font-weight:600;padding:10px 4px;border-radius:12px;cursor:pointer;font-family:inherit;}
         .cert-btn:active{transform:scale(.96);}
         .cert-btn.on{background:#0a84ff;border-color:#0a84ff;color:#fff;}
+
+        /* ================================================================
+           淺色主題：跟會員中心一致（米白底、白色卡片、紅橘漸層）
+           ================================================================ */
+        :root{--primary:#D65A68;--accent:#F08339;--ink:#1f2430;--sub:#6b7280;--line:rgba(0,0,0,.07);
+              --card:rgba(255,255,255,.88);--card-border:rgba(255,255,255,.95);--shadow:0 10px 30px rgba(31,38,135,.07);--soft:#f3efed;}
+        html,body{background:#f6f3f2 !important;color:var(--ink) !important;font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;}
+        .phone-frame,#main-menu-view,#overview-view,#logs-view,#lookup-view,#users-view,#me-view,.image-map-container,#map-loading-overlay,#panorama-view{background:#f6f3f2 !important;color:var(--ink);}
+        #main-menu-view,#logs-view,#lookup-view,#me-view,#users-view{
+            background:radial-gradient(circle at 0% 0%,rgba(214,90,104,.13),rgba(255,255,255,0) 55%),radial-gradient(circle at 100% 100%,rgba(240,131,57,.11),rgba(255,255,255,0) 55%),#f6f3f2 !important;}
+        #login-view{background:radial-gradient(circle at 0% 0%,rgba(214,90,104,.16),rgba(255,255,255,0) 60%),radial-gradient(circle at 100% 100%,rgba(240,131,57,.14),rgba(255,255,255,0) 60%),#f6f3f2 !important;color:var(--ink);}
+        .login-title{color:var(--ink);font-weight:900;} .login-subtitle{color:var(--sub);}
+
+        /* 標題列 */
+        .wh-org{font-size:11px;font-weight:700;color:#9a9a9a;letter-spacing:2px;}
+        .wh-title{font-size:28px;font-weight:900;margin-top:2px;background:linear-gradient(90deg,var(--primary),var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:0;}
+        #preload-status{color:var(--sub) !important;}
+        #menu-user{color:var(--primary) !important;font-weight:800 !important;}
+
+        /* 卡片 */
+        .apple-card,.menu-card,.ov-box,.log-card,.grid-item-card,.borrower-card{
+            background:var(--card) !important;border:1px solid var(--card-border) !important;box-shadow:var(--shadow);color:var(--ink);
+            backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);}
+        .menu-card{border-radius:22px;padding:22px 14px;}
+        .menu-card:active,.borrower-card:active{background:#fff !important;transform:scale(.97);}
+        .menu-card-icon{width:56px;height:56px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:10px;
+            background:linear-gradient(135deg,#fde8ea,#fdeedd);box-shadow:inset 0 0 0 1px rgba(214,90,104,.08);}
+        .menu-card-title{color:var(--ink) !important;font-size:15px;font-weight:800;}
+        .menu-card-desc{color:var(--sub) !important;font-size:11.5px;line-height:1.5;}
+        #menu-card-me{background:linear-gradient(135deg,#D65A68 0%,#E97452 55%,#F08339 100%) !important;border:none !important;box-shadow:0 16px 34px rgba(214,90,104,.30);}
+        #menu-card-me .menu-card-title,#menu-card-me .menu-card-desc{color:#fff !important;}
+        #menu-card-me .menu-card-icon{background:rgba(255,255,255,.22);box-shadow:none;}
+        .grid-item-card.empty-slot{background:rgba(255,255,255,.5) !important;border:1.5px dashed #d8d2cf !important;color:var(--sub);}
+        .grid-item-card img{background:var(--soft);}
+        .grid-item-name,.borrower-card-name,.ov-box-title{color:var(--ink) !important;}
+        .ov-item{color:#4b5563;border-left-color:var(--primary);}
+        .ov-page-title{color:var(--primary);border-bottom-color:var(--line);}
+        .log-header{color:var(--ink);}
+
+        /* 按鈕 */
+        .apple-btn{background:linear-gradient(90deg,var(--primary),var(--accent));box-shadow:0 8px 18px rgba(214,90,104,.28);font-weight:800;border-radius:14px;}
+        .apple-btn:active{background:linear-gradient(90deg,#c94f5d,#e5762f);}
+        .apple-btn.secondary{background:#fff !important;color:var(--ink) !important;border:1.5px solid #ebe6e3 !important;box-shadow:0 2px 8px rgba(0,0,0,.04);}
+        .apple-btn.danger{background:#dc2626;box-shadow:0 6px 14px rgba(220,38,38,.25);}
+        .apple-btn.success{background:#16a34a;box-shadow:0 6px 14px rgba(22,163,74,.25);}
+        .fab-main-btn{background:linear-gradient(135deg,var(--primary),var(--accent));box-shadow:0 10px 26px rgba(214,90,104,.45);}
+
+        /* 輸入框 */
+        .apple-input,select.apple-input,textarea.apple-input{background:#fff !important;border:1.5px solid #e5e7eb !important;color:var(--ink) !important;}
+        .apple-input:focus{border-color:var(--primary) !important;background:#fff !important;}
+        .apple-input::placeholder{color:#a3a3a3;}
+        input[type="date"]::-webkit-calendar-picker-indicator{filter:none;}
+        .progress-bar-container{background:#ece7e4;}
+
+        /* 彈出視窗 */
+        .modal{background:rgba(255,255,255,.97) !important;color:var(--ink) !important;box-shadow:0 -16px 40px rgba(0,0,0,.12) !important;border-top:none !important;}
+        #backdrop,#borrower-backdrop{background:rgba(31,36,48,.35) !important;}
+        .modal h2,.modal h3{color:var(--ink);}
+
+        /* 地圖上方膠囊、換頁 */
+        .nav-back-pill,.header-pill,.page-nav,.side-arrow{background:rgba(255,255,255,.82) !important;border:1px solid rgba(255,255,255,.95) !important;
+            box-shadow:0 8px 22px rgba(31,36,48,.12) !important;}
+        .nav-back-pill{color:var(--primary);}
+        .header-title,.page-nav-title{color:var(--ink) !important;}
+        .header-btns button,.header-btns .pill-btn,.page-nav-btn{color:var(--ink) !important;}
+        .page-nav-btn{background:var(--soft) !important;}
+        .header-btns button.active{background:rgba(214,90,104,.14) !important;color:var(--primary) !important;}
+        .side-arrow{color:var(--primary) !important;animation:none;}
+        .mode-hint{background:rgba(255,255,255,.92) !important;color:#c2410c !important;border-color:rgba(240,131,57,.35) !important;box-shadow:0 6px 16px rgba(0,0,0,.08);}
+        #map-loading-overlay .spinner{border-color:rgba(214,90,104,.15);border-top-color:var(--primary);}
+
+        /* 標籤、切換鈕 */
+        .lookup-chip,.tier-chip,.ov-fold-all,.ov-fold{background:#fff !important;border:1px solid #ebe6e3 !important;color:#4b5563 !important;}
+        .lookup-chip.active-chip,.tier-chip.on{background:var(--primary) !important;border-color:var(--primary) !important;color:#fff !important;}
+        .ov-tier-title{color:#c2410c;} .ov-tier-title span:last-child,.lookup-section-title{color:var(--sub) !important;}
+        .u-view-toggle{background:#ece7e4;} .u-view-toggle button{color:#4b5563;} .u-view-toggle button.on{background:#fff;color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.08);}
+        .cert-btn.on{background:var(--primary) !important;border-color:var(--primary) !important;}
+
+        /* 頁面內直接寫死的深色字／底，改成淺色主題對應色 */
+        [style*="color:#8e8e93"],[style*="color: #8e8e93"]{color:var(--sub) !important;}
+        [style*="color:#0a84ff"],[style*="color: #0a84ff"]{color:var(--primary) !important;}
+        [style*="color:#d1d1d6"],[style*="color: #d1d1d6"],[style*="color:#c7c7cc"],[style*="color: #c7c7cc"],[style*="color:#f2f2f7"],[style*="color: #f2f2f7"],[style*="color:#a1a1a6"],[style*="color:#aaa"]{color:#4b5563 !important;}
+        [style*="color:#636366"],[style*="color: #636366"]{color:#9ca3af !important;}
+        #modal-box-title,#view-item-name{color:var(--ink) !important;}
+        [style*="background:#2c2c2e"],[style*="background: #2c2c2e"],[style*="background:#1c1c1e"],[style*="background: #1c1c1e"],
+        [style*="background:rgba(255,255,255,0.06)"],[style*="background:rgba(255,255,255,0.04)"],[style*="background:rgba(255,255,255,.08)"],[style*="background: rgba(255, 255, 255, 0.08)"],
+        [style*="background:rgba(44"],[style*="background: rgba(44"]{background:var(--soft) !important;color:var(--ink);}
+        .modal [style*="background:#000"],.modal [style*="background: #000"]{background:var(--soft) !important;}
+        [style*="border:1px solid rgba(255,255,255"],[style*="border: 1px solid rgba(255, 255, 255"]{border-color:#ebe6e3 !important;}
     </style>
 </head>
 <body>
@@ -551,7 +640,8 @@
         <div id="main-menu-view">
             <div class="menu-header">
                 <div>
-                    <div style="font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">倉儲中樞</div>
+                    <div class="wh-org">白沙屯拱天宮醫療團</div>
+                    <div class="wh-title">倉儲中樞</div>
                     <div style="font-size: 13px; color: #8e8e93;" id="preload-status">系統就緒</div>
                     <div id="menu-user" style="font-size:13px; color:#0a84ff; font-weight:600; margin-top:2px;"></div>
                 </div>
