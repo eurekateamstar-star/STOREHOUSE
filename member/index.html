@@ -1991,10 +1991,10 @@
       let firstBack = true;
       const rows = ts.map(t => { const ms = t.m.filter(k => ppl[k]), back = t.l.startsWith('轎後'), cls = back && firstBack ? 'xb' : ''; if (back) firstBack = false;
         const cells = Array.from({ length: 6 }, (_, j) => { const k = ms[j], p = k && ppl[k];
-          return p ? `<td class="xm ${schSel && schSel.k === k && schSel.d === d ? 'sel' : ''}" data-sd="${d}" data-sk="${esc(k)}"><span style="background:${CAT_BG[p.cat]};${j === 0 ? 'font-weight:900;' : ''}">${j === 0 ? '★' : ''}${esc(p.name)}</span></td>` : '<td class="xm"></td>'; }).join('');
+          return p ? `<td class="xm ${schSel && schSel.k === k && schSel.d === d ? 'sel' : ''}" data-sd="${d}" data-sk="${esc(k)}"><span style="background:${CAT_BG[p.cat]};${j === 0 ? 'font-weight:900;' : ''}">${esc(p.name)}</span></td>` : '<td class="xm"></td>'; }).join('');
         const extra = ms.length > 6 ? `<div style="font-size:11px;color:#b91c1c">＋${ms.slice(6).map(k => esc(ppl[k].name)).join('、')}</div>` : '';
         const mv = schSel && schSel.d === d;
-        return `<tr class="${cls}"><th class="xl ${mv ? 'mv' : ''}" ${mv ? `data-mvd="${d}" data-mvl="${t.l}" title="移到這組"` : ''}>${mv ? '⬅ ' : ''}${t.l}</th>${cells}<td class="xn"><input class="xnote" data-nd="${d}" data-nl="${t.l}" value="${esc(t.note || '')}" placeholder="攜帶裝備／備註">${extra}</td></tr>`; }).join('');
+        return `<tr class="${cls}"><th class="xl ${mv ? 'mv' : ''}" ${mv ? `data-mvd="${d}" data-mvl="${t.l}" title="移到這組"` : ''}>${mv ? '⬅ ' : ''}${t.l}</th>${cells}<td class="xn"><div class="xnote ${t.note ? '' : 'emp'}" data-nd="${d}" data-nl="${t.l}">${t.note ? esc(t.note) : '＋裝備'}</div>${extra}</td></tr>`; }).join('');
       return `<div class="xd"><table class="xt"><thead><tr><th class="xc">組別</th><th colspan="6" class="xdate">${dd.getMonth() + 1}月${dd.getDate()}日(${WK[dd.getDay()]})<small>${SLOTS.filter(sl => inRange(sl, d)).join('、')}・${pres.length} 人・${ts.length} 組</small></th><th class="xcmd">指揮官:${esc(cmd)}</th></tr></thead>
         <tbody>${rows || '<tr><td colspan="8" class="sc-empty">按「自動排班」</td></tr>'}
         <tr><td colspan="8" class="xf">◎值日生：中巴－　　　住宿－　　　物資車盤點－</td></tr></tbody></table>
@@ -2016,16 +2016,13 @@
         .xt .xl{font-size:15px;font-weight:900;color:var(--primary)}.xt .xl.mv{cursor:pointer;background:#fde8ea;outline:2px dashed var(--primary);outline-offset:-4px;border-radius:10px}
         .xt td.xm{padding:4px 3px}.xt td.xm>span{display:block;border-radius:10px;padding:6px 2px;font-size:14px;cursor:pointer}.xt td.xm.sel>span{outline:2.5px solid var(--primary);outline-offset:1px}
         .xt tr.xb>*{border-top:2px solid #e9b8bf}
-        .xnote{width:100%;border:1px dashed #e5d5d0;border-radius:8px;padding:5px 6px;font:inherit;font-size:12px;color:#7c2d12;background:#fffaf8}.xnote:focus{outline:none;border-style:solid;border-color:var(--primary);background:#fff}
+        .xnote{white-space:normal;line-height:1.25;font-size:12px;color:#b91c1c;cursor:pointer;border-radius:8px;padding:3px 4px;text-align:left}.xnote.emp{color:#c9b5ae;border:1px dashed #ead9d4;text-align:center}.xnote:hover{background:#fff1f2}
         @media (max-width:760px){
-          .xd{border-radius:16px}.xt,.xt thead,.xt tbody{display:block}.xt thead tr{display:flex;align-items:center;flex-wrap:wrap;padding:10px 12px;gap:4px 10px}
-          .xt thead th{display:block;height:auto;border:none;padding:0}.xt .xc{display:none!important}.xt .xdate{font-size:19px;padding:0;flex:1}.xt .xdate small{display:block;margin:2px 0 0}
-          .xt .xcmd{width:auto;text-align:left;padding:0;font-size:12px}
-          .xt tbody tr{display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:8px 10px;border-bottom:1px solid #f3ece9}
-          .xt tbody tr>*{display:block;height:auto;border:none!important;padding:0;width:auto}
-          .xt .xl{width:100%!important;text-align:left;font-size:14px;margin-bottom:2px}.xt td.xm:empty,.xt .xn:empty{display:none}
-          .xt td.xm{padding:0;flex:0 0 calc((100% - 16px) / 5);min-width:0}.xt td.xm>span{padding:6px 1px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:clip;letter-spacing:-.5px}.xt .xn{width:100%!important;margin-top:4px}
-          .xt tbody tr.xb{border-top:2px solid #e9b8bf}.xt .xf{width:100%;white-space:normal;padding:4px 0}
+          .xd{border-radius:14px}.xt th,.xt td{height:30px;font-size:12px;padding:0 1px}
+          .xt thead th{height:44px}.xt .xc{width:38px;font-size:10px}.xt .xdate{font-size:16px;padding-left:2px}.xt .xdate small{display:block;margin:0;font-size:10px}
+          .xt .xcmd{width:62px;font-size:10px;padding-right:4px;white-space:normal;line-height:1.2}
+          .xt .xl{font-size:11px;letter-spacing:-.5px}.xt td.xm{padding:2px 1px}.xt td.xm>span{padding:4px 0;font-size:11.5px;border-radius:6px;letter-spacing:-.8px;overflow:hidden}
+          .xt .xn{width:62px}.xnote{font-size:9.5px;padding:2px}.xt .xf{font-size:11px;padding:6px 8px}
         }.xt .xn{width:150px;color:var(--sub);font-size:12px}
         .xt .xf{text-align:left;font-size:13px;padding:10px 14px;color:var(--sub);background:#fcfaf9;border-bottom:none}.sc-tg{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;align-items:start}
         .sc-day{background:#faf6f4;border-radius:16px;padding:10px}.sc-dh{font-weight:900;font-size:16px;margin-bottom:6px;display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap}.sc-dh span{font-size:12px;color:var(--sub);font-weight:700}
@@ -2078,9 +2075,11 @@
       const t = ts.find(x => x.l === b.dataset.mvl); if (t) t.m.push(k);
       schSel = null; save({ days: { ...dt, [d]: ts.filter(x => x.m.length) } }, '已換組');
     });
-    document.querySelectorAll('.xnote').forEach(inp => inp.onchange = () => {
-      const d = inp.dataset.nd, ts = (dt[d] || []).map(t => t.l === inp.dataset.nl ? { ...t, note: inp.value.trim() } : t);
-      save({ days: { ...dt, [d]: ts } }, '已儲存');
+    document.querySelectorAll('.xnote').forEach(el => el.onclick = async () => {
+      const d = el.dataset.nd, l = el.dataset.nl, cur = ((dt[d] || []).find(t => t.l === l) || {}).note || '';
+      const v = await dialog({ title: `${dLabel(d)} ${l} 攜帶裝備`, input: { value: cur, placeholder: '例如：救護包*2、AMBU包' }, okText: '儲存' });
+      if (v === null) return;
+      save({ days: { ...dt, [d]: (dt[d] || []).map(t => t.l === l ? { ...t, note: v } : t) } }, '已儲存');
     });
     if ($('sc-xlsx')) $('sc-xlsx').onclick = () => exportSchedXlsx(eid);
   }
