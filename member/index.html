@@ -205,14 +205,21 @@
   .link-btn { background: none; border: none; color: #9ca3af; font-size: 13px; text-decoration: underline; cursor: pointer; font-family: inherit; }
   .pos-sel { width: 100%; padding: 10px 12px; font-size: 15px; border-radius: 12px; border: 1.5px solid #e5e7eb; background: #fff; font-family: inherit; }
   .lot-ov { position: fixed; inset: 0; z-index: 9000; background: rgba(31,36,48,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
-  .lot-dice { font-size: 110px; line-height: 1; animation: lotRoll .45s linear infinite; filter: drop-shadow(0 18px 18px rgba(0,0,0,.35)); }
-  .lot-ov.stop .lot-dice { animation: lotLand .5s cubic-bezier(.2,1.6,.4,1) forwards; }
-  .lot-spin { font-size: 64px; font-weight: 900; color: #fff; min-width: 120px; text-align: center; text-shadow: 0 6px 18px rgba(0,0,0,.35); }
-  .lot-ov.stop .lot-spin { animation: lotPop .6s cubic-bezier(.2,1.8,.4,1) forwards; color: #ffe8c2; }
+  .lot-stage { position: relative; width: 170px; height: 250px; }
+  .lot-tube { position: absolute; left: 0; bottom: 0; width: 170px; height: 220px; transform-origin: 50% 90%; animation: lotShake .32s ease-in-out infinite; filter: drop-shadow(0 18px 20px rgba(0,0,0,.35)); z-index: 2; }
+  .lot-ov.stop .lot-tube { animation: none; transform: rotate(0); transition: transform .2s; }
+  .lot-stick { position: absolute; left: 50%; bottom: 120px; width: 34px; height: 210px; margin-left: -17px; border-radius: 8px 8px 4px 4px; z-index: 1; opacity: 0;
+    background: linear-gradient(90deg, #e9c98f, #f8e2b3 45%, #d9b273); box-shadow: 0 6px 16px rgba(0,0,0,.25), inset 0 0 0 2px rgba(150,100,40,.35);
+    display: flex; align-items: flex-start; justify-content: center; padding-top: 14px; }
+  .lot-stick::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 12px; border-radius: 8px 8px 0 0; background: #c81e1e; }
+  .lot-stick span { font-size: 30px; font-weight: 900; color: #9a1b1b; writing-mode: vertical-rl; margin-top: 10px; }
+  .lot-ov.stop .lot-stick { animation: lotOut .9s cubic-bezier(.2,1.2,.3,1) forwards; }
+  .lot-spin { font-size: 64px; font-weight: 900; color: #fff; min-width: 120px; text-align: center; text-shadow: 0 6px 18px rgba(0,0,0,.35); opacity: 0; height: 0; }
+  .lot-ov.stop .lot-spin { animation: lotPop .6s .6s cubic-bezier(.2,1.8,.4,1) forwards; color: #ffe8c2; height: auto; }
   .lot-cap { color: #fff; font-size: 16px; font-weight: 800; opacity: .9; }
-  @keyframes lotRoll { 0% { transform: translateY(0) rotate(0); } 25% { transform: translateY(-38px) rotate(90deg) scale(1.05); } 50% { transform: translateY(0) rotate(180deg); } 75% { transform: translateY(-24px) rotate(270deg) scale(1.05); } 100% { transform: translateY(0) rotate(360deg); } }
-  @keyframes lotLand { 0% { transform: translateY(-40px) rotate(-30deg); } 100% { transform: translateY(0) rotate(0); } }
-  @keyframes lotPop { 0% { transform: scale(.4); } 100% { transform: scale(1.35); } }
+  @keyframes lotShake { 0%,100% { transform: rotate(-11deg) translateY(0); } 50% { transform: rotate(11deg) translateY(-6px); } }
+  @keyframes lotOut { 0% { opacity: 1; transform: translateY(60px); } 100% { opacity: 1; transform: translateY(-120px) rotate(-6deg) scale(1.15); } }
+  @keyframes lotPop { 0% { opacity: 0; transform: scale(.4); } 100% { opacity: 1; transform: scale(1.3); } }
   .lot-res { font-size: 64px; font-weight: 900; line-height: 1.2; margin: 4px 0 2px; background: linear-gradient(90deg, var(--primary), var(--accent)); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .att-card { margin-top: 14px; border-radius: 20px; padding: 16px; background: linear-gradient(135deg,#eff6ff,#fff); border: 2px solid #60a5fa; box-shadow: var(--shadow); }
   .att-card.done { border-color: #86efac; background: linear-gradient(135deg,#f0fdf4,#fff); }
@@ -1494,19 +1501,19 @@
       b.disabled = true; b.textContent = '抽籤中…';
       // 骰子動畫：至少轉 2.2 秒，同時跟伺服器抽籤
       const ov = document.createElement('div'); ov.className = 'lot-ov';
-      ov.innerHTML = '<div class="lot-dice">🎲</div><div class="lot-spin">前</div><div class="lot-cap">抽籤中…</div>';
+      ov.innerHTML = '<div class="lot-stage"><div class="lot-stick"><span></span></div><svg class="lot-tube" viewBox="0 0 170 220"><defs><linearGradient id="lg1" x1="0" x2="1"><stop offset="0" stop-color="#7a1414"/><stop offset=".45" stop-color="#c62828"/><stop offset="1" stop-color="#6e1010"/></linearGradient></defs><rect x="48" y="8" width="12" height="90" rx="3" fill="#e8c88c" stroke="#b8893f" stroke-width="1.5" transform="rotate(-12 54 98)"/><rect x="48" y="8" width="12" height="9" rx="3" fill="#c81e1e" transform="rotate(-12 54 98)"/><rect x="64" y="0" width="12" height="90" rx="3" fill="#e8c88c" stroke="#b8893f" stroke-width="1.5" transform="rotate(-5 70 90)"/><rect x="64" y="0" width="12" height="9" rx="3" fill="#c81e1e" transform="rotate(-5 70 90)"/><rect x="80" y="-4" width="12" height="90" rx="3" fill="#e8c88c" stroke="#b8893f" stroke-width="1.5" transform="rotate(2 86 86)"/><rect x="80" y="-4" width="12" height="9" rx="3" fill="#c81e1e" transform="rotate(2 86 86)"/><rect x="96" y="2" width="12" height="90" rx="3" fill="#e8c88c" stroke="#b8893f" stroke-width="1.5" transform="rotate(8 102 92)"/><rect x="96" y="2" width="12" height="9" rx="3" fill="#c81e1e" transform="rotate(8 102 92)"/><rect x="110" y="10" width="12" height="90" rx="3" fill="#e8c88c" stroke="#b8893f" stroke-width="1.5" transform="rotate(14 116 100)"/><rect x="110" y="10" width="12" height="9" rx="3" fill="#c81e1e" transform="rotate(14 116 100)"/><rect x="72" y="6" width="12" height="90" rx="3" fill="#e8c88c" stroke="#b8893f" stroke-width="1.5" transform="rotate(-1 78 96)"/><rect x="72" y="6" width="12" height="9" rx="3" fill="#c81e1e" transform="rotate(-1 78 96)"/><rect x="88" y="4" width="12" height="90" rx="3" fill="#e8c88c" stroke="#b8893f" stroke-width="1.5" transform="rotate(5 94 94)"/><rect x="88" y="4" width="12" height="9" rx="3" fill="#c81e1e" transform="rotate(5 94 94)"/><rect x="30" y="70" width="110" height="146" rx="14" fill="url(#lg1)"/><ellipse cx="85" cy="72" rx="55" ry="12" fill="#4a0b0b"/><rect x="30" y="92" width="110" height="8" fill="#e0b54a"/><rect x="30" y="190" width="110" height="8" fill="#e0b54a"/><circle cx="85" cy="145" r="28" fill="#f5d77a"/><text x="85" y="157" font-size="34" font-weight="900" text-anchor="middle" fill="#8b1a1a" font-family="serif">籤</text></svg></div><div class="lot-spin"></div><div class="lot-cap">搖籤中…</div>';
       document.body.appendChild(ov);
       const sp = ov.querySelector('.lot-spin'); let n = 0;
-      const tick = setInterval(() => { sp.textContent = SLOTS[n++ % 3]; }, 110);
+      const tick = setInterval(() => { n++; }, 110);
       const wait = ms => new Promise(ok => setTimeout(ok, ms));
       try { if (navigator.vibrate) navigator.vibrate([30, 60, 30]); } catch (e) {}
       try {
         const [j] = await Promise.all([lotCall(eid, 'draw'), wait(2200)]);
         clearInterval(tick);
         if (j.state === 'done') {
-          sp.textContent = j.slot; ov.classList.add('stop'); ov.querySelector('.lot-cap').textContent = '🎉 你抽到「' + j.slot + '」';
+          sp.textContent = j.slot; ov.querySelector('.lot-stick span').textContent = j.slot; ov.classList.add('stop'); ov.querySelector('.lot-cap').textContent = '🎉 你抽到「' + j.slot + '」';
           try { if (navigator.vibrate) navigator.vibrate(120); } catch (e) {}
-          await wait(1800);
+          await wait(2400);
         } else toast('目前還不能抽籤');
         ov.remove(); lotState[eid] = j; renderLotCards();
       } catch (err) { clearInterval(tick); ov.remove(); b.disabled = false; b.textContent = '🎲 抽籤'; toast('❌ ' + (err.message || '抽籤失敗')); }
