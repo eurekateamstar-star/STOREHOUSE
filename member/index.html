@@ -292,7 +292,7 @@
   @media (min-width: 761px) { .sheet { left: 50%; right: auto; bottom: auto; top: 50%; transform: translate(-50%, -50%); width: 560px; max-height: 86vh; border-radius: 22px; } }
   /* 分組抽籤：電腦上用大視窗，各組橫向排開，一眼看完 */
   @media (min-width: 900px) {
-    .sheet.wide { width: 96vw; max-width: 1600px; max-height: 92vh; padding: 22px 26px; }
+    .sheet.wide { width: 98vw; max-width: none; max-height: 96vh; padding: 22px 28px; }
     .sheet.wide .dr-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: start; }
     .sheet.wide .dr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; align-items: start; }
     .sheet.wide .dr-grid .dr-g { margin-top: 0; }
@@ -1708,7 +1708,7 @@
     const missing = DRAW_GROUPS.reduce((n, g) => n + groups[g].filter(p => !map[p.key]).length, 0);
     const done = total - missing;
     const avOf = p => { const u = p.ro && p.ro.boundUserId && userById(p.ro.boundUserId); return u && u.pictureUrl ? `<img class="dr-av" src="${esc(u.pictureUrl)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ''; };
-    const nm = p => `<button class="dr-n ${drSel === p.key ? 'sel' : ''}" data-dk="${esc(p.key)}">${avOf(p)}${esc(p.name)}${p.r.attend === 'join' ? '<i>請假</i>' : ''}${by2[p.key] === 'self' ? '<i class="me">自抽</i>' : ''}${over[p.key] ? '<i class="mv">手動</i>' : ''}</button>`;
+    const nm = p => `<button class="dr-n ${drSel === p.key ? 'sel' : ''}" data-dk="${esc(p.key)}">${avOf(p)}${esc(p.name)}${p.r.attend === 'join' ? '<i>請假</i>' : ''}${by2[p.key] === 'admin' ? '<i class="ad">代抽</i>' : ''}${over[p.key] ? '<i class="mv">手動</i>' : ''}</button>`;
     const editor = (p, g) => `<div class="dr-ed">
         <div class="dr-ed-t">✏️ ${esc(p.name)}　<span>${esc(p.ro ? rv(p.ro, 'position') + '・' + (p.ro.cert || '') : '未對應名冊')}</span></div>
         <div class="dr-ed-l">換到哪一組</div>
@@ -1738,7 +1738,7 @@
         .dr-un .dr-n{display:inline-block;width:auto;background:#fff7ed;border:1px solid #fed7aa;margin:3px 4px 0 0;padding:4px 8px}
         .dr-n.sel{background:#fde8ea !important;outline:2px solid var(--primary)}
         .dr-av{width:22px;height:22px;border-radius:50%;object-fit:cover;vertical-align:-6px;margin-right:5px;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.15)}
-        .dr-n i{font-style:normal;font-size:10px;color:#b45309;margin-left:4px}.dr-n i.me{color:#15803d}.dr-n i.mv{color:#7c3aed}
+        .dr-n i{font-style:normal;font-size:10px;color:#b45309;margin-left:4px}.dr-n i.ad{color:#2563eb}.dr-n i.mv{color:#7c3aed}
         .dr-ul{font-size:12px;color:#b45309;font-weight:800;margin-top:8px}
         .dr-ed{background:#fff7f5;border:1.5px solid #f5c2c8;border-radius:14px;padding:10px 12px;margin-top:8px}
         .dr-ed-t{font-weight:900}.dr-ed-t span{font-size:12px;color:var(--sub);font-weight:600}.dr-ed-l{font-size:12px;color:var(--sub);margin:8px 0 4px;font-weight:700}
@@ -1760,7 +1760,7 @@
         <button class="sbtn" id="dr-xlsx" style="background:#1f2430;color:#fff;">⬇ 下載 Excel（簽到表・繳費紀錄）</button>
       </div></div>
       <div class="dr-grid" style="margin-top:10px;">${DRAW_GROUPS.map(grp).join('') || '<div class="card empty">還沒有人回覆出席</div>'}</div>
-      <div style="font-size:12px;color:var(--sub);margin:10px 2px;line-height:1.7;">※ 分組依名冊的「職位」與「證照」：團長／秘書長／教官團／顧問 → 教官及長官；指揮官／車輛組／機車組 → 指揮官及汽機車組；其他依證照。標「手動」的是你換過組的人。<br>※ 標「自抽」是團員自己在會員中心抽的。建議回覆截止、名單確定後再開放抽籤，名額才準。</div>`;
+      <div style="font-size:12px;color:var(--sub);margin:10px 2px;line-height:1.7;">※ 分組依名冊的「職位」與「證照」：團長／秘書長／教官團／顧問 → 教官及長官；指揮官／車輛組／機車組 → 指揮官及汽機車組；其他依證照。標「手動」的是你換過組的人。<br>※ 標「代抽」是管理員幫忙抽或指定的，沒標的是團員自己在會員中心抽的。建議回覆截止、名單確定後再開放抽籤，名額才準。</div>`;
     document.querySelectorAll('[data-dk]').forEach(b => b.onclick = () => { drSel = drSel === b.dataset.dk ? null : b.dataset.dk; renderDrawSheet(eid); });
     const write = async (fn, msg) => { const m = { ...map }, b = { ...by2 }, o = { ...over }; fn(m, b, o); try { await saveDraw(eid, m, b, o); evDraw[eid] = m; evDrawBy[eid] = b; evOver[eid] = o; if (msg) toast(msg); renderDrawSheet(eid); } catch (err) { console.error(err); toast('❌ 儲存失敗（Firestore 規則可能還沒更新）'); } };
     document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => { drSel = null; renderDrawSheet(eid); });
