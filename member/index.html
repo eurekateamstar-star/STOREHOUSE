@@ -1830,31 +1830,32 @@
     const totals = [];
     DRAW_GROUPS.forEach(g => {
       const ppl = groups[g]; if (!ppl.length) return;
-      const ws = wb.addWorksheet(g.replace(/[\\/?*[\]:]/g, ''), { pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: .3, right: .3, top: .4, bottom: .4, header: .2, footer: .2 } } });
-      ws.columns = [6, 12, 22, 7, 7, 10, 6, 12, 9, 9, 10, 12].map(w => ({ width: w }));
-      const T = ['白沙屯拱天宮進香醫護團\n' + yt + '行前教育訓練簽到表', '白沙屯拱天宮進香醫護團\n' + yt + '繳費紀錄表'];
-      [['A1:F1', 'A2:F2', 'A1', 'A2', 0], ['G1:L1', 'G2:L2', 'G1', 'G2', 1]].forEach(([r1, r2, c1, c2, i]) => {
-        ws.mergeCells(r1); ws.mergeCells(r2);
-        Object.assign(ws.getCell(c1), { value: T[i], font: font({ size: 14, bold: true }), alignment: { wrapText: true, horizontal: 'center', vertical: 'middle' } });
-        Object.assign(ws.getCell(c2), { value: g === '指揮官及汽機車組' ? '指揮官及汽機車組' : g, font: font({ size: 13, bold: true }), alignment: { horizontal: 'center', vertical: 'middle' } });
-      });
-      ws.getRow(1).height = 42; ws.getRow(2).height = 22;
-      const H = ['序 號', '姓名', '簽　　到', '葷食', '素食', '領年曆', '序 號', '姓名', '團費', '服裝', '合計', '收費確認'];
-      const hr = ws.getRow(3); H.forEach((h, i) => { const c = hr.getCell(i + 1); c.value = h; c.font = font({ bold: true }); c.alignment = { horizontal: 'center', vertical: 'middle' }; c.border = border; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3EDEA' } }; });
-      ppl.forEach((p, i) => {
-        const rn = 4 + i, row = ws.getRow(rn);
+      // 每組一張工作表：上面是簽到表、下面是繳費紀錄，中間分頁 → 列印時一張一張印（直式 A4）；人多就自動縮小比例，一張印得下
+      // （用「縮放比例」而不是「放入一頁」，因為放入一頁會讓分頁失效）
+      const ws = wb.addWorksheet(g.replace(/[\\/?*[\]:]/g, ''), { pageSetup: { orientation: 'portrait', paperSize: 9, fitToPage: false, scale: Math.max(40, Math.min(100, Math.floor(730 / (122 + 30 * ppl.length) * 100))), horizontalCentered: true, margins: { left: .4, right: .4, top: .5, bottom: .5, header: .2, footer: .2 } } });
+      ws.columns = [7, 14, 24, 9, 9, 12].map(w => ({ width: w }));
+      const cellSet = (c, v, f = {}) => { c.value = v; c.font = font(f); c.border = border; c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; };
+      const block = (top, title, H, rowVals, totalVals) => {
+        ws.mergeCells(`A${top}:F${top}`); ws.mergeCells(`A${top + 1}:F${top + 1}`);
+        Object.assign(ws.getCell(`A${top}`), { value: '白沙屯拱天宮進香醫護團\n' + yt + title, font: font({ size: 16, bold: true }), alignment: { wrapText: true, horizontal: 'center', vertical: 'middle' } });
+        Object.assign(ws.getCell(`A${top + 1}`), { value: g, font: font({ size: 14, bold: true }), alignment: { horizontal: 'left', vertical: 'middle' } });
+        ws.getRow(top).height = 48; ws.getRow(top + 1).height = 24;
+        const hr = ws.getRow(top + 2); hr.height = 24;
+        H.forEach((h, i) => { const c = hr.getCell(i + 1); cellSet(c, h, { bold: true }); c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3EDEA' } }; });
+        ppl.forEach((p, i) => { const rn = top + 3 + i, row = ws.getRow(rn); row.height = 30; rowVals(p, i, rn).forEach((v, k) => cellSet(row.getCell(k + 1), v, { size: 13 })); });
+        const tr = top + 3 + ppl.length, row = ws.getRow(tr); row.height = 26;
+        totalVals(top + 3, tr - 1).forEach((v, k) => cellSet(row.getCell(k + 1), v, { bold: true }));
+        return tr;
+      };
+      const tr = block(1, '行前教育訓練簽到表', ['序 號', '姓名', '簽　　到', '葷食', '素食', '領年曆'], (p, i) => {
         const lunch = p.r.lunch || '';
-        const v = [i + 1, p.name, p.r.attend === 'join' ? '請假' : '', lunch.startsWith('葷') ? 1 : null, lunch.startsWith('素') ? 1 : null, lunch === '自行處理' ? '不訂餐' : '',
-          i + 1, p.name, 2500, null, { formula: `SUM(I${rn}:J${rn})` }, ''];
-        v.forEach((val, k) => { const c = row.getCell(k + 1); c.value = val; c.font = font(); c.border = border; c.alignment = { horizontal: 'center', vertical: 'middle' }; });
-        row.height = 26;
-      });
-      const tr = 4 + ppl.length, last = tr - 1, row = ws.getRow(tr);
-      const tv = { 2: '合計', 4: { formula: `SUM(D4:D${last})` }, 5: { formula: `SUM(E4:E${last})` }, 8: '合計', 9: { formula: `SUM(I4:I${last})` }, 10: { formula: `SUM(J4:J${last})` }, 11: { formula: `SUM(K4:K${last})` } };
-      for (let k = 1; k <= 12; k++) { const c = row.getCell(k); c.value = tv[k] ?? null; c.font = font({ bold: true }); c.border = border; c.alignment = { horizontal: 'center', vertical: 'middle' }; }
-      row.height = 26;
-      ws.views = [{ state: 'frozen', ySplit: 3 }];
-      ws.pageSetup.printTitlesRow = '1:3';
+        return [i + 1, p.name, p.r.attend === 'join' ? '請假' : '', lunch.startsWith('葷') ? 1 : null, lunch.startsWith('素') ? 1 : null, lunch === '自行處理' ? '不訂餐' : ''];
+      }, (a, z) => [null, '合計', null, { formula: `SUM(D${a}:D${z})` }, { formula: `SUM(E${a}:E${z})` }, null]);
+      ws.getRow(tr).addPageBreak();
+      const top2 = tr + 1;
+      block(top2, '繳費紀錄表', ['序 號', '姓名', '團費', '服裝', '合計', '收費確認'],
+        (p, i, rn) => [i + 1, p.name, 2500, null, { formula: `SUM(C${rn}:D${rn})` }, ''],
+        (a, z) => [null, '合計', { formula: `SUM(C${a}:C${z})` }, { formula: `SUM(D${a}:D${z})` }, { formula: `SUM(E${a}:E${z})` }, null]);
       totals.push([g, ws.name, tr]);
     });
     // 便當統計
