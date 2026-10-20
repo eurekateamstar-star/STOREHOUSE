@@ -1985,17 +1985,17 @@
           <span style="display:inline-flex;gap:4px;align-items:center;">自訂：<input type="date" id="pm-a" value="${esc(pe.mode === 'range' && pe.range ? pe.range[0] : (sc.start || ''))}"> ～ <input type="date" id="pm-b" value="${esc(pe.mode === 'range' && pe.range ? pe.range[1] : '')}"><button class="dr-c ${pe.mode === 'range' ? 'on' : ''}" data-pm="range">套用</button></span>
           <button class="dr-c" data-pm="close">完成</button></div>
         <div style="font-size:12px;color:var(--sub);margin-top:4px;">改完記得按「🔀 自動排班」重新排。</div></div>` : '';
-    const XB = { N: '#ffff00', T2: '#9dc3e6', T1: '#a9d08e', O: '#f4b183' };
-    const cmd = Object.values(ppl).filter(p => p.pos === '指揮官').map(p => p.name).join('、');
+        const cmd = Object.values(ppl).filter(p => p.pos === '指揮官').map(p => p.name).join('、');
     const dayBox = d => { const ts = (dt[d] || []).slice().sort((a, b) => LBL_ORDER(a.l) - LBL_ORDER(b.l)), pres = presentOn(d);
       const inT = new Set(ts.flatMap(t => t.m)), miss = pres.filter(k => !inT.has(k)), dd = new Date(d + 'T12:00:00');
       let firstBack = true;
       const rows = ts.map(t => { const ms = t.m.filter(k => ppl[k]), back = t.l.startsWith('轎後'), cls = back && firstBack ? 'xb' : ''; if (back) firstBack = false;
         const cells = Array.from({ length: 6 }, (_, j) => { const k = ms[j], p = k && ppl[k];
-          return p ? `<td class="xm ${schSel && schSel.k === k && schSel.d === d ? 'sel' : ''}" data-sd="${d}" data-sk="${esc(k)}" style="background:${XB[p.cat]};${j === 0 ? 'font-weight:900;' : ''}">${esc(p.name)}</td>` : '<td class="xm"></td>'; }).join('');
+          return p ? `<td class="xm ${schSel && schSel.k === k && schSel.d === d ? 'sel' : ''}" data-sd="${d}" data-sk="${esc(k)}"><span style="background:${CAT_BG[p.cat]};${j === 0 ? 'font-weight:900;' : ''}">${j === 0 ? '★' : ''}${esc(p.name)}</span></td>` : '<td class="xm"></td>'; }).join('');
         const extra = ms.length > 6 ? `<div style="font-size:11px;color:#b91c1c">＋${ms.slice(6).map(k => esc(ppl[k].name)).join('、')}</div>` : '';
-        return `<tr class="${cls}"><th class="xl">${t.l}${schSel && schSel.d === d ? `<button class="sc-mv" data-mvd="${d}" data-mvl="${t.l}">移到這組</button>` : ''}</th>${cells}<td class="xn">${extra}</td></tr>`; }).join('');
-      return `<div class="xd"><table class="xt"><thead><tr><th class="xc"><span>日期</span><span>組別</span></th><th colspan="6" class="xdate">${dd.getMonth() + 1}月${dd.getDate()}日(${WK[dd.getDay()]})<small>${SLOTS.filter(sl => inRange(sl, d)).join('、')}・${pres.length} 人・${ts.length} 組</small></th><th class="xcmd">指揮官:${esc(cmd)}</th></tr></thead>
+        const mv = schSel && schSel.d === d;
+        return `<tr class="${cls}"><th class="xl ${mv ? 'mv' : ''}" ${mv ? `data-mvd="${d}" data-mvl="${t.l}" title="移到這組"` : ''}>${mv ? '⬅ ' : ''}${t.l}</th>${cells}<td class="xn">${extra}</td></tr>`; }).join('');
+      return `<div class="xd"><table class="xt"><thead><tr><th class="xc">組別</th><th colspan="6" class="xdate">${dd.getMonth() + 1}月${dd.getDate()}日(${WK[dd.getDay()]})<small>${SLOTS.filter(sl => inRange(sl, d)).join('、')}・${pres.length} 人・${ts.length} 組</small></th><th class="xcmd">指揮官:${esc(cmd)}</th></tr></thead>
         <tbody>${rows || '<tr><td colspan="8" class="sc-empty">按「自動排班」</td></tr>'}
         <tr><td colspan="8" class="xf">◎值日生：中巴－　　　住宿－　　　物資車盤點－</td></tr></tbody></table>
         ${miss.length && ts.length ? `<div class="sc-miss">未排入：${miss.map(k => chip(k, false, d)).join('')}</div>` : ''}</div>`; };
@@ -2006,13 +2006,17 @@
         .sc-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px;align-items:start}
         .sc-col{background:#faf6f4;border-radius:16px;padding:10px}.sc-ch{font-weight:900;color:var(--primary);font-size:16px;margin-bottom:6px}.sc-ch span{font-size:12px;color:var(--sub)}
         .sc-days{display:flex;flex-direction:column;gap:14px;margin-top:14px;max-width:1100px}
-        .xt{width:100%;border-collapse:collapse;table-layout:fixed;background:#fff;font-family:"PMingLiU","新細明體","Noto Serif TC",serif;border:2px solid #000}
-        .xt th,.xt td{border:1px solid #777;height:34px;text-align:center;font-size:15px;padding:0 2px;overflow:hidden;white-space:nowrap}
-        .xt .xc{width:84px;position:relative;font-size:11px;font-weight:400;background:linear-gradient(to top right,#fff calc(50% - .6px),#777,#fff calc(50% + .6px))}.xt .xc span:first-child{position:absolute;top:2px;right:6px}.xt .xc span:last-child{position:absolute;bottom:2px;left:6px}
-        .xt .xdate{font-size:20px;font-weight:900}.xt .xdate small{display:block;font-size:11px;color:#888;font-weight:600}.xt .xcmd{width:170px;text-align:left;font-size:13px}
-        .xt .xl{background:#d9d9d9;font-size:16px;font-weight:600;position:relative}.xt .xl .sc-mv{position:absolute;left:2px;right:2px;bottom:1px;margin:0;padding:1px 2px;font-size:10px}
-        .xt .xm{cursor:pointer}.xt .xm.sel{outline:3px solid var(--primary);outline-offset:-3px}.xt tr.xb>*{border-top:3px solid #000}.xt .xn{width:170px}
-        .xt .xf{text-align:left;font-size:13px;padding-left:6px}.sc-tg{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;align-items:start}
+.xd{background:#fff;border-radius:20px;box-shadow:0 8px 24px rgba(31,38,135,.07);border:1px solid #f1e8e4;overflow:hidden}
+        .xt{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
+        .xt th,.xt td{height:40px;text-align:center;font-size:15px;padding:0 4px;overflow:hidden;white-space:nowrap;border-bottom:1px solid #f3ece9}
+        .xt thead tr{background:linear-gradient(90deg,#fff1f2,#fff7ed)}.xt thead th{background:transparent;height:58px;border-bottom:1px solid #f1e3df}
+        .xt .xc{width:90px;color:var(--sub);font-size:12px;font-weight:700}
+        .xt .xdate{font-size:22px;font-weight:900;color:var(--ink);text-align:left;padding-left:8px}.xt .xdate small{display:inline-block;margin-left:10px;font-size:12px;color:var(--sub);font-weight:700;vertical-align:middle}
+        .xt .xcmd{width:180px;text-align:right;padding-right:16px;font-size:13px;color:var(--sub);font-weight:700}
+        .xt .xl{font-size:15px;font-weight:900;color:var(--primary)}.xt .xl.mv{cursor:pointer;background:#fde8ea;outline:2px dashed var(--primary);outline-offset:-4px;border-radius:10px}
+        .xt td.xm{padding:4px 3px}.xt td.xm>span{display:block;border-radius:10px;padding:6px 2px;font-size:14px;cursor:pointer}.xt td.xm.sel>span{outline:2.5px solid var(--primary);outline-offset:1px}
+        .xt tr.xb>*{border-top:2px solid #e9b8bf}.xt .xn{width:150px;color:var(--sub);font-size:12px}
+        .xt .xf{text-align:left;font-size:13px;padding:10px 14px;color:var(--sub);background:#fcfaf9;border-bottom:none}.sc-tg{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;align-items:start}
         .sc-day{background:#faf6f4;border-radius:16px;padding:10px}.sc-dh{font-weight:900;font-size:16px;margin-bottom:6px;display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap}.sc-dh span{font-size:12px;color:var(--sub);font-weight:700}
         .sc-t{background:#fff;border:1px solid #eee5e1;border-radius:12px;padding:6px 8px;margin-bottom:6px}.sc-th{display:flex;gap:8px;align-items:center;margin-bottom:2px}.sc-th b{color:var(--primary)}.sc-th span{font-size:12px;color:var(--sub)}
         .sc-p{border:1px solid rgba(0,0,0,.08);border-radius:8px;padding:3px 7px;margin:2px;font:inherit;font-size:13px;cursor:pointer;color:#1f2430}.sc-p.sel{outline:2.5px solid var(--primary)}
@@ -2023,7 +2027,7 @@
       <button class="sbtn" id="sc-back">← 回分組名單</button>
       <h3 style="margin-top:10px;">📅 進香排班表</h3>
       <div style="font-size:13px;color:var(--sub);line-height:1.7;">${esc(e.title || '')}　前／中／後＝抽籤時段的值班日期；點上面的名字可以改成全程、自訂日期或不排班。下方每天把當天值班的人排成 轎前1～4、轎後1～6（約 ${sc.size || 5} 人一組，護理師、EMTP／EMT2、EMT1 平均分配，★＝組長；前一天同組的人盡量不換組）。不排班的人列在上方。<br>
-        👆 點某天的名字 → 按那天某一組的「⬅ 移到這組」就能換組。
+        👆 點某天的名字 → 再點那天想去的組別（變成虛線框）就能換組。
         <span class="sc-leg">${Object.entries(CAT_TXT).map(([c, t]) => `<span style="background:${CAT_BG[c]}">${t}</span>`).join('')}</span></div>
       <div class="sc-top">
         <div><label>進香開始</label><input type="date" id="sc-start" value="${esc(sc.start || '')}"></div>
