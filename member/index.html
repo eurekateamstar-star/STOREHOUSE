@@ -163,11 +163,18 @@
   /* 名冊：電腦一頁看完全部欄位（不左右捲動、不在框內捲動） */
   body.admin-wide .wrap { max-width: none; padding-left: 20px; padding-right: 20px; }
   #rs-table { table-layout: auto; font-size: 12px; }
-  #rs-table th { font-size: 10px; padding: 6px 3px; white-space: normal; line-height: 1.25; min-width: 2.2em; vertical-align: bottom; }
-  #rs-table td { padding: 6px 3px; line-height: 1.35; word-break: break-all; }
+  #rs-table { font-variant-numeric: tabular-nums; }
+  #rs-table th { font-size: 11px; padding: 6px 6px; white-space: nowrap; line-height: 1.3; vertical-align: bottom; color: #6b7280; background: #faf7f5; }
+  #rs-table th.grp { text-align: center; color: var(--primary); border-bottom: 2px solid #f3c9cf; padding-bottom: 3px; vertical-align: middle; }
+  #rs-table thead tr:nth-child(2) th { top: 24px; }
+  #rs-table td { padding: 8px 6px; line-height: 1.4; word-break: break-all; vertical-align: middle; }
+  #rs-table tbody tr:nth-child(even) td { background: #fcfaf9; }
+  #rs-table tbody tr:hover td { background: #fff1f2; }
+  #rs-table td.c-name { font-size: 13px; }
+  #rs-table td.c-emName, #rs-table td.c-shirtSize { border-left: 1px dashed #eadfdb; } #rs-table td.c-emPhone, #rs-table td.c-pantsSize { border-right: 1px dashed #eadfdb; }
   #rs-table td.c-serial, #rs-table td.c-position, #rs-table td.c-joinYear, #rs-table td.c-name, #rs-table td.c-birthdayRaw, #rs-table td.c-idCard,
   #rs-table td.c-phone, #rs-table td.c-emName, #rs-table td.c-emRelation, #rs-table td.c-emPhone, #rs-table td.c-shirtSize, #rs-table td.c-pantsSize { white-space: nowrap; word-break: normal; }
-  #rs-table td.c-certText { min-width: 64px; } #rs-table td.c-address { min-width: 120px; } #rs-table td.c-education, #rs-table td.c-notes { min-width: 80px; }
+  #rs-table td.c-certText { min-width: 60px; } #rs-table td.c-address { min-width: 170px; } #rs-table td.c-education { min-width: 90px; max-width: 180px; } #rs-table td.c-notes { min-width: 90px; max-width: 170px; font-size: 11px; color: #6b7280; }
   #rs-table .nm-cell .mini-av { display: none; }
   #rs-table .line-who .mini-av { display: inline-flex; }
   #rs-table .pill { font-size: 11px; padding: 1px 6px; }
@@ -966,6 +973,20 @@
     ['idCard', '身份證字號'], ['phone', '本人聯絡電話'], ['emName', '緊急聯絡人姓名'], ['emRelation', '緊急連絡人關係'], ['emPhone', '緊急聯絡人電話'],
     ['shirtSize', '衣服尺寸'], ['pantsSize', '褲子尺寸'], ['certText', '證照'], ['address', '地址'], ['job', '職業'], ['introducer', '介紹人'],
     ['education', '學歷 . 經歷'], ['notes', '更新-備註']];
+  // 名冊表頭：短標題＋「緊急聯絡人」「尺寸」合併成兩層，比較整齊
+  const TH_SHORT = { serial: '序號', position: '職位', joinYear: '加入', name: '姓名', lineName: 'LINE 名稱', birthdayRaw: '生日', idCard: '身分證',
+    phone: '電話', emName: '姓名', emRelation: '關係', emPhone: '電話', shirtSize: '衣服', pantsSize: '褲子', certText: '證照', address: '地址',
+    job: '職業', introducer: '介紹人', education: '學經歷', notes: '備註' };
+  const TH_GROUP = { emName: '緊急聯絡人', emRelation: '緊急聯絡人', emPhone: '緊急聯絡人', shirtSize: '尺寸', pantsSize: '尺寸' };
+  function rosterHead() {
+    let r1 = '', r2 = '';
+    ROSTER_COLS.forEach(([k], i) => {
+      const g = TH_GROUP[k], prev = i ? TH_GROUP[ROSTER_COLS[i - 1][0]] : null;
+      if (!g) r1 += `<th rowspan="2" class="h-${k}">${esc(TH_SHORT[k] || k)}</th>`;
+      else { if (g !== prev) r1 += `<th colspan="${ROSTER_COLS.filter(([x]) => TH_GROUP[x] === g).length}" class="grp">${esc(g)}</th>`; r2 += `<th class="sub">${esc(TH_SHORT[k])}</th>`; }
+    });
+    return `<thead><tr>${r1}<th rowspan="2">LINE 綁定</th><th rowspan="2">最後更新</th></tr><tr>${r2}</tr></thead>`;
+  }
   const rv = (r, k) => k === 'position' ? (r.position || '團員') : k === 'name' ? (r.nameRaw || r.name) : k === 'idCard' ? (r.idCardRaw || r.idCard) : k === 'birthdayRaw' ? (r.birthdayRaw || r.birthday) : r[k];
   const rosterOrder = (a, b) => (Number(a.rowIndex) || 1e9) - (Number(b.rowIndex) || 1e9) || (Number(a.serial) || 1e9) - (Number(b.serial) || 1e9);
 
@@ -1008,7 +1029,7 @@
       if (!u) return '<span class="pill bound">✔ 已綁定</span>';
       return `<span class="line-who">${miniAv(u.pictureUrl, u.lineDisplayName || u.realName)}<span>${esc(u.lineDisplayName || u.realName || '已綁定')}</span></span>`; };
     const av = r => { const u = r.boundUserId && userById(r.boundUserId); return miniAv(u && u.pictureUrl, r.name); };
-    $('rs-table').innerHTML = `<thead><tr>${ROSTER_COLS.map(([k, t]) => `<th>${esc(t)}</th>`).join('')}<th>LINE 綁定</th><th>最後更新</th></tr></thead><tbody>`
+    $('rs-table').innerHTML = rosterHead() + '<tbody>'
       + (list.map(r => `<tr data-r="${r.id}">${ROSTER_COLS.map(([k]) => `<td class="c-${k}">${k === 'name' ? `<span class="nm-cell">${av(r)}<b>${esc(rv(r, k) || '')}</b>${redDot(r)}</span>` : esc(rv(r, k) || '')}</td>`).join('')}<td>${st(r)}</td><td>${updText(r, true)}${confText(r)}</td></tr>`).join('')
         || `<tr><td colspan="${ROSTER_COLS.length + 2}"><div class="empty">沒有符合的資料</div></td></tr>`) + '</tbody>';
     $('rs-cards').innerHTML = list.map(r => `<div class="card r-card" data-r="${r.id}">${av(r)}
