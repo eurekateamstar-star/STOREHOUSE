@@ -117,6 +117,19 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
+    // ===== 出席調查：會員用 LINE 回覆自己的出席，管理員看全部 =====
+    match /events/{eid} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+      match /responses/{uid} {
+        allow read: if isAdmin() || (signedIn() && me() == uid);
+        allow create, update: if approved() && me() == uid
+          && get(/databases/$(database)/documents/events/$(eid)).data.get('open', false) == true
+          && request.resource.data.get('uid', '') == me();
+        allow delete: if isAdmin();
+      }
+    }
+
     // ===== 救護紀錄表 =====
     match /medical_records/{id} {
       allow create: if approved();
