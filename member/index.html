@@ -1986,6 +1986,7 @@
           <button class="dr-c" data-pm="close">完成</button></div>
         <div style="font-size:12px;color:var(--sub);margin-top:4px;">改完記得按「🔀 自動排班」重新排。</div></div>` : '';
         const cmd = Object.values(ppl).filter(p => p.pos === '指揮官').map(p => p.name).join('、');
+    const info = sc.info || {};
     const dayBox = d => { const ts = (dt[d] || []).slice().sort((a, b) => LBL_ORDER(a.l) - LBL_ORDER(b.l)), pres = presentOn(d);
       const inT = new Set(ts.flatMap(t => t.m)), miss = pres.filter(k => !inT.has(k)), dd = new Date(d + 'T12:00:00');
       let firstBack = true;
@@ -1998,7 +1999,7 @@
         return `<tr class="${cls}"><th class="xl ${mv ? 'mv' : ''}" ${mv ? `data-mvd="${d}" data-mvl="${t.l}" title="移到這組"` : ''}>${mv ? '⬅ ' : ''}${t.l}</th>${cells}<td class="xn"><div class="xnote ${t.note ? '' : 'emp'}" data-nd="${d}" data-nl="${t.l}">${t.note ? eqHtml(t.note) : '＋裝備'}</div>${extra}</td></tr>`; }).join('');
       return `<div class="xd" data-day="${d}"><table class="xt"><thead><tr><th class="xc">組別</th><th colspan="${NC}" class="xdate">${dd.getMonth() + 1}月${dd.getDate()}日(${WK[dd.getDay()]})<small>${SLOTS.filter(sl => inRange(sl, d)).join('、')}・${pres.length} 人・${ts.length} 組</small></th><th class="xcmd">指揮官:${esc(cmd)}<button class="xshot" data-shot="${d}">📷 存圖</button></th></tr></thead>
         <tbody>${rows || `<tr><td colspan="${NC + 2}" class="sc-empty">按「自動排班」</td></tr>`}
-        <tr><td colspan="${NC + 2}" class="xf">◎值日生：中巴－　　　住宿－　　　物資車盤點－</td></tr></tbody></table>
+        ${dutyLines(info[d]).map(t => `<tr><td colspan="${NC + 2}" class="xf" data-duty="${d}">${esc(t)}</td></tr>`).join('')}</tbody></table>
         ${miss.length && ts.length ? `<div class="sc-miss">未排入：${miss.map(k => chip(k, false, d)).join('')}</div>` : ''}</div>`; };
     $('sheet-body').innerHTML = `
       <style>
@@ -2006,7 +2007,7 @@
         .sc-top input{padding:8px 10px;border-radius:10px;border:1.5px solid #e5ddd9;font:inherit;font-size:14px}
         .sc-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px;align-items:start}
         .sc-col{background:#faf6f4;border-radius:16px;padding:10px}.sc-ch{font-weight:900;color:var(--primary);font-size:16px;margin-bottom:6px}.sc-ch span{font-size:12px;color:var(--sub)}
-        .sc-days{display:flex;flex-direction:column;gap:14px;margin-top:14px;max-width:1100px}
+        .sc-days{display:flex;flex-direction:column;gap:14px;margin-top:14px}@media (min-width:900px){.sc-days{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}}
 .xd{background:#fff;border-radius:20px;box-shadow:0 8px 24px rgba(31,38,135,.07);border:1px solid #f1e8e4;overflow:hidden}
         .xt{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
         .xt th,.xt td{height:40px;text-align:center;font-size:15px;padding:0 4px;overflow:hidden;white-space:nowrap;border-bottom:1px solid #f3ece9}
@@ -2019,6 +2020,9 @@
         .xt tr.xb>*{border-top:2px solid #e9b8bf}
         .xshot{margin-left:8px;border:none;border-radius:8px;background:#1f2430;color:#fff;font:inherit;font-size:11px;font-weight:800;padding:3px 8px;cursor:pointer;vertical-align:middle}
         .xd.shooting .xshot,.xd.shooting .sc-miss,.xd.shooting .xnote.emp{visibility:hidden}.xsub{color:#6b7280;font-size:.9em}
+        .xt .xf{cursor:pointer;white-space:normal;height:auto!important;padding:5px 14px!important;line-height:1.5}.xt tr:has(.xf)+tr .xf{padding-top:0!important}.xt .xf:hover{background:#fff1f2}
+        .eq-box input[data-f],.eq-box textarea[data-f]{width:100%;padding:8px 10px;border-radius:10px;border:1.5px solid #e5ddd9;font:inherit;font-size:14px}.eq-box [data-f].on{border-color:var(--primary);background:#fff7f5}
+        .du-n{display:flex;flex-wrap:wrap;gap:4px;max-height:160px;overflow:auto;margin-bottom:10px}.du-n button{border:1px solid #eadfdb;background:#fff;border-radius:8px;padding:4px 8px;font:inherit;font-size:13px;cursor:pointer}
         .eq-ov{position:fixed;inset:0;z-index:9500;background:rgba(31,36,48,.45);display:flex;align-items:center;justify-content:center;padding:16px}
         .eq-box{background:#fff;border-radius:20px;padding:18px;width:100%;max-width:360px;max-height:92vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.25)}
         .eq-t{font-weight:900;font-size:17px;margin-bottom:10px}.eq-r{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f3ece9;font-size:16px}
@@ -2092,6 +2096,11 @@
       if (!v) return;
       save({ days: { ...dt, [d]: (dt[d] || []).map(t => t.l === l ? { ...t, eq: v, note: eqText(v) } : t) } }, '已儲存');
     });
+    document.querySelectorAll('[data-duty]').forEach(el => el.onclick = async () => {
+      const d = el.dataset.duty, names = presentOn(d).map(k => ppl[k].name).concat(Object.values(ppl).filter(p => p.mode === 'off').map(p => p.name));
+      const v = await dutyEditor(`${dLabel(d)} 值日生／到達／洗衣服`, info[d] || {}, names);
+      if (v) save({ info: { ...info, [d]: v } }, '已儲存');
+    });
     document.querySelectorAll('[data-shot]').forEach(b => b.onclick = e2 => { e2.stopPropagation(); shotDay(b.dataset.shot); });
     if ($('sc-xlsx')) $('sc-xlsx').onclick = () => exportSchedXlsx(eid);
   }
@@ -2141,7 +2150,7 @@
         if (isBack) firstBack = false;
         ws.getRow(r).height = 20; ws.getRow(r + 1).height = 13; r += 2;
       });
-      ['◎值日生：中巴－　　　。住宿－　　　。物資車盤點－', '◎'].forEach(t => { ws.mergeCells(all('A', 'H', r)); Object.assign(ws.getCell(`A${r}`), { value: t, font: font({ size: 11 }), border }); ws.getRow(r).height = 18; r++; });
+      dutyLines((sc.info || {})[d]).forEach(t => { ws.mergeCells(all('A', 'H', r)); Object.assign(ws.getCell(`A${r}`), { value: t, font: font({ size: 11 }), border }); ws.getRow(r).height = 18; r++; });
       // 外框粗線
       for (let rr = top; rr < r; rr++) { const a1 = ws.getRow(rr).getCell(1), h1 = ws.getRow(rr).getCell(8); a1.border = { ...a1.border, left: med }; h1.border = { ...h1.border, right: med }; }
       for (let col = 1; col <= 8; col++) { const c = ws.getRow(top).getCell(col); c.border = { ...c.border, top: med }; const c2 = ws.getRow(r - 1).getCell(col); c2.border = { ...c2.border, bottom: med }; }
@@ -2162,6 +2171,31 @@
     const buf = await wb.xlsx.writeBuffer();
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
     a.download = `${e.title || '進香'}_值班表.xlsx`; a.click(); toast('⬇ 已下載值班表');
+  }
+  // ===== 每天的值日生、到達時間、洗衣服 =====
+  const DUTY = [['bus', '中巴'], ['stay', '住宿'], ['stock', '物資車盤點'], ['wash', '洗衣服'], ['arrive', '到達時間']];
+  const dutyLines = v => { v = v || {};
+    return [`◎值日生：中巴－${v.bus || '　　'}。住宿－${v.stay || '　　'}。物資車盤點－${v.stock || '　　'}`, `◎${v.arrive || ''}`, `◎洗衣服：${v.wash || ''}`]; };
+  function dutyEditor(title, cur, names) {
+    return new Promise(res => {
+      const v = { bus: '', stay: '', stock: '', wash: '', arrive: '', ...(cur || {}) };
+      let focus = 'bus';
+      const ov = document.createElement('div'); ov.className = 'eq-ov';
+      ov.innerHTML = `<div class="eq-box" style="max-width:480px"><div class="eq-t">${esc(title)}</div>
+        ${DUTY.map(([k, t]) => `<div class="eq-l">${t}</div>${k === 'arrive' ? `<textarea data-f="${k}" rows="2" placeholder="例：20:00到-李倚禎、吳以文。22:00到-吳愷寧">${esc(v[k])}</textarea>` : `<input data-f="${k}" value="${esc(v[k])}" placeholder="點下面的名字，或自己輸入">`}`).join('')}
+        <div class="eq-l">👆 點名字，加到目前選的欄位（紅框）</div><div class="du-n">${[...new Set(names)].map(n => `<button data-n="${esc(n)}">${esc(n)}</button>`).join('')}</div>
+        <div class="eq-btn"><button id="eq-no">取消</button><button id="eq-ok">儲存</button></div></div>`;
+      document.body.appendChild(ov);
+      const fld = k => ov.querySelector(`[data-f="${k}"]`);
+      const mark = () => ov.querySelectorAll('[data-f]').forEach(x => x.classList.toggle('on', x.dataset.f === focus));
+      ov.querySelectorAll('[data-f]').forEach(x => x.onfocus = () => { focus = x.dataset.f; mark(); });
+      mark();
+      ov.querySelectorAll('[data-n]').forEach(b => b.onclick = () => { const f = fld(focus), n = b.dataset.n;
+        if (focus === 'arrive') f.value = f.value + (f.value && !/[-、]$/.test(f.value) ? '、' : '') + n;
+        else { const a = f.value.split('、').map(x => x.trim()).filter(Boolean); if (!a.includes(n)) a.push(n); f.value = a.join('、'); } });
+      ov.querySelector('#eq-no').onclick = () => { ov.remove(); res(null); };
+      ov.querySelector('#eq-ok').onclick = () => { DUTY.forEach(([k]) => v[k] = fld(k).value.trim()); ov.remove(); res(v); };
+    });
   }
   // ===== 器材：救護包×n、AMBU包×n（藍色）、儀器包×n＋自己填 =====
   const EQ = [['kit', '救護包', '#dc2626'], ['ambu', 'AMBU包', '#2563eb'], ['inst', '儀器包', '#dc2626']];
