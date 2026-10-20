@@ -3599,7 +3599,7 @@
 
   </script>
   
-<!-- 讀取太久提示：12 秒還卡在讀取畫面，就提示把 LINE 完全關閉再打開 -->
+<!-- 讀取太久提示：6 秒還卡在讀取畫面，就提示把 LINE 完全關閉再打開 -->
 <script>
 (function () {
   function vis(id) { var e = document.getElementById(id); return !!e && e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden'; }
@@ -3613,7 +3613,7 @@
       + '<button type="button" onclick="location.reload()" style="margin-top:12px;width:100%;border:none;border-radius:12px;padding:11px;font-size:15px;font-weight:800;color:#fff;background:linear-gradient(90deg,#D65A68,#F08339);font-family:inherit;">先試試重新整理</button>';
     document.getElementById('authLoading').appendChild(box);
   }
-  setTimeout(show, 12000); setTimeout(show, 25000);
+  setTimeout(show, 6000); setTimeout(show, 15000);
 })();
 </script>
 </body>
