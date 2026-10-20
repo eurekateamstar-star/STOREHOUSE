@@ -1465,7 +1465,7 @@
   const ATT_SHORT = { yes: '✅ 出席', join: '⚠️ 不出席但參與進香', no: '❌ 不參與' };
   const LUNCH = ['葷', '素（方便素）', '自行處理'];
   const eventLink = id => `https://tsushin-buishatun.pages.dev/attend/?e=${encodeURIComponent(id)}`;   // 公開表單：不用先綁會員中心
-  let evPaid = {};
+  let evPaid = {}, drPayMode = false;
   let evDraw = {}, evDrawBy = {}, evOver = {}, drawSheetEid = null, drSel = null;
   let eventsCache = [], eventsUnsub = null, myResp = {}, evRespCache = {}, evRespUnsub = null, evOpenId = null, evFilter = 'all';
   // 連結 liff.line.me/…?e=活動ID：LIFF 開啟時參數可能包在 liff.state 裡
@@ -1729,7 +1729,7 @@
     await saveDraw(eid, map, by2, evOver[eid] || {});
   }
   function openDrawSheet(eid) {
-    drawSheetEid = eid; drSel = null; $('sheet').classList.add('wide');
+    drawSheetEid = eid; drSel = null; drPayMode = false; $('sheet').classList.add('wide');
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open'); $('sheet').scrollTop = 0;
     renderDrawSheet(eid);
   }
@@ -1792,11 +1792,23 @@
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-content:flex-start;">
         ${missing ? `<button class="sbtn" id="dr-go" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">🎲 管理員代抽：還沒抽的 ${missing} 人</button>` : ''}
         ${done ? '<button class="sbtn" id="dr-redo" style="background:#fef2f2;color:#b91c1c;">全部重抽</button><button class="sbtn" id="dr-clear" style="background:#f1f5f9;color:#334155;">全部取消抽籤</button>' : ''}
+        <button class="sbtn" id="dr-pay" style="${drPayMode ? 'background:#16a34a;color:#fff;box-shadow:0 0 0 3px #bbf7d0;' : 'background:#dcfce7;color:#166534;'}">${drPayMode ? '✅ 繳費模式中（按這裡結束）' : '💰 繳費模式：點名字就打勾'}</button>
         <button class="sbtn" id="dr-xlsx" style="background:#1f2430;color:#fff;">⬇ 下載 Excel（簽到表・繳費紀錄）</button>
       </div></div>
+      ${drPayMode ? '<div style="margin-top:10px;padding:10px 14px;border-radius:12px;background:#16a34a;color:#fff;font-weight:800;">💰 繳費模式：直接點名字 → 變綠底＝已繳；再點一次取消。完成後按上面的按鈕結束。</div>' : ''}
       <div class="dr-grid" style="margin-top:10px;">${DRAW_GROUPS.map(grp).join('') || '<div class="card empty">還沒有人回覆出席</div>'}</div>
       <div style="font-size:12px;color:var(--sub);margin:10px 2px;line-height:1.7;">※ 分組依名冊的「職位」與「證照」：團長／秘書長／教官團／顧問 → 教官及長官；指揮官／車輛組／機車組 → 指揮官及汽機車組；其他依證照。標「手動」的是你換過組的人。<br>※ 標「代抽」是管理員幫忙抽或指定的，沒標的是團員自己在會員中心抽的。建議回覆截止、名單確定後再開放抽籤，名額才準。</div>`;
-    document.querySelectorAll('[data-dk]').forEach(b => b.onclick = () => { drSel = drSel === b.dataset.dk ? null : b.dataset.dk; renderDrawSheet(eid); });
+    document.querySelectorAll('[data-dk]').forEach(b => b.onclick = async () => {
+      if (drPayMode) {
+        const k = b.dataset.dk, pd = { ...(evPaid[eid] || {}) };
+        if (pd[k]) delete pd[k]; else pd[k] = Date.now();
+        evPaid[eid] = pd; b.classList.toggle('paid', !!pd[k]);
+        try { await saveDraw(eid, { ...(evDraw[eid] || {}) }, { ...(evDrawBy[eid] || {}) }, { ...(evOver[eid] || {}) }); } catch (err) { console.error(err); toast('❌ 儲存失敗'); }
+        return;
+      }
+      drSel = drSel === b.dataset.dk ? null : b.dataset.dk; renderDrawSheet(eid);
+    });
+    $('dr-pay').onclick = () => { drPayMode = !drPayMode; drSel = null; renderDrawSheet(eid); if (!drPayMode) toast('已結束繳費模式'); };
     const write = async (fn, msg) => { const m = { ...map }, b = { ...by2 }, o = { ...over }; fn(m, b, o); try { await saveDraw(eid, m, b, o); evDraw[eid] = m; evDrawBy[eid] = b; evOver[eid] = o; if (msg) toast(msg); renderDrawSheet(eid); } catch (err) { console.error(err); toast('❌ 儲存失敗（Firestore 規則可能還沒更新）'); } };
     document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => { drSel = null; renderDrawSheet(eid); });
     document.querySelectorAll('[data-paid]').forEach(b => b.onclick = async () => {
