@@ -2039,7 +2039,11 @@
           .xt .xcmd{width:96px;font-size:10px;padding-right:4px;white-space:normal;line-height:1.2}
           .xt .xl{font-size:11px;letter-spacing:-.5px}.xt td.xm{padding:2px 1px}.xt td.xm>span{padding:4px 0;font-size:11.5px;border-radius:6px;letter-spacing:-.8px;overflow:hidden}
           .xt .xn{width:96px}.xnote{font-size:10px;padding:2px}.xshot{display:block;margin:3px 0 0 auto;font-size:10px;padding:2px 6px}.xt .xf{font-size:9.5px!important;padding:3px 8px!important}
-        }.xt .xn{width:150px;color:var(--sub);font-size:12px}
+        }
+        /* 存圖：一律用手機寬度排版，字才夠大 */
+        .xcap{position:fixed;left:-30000px;top:0;width:430px;background:#fff;padding:8px}.xcap .xd{margin-bottom:10px}.xcap .xd{border-radius:14px}.xcap .xt th,.xcap .xt td{height:30px;font-size:12px;padding:0 1px}.xcap .xt thead th{height:44px}.xcap .xt .xc{width:38px;font-size:10px}.xcap .xt .xdate{font-size:16px;padding-left:2px}.xcap .xt .xdate small{display:block;margin:0;font-size:10px}.xcap .xt .xcmd{width:96px;font-size:10px;padding-right:4px;white-space:normal;line-height:1.2}.xcap .xt .xl{font-size:11px;letter-spacing:-.5px}.xcap .xt td.xm{padding:2px 1px}.xcap .xt td.xm>span{padding:4px 0;font-size:11.5px;border-radius:6px;letter-spacing:-.8px;overflow:hidden}.xcap .xt .xn{width:96px}.xcap .xnote{font-size:10px;padding:2px}.xcap .xshot{display:block;margin:3px 0 0 auto;font-size:10px;padding:2px 6px}.xcap .xt .xf{font-size:9.5px!important;padding:3px 8px!important}
+
+.xt .xn{width:150px;color:var(--sub);font-size:12px}
         .xt .xf{text-align:left;font-size:13px;padding:10px 14px;color:var(--sub);background:#fcfaf9;border-bottom:none}.sc-tg{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;align-items:start}
         .sc-day{background:#faf6f4;border-radius:16px;padding:10px}.sc-dh{font-weight:900;font-size:16px;margin-bottom:6px;display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap}.sc-dh span{font-size:12px;color:var(--sub);font-weight:700}
         .sc-t{background:#fff;border:1px solid #eee5e1;border-radius:12px;padding:6px 8px;margin-bottom:6px}.sc-th{display:flex;gap:8px;align-items:center;margin-bottom:2px}.sc-th b{color:var(--primary)}.sc-th span{font-size:12px;color:var(--sub)}
@@ -2098,7 +2102,7 @@
       save({ days: { ...dt, [d]: (dt[d] || []).map(t => t.l === l ? { ...t, eq: v, note: eqText(v) } : t) } }, '已儲存');
     });
     document.querySelectorAll('[data-duty]').forEach(el => el.onclick = async () => {
-      const d = el.dataset.duty, names = presentOn(d).map(k => ppl[k].name).concat(Object.values(ppl).filter(p => p.mode === 'off').map(p => p.name));
+      const d = el.dataset.duty, names = (dt[d] || []).flatMap(t => t.m).filter(k => ppl[k]).map(k => ppl[k].name);
       const v = await dutyEditor(`${dLabel(d)} 值日生／到達／洗衣服`, info[d] || {}, names);
       if (v) save({ info: { ...info, [d]: v } }, '已儲存');
     });
@@ -2235,19 +2239,21 @@
   async function shotDay(d) {
     const el = document.querySelector(`.xd[data-day="${d}"]`); if (!el) return;
     try { if (!window.html2canvas) await loadJs('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'); } catch (err) { return toast('❌ 無法載入截圖元件'); }
-    el.classList.add('shooting');
-    let c; try { c = await html2canvas(el, { scale: 3, backgroundColor: '#ffffff', logging: false }); } catch (err) { el.classList.remove('shooting'); return toast('❌ 截圖失敗'); }
-    el.classList.remove('shooting');
+    const c = await capXd([el], 3); if (!c) return toast('❌ 截圖失敗');
     showShot(c.toDataURL('image/png'), `值班表_${d}.png`, `${dLabel(d)} 值班表`);
+  }
+  async function capXd(els, scale) {      // 複製到手機寬度的暫存區再截圖，電腦和手機存出來一樣大
+    const wrap = document.createElement('div'); wrap.className = 'xcap';
+    els.forEach(x => { const c2 = x.cloneNode(true); c2.classList.add('shooting'); wrap.appendChild(c2); });
+    document.body.appendChild(wrap);
+    try { return await html2canvas(wrap, { scale, backgroundColor: '#ffffff', logging: false, windowWidth: 430 }); } catch (err) { console.error(err); return null; } finally { wrap.remove(); }
   }
   async function shotAll() {
     const box = document.querySelector('.sc-days'); if (!box) return;
     try { if (!window.html2canvas) await loadJs('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'); } catch (err) { return toast('❌ 無法載入截圖元件'); }
     toast('產生圖片中…', 4000);
-    box.classList.add('shootall'); box.querySelectorAll('.xd').forEach(x => x.classList.add('shooting'));
-    let c; try { c = await html2canvas(box, { scale: 2, backgroundColor: '#ffffff', logging: false }); } catch (err) { c = null; }
-    box.classList.remove('shootall'); box.querySelectorAll('.xd').forEach(x => x.classList.remove('shooting'));
-    if (!c) return toast('❌ 截圖失敗');
+    const els = [...box.querySelectorAll('.xd')];
+    const c = await capXd(els, els.length > 10 ? 2 : 2.5); if (!c) return toast('❌ 截圖失敗');
     showShot(c.toDataURL('image/jpeg', 0.9), '值班表_全部.jpg', '全部日期 值班表');
   }
   function showShot(url, name, title) {
