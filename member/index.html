@@ -1576,7 +1576,7 @@
       evRespCache[eid] = s.docs.map(d => ({ id: d.id, ...d.data() }));
       if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid);
     }, () => toast('讀取回覆失敗'));
-    const u2 = onSnapshot(doc(db, 'events', eid, 'admin', 'draw'), s => { const d = s.exists() ? s.data() : {}; evDraw[eid] = d.map || {}; evDrawBy[eid] = d.by2 || {}; evOver[eid] = d.groupOverride || {}; evPaid[eid] = d.paid || {}; evSched[eid] = d.sched || null; if (drawSheetEid === eid) (schedOpen ? renderSched(eid) : renderDrawSheet(eid)); if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid); }, () => {});
+    const u2 = onSnapshot(doc(db, 'events', eid, 'admin', 'draw'), s => { const d = s.exists() ? s.data() : {}; evDraw[eid] = d.map || {}; evDrawBy[eid] = d.by2 || {}; evOver[eid] = d.groupOverride || {}; evPaid[eid] = d.paid || {}; evSched[eid] = schedFromDb(d.sched); if (drawSheetEid === eid) (schedOpen ? renderSched(eid) : renderDrawSheet(eid)); if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid); }, () => {});
     evRespUnsub = () => { u1(); u2(); };
     evRespUnsub._eid = eid;
   }
@@ -1719,8 +1719,17 @@
     DRAW_GROUPS.forEach(g => groups[g].sort((a, b) => a.ro && b.ro ? rosterOrder(a.ro, b.ro) : a.ro ? -1 : b.ro ? 1 : 0));
     return groups;
   }
+  // Firestore 不能存「陣列裡的陣列」：小組名單存成 [{ m: [...] }]，讀回來再轉回 [[...]]
+  const schedToDb = sc => { if (!sc) return null; const o = { ...sc };
+    if (sc.teams) { o.teams = {}; Object.entries(sc.teams).forEach(([k, v]) => o.teams[k] = (v || []).map(m => ({ m }))); }
+    if (sc.ranges) { o.ranges = {}; Object.entries(sc.ranges).forEach(([k, v]) => o.ranges[k] = { a: v[0] || '', b: v[1] || '' }); }
+    return o; };
+  const schedFromDb = sc => { if (!sc) return null; const o = { ...sc };
+    if (sc.teams) { o.teams = {}; Object.entries(sc.teams).forEach(([k, v]) => o.teams[k] = (v || []).map(x => Array.isArray(x) ? x : (x.m || []))); }
+    if (sc.ranges) { o.ranges = {}; Object.entries(sc.ranges).forEach(([k, v]) => o.ranges[k] = Array.isArray(v) ? v : [v.a, v.b]); }
+    return o; };
   const saveDraw = (eid, map, by2, over) => setDoc(doc(db, 'events', eid, 'admin', 'draw'),
-    { map, by2, groupOverride: over, paid: evPaid[eid] || {}, sched: evSched[eid] || null, at: serverTimestamp(), by: user.realName || profile.displayName || '' });
+    { map, by2, groupOverride: over, paid: evPaid[eid] || {}, sched: schedToDb(evSched[eid]), at: serverTimestamp(), by: user.realName || profile.displayName || '' });
   const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   // 某一組還剩哪些位置（依人數平分的目標扣掉已抽的）
   const slotsLeft = (ppl, map) => { const tg = slotTargets(ppl.length), bag = []; SLOTS.forEach(sl => { const left = tg[sl] - ppl.filter(p => map[p.key] === sl).length; for (let i = 0; i < left; i++) bag.push(sl); }); return bag; };
