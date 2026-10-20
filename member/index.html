@@ -1985,10 +1985,19 @@
           <span style="display:inline-flex;gap:4px;align-items:center;">自訂：<input type="date" id="pm-a" value="${esc(pe.mode === 'range' && pe.range ? pe.range[0] : (sc.start || ''))}"> ～ <input type="date" id="pm-b" value="${esc(pe.mode === 'range' && pe.range ? pe.range[1] : '')}"><button class="dr-c ${pe.mode === 'range' ? 'on' : ''}" data-pm="range">套用</button></span>
           <button class="dr-c" data-pm="close">完成</button></div>
         <div style="font-size:12px;color:var(--sub);margin-top:4px;">改完記得按「🔀 自動排班」重新排。</div></div>` : '';
+    const XB = { N: '#ffff00', T2: '#9dc3e6', T1: '#a9d08e', O: '#f4b183' };
+    const cmd = Object.values(ppl).filter(p => p.pos === '指揮官').map(p => p.name).join('、');
     const dayBox = d => { const ts = (dt[d] || []).slice().sort((a, b) => LBL_ORDER(a.l) - LBL_ORDER(b.l)), pres = presentOn(d);
-      const inT = new Set(ts.flatMap(t => t.m)), miss = pres.filter(k => !inT.has(k));
-      return `<div class="sc-day"><div class="sc-dh">${dLabel(d)}<span>${SLOTS.filter(sl => inRange(sl, d)).join('、')}　${pres.length} 人・${ts.length} 組</span></div>
-        <div class="sc-tg">${ts.map(t => `<div class="sc-t"><div class="sc-th"><b>${t.l}</b><span>${t.m.length}</span>${schSel && schSel.d === d ? `<button class="sc-mv" data-mvd="${d}" data-mvl="${t.l}">⬅ 移到這組</button>` : ''}</div>${t.m.filter(k => ppl[k]).map((k, j) => chip(k, j === 0, d)).join('')}</div>`).join('') || '<div class="sc-empty">按「自動排班」</div>'}</div>
+      const inT = new Set(ts.flatMap(t => t.m)), miss = pres.filter(k => !inT.has(k)), dd = new Date(d + 'T12:00:00');
+      let firstBack = true;
+      const rows = ts.map(t => { const ms = t.m.filter(k => ppl[k]), back = t.l.startsWith('轎後'), cls = back && firstBack ? 'xb' : ''; if (back) firstBack = false;
+        const cells = Array.from({ length: 6 }, (_, j) => { const k = ms[j], p = k && ppl[k];
+          return p ? `<td class="xm ${schSel && schSel.k === k && schSel.d === d ? 'sel' : ''}" data-sd="${d}" data-sk="${esc(k)}" style="background:${XB[p.cat]};${j === 0 ? 'font-weight:900;' : ''}">${esc(p.name)}</td>` : '<td class="xm"></td>'; }).join('');
+        const extra = ms.length > 6 ? `<div style="font-size:11px;color:#b91c1c">＋${ms.slice(6).map(k => esc(ppl[k].name)).join('、')}</div>` : '';
+        return `<tr class="${cls}"><th class="xl">${t.l}${schSel && schSel.d === d ? `<button class="sc-mv" data-mvd="${d}" data-mvl="${t.l}">移到這組</button>` : ''}</th>${cells}<td class="xn">${extra}</td></tr>`; }).join('');
+      return `<div class="xd"><table class="xt"><thead><tr><th class="xc"><span>日期</span><span>組別</span></th><th colspan="6" class="xdate">${dd.getMonth() + 1}月${dd.getDate()}日(${WK[dd.getDay()]})<small>${SLOTS.filter(sl => inRange(sl, d)).join('、')}・${pres.length} 人・${ts.length} 組</small></th><th class="xcmd">指揮官:${esc(cmd)}</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="8" class="sc-empty">按「自動排班」</td></tr>'}
+        <tr><td colspan="8" class="xf">◎值日生：中巴－　　　住宿－　　　物資車盤點－</td></tr></tbody></table>
         ${miss.length && ts.length ? `<div class="sc-miss">未排入：${miss.map(k => chip(k, false, d)).join('')}</div>` : ''}</div>`; };
     $('sheet-body').innerHTML = `
       <style>
@@ -1996,7 +2005,14 @@
         .sc-top input{padding:8px 10px;border-radius:10px;border:1.5px solid #e5ddd9;font:inherit;font-size:14px}
         .sc-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px;align-items:start}
         .sc-col{background:#faf6f4;border-radius:16px;padding:10px}.sc-ch{font-weight:900;color:var(--primary);font-size:16px;margin-bottom:6px}.sc-ch span{font-size:12px;color:var(--sub)}
-        .sc-days{display:flex;flex-direction:column;gap:10px;margin-top:14px}.sc-tg{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;align-items:start}
+        .sc-days{display:flex;flex-direction:column;gap:14px;margin-top:14px;max-width:1100px}
+        .xt{width:100%;border-collapse:collapse;table-layout:fixed;background:#fff;font-family:"PMingLiU","新細明體","Noto Serif TC",serif;border:2px solid #000}
+        .xt th,.xt td{border:1px solid #777;height:34px;text-align:center;font-size:15px;padding:0 2px;overflow:hidden;white-space:nowrap}
+        .xt .xc{width:84px;position:relative;font-size:11px;font-weight:400;background:linear-gradient(to top right,#fff calc(50% - .6px),#777,#fff calc(50% + .6px))}.xt .xc span:first-child{position:absolute;top:2px;right:6px}.xt .xc span:last-child{position:absolute;bottom:2px;left:6px}
+        .xt .xdate{font-size:20px;font-weight:900}.xt .xdate small{display:block;font-size:11px;color:#888;font-weight:600}.xt .xcmd{width:170px;text-align:left;font-size:13px}
+        .xt .xl{background:#d9d9d9;font-size:16px;font-weight:600;position:relative}.xt .xl .sc-mv{position:absolute;left:2px;right:2px;bottom:1px;margin:0;padding:1px 2px;font-size:10px}
+        .xt .xm{cursor:pointer}.xt .xm.sel{outline:3px solid var(--primary);outline-offset:-3px}.xt tr.xb>*{border-top:3px solid #000}.xt .xn{width:170px}
+        .xt .xf{text-align:left;font-size:13px;padding-left:6px}.sc-tg{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;align-items:start}
         .sc-day{background:#faf6f4;border-radius:16px;padding:10px}.sc-dh{font-weight:900;font-size:16px;margin-bottom:6px;display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap}.sc-dh span{font-size:12px;color:var(--sub);font-weight:700}
         .sc-t{background:#fff;border:1px solid #eee5e1;border-radius:12px;padding:6px 8px;margin-bottom:6px}.sc-th{display:flex;gap:8px;align-items:center;margin-bottom:2px}.sc-th b{color:var(--primary)}.sc-th span{font-size:12px;color:var(--sub)}
         .sc-p{border:1px solid rgba(0,0,0,.08);border-radius:8px;padding:3px 7px;margin:2px;font:inherit;font-size:13px;cursor:pointer;color:#1f2430}.sc-p.sel{outline:2.5px solid var(--primary)}
@@ -2041,7 +2057,7 @@
       days.forEach(d => { out[d] = buildDay(presentOn(d), prev, size, ppl); prev = out[d]; });
       save({ size, days: out }, '🔀 已自動排班');
     };
-    document.querySelectorAll('[data-sd]').forEach(b => b.onclick = () => { const k = b.dataset.sk, d = b.dataset.sd; schSel = schSel && schSel.k === k && schSel.d === d ? null : { k, d }; renderSched(eid); });
+    document.querySelectorAll('[data-sd][data-sk]').forEach(b => b.onclick = () => { const k = b.dataset.sk, d = b.dataset.sd; schSel = schSel && schSel.k === k && schSel.d === d ? null : { k, d }; renderSched(eid); });
     document.querySelectorAll('[data-mvd]').forEach(b => b.onclick = () => {
       const { k, d } = schSel, ts = (dt[d] || []).map(t => ({ l: t.l, m: t.m.filter(x => x !== k) }));
       const t = ts.find(x => x.l === b.dataset.mvl); if (t) t.m.push(k);
