@@ -3598,5 +3598,23 @@
     };
 
   </script>
-  </body>
+  
+<!-- 讀取太久提示：12 秒還卡在讀取畫面，就提示把 LINE 完全關閉再打開 -->
+<script>
+(function () {
+  function vis(id) { var e = document.getElementById(id); return !!e && e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden'; }
+  function show() {
+    if (document.getElementById('slow-hint') || !(vis('authScreen') && vis('authLoading'))) return;
+    var box = document.createElement('div'); box.id = 'slow-hint';
+    box.style.cssText = 'margin:18px auto 0;max-width:340px;padding:16px 16px 14px;border-radius:18px;background:#fff7ed;border:1.5px solid #fdba74;color:#7c2d12;font-size:14px;line-height:1.7;text-align:left;box-shadow:0 8px 20px rgba(194,65,12,.12);font-family:inherit;';
+    box.innerHTML = '<div style="font-size:16px;font-weight:900;margin-bottom:6px;">⏳ 讀取比較久嗎？</div>'
+      + '<div>請把 <b>LINE 完全關閉</b>再重新打開：</div>'
+      + '<div style="margin:6px 0 2px;padding-left:4px;">① 從手機下方往上滑（或按多工鍵），把 LINE <b>往上滑掉</b><br>② 重新打開 LINE，再點一次連結或選單</div>'
+      + '<button type="button" onclick="location.reload()" style="margin-top:12px;width:100%;border:none;border-radius:12px;padding:11px;font-size:15px;font-weight:800;color:#fff;background:linear-gradient(90deg,#D65A68,#F08339);font-family:inherit;">先試試重新整理</button>';
+    document.getElementById('authLoading').appendChild(box);
+  }
+  setTimeout(show, 12000); setTimeout(show, 25000);
+})();
+</script>
+</body>
 </html>
