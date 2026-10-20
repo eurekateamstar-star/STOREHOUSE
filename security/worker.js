@@ -110,15 +110,15 @@ async function parseRoute(req, env, json) {
 const SITE = 'https://tsushin-buishatun.pages.dev';
 const LIFF = id => 'https://liff.line.me/' + id;
 const MENUS = {
-  guest: { alias: 'bst-guest', name: '白沙屯醫護團｜訪客', areas: [
+  guest: { alias: 'bst-guest', name: '白沙屯醫護團｜訪客', img: 'guest.png', areas: [
     { type: 'uri', label: '會員中心', uri: LIFF('2011820105-x1KU6xLW') },
     { type: 'uri', label: '入團申請', uri: SITE + '/join/' },
     { type: 'message', label: '聯絡管理員', text: '聯絡管理員' },
   ] },
-  member: { alias: 'bst-member', name: '白沙屯醫護團｜團員', areas: [
+  member: { alias: 'bst-member', name: '白沙屯醫護團｜團員', img: 'member.jpg', areas: [
     { type: 'uri', label: '會員中心', uri: LIFF('2011820105-x1KU6xLW') },
-    { type: 'uri', label: '物資倉庫', uri: LIFF('2011820105-ofRs4ehy') },
     { type: 'uri', label: '救護紀錄表', uri: LIFF('2011820105-6oXAxIEi') },
+    { type: 'uri', label: '倉儲管理', uri: LIFF('2011820105-ofRs4ehy') },
   ] },
 };
 const lineApi = (env, path, opt = {}) => fetch((opt.data ? 'https://api-data.line.me' : 'https://api.line.me') + path, {
@@ -164,7 +164,7 @@ async function menuRoute(req, env, json) {
   }
 }
 
-// 建立／更新兩個選單（只有最高管理員）：上傳 SITE/richmenu/{guest,member}.png，訪客選單設為預設
+// 建立／更新兩個選單（只有最高管理員）：上傳 SITE/richmenu/ 的圖片（LINE 限 1MB 以內），訪客選單設為預設
 async function menuSetupRoute(req, env, json) {
   try {
     if (!env.LINE_BOT_TOKEN) return json({ error: 'LINE_BOT_TOKEN 尚未設定' }, 501);
@@ -181,9 +181,9 @@ async function menuSetupRoute(req, env, json) {
       const c = await lineApi(env, '/v2/bot/richmenu', { method: 'POST', type: 'application/json', body: JSON.stringify(body) });
       if (!c.ok) return json({ error: `建立 ${key} 失敗：` + await c.text() }, 502);
       const id = (await c.json()).richMenuId;
-      const img = await fetch(`${SITE}/richmenu/${key}.png?v=${Date.now()}`);
-      if (!img.ok) return json({ error: `讀不到 ${key}.png` }, 502);
-      const up = await lineApi(env, `/v2/bot/richmenu/${id}/content`, { method: 'POST', data: true, type: 'image/png', body: await img.arrayBuffer() });
+      const img = await fetch(`${SITE}/richmenu/${m.img}?v=${Date.now()}`);
+      if (!img.ok) return json({ error: `讀不到 ${m.img}` }, 502);
+      const up = await lineApi(env, `/v2/bot/richmenu/${id}/content`, { method: 'POST', data: true, type: m.img.endsWith('.jpg') ? 'image/jpeg' : 'image/png', body: await img.arrayBuffer() });
       if (!up.ok) return json({ error: `上傳 ${key} 圖片失敗：` + await up.text() }, 502);
       // alias 指到新選單，再刪掉舊的
       const old = await lineApi(env, '/v2/bot/richmenu/alias/' + m.alias);
