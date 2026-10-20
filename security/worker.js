@@ -109,17 +109,31 @@ async function parseRoute(req, env, json) {
 // 兩種選單：guest（預設，沒開通的人）、member（審核通過的團員）。用 alias 記住目前的選單 ID，不用另外存。
 const SITE = 'https://tsushin-buishatun.pages.dev';
 const LIFF = id => 'https://liff.line.me/' + id;
+// 圖片 2500×843。分頁式選單上方 104px 是分頁列（左：團員專區、右：一般資訊），下面三格按鈕
+const MW = 2500, MH = 843, TAB = 104;
+const cols3 = (acts, top) => acts.map((a, i) => {
+  const cw = Math.floor(MW / 3), x = i * cw;
+  return { bounds: { x, y: top, width: i === 2 ? MW - x : cw, height: MH - top }, action: a };
+});
+const tabs = () => [
+  { bounds: { x: 0, y: 0, width: MW / 2, height: TAB }, action: { type: 'richmenuswitch', richMenuAliasId: 'bst-member', data: 'tab=member' } },
+  { bounds: { x: MW / 2, y: 0, width: MW / 2, height: TAB }, action: { type: 'richmenuswitch', richMenuAliasId: 'bst-member-b', data: 'tab=public' } },
+];
+// 一般民眾也看得到的三格：按下去會在聊天室送出這句話，內容請在 LINE 官方帳號後台設定「關鍵字自動回應」
+const PUBLIC = [
+  { type: 'message', label: '認識醫療團', text: '認識醫療團' },
+  { type: 'message', label: '衛教須知', text: '衛教須知' },
+  { type: 'message', label: '聯絡管理員', text: '聯絡管理員' },
+];
+const MEMBER = [
+  { type: 'uri', label: '會員中心', uri: LIFF('2011820105-x1KU6xLW') },
+  { type: 'uri', label: '救護紀錄表', uri: LIFF('2011820105-6oXAxIEi') },
+  { type: 'uri', label: '倉儲管理', uri: LIFF('2011820105-ofRs4ehy') },
+];
 const MENUS = {
-  guest: { alias: 'bst-guest', name: '白沙屯醫護團｜訪客', img: 'guest.jpg', areas: [
-    { type: 'uri', label: '會員中心', uri: LIFF('2011820105-x1KU6xLW') },
-    { type: 'uri', label: '入團申請', uri: SITE + '/join/' },
-    { type: 'message', label: '聯絡管理員', text: '聯絡管理員' },
-  ] },
-  member: { alias: 'bst-member', name: '白沙屯醫護團｜團員', img: 'member.jpg', areas: [
-    { type: 'uri', label: '會員中心', uri: LIFF('2011820105-x1KU6xLW') },
-    { type: 'uri', label: '救護紀錄表', uri: LIFF('2011820105-6oXAxIEi') },
-    { type: 'uri', label: '倉儲管理', uri: LIFF('2011820105-ofRs4ehy') },
-  ] },
+  guest:   { alias: 'bst-guest',    name: '白沙屯醫護團｜一般民眾', img: 'guest.jpg',   areas: cols3(PUBLIC, 0) },
+  member:  { alias: 'bst-member',   name: '白沙屯醫護團｜團員專區', img: 'member.jpg',  areas: [...tabs(), ...cols3(MEMBER, TAB)] },
+  member2: { alias: 'bst-member-b', name: '白沙屯醫護團｜一般資訊', img: 'member2.jpg', areas: [...tabs(), ...cols3(PUBLIC, TAB)] },
 };
 const lineApi = (env, path, opt = {}) => fetch((opt.data ? 'https://api-data.line.me' : 'https://api.line.me') + path, {
   method: opt.method || 'GET',
@@ -171,13 +185,10 @@ async function menuSetupRoute(req, env, json) {
     const { idToken } = await req.json();
     const meDoc = await fsUser(idToken, uidOfToken(idToken));
     if (!meDoc || meDoc.status !== 'approved' || meDoc.role !== 'admin') return json({ error: 'admin only' }, 403);
-    const out = {};
+    // 1) 先把三個選單都建好、上傳圖片
+    const made = {};
     for (const [key, m] of Object.entries(MENUS)) {
-      const W = 2500, H = 843, cw = Math.floor(W / m.areas.length);
-      const body = {
-        size: { width: W, height: H }, selected: true, name: m.name, chatBarText: '選單',
-        areas: m.areas.map((a, i) => ({ bounds: { x: i * cw, y: 0, width: i === m.areas.length - 1 ? W - i * cw : cw, height: H }, action: a })),
-      };
+      const body = { size: { width: MW, height: MH }, selected: true, name: m.name, chatBarText: '選單', areas: m.areas };
       const c = await lineApi(env, '/v2/bot/richmenu', { method: 'POST', type: 'application/json', body: JSON.stringify(body) });
       if (!c.ok) return json({ error: `建立 ${key} 失敗：` + await c.text() }, 502);
       const id = (await c.json()).richMenuId;
@@ -185,17 +196,23 @@ async function menuSetupRoute(req, env, json) {
       if (!img.ok) return json({ error: `讀不到 ${m.img}` }, 502);
       const up = await lineApi(env, `/v2/bot/richmenu/${id}/content`, { method: 'POST', data: true, type: m.img.endsWith('.jpg') ? 'image/jpeg' : 'image/png', body: await img.arrayBuffer() });
       if (!up.ok) return json({ error: `上傳 ${key} 圖片失敗：` + await up.text() }, 502);
-      // alias 指到新選單，再刪掉舊的
+      made[key] = id;
+    }
+    // 2) 別名指到新選單（分頁切換靠別名），訪客選單設為預設，最後刪掉舊選單
+    const out = {}, olds = [];
+    for (const [key, m] of Object.entries(MENUS)) {
+      const id = made[key];
       const old = await lineApi(env, '/v2/bot/richmenu/alias/' + m.alias);
       const oldId = old.ok ? (await old.json()).richMenuId : null;
       const al = oldId
         ? await lineApi(env, '/v2/bot/richmenu/alias/' + m.alias, { method: 'POST', type: 'application/json', body: JSON.stringify({ richMenuId: id }) })
         : await lineApi(env, '/v2/bot/richmenu/alias', { method: 'POST', type: 'application/json', body: JSON.stringify({ richMenuAliasId: m.alias, richMenuId: id }) });
       if (!al.ok) return json({ error: `設定 ${key} 別名失敗：` + await al.text() }, 502);
-      if (key === 'guest') await lineApi(env, '/v2/bot/user/all/richmenu/' + id, { method: 'POST' });
-      if (oldId && oldId !== id) await lineApi(env, '/v2/bot/richmenu/' + oldId, { method: 'DELETE' });
+      if (oldId && oldId !== id) olds.push(oldId);
       out[key] = id;
     }
+    await lineApi(env, '/v2/bot/user/all/richmenu/' + made.guest, { method: 'POST' });
+    for (const id of olds) await lineApi(env, '/v2/bot/richmenu/' + id, { method: 'DELETE' });
     return json({ ok: true, menus: out });
   } catch (e) {
     return json({ error: String((e && e.message) || e) }, e && e.code || 500);
