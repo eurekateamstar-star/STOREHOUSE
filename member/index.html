@@ -1989,15 +1989,16 @@
     const dayBox = d => { const ts = (dt[d] || []).slice().sort((a, b) => LBL_ORDER(a.l) - LBL_ORDER(b.l)), pres = presentOn(d);
       const inT = new Set(ts.flatMap(t => t.m)), miss = pres.filter(k => !inT.has(k)), dd = new Date(d + 'T12:00:00');
       let firstBack = true;
+      const NC = Math.max(5, ...ts.map(t => t.m.length));
       const rows = ts.map(t => { const ms = t.m.filter(k => ppl[k]), back = t.l.startsWith('轎後'), cls = back && firstBack ? 'xb' : ''; if (back) firstBack = false;
-        const cells = Array.from({ length: 6 }, (_, j) => { const k = ms[j], p = k && ppl[k];
+        const cells = Array.from({ length: NC }, (_, j) => { const k = ms[j], p = k && ppl[k];
           return p ? `<td class="xm ${schSel && schSel.k === k && schSel.d === d ? 'sel' : ''}" data-sd="${d}" data-sk="${esc(k)}"><span style="background:${CAT_BG[p.cat]};${j === 0 ? 'font-weight:900;' : ''}">${esc(p.name)}</span></td>` : '<td class="xm"></td>'; }).join('');
-        const extra = ms.length > 6 ? `<div style="font-size:11px;color:#b91c1c">＋${ms.slice(6).map(k => esc(ppl[k].name)).join('、')}</div>` : '';
+        const extra = ms.length > NC ? `<div style="font-size:11px;color:#b91c1c">＋${ms.slice(NC).map(k => esc(ppl[k].name)).join('、')}</div>` : '';
         const mv = schSel && schSel.d === d;
-        return `<tr class="${cls}"><th class="xl ${mv ? 'mv' : ''}" ${mv ? `data-mvd="${d}" data-mvl="${t.l}" title="移到這組"` : ''}>${mv ? '⬅ ' : ''}${t.l}</th>${cells}<td class="xn"><div class="xnote ${t.note ? '' : 'emp'}" data-nd="${d}" data-nl="${t.l}">${t.note ? esc(t.note) : '＋裝備'}</div>${extra}</td></tr>`; }).join('');
-      return `<div class="xd"><table class="xt"><thead><tr><th class="xc">組別</th><th colspan="6" class="xdate">${dd.getMonth() + 1}月${dd.getDate()}日(${WK[dd.getDay()]})<small>${SLOTS.filter(sl => inRange(sl, d)).join('、')}・${pres.length} 人・${ts.length} 組</small></th><th class="xcmd">指揮官:${esc(cmd)}</th></tr></thead>
-        <tbody>${rows || '<tr><td colspan="8" class="sc-empty">按「自動排班」</td></tr>'}
-        <tr><td colspan="8" class="xf">◎值日生：中巴－　　　住宿－　　　物資車盤點－</td></tr></tbody></table>
+        return `<tr class="${cls}"><th class="xl ${mv ? 'mv' : ''}" ${mv ? `data-mvd="${d}" data-mvl="${t.l}" title="移到這組"` : ''}>${mv ? '⬅ ' : ''}${t.l}</th>${cells}<td class="xn"><div class="xnote ${t.note ? '' : 'emp'}" data-nd="${d}" data-nl="${t.l}">${t.note ? eqHtml(t.note) : '＋裝備'}</div>${extra}</td></tr>`; }).join('');
+      return `<div class="xd" data-day="${d}"><table class="xt"><thead><tr><th class="xc">組別</th><th colspan="${NC}" class="xdate">${dd.getMonth() + 1}月${dd.getDate()}日(${WK[dd.getDay()]})<small>${SLOTS.filter(sl => inRange(sl, d)).join('、')}・${pres.length} 人・${ts.length} 組</small></th><th class="xcmd">指揮官:${esc(cmd)}<button class="xshot" data-shot="${d}">📷 存圖</button></th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="${NC + 2}" class="sc-empty">按「自動排班」</td></tr>`}
+        <tr><td colspan="${NC + 2}" class="xf">◎值日生：中巴－　　　住宿－　　　物資車盤點－</td></tr></tbody></table>
         ${miss.length && ts.length ? `<div class="sc-miss">未排入：${miss.map(k => chip(k, false, d)).join('')}</div>` : ''}</div>`; };
     $('sheet-body').innerHTML = `
       <style>
@@ -2016,13 +2017,23 @@
         .xt .xl{font-size:15px;font-weight:900;color:var(--primary)}.xt .xl.mv{cursor:pointer;background:#fde8ea;outline:2px dashed var(--primary);outline-offset:-4px;border-radius:10px}
         .xt td.xm{padding:4px 3px}.xt td.xm>span{display:block;border-radius:10px;padding:6px 2px;font-size:14px;cursor:pointer}.xt td.xm.sel>span{outline:2.5px solid var(--primary);outline-offset:1px}
         .xt tr.xb>*{border-top:2px solid #e9b8bf}
+        .xshot{margin-left:8px;border:none;border-radius:8px;background:#1f2430;color:#fff;font:inherit;font-size:11px;font-weight:800;padding:3px 8px;cursor:pointer;vertical-align:middle}
+        .xd.shooting .xshot,.xd.shooting .sc-miss,.xd.shooting .xnote.emp{visibility:hidden}.xsub{color:#6b7280;font-size:.9em}
+        .eq-ov{position:fixed;inset:0;z-index:9500;background:rgba(31,36,48,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+        .eq-box{background:#fff;border-radius:20px;padding:18px;width:100%;max-width:360px;max-height:92vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+        .eq-t{font-weight:900;font-size:17px;margin-bottom:10px}.eq-r{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f3ece9;font-size:16px}
+        .eq-s{display:flex;align-items:center;gap:10px}.eq-s button{width:36px;height:36px;border-radius:50%;border:1.5px solid #e5ddd9;background:#fff;font-size:18px;font-weight:900;cursor:pointer}.eq-s span{min-width:20px;text-align:center;font-weight:900;font-size:18px}
+        .eq-l{font-size:12px;color:var(--sub);font-weight:800;margin:10px 0 4px}#eq-text{width:100%;padding:9px 10px;border-radius:10px;border:1.5px solid #e5ddd9;font:inherit;font-size:15px}
+        .eq-pv{margin:10px 0;padding:8px 10px;border-radius:10px;background:#fff7f5;font-size:14px;color:#dc2626;min-height:20px}
+        .eq-btn{display:flex;gap:8px;margin-top:6px}.eq-btn>*{flex:1;text-align:center;border:none;border-radius:12px;padding:11px;font:inherit;font-size:15px;font-weight:900;cursor:pointer;text-decoration:none}
+        #eq-no,#sh-no{background:#f1f5f9;color:#334155}#eq-ok,#sh-dl{background:linear-gradient(90deg,#D65A68,#F08339);color:#fff}
         .xnote{white-space:normal;line-height:1.25;font-size:12px;color:#b91c1c;cursor:pointer;border-radius:8px;padding:3px 4px;text-align:left}.xnote.emp{color:#c9b5ae;border:1px dashed #ead9d4;text-align:center}.xnote:hover{background:#fff1f2}
         @media (max-width:760px){
           .xd{border-radius:14px}.xt th,.xt td{height:30px;font-size:12px;padding:0 1px}
           .xt thead th{height:44px}.xt .xc{width:38px;font-size:10px}.xt .xdate{font-size:16px;padding-left:2px}.xt .xdate small{display:block;margin:0;font-size:10px}
-          .xt .xcmd{width:62px;font-size:10px;padding-right:4px;white-space:normal;line-height:1.2}
+          .xt .xcmd{width:96px;font-size:10px;padding-right:4px;white-space:normal;line-height:1.2}
           .xt .xl{font-size:11px;letter-spacing:-.5px}.xt td.xm{padding:2px 1px}.xt td.xm>span{padding:4px 0;font-size:11.5px;border-radius:6px;letter-spacing:-.8px;overflow:hidden}
-          .xt .xn{width:62px}.xnote{font-size:9.5px;padding:2px}.xt .xf{font-size:11px;padding:6px 8px}
+          .xt .xn{width:96px}.xnote{font-size:10px;padding:2px}.xshot{display:block;margin:3px 0 0 auto;font-size:10px;padding:2px 6px}.xt .xf{font-size:11px;padding:6px 8px}
         }.xt .xn{width:150px;color:var(--sub);font-size:12px}
         .xt .xf{text-align:left;font-size:13px;padding:10px 14px;color:var(--sub);background:#fcfaf9;border-bottom:none}.sc-tg{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;align-items:start}
         .sc-day{background:#faf6f4;border-radius:16px;padding:10px}.sc-dh{font-weight:900;font-size:16px;margin-bottom:6px;display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap}.sc-dh span{font-size:12px;color:var(--sub);font-weight:700}
@@ -2076,11 +2087,12 @@
       schSel = null; save({ days: { ...dt, [d]: ts.filter(x => x.m.length) } }, '已換組');
     });
     document.querySelectorAll('.xnote').forEach(el => el.onclick = async () => {
-      const d = el.dataset.nd, l = el.dataset.nl, cur = ((dt[d] || []).find(t => t.l === l) || {}).note || '';
-      const v = await dialog({ title: `${dLabel(d)} ${l} 攜帶裝備`, input: { value: cur, placeholder: '例如：救護包*2、AMBU包' }, okText: '儲存' });
-      if (v === null) return;
-      save({ days: { ...dt, [d]: (dt[d] || []).map(t => t.l === l ? { ...t, note: v } : t) } }, '已儲存');
+      const d = el.dataset.nd, l = el.dataset.nl, t0 = (dt[d] || []).find(t => t.l === l) || {};
+      const v = await eqPicker(`${dLabel(d)} ${l} 攜帶器材`, t0.eq || eqParse(t0.note || ''));
+      if (!v) return;
+      save({ days: { ...dt, [d]: (dt[d] || []).map(t => t.l === l ? { ...t, eq: v, note: eqText(v) } : t) } }, '已儲存');
     });
+    document.querySelectorAll('[data-shot]').forEach(b => b.onclick = e2 => { e2.stopPropagation(); shotDay(b.dataset.shot); });
     if ($('sc-xlsx')) $('sc-xlsx').onclick = () => exportSchedXlsx(eid);
   }
   async function exportSchedXlsx(eid) {
@@ -2119,7 +2131,7 @@
       ts.forEach(t => {
         const ms = t.m.filter(k => ppl[k]).slice(0, MAXP), isBack = t.l.startsWith('轎後');
         ws.mergeCells(`A${r}:A${r + 1}`); Object.assign(ws.getCell(`A${r}`), { value: t.l, font: font({ size: 14 }), alignment: { horizontal: 'center', vertical: 'middle' }, fill: fillC('FFD9D9D9') });
-        ws.mergeCells(`H${r}:H${r + 1}`); Object.assign(ws.getCell(`H${r}`), { value: t.note || '', font: font({ size: 10, color: { argb: 'FFC00000' } }), alignment: { horizontal: 'center', vertical: 'middle', wrapText: true } });
+        ws.mergeCells(`H${r}:H${r + 1}`); Object.assign(ws.getCell(`H${r}`), { value: t.note ? { richText: String(t.note).split(/(AMBU包(?:\*\d+)?)/).filter(Boolean).map(x => ({ text: x, font: font({ size: 10, color: { argb: x.startsWith('AMBU') ? 'FF0070C0' : 'FFC00000' } }) })) } : '', alignment: { horizontal: 'center', vertical: 'middle', wrapText: true } });
         for (let j = 0; j < MAXP; j++) {
           const c = ws.getRow(r).getCell(2 + j), c2 = ws.getRow(r + 1).getCell(2 + j), p = ppl[ms[j]];
           c.alignment = { horizontal: 'center', vertical: 'middle' }; c2.alignment = { horizontal: 'center' }; c2.font = font({ size: 9, color: { argb: 'FFFF0000' } });
@@ -2150,6 +2162,47 @@
     const buf = await wb.xlsx.writeBuffer();
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
     a.download = `${e.title || '進香'}_值班表.xlsx`; a.click(); toast('⬇ 已下載值班表');
+  }
+  // ===== 器材：救護包×n、AMBU包×n（藍色）、儀器包×n＋自己填 =====
+  const EQ = [['kit', '救護包', '#dc2626'], ['ambu', 'AMBU包', '#2563eb'], ['inst', '儀器包', '#dc2626']];
+  const eqText = v => { const a = EQ.filter(([k]) => v[k] > 0).map(([k, n]) => n + (k === 'kit' || v[k] > 1 ? '*' + v[k] : '')).join('、'); return [a, (v.text || '').trim()].filter(Boolean).join('\n'); };
+  const eqParse = s0 => { const v = { kit: 0, ambu: 0, inst: 0, text: '' }, rest = [];
+    String(s0 || '').split(/[、,，\n]/).map(x => x.trim()).filter(Boolean).forEach(x => { const e = EQ.find(([, n]) => x.replace(/\s/g, '').toUpperCase().startsWith(n.toUpperCase()));
+      if (e) { const m = x.match(/[*xX×]\s*(\d+)/); v[e[0]] = m ? +m[1] : 1; } else rest.push(x); });
+    v.text = rest.join('、'); return v; };
+  const eqHtml = s0 => String(s0 || '').split('\n').map((ln, i) => { const h = esc(ln).replace(/AMBU包(\*\d+)?/g, m => `<b style="color:#2563eb">${m}</b>`); return i ? `<span class="xsub">${h}</span>` : h; }).join('<br>');
+  function eqPicker(title, cur) {
+    return new Promise(res => {
+      const v = { kit: 0, ambu: 0, inst: 0, text: '', ...(cur || {}) };
+      const ov = document.createElement('div'); ov.className = 'eq-ov';
+      const draw = () => { ov.innerHTML = `<div class="eq-box"><div class="eq-t">${esc(title)}</div>
+        ${EQ.map(([k, n, c]) => `<div class="eq-r"><b style="color:${c}">${n}</b><div class="eq-s"><button data-k="${k}" data-d="-1">－</button><span>${v[k]}</span><button data-k="${k}" data-d="1">＋</button></div></div>`).join('')}
+        <div class="eq-l">其他（自己填）</div><input id="eq-text" value="${esc(v.text)}" placeholder="例如：松甫、鴻光自備">
+        <div class="eq-pv">${eqText(v) ? eqHtml(eqText(v)) : '<span style="color:#bbb">（沒有器材）</span>'}</div>
+        <div class="eq-btn"><button id="eq-no">取消</button><button id="eq-ok">儲存</button></div></div>`;
+        ov.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { v.text = ov.querySelector('#eq-text').value; v[b.dataset.k] = Math.max(0, Math.min(9, v[b.dataset.k] + +b.dataset.d)); draw(); });
+        ov.querySelector('#eq-text').oninput = e => { v.text = e.target.value; ov.querySelector('.eq-pv').innerHTML = eqText(v) ? eqHtml(eqText(v)) : '<span style="color:#bbb">（沒有器材）</span>'; };
+        ov.querySelector('#eq-no').onclick = () => { ov.remove(); res(null); };
+        ov.querySelector('#eq-ok').onclick = () => { v.text = ov.querySelector('#eq-text').value.trim(); ov.remove(); res(v); };
+      };
+      draw(); document.body.appendChild(ov);
+    });
+  }
+  // ===== 把某一天存成圖片（LINE 裡會顯示圖片，長按即可儲存）=====
+  async function shotDay(d) {
+    const el = document.querySelector(`.xd[data-day="${d}"]`); if (!el) return;
+    try { if (!window.html2canvas) await loadJs('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'); } catch (err) { return toast('❌ 無法載入截圖元件'); }
+    el.classList.add('shooting');
+    let c; try { c = await html2canvas(el, { scale: 3, backgroundColor: '#ffffff', logging: false }); } catch (err) { el.classList.remove('shooting'); return toast('❌ 截圖失敗'); }
+    el.classList.remove('shooting');
+    const url = c.toDataURL('image/png'), name = `值班表_${d}.png`;
+    const ov = document.createElement('div'); ov.className = 'eq-ov';
+    ov.innerHTML = `<div class="eq-box" style="max-width:640px"><div class="eq-t">${dLabel(d)} 值班表</div><img src="${url}" style="width:100%;border-radius:10px;border:1px solid #eee">
+      <div style="font-size:12px;color:var(--sub);margin:8px 0">手機：長按圖片 →「儲存圖片」或直接分享到 LINE 群組</div>
+      <div class="eq-btn"><button id="sh-no">關閉</button><a id="sh-dl" href="${url}" download="${name}">⬇ 下載圖片</a></div></div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#sh-no').onclick = () => ov.remove();
+    ov.onclick = e2 => { if (e2.target === ov) ov.remove(); };
   }
   const loadExcelJS = () => window.ExcelJS ? Promise.resolve() : new Promise((ok, bad) => { const sc = document.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js'; sc.onload = ok; sc.onerror = bad; document.head.appendChild(sc); });
   const ganzhi = roc => { const y = roc + 1911; return '甲乙丙丁戊己庚辛壬癸'[(y - 4) % 10] + '子丑寅卯辰巳午未申酉戌亥'[(y - 4) % 12]; };
