@@ -1733,7 +1733,7 @@
     const missing = DRAW_GROUPS.reduce((n, g) => n + groups[g].filter(p => !map[p.key]).length, 0);
     const done = total - missing;
     const avOf = p => { const u = p.ro && p.ro.boundUserId && userById(p.ro.boundUserId); return u && u.pictureUrl ? `<img class="dr-av" src="${esc(u.pictureUrl)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ''; };
-    const nm = p => `<button class="dr-n ${drSel === p.key ? 'sel' : ''}" data-dk="${esc(p.key)}">${avOf(p)}${esc(p.name)}${p.r.attend === 'join' ? '<i>請假</i>' : ''}${by2[p.key] === 'admin' ? '<i class="ad">代抽</i>' : ''}${over[p.key] ? '<i class="mv">手動</i>' : ''}${(evPaid[eid] || {})[p.key] ? '<i class="pd">已繳</i>' : ''}</button>`;
+    const nm = p => `<button class="dr-n ${drSel === p.key ? 'sel' : ''} ${(evPaid[eid] || {})[p.key] ? 'paid' : ''}" data-dk="${esc(p.key)}">${(evPaid[eid] || {})[p.key] ? '<b class="pdk">✓</b>' : ''}${avOf(p)}${esc(p.name)}${p.r.attend === 'join' ? '<i>請假</i>' : ''}${by2[p.key] === 'admin' ? '<i class="ad">代抽</i>' : ''}${over[p.key] ? '<i class="mv">手動</i>' : ''}</button>`;
     const editor = (p, g) => `<div class="dr-ed">
         <div class="dr-ed-t">✏️ ${esc(p.name)}　<span>${esc(p.ro ? rv(p.ro, 'position') + '・' + (p.ro.cert || '') : '未對應名冊')}</span></div>
         <div class="dr-ed-l">換到哪一組</div>
@@ -1765,7 +1765,7 @@
         .dr-un .dr-n{display:inline-flex;width:auto;background:#fff7ed;border:1px solid #fed7aa;margin:3px 4px 0 0;padding:4px 8px}
         .dr-n.sel{background:#fde8ea !important;outline:2px solid var(--primary)}
         .dr-av{width:22px;height:22px;flex-shrink:0;border-radius:50%;object-fit:cover;margin-right:3px;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.15)}
-        .dr-n i{font-style:normal;font-size:9px;letter-spacing:-.5px;color:#b45309;margin-left:1px;flex-shrink:0}.dr-n i.ad{color:#2563eb}.dr-n i.pd{color:#fff;background:#16a34a;border-radius:6px;padding:0 4px}.dr-n i.mv{color:#7c3aed}
+        .dr-n i{font-style:normal;font-size:9px;letter-spacing:-.5px;color:#b45309;margin-left:1px;flex-shrink:0}.dr-n i.ad{color:#2563eb}.dr-n.paid{background:#dcfce7 !important;color:#166534;font-weight:800}.dr-n .pdk{flex-shrink:0;width:16px;height:16px;border-radius:50%;background:#16a34a;color:#fff;font-size:11px;line-height:16px;text-align:center;margin-right:3px}.dr-n i.mv{color:#7c3aed}
         .dr-ul{font-size:12px;color:#b45309;font-weight:800;margin-top:8px}
         .dr-ed{background:#fff7f5;border:1.5px solid #f5c2c8;border-radius:14px;padding:10px 12px;margin-top:8px}
         .dr-ed-t{font-weight:900}.dr-ed-t span{font-size:12px;color:var(--sub);font-weight:600}.dr-ed-l{font-size:12px;color:var(--sub);margin:8px 0 4px;font-weight:700}
@@ -1775,7 +1775,7 @@
       <h3>🎲 分組與抽籤（前／中／後）</h3>
       <div style="font-size:13px;color:var(--sub);line-height:1.7;margin-top:4px;">${esc(e.title || '')}<br>
         出席＋不出席但參與進香 共 <b>${total}</b> 人，已抽 <b>${done}</b>、還沒抽 <b>${missing}</b>；團費已繳 <b style="color:#16a34a">${DRAW_GROUPS.reduce((n, g) => n + groups[g].filter(p => (evPaid[eid] || {})[p.key]).length, 0)}</b> 人。每組平分成三份，多的放後面（10 人 → 3、3、4）。<br>
-        👆 <b>點名字</b>可以換組、指定時段或代抽籤。</div>
+        👆 <b>點名字</b>可以換組、指定時段、代抽籤或勾選繳費。<span style="background:#dcfce7;color:#166534;font-weight:800;border-radius:6px;padding:1px 6px;margin-left:6px;">✓ 綠底＝已繳團費</span></div>
       <div class="dr-top"><div>
       <div class="dr-ed" style="margin-top:10px;background:${e.selfDraw ? '#ecfdf5' : '#f8fafc'};border-color:${e.selfDraw ? '#86efac' : '#e2e8f0'};">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
