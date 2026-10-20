@@ -1437,7 +1437,7 @@
     }
   }
 
-  function closeSheet() { drawSheetEid = null; $('sheet').classList.remove('wide'); $('sheet-close').classList.remove('hidden'); confirmLock = false; document.body.classList.remove('sheet-open'); sheetRid = null; sheetUid = null; $('sheet-bg').style.display = 'none'; $('sheet').style.display = 'none'; }
+  function closeSheet() { drawSheetEid = null; schedOpen = false; $('sheet').classList.remove('wide'); $('sheet-close').classList.remove('hidden'); confirmLock = false; document.body.classList.remove('sheet-open'); sheetRid = null; sheetUid = null; $('sheet-bg').style.display = 'none'; $('sheet').style.display = 'none'; }
   const closeAny = () => { const back = editFromConfirm && editCtx && editCtx.role === 'self' && $('ed-save'); closeSheet(); if (back) backToConfirm(); };
   $('sheet-bg').onclick = () => { if (!confirmLock) closeAny(); }; $('sheet-close').onclick = closeAny;
 
@@ -1474,7 +1474,7 @@
   const ATT_SHORT = { yes: '✅ 出席', join: '⚠️ 不出席但參與進香', no: '❌ 不參與' };
   const LUNCH = ['葷', '素（方便素）', '自行處理'];
   const eventLink = id => `https://tsushin-buishatun.pages.dev/attend/?e=${encodeURIComponent(id)}`;   // 公開表單：不用先綁會員中心
-  let evPaid = {}, drPayMode = false;
+  let evPaid = {}, drPayMode = false, evSched = {}, schedOpen = false, schSel = null;
   let evDraw = {}, evDrawBy = {}, evOver = {}, drawSheetEid = null, drSel = null;
   let eventsCache = [], eventsUnsub = null, myResp = {}, evRespCache = {}, evRespUnsub = null, evOpenId = null, evFilter = 'all';
   // 連結 liff.line.me/…?e=活動ID：LIFF 開啟時參數可能包在 liff.state 裡
@@ -1576,7 +1576,7 @@
       evRespCache[eid] = s.docs.map(d => ({ id: d.id, ...d.data() }));
       if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid);
     }, () => toast('讀取回覆失敗'));
-    const u2 = onSnapshot(doc(db, 'events', eid, 'admin', 'draw'), s => { const d = s.exists() ? s.data() : {}; evDraw[eid] = d.map || {}; evDrawBy[eid] = d.by2 || {}; evOver[eid] = d.groupOverride || {}; evPaid[eid] = d.paid || {}; if (drawSheetEid === eid) renderDrawSheet(eid); if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid); }, () => {});
+    const u2 = onSnapshot(doc(db, 'events', eid, 'admin', 'draw'), s => { const d = s.exists() ? s.data() : {}; evDraw[eid] = d.map || {}; evDrawBy[eid] = d.by2 || {}; evOver[eid] = d.groupOverride || {}; evPaid[eid] = d.paid || {}; evSched[eid] = d.sched || null; if (drawSheetEid === eid) (schedOpen ? renderSched(eid) : renderDrawSheet(eid)); if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid); }, () => {});
     evRespUnsub = () => { u1(); u2(); };
     evRespUnsub._eid = eid;
   }
@@ -1720,7 +1720,7 @@
     return groups;
   }
   const saveDraw = (eid, map, by2, over) => setDoc(doc(db, 'events', eid, 'admin', 'draw'),
-    { map, by2, groupOverride: over, paid: evPaid[eid] || {}, at: serverTimestamp(), by: user.realName || profile.displayName || '' });
+    { map, by2, groupOverride: over, paid: evPaid[eid] || {}, sched: evSched[eid] || null, at: serverTimestamp(), by: user.realName || profile.displayName || '' });
   const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   // 某一組還剩哪些位置（依人數平分的目標扣掉已抽的）
   const slotsLeft = (ppl, map) => { const tg = slotTargets(ppl.length), bag = []; SLOTS.forEach(sl => { const left = tg[sl] - ppl.filter(p => map[p.key] === sl).length; for (let i = 0; i < left; i++) bag.push(sl); }); return bag; };
@@ -1738,7 +1738,7 @@
     await saveDraw(eid, map, by2, evOver[eid] || {});
   }
   function openDrawSheet(eid) {
-    drawSheetEid = eid; drSel = null; drPayMode = false; $('sheet').classList.add('wide');
+    drawSheetEid = eid; drSel = null; drPayMode = false; schedOpen = false; $('sheet').classList.add('wide');
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open'); $('sheet').scrollTop = 0;
     renderDrawSheet(eid);
   }
@@ -1802,6 +1802,7 @@
         ${missing ? `<button class="sbtn" id="dr-go" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">🎲 管理員代抽：還沒抽的 ${missing} 人</button>` : ''}
         ${done ? '<button class="sbtn" id="dr-redo" style="background:#fef2f2;color:#b91c1c;">全部重抽</button><button class="sbtn" id="dr-clear" style="background:#f1f5f9;color:#334155;">全部取消抽籤</button>' : ''}
         <button class="sbtn" id="dr-pay" style="${drPayMode ? 'background:#16a34a;color:#fff;box-shadow:0 0 0 3px #bbf7d0;' : 'background:#dcfce7;color:#166534;'}">${drPayMode ? '✅ 繳費模式中（按這裡結束）' : '💰 繳費模式：點名字就打勾'}</button>
+        <button class="sbtn" id="dr-sched" style="background:#7c3aed;color:#fff;">📅 排班表</button>
         <button class="sbtn" id="dr-pdf" style="background:#b91c1c;color:#fff;">⬇ 下載 PDF（全部）</button>
         <button class="sbtn" id="dr-xlsx" style="background:#1f2430;color:#fff;">⬇ 下載 Excel（簽到表・繳費紀錄）</button>
       </div></div>
@@ -1854,6 +1855,7 @@
     };
     $('dr-xlsx').onclick = () => exportDrawXlsx(eid);
     $('dr-pdf').onclick = () => printDrawAll(eid);
+    $('dr-sched').onclick = () => { schedOpen = true; schSel = null; renderSched(eid); $('sheet').scrollTop = 0; };
   }
   // 下載 PDF：自己排好每一頁（A4 直式、每頁 20 人、換頁重印標題），轉成圖片放進 PDF，沒有瀏覽器頁首頁尾、不會被切邊
   const loadJs = src => new Promise((ok, bad) => { const sc = document.createElement('script'); sc.src = src; sc.onload = ok; sc.onerror = bad; document.head.appendChild(sc); });
@@ -1908,6 +1910,142 @@
       toast(`⬇ 已下載 PDF（${els.length} 頁）`);
     } catch (err) { console.error(err); toast('❌ PDF 產生失敗'); }
     box.remove(); if (btn) btn.textContent = old;
+  }
+  // ===================== 排班表：前／中／後 各 3 天，每時段組成約 5 人小組（護理師＋T2＋T1 混編） =====================
+  const CAT_OF = p => { const c = certKey(p.ro && p.ro.cert);
+    if (c.includes('護理') || c.includes('醫師')) return 'N'; if (c.includes('EMTP') || c.includes('EMT2')) return 'T2'; if (c.includes('EMT1')) return 'T1'; return 'O'; };
+  const CAT_TXT = { N: '護理師', T2: 'EMTP／EMT2', T1: 'EMT1', O: '專業／志工' };
+  const CAT_BG = { N: '#fef9c3', T2: '#dbeafe', T1: '#dcfce7', O: '#ffedd5' };
+  const CAT_RANK = { N: 0, T2: 1, T1: 2, O: 3 };
+  const WK = '日一二三四五六';
+  const isoAdd = (iso, n) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const dayList = (a, b) => { const out = []; if (!a || !b || a > b) return out; for (let d = a; d <= b && out.length < 40; d = isoAdd(d, 1)) out.push(d); return out; };
+  const dLabel = iso => { const d = new Date(iso + 'T00:00:00'); return `${d.getMonth() + 1}/${d.getDate()}(${WK[d.getDay()]})`; };
+  const defRanges = days => { const n = days.length; if (!n) return {}; const L = Math.min(3, n), mid = Math.max(0, Math.floor((n - L) / 2));
+    return { 前: [days[0], days[L - 1]], 中: [days[mid], days[mid + L - 1]], 後: [days[n - L], days[n - 1]] }; };
+  function schedPeople(eid) {      // 抽到時段的人（不含指揮官及汽機車組）
+    const groups = drawPeople(eid), map = evDraw[eid] || {}, out = {};
+    DRAW_GROUPS.forEach(g => { if (g === '指揮官及汽機車組') return; groups[g].forEach(p => { if (SLOTS.includes(map[p.key])) out[p.key] = { ...p, slot: map[p.key], cat: CAT_OF(p) }; }); });
+    return out;
+  }
+  function buildTeams(ppl, size) {
+    const k = Math.max(1, Math.round(ppl.length / size)), teams = Array.from({ length: k }, () => []);
+    let t = 0;
+    ['N', 'T2', 'T1', 'O'].forEach(c => shuffle(ppl.filter(p => p.cat === c)).forEach(p => { teams[t % k].push(p.key); t++; }));
+    return teams;
+  }
+  function renderSched(eid) {
+    if ($('sheet').style.display === 'none') return;
+    const e = eventsCache.find(x => x.id === eid) || {};
+    const sc = evSched[eid] || {}, ppl = schedPeople(eid);
+    const days = dayList(sc.start, sc.end), rg = sc.ranges || defRanges(days), teams = sc.teams || {};
+    const inRange = (sl, d) => rg[sl] && d >= rg[sl][0] && d <= rg[sl][1];
+    const assigned = new Set(); SLOTS.forEach(sl => (teams[sl] || []).forEach(tm => tm.forEach(k => assigned.add(k))));
+    const notIn = Object.values(ppl).filter(p => !assigned.has(p.key));
+    const chip = (k, lead) => { const p = ppl[k]; if (!p) return '';
+      return `<button class="sc-p ${schSel === k ? 'sel' : ''}" data-sk="${esc(k)}" style="background:${CAT_BG[p.cat]};${lead ? 'font-weight:900;' : ''}">${lead ? '★' : ''}${esc(p.name)}${p.r.attend === 'join' ? '<i>請假</i>' : ''}</button>`; };
+    const teamBox = (sl, i, tm) => `<div class="sc-t"><div class="sc-th"><b>${sl}${i + 1}</b><span>${tm.length} 人</span>${schSel ? `<button class="sc-mv" data-mvsl="${sl}" data-mvi="${i}">⬅ 移到這組</button>` : ''}</div>${tm.map((k, j) => chip(k, j === 0)).join('')}</div>`;
+    const slotCol = sl => { const ts = teams[sl] || [];
+      return `<div class="sc-col"><div class="sc-ch">${sl}　<span>${rg[sl] ? dLabel(rg[sl][0]) + '～' + dLabel(rg[sl][1]) : '—'}</span>　<span>${Object.values(ppl).filter(p => p.slot === sl).length} 人・${ts.length} 組</span></div>
+        ${ts.map((tm, i) => teamBox(sl, i, tm)).join('') || '<div class="sc-empty">按「自動分組」</div>'}
+        ${schSel ? `<button class="sc-mv" data-mvsl="${sl}" data-mvi="new" style="width:100%;margin-top:6px;">＋ 移到新的一組</button>` : ''}</div>`; };
+    const dayRow = d => { const on = SLOTS.filter(sl => inRange(sl, d)); const n = on.reduce((a, sl) => a + (teams[sl] || []).reduce((b, t) => b + t.length, 0), 0);
+      return `<tr><td><b>${dLabel(d)}</b></td><td>${on.map(sl => `${sl}（${(teams[sl] || []).length} 組）`).join('、') || '—'}</td><td>${n}</td></tr>`; };
+    $('sheet-body').innerHTML = `
+      <style>
+        .sc-top{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:10px}.sc-top label{font-size:12px;color:var(--sub);font-weight:800;display:block;margin-bottom:3px}
+        .sc-top input{padding:8px 10px;border-radius:10px;border:1.5px solid #e5ddd9;font:inherit;font-size:14px}
+        .sc-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px;align-items:start}
+        .sc-col{background:#faf6f4;border-radius:16px;padding:10px}.sc-ch{font-weight:900;color:var(--primary);font-size:16px;margin-bottom:6px}.sc-ch span{font-size:12px;color:var(--sub)}
+        .sc-t{background:#fff;border:1px solid #eee5e1;border-radius:12px;padding:8px;margin-bottom:8px}.sc-th{display:flex;gap:8px;align-items:center;margin-bottom:4px}.sc-th span{font-size:12px;color:var(--sub)}
+        .sc-p{border:1px solid rgba(0,0,0,.08);border-radius:8px;padding:4px 8px;margin:2px;font:inherit;font-size:13px;cursor:pointer;color:#1f2430}.sc-p.sel{outline:2.5px solid var(--primary)}.sc-p i{font-style:normal;font-size:10px;color:#b45309;margin-left:3px}
+        .sc-mv{margin-left:auto;border:none;border-radius:8px;background:var(--primary);color:#fff;font:inherit;font-size:12px;font-weight:800;padding:4px 8px;cursor:pointer}
+        .sc-empty{font-size:13px;color:var(--sub);padding:8px}.sc-leg span{display:inline-block;border-radius:6px;padding:1px 8px;margin-right:4px;font-size:12px;font-weight:800}
+        .sc-days{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}.sc-days td,.sc-days th{border-bottom:1px solid #eee5e1;padding:6px 8px;text-align:left}
+        @media (max-width:899px){.sc-grid{grid-template-columns:1fr}}
+      </style>
+      <button class="sbtn" id="sc-back">← 回分組名單</button>
+      <h3 style="margin-top:10px;">📅 進香排班表</h3>
+      <div style="font-size:13px;color:var(--sub);line-height:1.7;">${esc(e.title || '')}　每個時段的人一起值 3 天，自動組成約 5 人一組（護理師、EMTP／EMT2、EMT1 平均分配，★＝組長）。指揮官及汽機車組不排入小組。<br>
+        👆 點名字選人 → 按某一組的「⬅ 移到這組」就能換組。
+        <span class="sc-leg">${Object.entries(CAT_TXT).map(([c, t]) => `<span style="background:${CAT_BG[c]}">${t}</span>`).join('')}</span></div>
+      <div class="sc-top">
+        <div><label>進香開始</label><input type="date" id="sc-start" value="${esc(sc.start || '')}"></div>
+        <div><label>結束</label><input type="date" id="sc-end" value="${esc(sc.end || '')}"></div>
+        ${days.length ? SLOTS.map(sl => `<div><label>${sl}（第幾天～第幾天）</label><input type="date" data-rg="${sl}" data-i="0" value="${esc(rg[sl] ? rg[sl][0] : '')}" style="width:150px"> ～ <input type="date" data-rg="${sl}" data-i="1" value="${esc(rg[sl] ? rg[sl][1] : '')}" style="width:150px"></div>`).join('') : ''}
+        <div><label>每組人數</label><input type="number" id="sc-size" min="2" max="10" value="${sc.size || 5}" style="width:70px"></div>
+        <button class="sbtn" id="sc-auto" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">🔀 自動分組</button>
+        ${days.length && Object.keys(teams).length ? '<button class="sbtn" id="sc-xlsx" style="background:#1f2430;color:#fff;">⬇ 下載排班 Excel</button>' : ''}
+      </div>
+      ${notIn.length && Object.keys(teams).length ? `<div style="margin-top:10px;padding:8px 12px;border-radius:12px;background:#fff7ed;color:#9a3412;font-size:13px;"><b>還沒排入小組（${notIn.length}）：</b>${notIn.map(p => chip(p.key)).join('')}</div>` : ''}
+      ${!Object.keys(ppl).length ? '<div class="card empty" style="margin-top:12px;">還沒有人抽籤，請先回分組名單抽籤</div>' : `<div class="sc-grid">${SLOTS.map(slotCol).join('')}</div>`}
+      ${days.length ? `<table class="sc-days"><thead><tr><th>日期</th><th>值班時段</th><th>人數</th></tr></thead><tbody>${days.map(dayRow).join('')}</tbody></table>` : ''}`;
+    const save = async (patch, msg) => { evSched[eid] = { ...(evSched[eid] || {}), ...patch }; try { await saveDraw(eid, { ...(evDraw[eid] || {}) }, { ...(evDrawBy[eid] || {}) }, { ...(evOver[eid] || {}) }); if (msg) toast(msg); } catch (err) { console.error(err); toast('❌ 儲存失敗'); } renderSched(eid); };
+    $('sc-back').onclick = () => { schedOpen = false; renderDrawSheet(eid); };
+    const dateChange = () => { const a = $('sc-start').value, b = $('sc-end').value; if (!a || !b) return; if (a > b) return toast('結束日期要在開始之後');
+      save({ start: a, end: b, ranges: defRanges(dayList(a, b)) }); };
+    $('sc-start').onchange = dateChange; $('sc-end').onchange = dateChange;
+    document.querySelectorAll('[data-rg]').forEach(inp => inp.onchange = () => { const r2 = JSON.parse(JSON.stringify(rg)); r2[inp.dataset.rg] = r2[inp.dataset.rg] || ['', '']; r2[inp.dataset.rg][+inp.dataset.i] = inp.value; save({ ranges: r2 }); });
+    $('sc-auto').onclick = async () => {
+      if (!sc.start || !sc.end) return toast('請先填進香開始和結束日期');
+      if (Object.keys(teams).length && !(await dialog({ title: '重新自動分組？', msg: '目前的小組會全部重排（包含你手動換過的）。', okText: '重新分組', danger: true }))) return;
+      const size = Math.max(2, Math.min(10, +$('sc-size').value || 5)), t2 = {};
+      SLOTS.forEach(sl => { const list = Object.values(ppl).filter(p => p.slot === sl); t2[sl] = list.length ? buildTeams(list, size) : []; });
+      SLOTS.forEach(sl => t2[sl].forEach(tm => tm.sort((a, b) => CAT_RANK[ppl[a].cat] - CAT_RANK[ppl[b].cat])));
+      save({ size, teams: t2 }, '🔀 已自動分組');
+    };
+    document.querySelectorAll('[data-sk]').forEach(b => b.onclick = () => { schSel = schSel === b.dataset.sk ? null : b.dataset.sk; renderSched(eid); });
+    document.querySelectorAll('[data-mvsl]').forEach(b => b.onclick = () => {
+      const k = schSel, sl = b.dataset.mvsl, t2 = {}; SLOTS.forEach(x => t2[x] = (teams[x] || []).map(tm => tm.filter(y => y !== k)));
+      if (b.dataset.mvi === 'new') t2[sl].push([k]); else t2[sl][+b.dataset.mvi].push(k);
+      SLOTS.forEach(x => t2[x] = t2[x].filter(tm => tm.length));
+      schSel = null; save({ teams: t2 }, '已換組');
+    });
+    if ($('sc-xlsx')) $('sc-xlsx').onclick = () => exportSchedXlsx(eid);
+  }
+  async function exportSchedXlsx(eid) {
+    try { await loadExcelJS(); } catch (err) { return toast('❌ 無法載入 Excel 元件'); }
+    const e = eventsCache.find(x => x.id === eid) || {}, sc = evSched[eid] || {}, ppl = schedPeople(eid);
+    const days = dayList(sc.start, sc.end), rg = sc.ranges || defRanges(days), teams = sc.teams || {};
+    const roc = new Date(sc.start + 'T00:00:00').getFullYear() - 1911;
+    const wb = new ExcelJS.Workbook(), thin = { style: 'thin', color: { argb: 'FF555555' } }, border = { top: thin, left: thin, bottom: thin, right: thin };
+    const font = (o = {}) => ({ name: '微軟正黑體', size: 13, ...o }), fill = c => ({ type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + CAT_BG[c].slice(1).toUpperCase() } });
+    const maxN = Math.max(5, ...SLOTS.flatMap(sl => (teams[sl] || []).map(t => t.length)));
+    const ws = wb.addWorksheet('值班表', { pageSetup: { orientation: 'portrait', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, horizontalCentered: true } });
+    ws.columns = [{ width: 10 }, ...Array.from({ length: maxN }, () => ({ width: 12 })), { width: 22 }];
+    const lastCol = String.fromCharCode(65 + maxN + 1);
+    let r = 1;
+    ws.mergeCells(`A${r}:${lastCol}${r}`); Object.assign(ws.getCell(`A${r}`), { value: `${roc}年白沙屯拱天宮醫護團進香值班表`, font: font({ size: 18, bold: true }), alignment: { horizontal: 'center' } }); ws.getRow(r).height = 30; r++;
+    ws.mergeCells(`A${r}:${lastCol}${r}`); ws.getCell(`A${r}`).value = { richText: [{ text: '圖塊顏色：', font: font({ size: 11 }) }, ...Object.entries(CAT_TXT).map(([c, t]) => ({ text: `【${t}】`, font: font({ size: 11 }) })), { text: '　★＝組長', font: font({ size: 11 }) }] }; r += 2;
+    days.forEach(d => {
+      const on = SLOTS.filter(sl => rg[sl] && d >= rg[sl][0] && d <= rg[sl][1]);
+      ws.mergeCells(`A${r}:${lastCol}${r}`); Object.assign(ws.getCell(`A${r}`), { value: `${dLabel(d)}　值班：${on.join('、') || '—'}`, font: font({ size: 15, bold: true }), fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3EDEA' } }, border }); ws.getRow(r).height = 26; r++;
+      on.forEach(sl => (teams[sl] || []).forEach((tm, i) => {
+        const row = ws.getRow(r); row.height = 26;
+        Object.assign(row.getCell(1), { value: `${sl}${i + 1}`, font: font({ bold: true }), border, alignment: { horizontal: 'center', vertical: 'middle' } });
+        for (let j = 0; j < maxN; j++) { const k = tm[j], p = k && ppl[k], c = row.getCell(2 + j); c.border = border; c.alignment = { horizontal: 'center', vertical: 'middle' };
+          if (p) { c.value = (j === 0 ? '★' : '') + p.name; c.font = font({ bold: j === 0 }); c.fill = fill(p.cat); } }
+        Object.assign(row.getCell(maxN + 2), { value: '', border }); r++;
+      }));
+      r++;
+    });
+    // 出勤統計：每人每天
+    const st = wb.addWorksheet('出勤統計', { pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
+    st.columns = [{ width: 6 }, { width: 12 }, { width: 14 }, { width: 8 }, { width: 8 }, ...days.map(() => ({ width: 10 }))];
+    const H = ['序', '姓名', '類別', '時段', '小組', ...days.map(dLabel)];
+    H.forEach((h, i) => { const c = st.getRow(1).getCell(i + 1); c.value = h; c.font = font({ bold: true, size: 12 }); c.border = border; c.alignment = { horizontal: 'center' }; });
+    let n = 0;
+    SLOTS.forEach(sl => (teams[sl] || []).forEach((tm, i) => tm.forEach(k => { const p = ppl[k]; if (!p) return; n++;
+      const row = st.getRow(1 + n);
+      [n, p.name, CAT_TXT[p.cat], sl, `${sl}${i + 1}`, ...days.map(d => rg[sl] && d >= rg[sl][0] && d <= rg[sl][1] ? 1 : null)].forEach((v, j) => { const c = row.getCell(j + 1); c.value = v; c.font = font({ size: 12 }); c.border = border; c.alignment = { horizontal: 'center' }; if (j === 1) c.fill = fill(p.cat); });
+    })));
+    const tr = st.getRow(2 + n); tr.getCell(2).value = '每日人數';
+    days.forEach((d, j) => { const col = String.fromCharCode(70 + j), cnt = SLOTS.reduce((a, sl) => a + (rg[sl] && d >= rg[sl][0] && d <= rg[sl][1] ? (teams[sl] || []).reduce((b, t) => b + t.length, 0) : 0), 0);
+      tr.getCell(6 + j).value = { formula: `SUM(${col}2:${col}${1 + n})`, result: cnt }; });
+    tr.eachCell(c => { c.font = font({ bold: true, size: 12 }); c.border = border; c.alignment = { horizontal: 'center' }; });
+    const buf = await wb.xlsx.writeBuffer();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    a.download = `${e.title || '進香'}_排班表.xlsx`; a.click(); toast('⬇ 已下載排班表');
   }
   const loadExcelJS = () => window.ExcelJS ? Promise.resolve() : new Promise((ok, bad) => { const sc = document.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js'; sc.onload = ok; sc.onerror = bad; document.head.appendChild(sc); });
   const ganzhi = roc => { const y = roc + 1911; return '甲乙丙丁戊己庚辛壬癸'[(y - 4) % 10] + '子丑寅卯辰巳午未申酉戌亥'[(y - 4) % 12]; };
