@@ -109,8 +109,8 @@ async function parseRoute(req, env, json) {
 // 兩種選單：guest（預設，沒開通的人）、member（審核通過的團員）。用 alias 記住目前的選單 ID，不用另外存。
 const SITE = 'https://tsushin-buishatun.pages.dev';
 const LIFF = id => 'https://liff.line.me/' + id;
-// 一般民眾選單 2500×843；團員兩頁 2500×925，上方 186px 是分頁列（左：團員專區、右：一般資訊），下面三格按鈕
-const MW = 2500, MH = 843, TH = 925, TAB = 186;
+// 三張選單都是 2500×1100；團員兩頁上方 186px 是分頁列（左：團員專區、右：一般資訊），下面三格按鈕
+const MW = 2500, MH = 1100, TH = 1100, TAB = 186;
 const cols3 = (acts, top, h) => acts.map((a, i) => {
   const cw = Math.floor(MW / 3), x = i * cw;
   return { bounds: { x, y: top, width: i === 2 ? MW - x : cw, height: h - top }, action: a };
