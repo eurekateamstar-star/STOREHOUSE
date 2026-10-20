@@ -1474,7 +1474,7 @@
   const ATT_SHORT = { yes: '✅ 出席', join: '⚠️ 不出席但參與進香', no: '❌ 不參與' };
   const LUNCH = ['葷', '素（方便素）', '自行處理'];
   const eventLink = id => `https://tsushin-buishatun.pages.dev/attend/?e=${encodeURIComponent(id)}`;   // 公開表單：不用先綁會員中心
-  let evPaid = {}, drPayMode = false, evSched = {}, schedOpen = false, schSel = null;
+  let evPaid = {}, drPayMode = false, evSched = {}, schedOpen = false, schSel = null, schPk = null;
   let evDraw = {}, evDrawBy = {}, evOver = {}, drawSheetEid = null, drSel = null;
   let eventsCache = [], eventsUnsub = null, myResp = {}, evRespCache = {}, evRespUnsub = null, evOpenId = null, evFilter = 'all';
   // 連結 liff.line.me/…?e=活動ID：LIFF 開啟時參數可能包在 liff.state 裡
@@ -1932,9 +1932,18 @@
   const dLabel = iso => { const d = new Date(iso + 'T00:00:00'); return `${d.getMonth() + 1}/${d.getDate()}(${WK[d.getDay()]})`; };
   const defRanges = days => { const n = days.length; if (!n) return {}; const L = Math.min(3, n), mid = Math.max(0, Math.floor((n - L) / 2));
     return { 前: [days[0], days[L - 1]], 中: [days[mid], days[mid + L - 1]], 後: [days[n - L], days[n - 1]] }; };
-  function schedPeople(eid) {      // 抽到時段的人（不含指揮官及汽機車組）
-    const groups = drawPeople(eid), map = evDraw[eid] || {}, out = {};
-    DRAW_GROUPS.forEach(g => { if (g === '指揮官及汽機車組') return; groups[g].forEach(p => { if (SLOTS.includes(map[p.key])) out[p.key] = { ...p, slot: map[p.key], cat: CAT_OF(p) }; }); });
+  const NO_SCHED_GROUPS = ['教官及長官', '指揮官及汽機車組'];     // 預設不排入小組（可個別改）
+  function schedPeople(eid) {      // 所有出席的人＋各自的值班日期（依抽籤時段／全程／自訂／不排班）
+    const groups = drawPeople(eid), map = evDraw[eid] || {}, sc = evSched[eid] || {}, pm = sc.person || {};
+    const days = dayList(sc.start, sc.end), rg = sc.ranges || defRanges(days), out = {};
+    DRAW_GROUPS.forEach(g => groups[g].forEach(p => {
+      const slot = SLOTS.includes(map[p.key]) ? map[p.key] : '', m = pm[p.key] || {};
+      let mode = m.mode || (NO_SCHED_GROUPS.includes(g) || !slot ? 'off' : 'slot'), range = null;
+      if (mode === 'all') range = days.length ? [days[0], days[days.length - 1]] : null;
+      else if (mode === 'range') range = m.a && m.b ? [m.a, m.b] : null;
+      else if (mode === 'slot') range = slot && rg[slot] ? rg[slot] : null;
+      out[p.key] = { ...p, g, slot, mode, range, pos: p.ro ? rv(p.ro, 'position') : '', cat: CAT_OF(p) };
+    }));
     return out;
   }
   // 每天：當天值班的人（時段涵蓋那天）組成 轎前1～4、轎後1～6，大約每組 size 人；前一天已經在某組的人盡量留在同一組
@@ -1960,11 +1969,22 @@
     const sc = evSched[eid] || {}, ppl = schedPeople(eid);
     const days = dayList(sc.start, sc.end), rg = sc.ranges || defRanges(days), dt = sc.days || {};
     const inRange = (sl, d) => rg[sl] && d >= rg[sl][0] && d <= rg[sl][1];
-    const presentOn = d => Object.values(ppl).filter(p => inRange(p.slot, d)).map(p => p.key);
+    const presentOn = d => Object.values(ppl).filter(p => p.range && d >= p.range[0] && d <= p.range[1]).map(p => p.key);
     const chip = (k, lead, d) => { const p = ppl[k]; if (!p) return '';
       return `<button class="sc-p ${schSel && schSel.k === k && schSel.d === d ? 'sel' : ''}" ${d ? `data-sd="${d}"` : ''} data-sk="${esc(k)}" style="background:${CAT_BG[p.cat]};${lead ? 'font-weight:900;' : ''}">${lead ? '★' : ''}${esc(p.name)}</button>`; };
-    const slotBox = sl => { const list = Object.values(ppl).filter(p => p.slot === sl).sort((a, b) => CAT_RANK[a.cat] - CAT_RANK[b.cat]);
-      return `<div class="sc-col"><div class="sc-ch">${sl}　<span>${rg[sl] ? dLabel(rg[sl][0]) + '～' + dLabel(rg[sl][1]) : '—'}</span>　<span>${list.length} 人</span></div>${list.map(p => chip(p.key)).join('')}</div>`; };
+    const pchip = p => `<button class="sc-p ${schPk === p.key ? 'sel' : ''}" data-pk="${esc(p.key)}" style="background:${CAT_BG[p.cat]};">${esc(p.name)}${p.mode === 'off' && p.pos && p.pos !== '團員' ? `<i>${esc(p.pos)}</i>` : ''}${p.mode === 'range' && p.range ? `<i>${dLabel(p.range[0])}～${dLabel(p.range[1])}</i>` : ''}</button>`;
+    const box = (title, sub, list) => `<div class="sc-col"><div class="sc-ch">${title}　<span>${sub}</span>　<span>${list.length} 人</span></div>${list.sort((a, b) => CAT_RANK[a.cat] - CAT_RANK[b.cat]).map(pchip).join('') || '<div class="sc-empty">—</div>'}</div>`;
+    const all = Object.values(ppl);
+    const slotBox = sl => box(sl, rg[sl] ? dLabel(rg[sl][0]) + '～' + dLabel(rg[sl][1]) : '—', all.filter(p => p.mode === 'slot' && p.slot === sl));
+    const pe = schPk && ppl[schPk];
+    const editor = pe ? `<div class="sc-ed"><b>✏️ ${esc(pe.name)}</b>　<span>${esc(pe.g)}${pe.pos ? '・' + esc(pe.pos) : ''}${pe.slot ? '・抽到「' + pe.slot + '」' : ''}</span>
+        <div class="dr-chips" style="margin-top:6px;">
+          ${pe.slot ? `<button class="dr-c ${pe.mode === 'slot' ? 'on' : ''}" data-pm="slot">依抽籤（${pe.slot}）</button>` : ''}
+          <button class="dr-c ${pe.mode === 'all' ? 'on' : ''}" data-pm="all">全程</button>
+          <button class="dr-c ${pe.mode === 'off' ? 'on' : ''}" data-pm="off">不排班</button>
+          <span style="display:inline-flex;gap:4px;align-items:center;">自訂：<input type="date" id="pm-a" value="${esc(pe.mode === 'range' && pe.range ? pe.range[0] : (sc.start || ''))}"> ～ <input type="date" id="pm-b" value="${esc(pe.mode === 'range' && pe.range ? pe.range[1] : '')}"><button class="dr-c ${pe.mode === 'range' ? 'on' : ''}" data-pm="range">套用</button></span>
+          <button class="dr-c" data-pm="close">完成</button></div>
+        <div style="font-size:12px;color:var(--sub);margin-top:4px;">改完記得按「🔀 自動排班」重新排。</div></div>` : '';
     const dayBox = d => { const ts = (dt[d] || []).slice().sort((a, b) => LBL_ORDER(a.l) - LBL_ORDER(b.l)), pres = presentOn(d);
       const inT = new Set(ts.flatMap(t => t.m)), miss = pres.filter(k => !inT.has(k));
       return `<div class="sc-day"><div class="sc-dh">${dLabel(d)}<span>${SLOTS.filter(sl => inRange(sl, d)).join('、')}　${pres.length} 人・${ts.length} 組</span></div>
@@ -1981,26 +2001,35 @@
         .sc-t{background:#fff;border:1px solid #eee5e1;border-radius:12px;padding:6px 8px;margin-bottom:6px}.sc-th{display:flex;gap:8px;align-items:center;margin-bottom:2px}.sc-th b{color:var(--primary)}.sc-th span{font-size:12px;color:var(--sub)}
         .sc-p{border:1px solid rgba(0,0,0,.08);border-radius:8px;padding:3px 7px;margin:2px;font:inherit;font-size:13px;cursor:pointer;color:#1f2430}.sc-p.sel{outline:2.5px solid var(--primary)}
         .sc-mv{margin-left:auto;border:none;border-radius:8px;background:var(--primary);color:#fff;font:inherit;font-size:12px;font-weight:800;padding:3px 8px;cursor:pointer}
-        .sc-empty{font-size:13px;color:var(--sub);padding:8px}.sc-miss{font-size:12px;color:#9a3412;margin-top:4px}.sc-leg span{display:inline-block;border-radius:6px;padding:1px 8px;margin-right:4px;font-size:12px;font-weight:800}
+        .sc-empty{font-size:13px;color:var(--sub);padding:8px}.sc-p i{font-style:normal;font-size:10px;color:#7c3aed;margin-left:3px}.sc-ed{margin-top:10px;padding:10px 12px;border-radius:14px;background:#fff7f5;border:1.5px solid #f5c2c8}.sc-ed span{font-size:12px;color:var(--sub)}.sc-ed input{padding:4px 6px;border-radius:8px;border:1px solid #ddd;font:inherit;font-size:13px}.sc-miss{font-size:12px;color:#9a3412;margin-top:4px}.sc-leg span{display:inline-block;border-radius:6px;padding:1px 8px;margin-right:4px;font-size:12px;font-weight:800}
         @media (max-width:899px){.sc-grid{grid-template-columns:1fr}}
       </style>
       <button class="sbtn" id="sc-back">← 回分組名單</button>
       <h3 style="margin-top:10px;">📅 進香排班表</h3>
-      <div style="font-size:13px;color:var(--sub);line-height:1.7;">${esc(e.title || '')}　前／中／後＝各自值班的日期。下方每天把當天值班的人排成 轎前1～4、轎後1～6（約 ${sc.size || 5} 人一組，護理師、EMTP／EMT2、EMT1 平均分配，★＝組長；前一天同組的人盡量不換組）。指揮官及汽機車組不排入。<br>
+      <div style="font-size:13px;color:var(--sub);line-height:1.7;">${esc(e.title || '')}　前／中／後＝抽籤時段的值班日期；點上面的名字可以改成全程、自訂日期或不排班。下方每天把當天值班的人排成 轎前1～4、轎後1～6（約 ${sc.size || 5} 人一組，護理師、EMTP／EMT2、EMT1 平均分配，★＝組長；前一天同組的人盡量不換組）。不排班的人列在上方。<br>
         👆 點某天的名字 → 按那天某一組的「⬅ 移到這組」就能換組。
         <span class="sc-leg">${Object.entries(CAT_TXT).map(([c, t]) => `<span style="background:${CAT_BG[c]}">${t}</span>`).join('')}</span></div>
       <div class="sc-top">
         <div><label>進香開始</label><input type="date" id="sc-start" value="${esc(sc.start || '')}"></div>
         <div><label>結束</label><input type="date" id="sc-end" value="${esc(sc.end || '')}"></div>
         ${days.length ? SLOTS.map(sl => `<div><label>${sl} 的日期</label><input type="date" data-rg="${sl}" data-i="0" value="${esc(rg[sl] ? rg[sl][0] : '')}" style="width:150px"> ～ <input type="date" data-rg="${sl}" data-i="1" value="${esc(rg[sl] ? rg[sl][1] : '')}" style="width:150px"></div>`).join('') : ''}
-        <div><label>每組人數</label><input type="number" id="sc-size" min="2" max="10" value="${sc.size || 5}" style="width:70px"></div>
+        <div><label>每組人數</label><input type="number" id="sc-size" min="2" max="6" value="${sc.size || 5}" style="width:70px"></div>
         <button class="sbtn" id="sc-auto" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">🔀 自動排班</button>
         ${days.length && Object.keys(dt).length ? '<button class="sbtn" id="sc-xlsx" style="background:#1f2430;color:#fff;">⬇ 下載排班 Excel</button>' : ''}
       </div>
-      ${!Object.keys(ppl).length ? '<div class="card empty" style="margin-top:12px;">還沒有人抽籤，請先回分組名單抽籤</div>' : `<div class="sc-grid">${SLOTS.map(slotBox).join('')}</div>`}
+      ${!all.length ? '<div class="card empty" style="margin-top:12px;">還沒有人回覆出席</div>' : `${editor}<div class="sc-grid">${SLOTS.map(slotBox).join('')}</div>
+        <div class="sc-grid">${box('全程', '每天都值班', all.filter(p => p.mode === 'all'))}${box('自訂日期', '特定幾天', all.filter(p => p.mode === 'range'))}${box('不排班', '指揮官、團長、車輛組、教官團…', all.filter(p => p.mode === 'off'))}</div>`}
       ${days.length ? `<div class="sc-days">${days.map(dayBox).join('')}</div>` : ''}`;
     const save = async (patch, msg) => { evSched[eid] = { ...(evSched[eid] || {}), ...patch }; try { await saveDraw(eid, { ...(evDraw[eid] || {}) }, { ...(evDrawBy[eid] || {}) }, { ...(evOver[eid] || {}) }); if (msg) toast(msg); } catch (err) { console.error(err); toast('❌ 儲存失敗'); } renderSched(eid); };
-    $('sc-back').onclick = () => { schedOpen = false; renderDrawSheet(eid); };
+    $('sc-back').onclick = () => { schedOpen = false; schPk = null; renderDrawSheet(eid); };
+    document.querySelectorAll('[data-pk]').forEach(b => b.onclick = () => { schPk = schPk === b.dataset.pk ? null : b.dataset.pk; renderSched(eid); });
+    document.querySelectorAll('[data-pm]').forEach(b => b.onclick = () => {
+      const m = b.dataset.pm, k = schPk; if (m === 'close') { schPk = null; return renderSched(eid); }
+      const pm = { ...(sc.person || {}) };
+      if (m === 'range') { const a = $('pm-a').value, bb = $('pm-b').value; if (!a || !bb || a > bb) return toast('請選開始和結束日期'); pm[k] = { mode: 'range', a, b: bb }; }
+      else pm[k] = { mode: m };
+      save({ person: pm }, '已更新，請重新按「自動排班」');
+    });
     const dateChange = () => { const a = $('sc-start').value, b = $('sc-end').value; if (!a || !b) return; if (a > b) return toast('結束日期要在開始之後');
       save({ start: a, end: b, ranges: defRanges(dayList(a, b)), days: {} }); };
     $('sc-start').onchange = dateChange; $('sc-end').onchange = dateChange;
@@ -2008,7 +2037,7 @@
     $('sc-auto').onclick = async () => {
       if (!sc.start || !sc.end) return toast('請先填進香開始和結束日期');
       if (Object.keys(dt).length && !(await dialog({ title: '重新自動排班？', msg: '每天的小組會全部重排（包含你手動換過的）。', okText: '重新排班', danger: true }))) return;
-      const size = Math.max(2, Math.min(10, +$('sc-size').value || 5)), out = {}; let prev = null;
+      const size = Math.max(2, Math.min(6, +$('sc-size').value || 5)), out = {}; let prev = null;
       days.forEach(d => { out[d] = buildDay(presentOn(d), prev, size, ppl); prev = out[d]; });
       save({ size, days: out }, '🔀 已自動排班');
     };
@@ -2025,42 +2054,68 @@
     const e = eventsCache.find(x => x.id === eid) || {}, sc = evSched[eid] || {}, ppl = schedPeople(eid);
     const days = dayList(sc.start, sc.end), dt = sc.days || {};
     const roc = new Date(sc.start + 'T12:00:00').getFullYear() - 1911;
-    const wb = new ExcelJS.Workbook(), thin = { style: 'thin', color: { argb: 'FF555555' } }, border = { top: thin, left: thin, bottom: thin, right: thin };
-    const font = (o = {}) => ({ name: '微軟正黑體', size: 13, ...o }), fill = c => ({ type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + CAT_BG[c].slice(1).toUpperCase() } });
-    const maxN = Math.max(5, ...days.flatMap(d => (dt[d] || []).map(t => t.m.length)));
-    const ws = wb.addWorksheet('值班表', { pageSetup: { orientation: 'portrait', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, horizontalCentered: true } });
-    ws.columns = [{ width: 10 }, ...Array.from({ length: maxN }, () => ({ width: 12 })), { width: 22 }];
-    const lastCol = String.fromCharCode(65 + maxN + 1);
+    const wb = new ExcelJS.Workbook(), thin = { style: 'thin', color: { argb: 'FF555555' } }, med = { style: 'medium', color: { argb: 'FF000000' } };
+    const border = { top: thin, left: thin, bottom: thin, right: thin };
+    const XF = { N: 'FFFFFF00', T2: 'FF9DC3E6', T1: 'FFA9D08E', O: 'FFF4B183' };
+    const font = (o = {}) => ({ name: '新細明體', size: 12, ...o }), fillC = argb => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
+    const MAXP = 6;   // 每組最多 6 人：B～G
+    const ws = wb.addWorksheet(`${roc}分組`, { pageSetup: { orientation: 'portrait', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, horizontalCentered: true, margins: { left: .3, right: .3, top: .4, bottom: .4, header: .2, footer: .2 } } });
+    ws.columns = [{ width: 11 }, ...Array.from({ length: MAXP }, () => ({ width: 10.5 })), { width: 22 }];
+    const all = (c1, c2, r) => `${c1}${r}:${c2}${r}`;
     let r = 1;
-    ws.mergeCells(`A${r}:${lastCol}${r}`); Object.assign(ws.getCell(`A${r}`), { value: `${roc}年白沙屯拱天宮醫護團進香值班表`, font: font({ size: 18, bold: true }), alignment: { horizontal: 'center' } }); ws.getRow(r).height = 30; r++;
-    ws.mergeCells(`A${r}:${lastCol}${r}`); ws.getCell(`A${r}`).value = '圖塊顏色：黃－護理師　藍－EMTP、EMT2　綠－EMT1　橘－專業／志工　★＝組長'; ws.getCell(`A${r}`).font = font({ size: 11 }); r += 2;
+    ws.mergeCells(all('A', 'H', r)); Object.assign(ws.getCell(`A${r}`), { value: `${roc}年白沙屯拱天宮醫護團進香值班表`, font: font({ size: 20, bold: true }), alignment: { horizontal: 'center', vertical: 'middle' } }); ws.getRow(r).height = 32; r++;
+    const leg = [['圖塊顏色說明：', null], ['黃-護理師', XF.N], ['藍-EMTP、EMT2', XF.T2], ['綠-EMT1', XF.T1], ['橘色-專業人員', XF.O], ['白色-志工', 'FFFFFFFF']];
+    leg.forEach(([t, c], i) => { const cell = ws.getRow(r).getCell(i + 1); cell.value = t; cell.font = font({ size: 10 }); cell.alignment = { horizontal: 'center' }; if (c) cell.fill = fillC(c); }); r++;
+    ['註1：每組第一位組長（名字粗體字）。', '註2：志工：與組員搭配值勤，可協助處置傷患時之動線安全、拍照等等，看頭看尾。', '註3：血糖儀由護理師、EMTP、EMT2、EMT1操作'].forEach(t => {
+      ws.mergeCells(all('A', 'H', r)); Object.assign(ws.getCell(`A${r}`), { value: t, font: font({ size: 10 }) }); r++; });
+    const off = Object.values(ppl).filter(p => p.mode === 'off');
+    if (off.length) { ws.mergeCells(all('A', 'H', r)); Object.assign(ws.getCell(`A${r}`), { value: '不排班：' + off.map(p => (p.pos && p.pos !== '團員' ? p.pos + ' ' : '') + p.name).join('、'), font: font({ size: 10 }), alignment: { wrapText: true } }); ws.getRow(r).height = 30; r++; }
+    const cmd = Object.values(ppl).filter(p => p.pos === '指揮官').map(p => p.name).join('、');
+    r++;
     days.forEach(d => {
+      const dd = new Date(d + 'T12:00:00');
       const ts = (dt[d] || []).slice().sort((a, b) => LBL_ORDER(a.l) - LBL_ORDER(b.l));
-      ws.mergeCells(`A${r}:${lastCol}${r}`); Object.assign(ws.getCell(`A${r}`), { value: dLabel(d), font: font({ size: 15, bold: true }), fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3EDEA' } }, border, alignment: { horizontal: 'center' } }); ws.getRow(r).height = 26; r++;
+      const top = r;
+      // 標題列
+      Object.assign(ws.getCell(`A${r}`), { value: '　　日期\n組別', font: font({ size: 9 }), alignment: { wrapText: true, vertical: 'middle' }, border });
+      ws.mergeCells(all('B', 'G', r)); Object.assign(ws.getCell(`B${r}`), { value: `${dd.getMonth() + 1}月${dd.getDate()}日(${WK[dd.getDay()]})`, font: font({ size: 16, bold: true }), alignment: { horizontal: 'center', vertical: 'middle' }, border });
+      Object.assign(ws.getCell(`H${r}`), { value: `指揮官:${cmd}`, font: font({ size: 11, bold: true }), alignment: { vertical: 'middle' }, border });
+      ws.getRow(r).height = 30; r++;
+      let firstBack = true;
       ts.forEach(t => {
-        const row = ws.getRow(r); row.height = 26;
-        Object.assign(row.getCell(1), { value: t.l, font: font({ bold: true }), border, alignment: { horizontal: 'center', vertical: 'middle' } });
-        const ms = t.m.filter(k => ppl[k]);
-        for (let j = 0; j < maxN; j++) { const p = ppl[ms[j]], c = row.getCell(2 + j); c.border = border; c.alignment = { horizontal: 'center', vertical: 'middle' };
-          if (p) { c.value = (j === 0 ? '★' : '') + p.name; c.font = font({ bold: j === 0 }); c.fill = fill(p.cat); } }
-        Object.assign(row.getCell(maxN + 2), { value: '', border }); r++;
+        const ms = t.m.filter(k => ppl[k]).slice(0, MAXP), isBack = t.l.startsWith('轎後');
+        ws.mergeCells(`A${r}:A${r + 1}`); Object.assign(ws.getCell(`A${r}`), { value: t.l, font: font({ size: 14 }), alignment: { horizontal: 'center', vertical: 'middle' }, fill: fillC('FFD9D9D9') });
+        ws.mergeCells(`H${r}:H${r + 1}`);
+        for (let j = 0; j < MAXP; j++) {
+          const c = ws.getRow(r).getCell(2 + j), c2 = ws.getRow(r + 1).getCell(2 + j), p = ppl[ms[j]];
+          c.alignment = { horizontal: 'center', vertical: 'middle' }; c2.alignment = { horizontal: 'center' }; c2.font = font({ size: 9, color: { argb: 'FFFF0000' } });
+          if (p) { c.value = p.name; c.font = font({ size: 12, bold: j === 0 }); if (p.cat !== 'O' || p.g !== '專業人員及志工') c.fill = fillC(XF[p.cat]); else c.fill = fillC(XF.O); }
+        }
+        [r, r + 1].forEach(rr => { for (let col = 1; col <= 8; col++) { const c = ws.getRow(rr).getCell(col); c.border = { left: thin, right: thin, top: rr === r ? (isBack && firstBack ? med : thin) : undefined, bottom: rr === r + 1 ? thin : undefined }; } });
+        if (isBack) firstBack = false;
+        ws.getRow(r).height = 20; ws.getRow(r + 1).height = 13; r += 2;
       });
+      ['◎值日生：中巴－　　　。住宿－　　　。物資車盤點－', '◎'].forEach(t => { ws.mergeCells(all('A', 'H', r)); Object.assign(ws.getCell(`A${r}`), { value: t, font: font({ size: 11 }), border }); ws.getRow(r).height = 18; r++; });
+      // 外框粗線
+      for (let rr = top; rr < r; rr++) { const a1 = ws.getRow(rr).getCell(1), h1 = ws.getRow(rr).getCell(8); a1.border = { ...a1.border, left: med }; h1.border = { ...h1.border, right: med }; }
+      for (let col = 1; col <= 8; col++) { const c = ws.getRow(top).getCell(col); c.border = { ...c.border, top: med }; const c2 = ws.getRow(r - 1).getCell(col); c2.border = { ...c2.border, bottom: med }; }
       r++;
     });
     // 出勤統計：每人每天在哪一組
-    const st = wb.addWorksheet('出勤統計', { pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
-    st.columns = [{ width: 6 }, { width: 12 }, { width: 14 }, { width: 7 }, ...days.map(() => ({ width: 10 }))];
-    ['序', '姓名', '類別', '時段', ...days.map(dLabel)].forEach((h, i) => { const c = st.getRow(1).getCell(i + 1); c.value = h; c.font = font({ bold: true, size: 12 }); c.border = border; c.alignment = { horizontal: 'center' }; });
+    const st = wb.addWorksheet(`${roc}出勤統計`, { pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
+    st.columns = [{ width: 6 }, { width: 12 }, { width: 12 }, { width: 10 }, ...days.map(() => ({ width: 10 }))];
+    ['序', '姓名', '類別', '值班', ...days.map(dLabel)].forEach((h, i) => { const c = st.getRow(1).getCell(i + 1); c.value = h; c.font = font({ bold: true }); c.border = border; c.alignment = { horizontal: 'center' }; });
     const where = {}; days.forEach(d => (dt[d] || []).forEach(t => t.m.forEach(k => (where[k] = where[k] || {})[d] = t.l)));
-    const list = Object.values(ppl).sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot) || CAT_RANK[a.cat] - CAT_RANK[b.cat]);
+    const MODE = p => p.mode === 'all' ? '全程' : p.mode === 'range' ? '自訂' : p.mode === 'off' ? (p.pos && p.pos !== '團員' ? p.pos : '不排班') : p.slot;
+    const list = Object.values(ppl).sort((a, b) => (a.mode === 'off') - (b.mode === 'off') || SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot) || CAT_RANK[a.cat] - CAT_RANK[b.cat]);
     list.forEach((p, i) => { const row = st.getRow(2 + i);
-      [i + 1, p.name, CAT_TXT[p.cat], p.slot, ...days.map(d => (where[p.key] || {})[d] || '')].forEach((v, j) => { const c = row.getCell(j + 1); c.value = v; c.font = font({ size: 12 }); c.border = border; c.alignment = { horizontal: 'center' }; if (j === 1) c.fill = fill(p.cat); }); });
+      [i + 1, p.name, CAT_TXT[p.cat], MODE(p), ...days.map(d => (where[p.key] || {})[d] || '')].forEach((v, j) => { const c = row.getCell(j + 1); c.value = v; c.font = font(); c.border = border; c.alignment = { horizontal: 'center' }; if (j === 1) c.fill = fillC(XF[p.cat]); }); });
     const tr = st.getRow(2 + list.length); tr.getCell(2).value = '每日人數';
     days.forEach((d, j) => { tr.getCell(5 + j).value = (dt[d] || []).reduce((a, t) => a + t.m.length, 0); });
-    tr.eachCell(c => { c.font = font({ bold: true, size: 12 }); c.border = border; c.alignment = { horizontal: 'center' }; });
+    tr.eachCell(c => { c.font = font({ bold: true }); c.border = border; c.alignment = { horizontal: 'center' }; });
     const buf = await wb.xlsx.writeBuffer();
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-    a.download = `${e.title || '進香'}_排班表.xlsx`; a.click(); toast('⬇ 已下載排班表');
+    a.download = `${e.title || '進香'}_值班表.xlsx`; a.click(); toast('⬇ 已下載值班表');
   }
   const loadExcelJS = () => window.ExcelJS ? Promise.resolve() : new Promise((ok, bad) => { const sc = document.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js'; sc.onload = ok; sc.onerror = bad; document.head.appendChild(sc); });
   const ganzhi = roc => { const y = roc + 1911; return '甲乙丙丁戊己庚辛壬癸'[(y - 4) % 10] + '子丑寅卯辰巳午未申酉戌亥'[(y - 4) % 12]; };
