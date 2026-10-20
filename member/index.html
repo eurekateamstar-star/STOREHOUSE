@@ -2023,7 +2023,7 @@
         .xd.shooting .xshot,.xd.shooting .sc-miss,.xd.shooting .xnote.emp{visibility:hidden}.xsub{color:#6b7280;font-size:.9em}
         .xpn{display:block;font-style:normal;font-size:8.5px;font-weight:700;color:#dc2626;height:11px;line-height:11px;margin-top:1px;white-space:nowrap;overflow:hidden;letter-spacing:-.3px;background:#fff}.xcap .xpn{font-size:6.5px;height:9px;line-height:9px}@media (max-width:760px){.xpn{font-size:6.5px;height:9px;line-height:9px;letter-spacing:-.5px}}.xt td.xm{vertical-align:top}.xt td.xn{height:1px}.xt .xnote:not(.emp){max-height:42px;overflow:hidden;line-height:1.2;font-size:10.5px}@media (max-width:760px){.xt .xnote:not(.emp){max-height:34px;font-size:8px;line-height:1.1}.xt .xnote .xsub{font-size:7.5px}}.xcap .xt .xnote:not(.emp){max-height:34px;font-size:8px;line-height:1.1}
         .sc-bar{position:sticky;bottom:0;z-index:5;display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px -4px -4px;padding:10px 14px;border-radius:16px;background:#1f2430;color:#fff;box-shadow:0 -6px 20px rgba(0,0,0,.15)}
-        .sc-bar span{font-size:12px;color:#cbd5e1;flex:1}.sc-bar button{border:none;border-radius:10px;padding:8px 12px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}#sb-note{background:linear-gradient(90deg,#D65A68,#F08339);color:#fff}#sb-x{background:#334155;color:#fff}
+        .sc-bar span{font-size:12px;color:#cbd5e1;flex:1}.sc-bar button{border:none;border-radius:10px;padding:8px 12px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}#sb-note{background:linear-gradient(90deg,#D65A68,#F08339);color:#fff}#sb-x{background:#334155;color:#fff}.sb-mv{background:#fff;color:#1f2430}
         .xt .xf{cursor:pointer;white-space:normal;height:auto!important;padding:5px 14px!important;line-height:1.5;font-size:11px!important}.xt .xf b{color:#1f2430}.xt tr:has(.xf)+tr .xf{padding-top:0!important}.xt .xf:hover{background:#fff1f2}
         .eq-box input[data-f],.eq-box textarea[data-f]{width:100%;padding:8px 10px;border-radius:10px;border:1.5px solid #e5ddd9;font:inherit;font-size:14px}.eq-box [data-f].on{border-color:var(--primary);background:#fff7f5}
         .du-n{display:flex;flex-wrap:wrap;gap:4px;max-height:160px;overflow:auto;margin-bottom:10px}.du-n button{border:1px solid #eadfdb;background:#fff;border-radius:8px;padding:4px 8px;font:inherit;font-size:13px;cursor:pointer}
@@ -2098,9 +2098,15 @@
     if (schSel && ppl[schSel.k]) {
       const bar = document.createElement('div'); bar.className = 'sc-bar';
       const tm = (dt[schSel.d] || []).find(t => t.m.includes(schSel.k)), cur = tm && (tm.pn || {})[schSel.k];
-      bar.innerHTML = `<b>${esc(ppl[schSel.k].name)}</b><span>${dLabel(schSel.d)}・點組別可換組</span><button id="sb-note">📝 ${cur ? '改備註' : '加備註'}</button><button id="sb-x">取消</button>`;
+      bar.innerHTML = `<b>${esc(ppl[schSel.k].name)}</b><span>${dLabel(schSel.d)}・點組別可換組</span><button class="sb-mv" data-dir="-1">◀ 往前</button><button class="sb-mv" data-dir="1">往後 ▶</button><button id="sb-note">📝 ${cur ? '改備註' : '加備註'}</button><button id="sb-x">取消</button>`;
       $('sheet').appendChild(bar);
       bar.querySelector('#sb-x').onclick = () => { schSel = null; renderSched(eid); };
+      bar.querySelectorAll('.sb-mv').forEach(b => b.onclick = () => {      // 同一組內往前／往後移（第一位＝組長）
+        const { k, d } = schSel, dir = +b.dataset.dir;
+        const ts = (dt[d] || []).map(t => { if (!t.m.includes(k)) return t; const m = t.m.slice(), i = m.indexOf(k), j = i + dir;
+          if (j < 0 || j >= m.length) return t; [m[i], m[j]] = [m[j], m[i]]; return { ...t, m }; });
+        save({ days: { ...dt, [d]: ts } });
+      });
       bar.querySelector('#sb-note').onclick = async () => {
         const { k, d } = schSel, v = await pnPicker(`${ppl[k].name}　${dLabel(d)}`, cur || '');
         if (v === null) return;
