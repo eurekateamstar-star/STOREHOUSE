@@ -1295,6 +1295,7 @@
     let inSystem = false;
     async function enterSystem(userData, isOffline) {
       inSystem = true;
+      setTimeout(() => { updateOutboxBadge(); if (!isOffline) flushOutbox(false); }, 1500);
       document.getElementById('authScreen').style.display = 'none';
       document.getElementById('mainAppContainer').style.display = 'flex';
       
@@ -3042,13 +3043,55 @@
       card.querySelectorAll('.cc-media-tabs button').forEach(b => b.classList.toggle('active', b.dataset.m === mode));
     };
 
+    // =========================================
+    // ★ 離線暫存匣：沒訊號時把新紀錄存在 localStorage，恢復網路／下次打開自動上傳
+    // （用固定的文件 id，重送不會變兩筆）
+    // =========================================
+    const OUTBOX_KEY = 'bst_rec_outbox';
+    const outboxGet = () => { try { return JSON.parse(localStorage.getItem(OUTBOX_KEY) || '[]'); } catch (e) { return []; } };
+    const outboxSet = a => { try { localStorage.setItem(OUTBOX_KEY, JSON.stringify(a)); return true; } catch (e) { return false; } };
+    const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+    function outboxAdd(id, data, maybeSent) {
+      const d = { ...data }; delete d.timestamp; delete d.updatedAt;
+      const a = outboxGet().filter(x => x.id !== id); a.push({ id, data: d, savedAt: Date.now(), maybeSent: !!maybeSent });
+      return outboxSet(a);
+    }
+    function updateOutboxBadge() {
+      const n = outboxGet().length; let b = document.getElementById('outboxBadge');
+      if (!n) { if (b) b.remove(); return; }
+      if (!b) { b = document.createElement('div'); b.id = 'outboxBadge';
+        b.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));z-index:3500;background:#f59e0b;color:#fff;font-weight:800;font-size:13px;padding:8px 14px;border-radius:999px;box-shadow:0 4px 14px rgba(0,0,0,.2);cursor:pointer;white-space:nowrap';
+        b.onclick = () => flushOutbox(true); document.body.appendChild(b); }
+      b.textContent = `📦 ${n} 筆紀錄還在手機裡，有網路會自動上傳（點我重試）`;
+    }
+    let flushing = false;
+    async function flushOutbox(manual) {
+      if (flushing || !navigator.onLine || !auth.currentUser) { if (manual && !navigator.onLine) window.showNotice('error', '還沒有網路', '等有訊號再試一次。'); return; }
+      flushing = true; let sent = 0;
+      try {
+        for (const it of outboxGet()) {
+          try {
+            await withTimeout(setDoc(doc(db, "medical_records", it.id), { ...it.data, timestamp: serverTimestamp(), offlineSavedAt: it.savedAt }), 20000);
+            outboxSet(outboxGet().filter(x => x.id !== it.id)); sent++;
+          } catch (e) {
+            // 網路不穩時那筆其實可能已經送到了 → 再寫一次會被當成「修改」而被拒，視為已上傳
+            if (it.maybeSent && e && e.code === 'permission-denied') { outboxSet(outboxGet().filter(x => x.id !== it.id)); sent++; continue; }
+            console.warn('暫存紀錄上傳失敗', e); break; }
+        }
+      } finally { flushing = false; updateOutboxBadge(); }
+      if (sent) window.showNotice('success', '暫存紀錄已上傳', `手機裡的 ${sent} 筆紀錄已經上傳完成`);
+    }
+    window.addEventListener('online', () => setTimeout(() => flushOutbox(false), 1500));
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(() => flushOutbox(false), 800); });
+    setInterval(() => { if (outboxGet().length) flushOutbox(false); }, 60000);
+
     window.finalSubmit = async function() {
       const fd = new FormData(document.getElementById('ambulanceForm'));
       document.getElementById('previewOverlay').style.display = 'none';
       
-      if (!navigator.onLine) {
-        window.showNotice('success', '已暫存於手機', '目前為離線狀態，您的紀錄已安全暫存，待恢復網路後系統將自動上傳！');
-      } else {
+      if (!navigator.onLine && editingId) {
+        window.showNotice('success', '已暫存於手機', '目前為離線狀態，修改已暫存，請先不要關閉 LINE，恢復網路後會自動上傳！');
+      } else if (navigator.onLine) {
         document.getElementById('loading').style.display = 'flex';
       }
 
@@ -3100,8 +3143,18 @@
           resetFormUI();
           if (navigator.onLine) window.openAdminConsole();
         } else {
-          await addDoc(collection(db, "medical_records"), recordData);
-          if (navigator.onLine) window.showNotice('success', '上傳成功', '救護紀錄已成功送出');
+          const newId = doc(collection(db, "medical_records")).id;
+          if (!navigator.onLine) {      // ★ 沒訊號：存到手機（localStorage），關掉 LINE 也不會不見，有網路自動上傳
+            const ok = outboxAdd(newId, recordData);
+            if (ok) window.showNotice('success', '已存在手機裡', '目前沒有訊號，紀錄已存在這支手機。\n恢復網路後打開紀錄表就會自動上傳（關掉 LINE 也不會不見）。');
+            else { window.showNotice('error', '手機空間不足', '照片太多存不下，請刪掉幾張照片再送出一次。'); return; }
+            resetFormUI(); updateOutboxBadge(); return;
+          }
+          await withTimeout(setDoc(doc(db, "medical_records", newId), recordData), 15000).catch(err => {
+            if (err && err.message === 'timeout') { outboxAdd(newId, recordData, true); return 'queued'; } throw err; }).then(res => {
+            if (res === 'queued') window.showNotice('success', '已存在手機裡', '網路不穩，紀錄先存在手機，網路好了會自動上傳。');
+            else window.showNotice('success', '上傳成功', '救護紀錄已成功送出'); });
+          updateOutboxBadge();
 
           document.getElementById('loading').style.display = 'none';
           resetFormUI();
