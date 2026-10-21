@@ -28,6 +28,15 @@ export default {
 
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
     { const m = new URL(req.url).pathname.match(/^\/j\/([A-Za-z0-9_-]{6,40})\.jpg$/); if (m && req.method === 'GET') return journeyImg(m[1], env, req); }
+    if (new URL(req.url).pathname === '/validate' && req.method === 'GET') {   // 檢查每個自動回覆的格式（LINE 官方驗證）
+      const out = {};
+      for (const [k, make] of Object.entries(REPLIES)) {
+        const r = await fetch('https://api.line.me/v2/bot/message/validate/reply', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + env.LINE_BOT_TOKEN },
+          body: JSON.stringify({ messages: [await make(env, new URL(req.url).origin)] }) });
+        out[k] = r.ok ? 'ok' : await r.text();
+      }
+      return json(out);
+    }
     if (new URL(req.url).pathname === '/journey-list' && req.method === 'GET') {
       try { const ps = (await fsList(await saToken(env), 'journey')).sort((x, y) => (x.order ?? 0) - (y.order ?? 0)).map(p => ({ id: p.id, caption: p.caption || '' }));
         return new Response(JSON.stringify({ photos: ps }), { headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60' } }); }
