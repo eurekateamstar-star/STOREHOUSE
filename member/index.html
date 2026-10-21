@@ -2328,6 +2328,7 @@
         .eq-box{background:#fff;border-radius:20px;padding:18px;width:100%;max-width:360px;max-height:92vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.25)}
         .eq-t{font-weight:900;font-size:17px;margin-bottom:10px}.eq-btn{display:flex;gap:8px;margin-top:6px}.eq-btn>*{flex:1;text-align:center;border:none;border-radius:12px;padding:11px;font:inherit;font-size:15px;font-weight:900;cursor:pointer}#eq-no{background:#f1f5f9;color:#334155}
         .cp-g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.cp-g button{border:1.5px solid rgba(0,0,0,.06);border-radius:12px;padding:12px 4px;font:inherit;font-size:14px;cursor:pointer;color:#1f2430}.cp-g button b{display:block;font-size:20px}.cp-g button.on{outline:3px solid var(--primary)}
+        .at tr.lg td{cursor:pointer;white-space:normal;font-size:11px;line-height:1.15}.at tr.lg td.lm{color:#1d4ed8}.at tr.lg td.lf{color:#be185d}.at tr.lg td.pl{background:#fef9c3;color:#854d0e}.at tr.lg th{font-size:11px;white-space:normal;line-height:1.1;text-overflow:clip}
         .at tr.sum td,.at tr.sum th{background:#fbf7f6;font-weight:800;font-size:12px}
         .at .gp th{font-size:13px;font-weight:900;text-align:left;padding-left:10px;height:26px;color:#fff}.at .gp.m th{background:#3b82f6}.at .gp.f th{background:#db2777}.at .gp.u th{background:#94a3b8}
       </style>
@@ -2341,13 +2342,20 @@
         <tr>${days.map(() => '<th>出勤</th><th>住宿<br>男/女</th>').join('')}</tr></thead><tbody>
         ${list.map((p, i) => { const head = '';
           return head + `<tr><th class="nm${p.name.length >= 4 ? ' l4' : ''}" style="background:${CAT_BG[p.cat]}"><i>${i + 1}</i>${esc(p.name)}</th>${days.map(d => { const v = get(p.key, d);
-            return `<td class="c ${v.auto ? 'au' : ''}" data-ak="${esc(p.key)}" data-ad="${d}" data-af="w" style="${v.w && !v.auto ? 'background:' + (W_BG[v.w] || '#f1f5f9') : ''}" title="${esc(v.team)}">${esc(wTxt(v.w))}</td><td class="c sv ${v.s === '8' ? 's8' : ''}" data-ak="${esc(p.key)}" data-ad="${d}" data-af="s">${v.s === '7' ? '男' : v.s === '8' ? '女' : esc(v.s)}</td>`; }).join('')}</tr>`; }).join('')}
+            return `<td class="c ${v.auto ? 'au' : ''}" data-ak="${esc(p.key)}" data-ad="${d}" data-af="w" style="${v.w && !v.auto ? 'background:' + (W_BG[v.w] || '#f1f5f9') : ''}" title="${esc(v.team)}">${esc(wTxt(v.w))}</td><td class="c sv ${v.s === '8' ? 's8' : ''}" data-ak="${esc(p.key)}" data-ad="${d}" data-af="s" style="${v.s === '7' ? 'background:#dbeafe' : v.s === '8' ? 'background:#fce7f3' : ''}">${v.s === '7' ? '男' : v.s === '8' ? '女' : esc(v.s)}</td>`; }).join('')}</tr>`; }).join('')}
         <tr class="sum"><th class="nm">當日人數</th>${days.map(d => `<td>${cnt(d, v => v.w)}</td><td>${cnt(d, v => v.s)}</td>`).join('')}</tr>
-        <tr class="sum"><th class="nm">住宿 男／女</th>${days.map(d => `<td colspan="2" data-lod="${d}" style="cursor:pointer;color:#1d4ed8;text-decoration:underline">${cnt(d, v => v.s === '7')}／${cnt(d, v => v.s === '8')}</td>`).join('')}</tr>
+        ${(() => { const I = d => info[d] || {}, n = x => (x === '' || x == null) ? '' : +x, m = d => cnt(d, v => v.s === '7'), f = d => cnt(d, v => v.s === '8');
+          const pair = (a, b, d) => `<td data-lod2="${d}">${a}</td><td data-lod2="${d}">${b}</td>`;
+          return `<tr class="sum lg"><th class="nm">住宿地點</th>${days.map(d => `<td colspan="2" data-lod2="${d}" class="pl">${esc(I(d).place || '')}</td>`).join('')}</tr>
+          <tr class="sum lg"><th class="nm">住宿人數(男/女)</th>${days.map(d => `<td data-lod="${d}" class="lm">${m(d)}</td><td data-lod="${d}" class="lf">${f(d)}</td>`).join('')}</tr>
+          <tr class="sum lg"><th class="nm">住宿中巴(男/女)</th>${days.map(d => pair(n(I(d).busM), n(I(d).busF), d)).join('')}</tr>
+          <tr class="sum lg"><th class="nm">住宿合計(男/女)</th>${days.map(d => `<td class="lm">${m(d) + (+I(d).busM || 0)}</td><td class="lf">${f(d) + (+I(d).busF || 0)}</td>`).join('')}</tr>
+          <tr class="sum lg"><th class="nm">房號</th>${days.map(d => pair(esc(I(d).roomM || ''), esc(I(d).roomF || ''), d)).join('')}</tr>
+          <tr class="sum lg"><th class="nm">可住人數</th>${days.map(d => pair(n(I(d).capM), n(I(d).capF), d)).join('')}</tr>`; })()}
         ${W_CODES.map(([c, t]) => `<tr class="sum"><th class="nm">${wTxt(c)}</th>${days.map(d => `<td colspan="2">${cnt(d, v => v.w === c) || ''}</td>`).join('')}</tr>`).join('')}
       </tbody></table></div>
       <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button class="sbtn" id="at-xlsx" style="background:#1f2430;color:#fff;">⬇ 下載出勤統計 Excel</button>
-        <span style="font-size:12px;color:var(--sub);align-self:center">點日期可填住宿地點（苑裡、四湖…）</span></div>`;
+        <span style="font-size:12px;color:var(--sub);align-self:center">點日期或下方住宿欄位可填住宿地點、中巴、房號、可住人數</span></div>`;
     const save = async (patch, msg) => { evSched[eid] = { ...(evSched[eid] || {}), ...patch }; try { await saveDraw(eid, { ...(evDraw[eid] || {}) }, { ...(evDrawBy[eid] || {}) }, { ...(evOver[eid] || {}) }); if (msg) toast(msg); } catch (err) { console.error(err); toast('❌ 儲存失敗'); } renderAtt(eid); };
     $('at-back').onclick = () => { attOpen = false; renderSched(eid); };
     const nw = document.querySelector('.at-wrap'); if (keep && nw) { nw.scrollLeft = keep[0]; nw.scrollTop = keep[1]; } $('sheet').scrollTop = keepS;
@@ -2362,7 +2370,7 @@
         const g = genderOf(pmap[k]), opts = g === '8' ? [['8', '要住宿']] : g === '7' ? [['7', '要住宿']] : [['7', '要住宿'], ['8', '要住宿']];
         const c = await codePicker(`${pmap[k].name}　${dLabel(d)} 住宿？`, opts, v.s, '不住');
         if (c === null || c === v.s) return;
-        const nv = c; td.textContent = nv === '7' ? '男' : nv === '8' ? '女' : ''; td.classList.toggle('s8', nv === '8');
+        const nv = c; td.textContent = nv === '7' ? '男' : nv === '8' ? '女' : ''; td.classList.toggle('s8', nv === '8'); td.style.background = nv === '7' ? '#dbeafe' : nv === '8' ? '#fce7f3' : '';
         putAtt(k, 's', d, nv || null); return;
       }
       const c = await codePicker(`${pmap[k].name}　${dLabel(d)} 出勤`, W_CODES, v.w);
@@ -2378,10 +2386,21 @@
       ov.innerHTML = `<div class="eq-box"><div class="eq-t">${dLabel(d)} 住宿名單${((evSched[eid] || {}).info || {})[d] && evSched[eid].info[d].place ? '・' + esc(evSched[eid].info[d].place) : ''}</div>${sec('7', '👨 男', '#1d4ed8')}${sec('8', '👩 女', '#be185d')}<div class="eq-btn" style="margin-top:14px"><button id="eq-no">關閉</button></div></div>`;
       document.body.appendChild(ov); ov.onclick = e2 => { if (e2.target === ov || e2.target.id === 'eq-no') ov.remove(); };
     });
-    document.querySelectorAll('[data-place]').forEach(th => th.onclick = async () => {
-      const d = th.dataset.place, v = await dialog({ title: `${dLabel(d)} 住宿地點`, input: { value: (info[d] || {}).place || '', placeholder: '例如：苑裡、四湖' }, okText: '儲存' });
-      if (v !== null) save({ info: { ...info, [d]: { ...(info[d] || {}), place: v } } }, '已儲存');
-    });
+    const lodEdit = d => {
+      const I = { ...(info[d] || {}) }, ov = document.createElement('div'); ov.className = 'eq-ov';
+      const F = (k, ph, type = 'text') => `<input data-k="${k}" type="${type}" inputmode="${type === 'number' ? 'numeric' : 'text'}" value="${esc(I[k] ?? '')}" placeholder="${ph}" style="width:100%;padding:8px 10px;border-radius:10px;border:1.5px solid #e5ddd9;font:inherit;font-size:15px;box-sizing:border-box">`;
+      const R2 = (t, a, b) => `<div class="eq-l">${t}</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${a}${b}</div>`;
+      ov.innerHTML = `<div class="eq-box"><div class="eq-t">${dLabel(d)} 住宿資料</div>
+        <div class="eq-l">住宿地點</div>${F('place', '例如：苑裡、四湖')}
+        ${R2('住宿中巴（男／女）', F('busM', '男', 'number'), F('busF', '女', 'number'))}
+        ${R2('房號（男／女）', F('roomM', '男，例：虎526 523'), F('roomF', '女，例：虎525'))}
+        ${R2('可住人數（男／女）', F('capM', '男', 'number'), F('capF', '女', 'number'))}
+        <div class="eq-btn" style="margin-top:14px"><button id="eq-no">取消</button><button id="eq-ok" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff">儲存</button></div></div>`;
+      document.body.appendChild(ov);
+      ov.querySelector('#eq-no').onclick = () => ov.remove();
+      ov.querySelector('#eq-ok').onclick = () => { ov.querySelectorAll('[data-k]').forEach(x => I[x.dataset.k] = x.value.trim()); ov.remove(); save({ info: { ...info, [d]: I } }, '已儲存'); };
+    };
+    document.querySelectorAll('[data-place],[data-lod2]').forEach(el => el.onclick = () => lodEdit(el.dataset.place || el.dataset.lod2));
     $('at-auto').onclick = async () => {
       if (!(await dialog({ title: '自動帶住宿？', msg: '有出勤的天會依身分證填住宿（男 7、女 8），最後一天不住宿。\n已經填過的住宿不會被改。', okText: '套用' }))) return;
       const att = JSON.parse(JSON.stringify((evSched[eid] || {}).att || {})); let n = 0;
@@ -2426,10 +2445,16 @@
     row('當日人數(出團/住宿)', (c, d) => { set(r, c, { formula: `COUNTA(${col(c)}3:${col(c)}${L})`, result: list.filter(p => get(p.key, d).w).length }, { bold: true }); set(r, c + 1, { formula: `COUNT(${col(c + 1)}3:${col(c + 1)}${L})`, result: list.filter(p => get(p.key, d).s).length }, { bold: true }); });
     row('住宿地點', (c, d) => { ws.mergeCells(r, c, r, c + 1); set(r, c, (info[d] || {}).place || ''); });
     row('住宿人數(男/女)', (c, d) => { set(r, c, { formula: `COUNTIF(${col(c + 1)}3:${col(c + 1)}${L},7)`, result: list.filter(p => get(p.key, d).s === '7').length }); set(r, c + 1, { formula: `COUNTIF(${col(c + 1)}3:${col(c + 1)}${L},8)`, result: list.filter(p => get(p.key, d).s === '8').length }); });
+    const num = x => (x === '' || x == null || isNaN(+x)) ? null : +x;
+    row('住宿中巴(男/女)', (c, d) => { set(r, c, num((info[d] || {}).busM)); set(r, c + 1, num((info[d] || {}).busF)); });
+    row('住宿合計(男/女)', (c, d) => { [0, 1].forEach(k => { const I = info[d] || {}, base = list.filter(p => get(p.key, d).s === (k ? '8' : '7')).length;
+      set(r, c + k, { formula: `${col(c + k)}${r - 2}+${col(c + k)}${r - 1}`, result: base + (+(k ? I.busF : I.busM) || 0) }, { bold: true }); }); });
+    row('房號', (c, d) => { set(r, c, (info[d] || {}).roomM || ''); set(r, c + 1, (info[d] || {}).roomF || ''); });
+    row('可住人數', (c, d) => { set(r, c, num((info[d] || {}).capM)); set(r, c + 1, num((info[d] || {}).capF)); });
     r++;
     W_CODES.forEach(([code, t]) => row(t, (c, d) => { ws.mergeCells(r, c, r, c + 1); set(r, c, { formula: `COUNTIF(${col(c)}3:${col(c)}${L},${isNaN(+code) ? `"${code}"` : code})`, result: list.filter(p => get(p.key, d).w === code).length }); }));
     r++;
-    ['說明：', '出團 1-指揮車、2-在隊伍中輪班、3-指揮官、4-機車機動組、5-媽祖車駕駛、6-物資車駕駛、D-醫師、a-復健組、b-教官醫師', '住宿 7-住宿(男)、8-住宿(女)'].forEach(t => { ws.mergeCells(r, 1, r, 5 + days.length * 2); ws.getCell(r, 1).value = t; ws.getCell(r, 1).font = font(); r++; });
+    ['說明：', '出團 1-指揮車、2-在隊伍中輪班、3-指揮官、4-機車機動組、5-媽祖車駕駛、6-物資車駕駛、D-醫師、a-其他、b-教官團', '住宿 7-住宿(男)、8-住宿(女)'].forEach(t => { ws.mergeCells(r, 1, r, 5 + days.length * 2); ws.getCell(r, 1).value = t; ws.getCell(r, 1).font = font(); r++; });
     const buf = await wb.xlsx.writeBuffer();
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
     a.download = `${e.title || '進香'}_出勤統計.xlsx`; a.click(); toast('⬇ 已下載出勤統計');
