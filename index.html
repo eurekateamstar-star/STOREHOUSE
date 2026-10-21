@@ -3491,7 +3491,7 @@
     window.toggleContentEditMode = function() {
         if (!isContentEditActive && !isAdmin()) return showToast('🔒 只有管理員可以編輯', 'error', 1200);
         isContentEditActive = !isContentEditActive;
-        setTimeout(() => { fitCanvas(); if (isPanoActive) fitPano(); }, 0);
+        setTimeout(() => { fitCanvas(); if (isPanoActive) fitPano(); const L = document.getElementById('boxes-layer'); if (L) fitBoxLabels(L); }, 0);
         const btn = document.getElementById('mode-btn-edit');
         if (btn) {
             setBtn(btn, isContentEditActive ? 'lock' : 'pencil', isContentEditActive ? '鎖定' : '編輯');
@@ -4424,6 +4424,26 @@
         }
     }
 
+    // 箱子裡標籤太擠（互相重疊或超出框）→ 這一箱的字自動縮小（最小 7px）
+    function fitBoxLabels(layer) {
+        const run = () => layer.querySelectorAll('.box-wrapper').forEach(w => {
+            const chips = [...w.querySelectorAll('.box-label-chip')]; if (!chips.length) return;
+            const base = 11, min = 7;
+            const bad = () => {
+                const wr = w.getBoundingClientRect(), rs = chips.map(c => c.getBoundingClientRect()), tol = 2;
+                for (let i = 0; i < rs.length; i++) {
+                    const r = rs[i];
+                    if (r.width > wr.width + tol) return true;
+                    for (let j = i + 1; j < rs.length; j++) { const q = rs[j];
+                        if (r.left < q.right - tol && q.left < r.right - tol && r.top < q.bottom - tol && q.top < r.bottom - tol) return true; }
+                }
+                return false;
+            };
+            let fs = base; chips.forEach(c => { c.style.fontSize = fs + 'px'; c.style.padding = ''; });
+            while (fs > min && bad()) { fs -= 0.5; chips.forEach(c => { c.style.fontSize = fs + 'px'; c.style.padding = fs < 9.5 ? '1px 5px' : ''; }); }
+        });
+        requestAnimationFrame(run);
+    }
     function renderBoxes() {
         const layer = document.getElementById('boxes-layer');
         if (!layer) return;
@@ -4601,6 +4621,7 @@
             frag.appendChild(wrap);
         });
         layer.replaceChildren(frag);
+        fitBoxLabels(layer);
         positionToolbars();
     }
 
