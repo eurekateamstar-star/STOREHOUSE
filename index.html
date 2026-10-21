@@ -444,7 +444,8 @@
         .ov-tier-wrap{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:6px;}
         .ov-tier-row .ov-box,.ov-tier-wrap .ov-box{margin-bottom:0;min-width:0;padding:8px;border-radius:12px;}
         .ov-tier-row .ov-box-title,.ov-tier-wrap .ov-box-title{flex-direction:column;gap:2px;margin-bottom:6px;font-size:12px;line-height:1.35;}
-        .ov-tier-row .ov-box-title span:first-child,.ov-tier-wrap .ov-box-title span:first-child{min-width:0;word-break:break-all;}
+        .ov-tier-row .ov-box-title span:first-child,.ov-tier-wrap .ov-box-title span:first-child{min-width:0;word-break:break-all;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;height:2.7em;}
+        .ov-tier-row .ov-box,.ov-tier-wrap .ov-box{min-height:86px;}
         .ov-tier-row .ov-box-count,.ov-tier-wrap .ov-box-count{font-size:10px;}
         .ov-tier-row .ov-item,.ov-tier-wrap .ov-item{font-size:11px;padding-left:6px;word-break:break-all;}
         .ov-tier-row .tier-chip,.ov-tier-wrap .tier-chip{font-size:10px;padding:4px 6px;}
