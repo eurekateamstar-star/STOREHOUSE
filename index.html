@@ -829,7 +829,7 @@
         <!-- 個人 QR 與持有物品 -->
         <div id="me-view">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; padding-top:10px;">
-                <div style="font-size:20px; font-weight:700;" id="me-title">🪪 我的 QR</div>
+                <div style="font-size:20px; font-weight:700;" id="me-title">📇 我的 QR</div>
                 <button onclick="closeMeView()" class="apple-btn secondary" style="padding:8px 14px; font-size:13px;">返回</button>
             </div>
             <div class="apple-card" style="text-align:center; margin-bottom:16px;">
@@ -4237,7 +4237,7 @@
         ['main-menu-view', 'users-view', 'lookup-view'].forEach(id => { const e = document.getElementById(id); if (e) e.style.display = 'none'; });
         document.getElementById('me-view').style.display = 'block';
         const isSelf = currentUser && personViewUser.id === currentUser.userId;
-        document.getElementById('me-title').innerText = isSelf ? '🪪 我的 QR' : `🪪 ${personViewUser.account}`;
+        document.getElementById('me-title').innerText = isSelf ? '📇 我的 QR' : `📇 ${personViewUser.account}`;
         const _pic = personViewUser.pictureUrl || avatarOf(personViewUser.account);
         document.getElementById('me-name').innerHTML = (_pic ? `<img src="${escapeHtml(_pic)}" alt="" onerror="this.style.display='none'" style="width:64px; height:64px; border-radius:50%; object-fit:cover; background:#2c2c2e; display:block; margin:0 auto 8px;">` : '') + escapeHtml(personViewUser.account || '');
         const qrEl = document.getElementById('me-qr');
