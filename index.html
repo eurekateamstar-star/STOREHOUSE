@@ -3720,7 +3720,7 @@
             poly.setAttribute('class', 'pano-poly' + (isContentEditActive ? ' editing' : ''));
             const draw = () => {
                 poly.setAttribute('points', pts.map(q => q.join(',')).join(' '));
-                const c = polyCenter(pts); lab.style.left = c[0] + '%'; lab.style.top = c[1] + '%';
+                const c = polyCenter(pts), lo = p.panoLabel || { x: 0, y: 0 }; lab.style.left = clamp(c[0] + lo.x, 0, 100) + '%'; lab.style.top = clamp(c[1] + lo.y, 0, 100) + '%';
                 handles.forEach((h, k) => { h.style.left = pts[k][0] + '%'; h.style.top = pts[k][1] + '%'; });
                 mids.forEach((m, k) => { const a = pts[k], b = pts[(k + 1) % pts.length]; m.style.left = (a[0] + b[0]) / 2 + '%'; m.style.top = (a[1] + b[1]) / 2 + '%'; });
             };
@@ -3759,7 +3759,18 @@
                 window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
             };
             poly.onpointerdown = dragAll;
-            lab.onpointerdown = e => { if (e.target === eb) return; dragAll(e); };
+            // 拖文字：只移動名稱位置（相對於框的中心），不動框
+            lab.onpointerdown = e => {
+                if (e.target === eb) return;
+                e.preventDefault(); e.stopPropagation();
+                const start = toPct(e), lo0 = { ...(p.panoLabel || { x: 0, y: 0 }) }; let moved = false;
+                const mv = ev => { const c = toPct(ev); const dx = c[0] - start[0], dy = c[1] - start[1]; if (Math.abs(dx) + Math.abs(dy) > .3) moved = true;
+                    p.panoLabel = { x: lo0.x + dx, y: lo0.y + dy }; draw(); };
+                const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up);
+                    if (moved) updateDoc(doc(db, "warehouse_pages", p.id), { panoLabel: { x: +p.panoLabel.x.toFixed(2), y: +p.panoLabel.y.toFixed(2) } }).catch(() => {}); };
+                window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+            };
+            lab.style.cursor = 'move'; lab.style.zIndex = 4; lab.style.touchAction = 'none';
 
             const build = () => {
                 handles.splice(0).forEach(h => h.remove()); mids.splice(0).forEach(m => m.remove());
@@ -3799,7 +3810,7 @@
         if (isContentEditActive && pages.length) {
             const tip = document.createElement('div');
             tip.className = 'pano-tip';
-            tip.innerText = '拖橘點調角・拖＋加點・點兩下橘點刪除・拖框內整塊移動';
+            tip.innerText = '拖橘點調角・拖＋加點・點兩下橘點刪除・拖框內整塊移動・拖文字移動名稱';
             layer.appendChild(tip);
         }
     }
