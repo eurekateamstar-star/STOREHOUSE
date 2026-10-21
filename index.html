@@ -5541,5 +5541,28 @@
   setTimeout(show, 6000); setTimeout(show, 15000);
 })();
 </script>
+
+<!-- 有新版本時提示重新整理（LINE 裡的頁面常常一直開著，不會自己更新） -->
+<script>
+(function () {
+  var base = null, shown = false;
+  function h(t) { var x = 0; for (var i = 0; i < t.length; i++) x = (x * 31 + t.charCodeAt(i)) | 0; return x; }
+  function check() {
+    if (shown) return;
+    fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : null; }).then(function (t) {
+      if (!t) return; var v = h(t);
+      if (base === null) { base = v; return; }
+      if (v !== base) {
+        shown = true; var b = document.createElement('div');
+        b.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));z-index:99999;background:#1f2430;color:#fff;font-weight:800;font-size:14px;padding:10px 16px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.3);cursor:pointer;white-space:nowrap;font-family:inherit';
+        b.textContent = '🔄 有新版本，點這裡更新'; b.onclick = function () { location.reload(); }; document.body.appendChild(b);
+      }
+    }).catch(function () {});
+  }
+  check();
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) check(); });
+  setInterval(check, 120000);
+})();
+</script>
 </body>
 </html>
