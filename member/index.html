@@ -2404,23 +2404,26 @@
     // 點日期：當天出勤名單＋住宿名單（男／女），都有序號
     document.querySelectorAll('[data-place]').forEach(el => el.onclick = () => {
       const d = el.dataset.place, g = attVals(eid), I = info[d] || {};
-      const W = list.filter(p => g(p.key, d).w), M = list.filter(p => g(p.key, d).s === '7'), F = list.filter(p => g(p.key, d).s === '8');
-      const ol = (arr, extra, col) => arr.length ? `<ol class="dl">${arr.map(p => `<li><span class="nm2" style="background:${CAT_BG[p.cat]}">${esc(p.name)}</span>${extra ? extra(p) : ''}</li>`).join('')}</ol>` : '<div style="color:#9a8f8b;font-size:13px;padding:6px 2px">無</div>';
-      const sec = (t, n, col, body) => `<div class="dsec"><div class="dh" style="color:${col}">${t}<span>${n} 人</span></div>${body}</div>`;
+      const on = list.filter(p => { const v = g(p.key, d); return v.w || v.s; });
+      const sexOf = p => g(p.key, d).s || genderOf(p);
+      const M = on.filter(p => sexOf(p) === '7'), F = on.filter(p => sexOf(p) === '8'), U = on.filter(p => !['7', '8'].includes(sexOf(p)));
+      const tbl = (arr, t, col, bg) => { const nw = arr.filter(p => g(p.key, d).w).length, ns = arr.filter(p => g(p.key, d).s).length;
+        return `<div class="dsec"><div class="dh" style="color:${col};background:${bg}">${t}<span>出勤 ${nw}・住宿 ${ns}</span></div>
+          <table class="dt"><thead><tr><th>#</th><th>姓名</th><th>出勤</th><th>住宿</th></tr></thead><tbody>${arr.map((p, i) => { const v = g(p.key, d);
+            return `<tr><td class="n">${i + 1}</td><td class="nm2" style="background:${CAT_BG[p.cat]}">${esc(p.name)}</td><td class="w">${esc(wTxt(v.w))}</td><td class="s" style="color:${col}">${v.s ? '✔' : ''}</td></tr>`; }).join('') || '<tr><td colspan="4" style="color:#9a8f8b">無</td></tr>'}</tbody></table></div>`; };
       const ov = document.createElement('div'); ov.className = 'eq-ov';
-      ov.innerHTML = `<div class="eq-box" style="max-width:760px">
-        <style>.dgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}@media(max-width:640px){.dgrid{grid-template-columns:1fr}}
-          .dsec{border:1px solid #efe4e0;border-radius:12px;overflow:hidden}.dh{background:#fdf6f4;padding:7px 10px;font-weight:900;font-size:14px;display:flex;justify-content:space-between}.dh span{color:#6b7280;font-size:12px}
-          ol.dl{margin:0;padding:4px 8px 6px 34px;max-height:52vh;overflow:auto}ol.dl li{font-size:14px;padding:3px 0;border-bottom:1px solid #f6efec}ol.dl li::marker{color:#9a8f8b;font-size:12px}
-          .nm2{display:inline-block;border-radius:6px;padding:1px 6px;font-weight:700}.wt{font-size:11px;color:#15803d;margin-left:6px;font-weight:700}</style>
-        <div class="eq-t">${dLabel(d)}${I.tag ? '　' + esc(I.tag) : ''} 出勤／住宿名單</div>
-        <div style="font-size:13px;color:#6b7280;margin:-4px 0 10px">${I.place ? '📍 ' + esc(I.place) + '　' : ''}${I.roomM || I.roomF ? '房號：男 ' + esc(I.roomM || '—') + '／女 ' + esc(I.roomF || '—') : ''}</div>
-        <div class="dgrid">
-          ${sec('出勤', W.length, '#15803d', ol(W, p => `<span class="wt">${esc(wTxt(g(p.key, d).w))}</span>`))}
-          ${sec('🛏 住宿（男）', M.length, '#1d4ed8', ol(M))}
-          ${sec('🛏 住宿（女）', F.length, '#be185d', ol(F))}
-        </div>
-        <div class="eq-btn" style="margin-top:14px"><button id="eq-no">關閉</button><button id="d-edit" style="background:#fef9c3;color:#854d0e">✏️ 住宿地點／房號</button></div></div>`;
+      ov.innerHTML = `<div class="eq-box" style="max-width:640px;padding:14px 12px">
+        <style>.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;align-items:start}
+          .dsec{border:1px solid #efe4e0;border-radius:10px;overflow:hidden}.dh{padding:5px 6px;font-weight:900;font-size:13px;display:flex;justify-content:space-between;align-items:baseline;gap:4px}.dh span{color:#6b7280;font-size:10px;font-weight:700;white-space:nowrap}
+          table.dt{width:100%;border-collapse:collapse;table-layout:fixed}.dt th{font-size:9.5px;color:#9a8f8b;font-weight:700;padding:2px 0;border-bottom:1px solid #f1e8e5}
+          .dt td{font-size:12px;height:22px;padding:0 2px;border-bottom:1px solid #f6efec;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
+          .dt th:nth-child(1),.dt td.n{width:18px}.dt td.n{color:#9a8f8b;font-size:10px}.dt th:nth-child(3),.dt td.w{width:40px}.dt th:nth-child(4),.dt td.s{width:26px}
+          .dt td.nm2{font-weight:700;text-align:left;padding-left:4px}.dt td.w{color:#15803d;font-size:10.5px;font-weight:700;letter-spacing:-.3px}.dt td.s{font-weight:900}</style>
+        <div class="eq-t" style="font-size:16px;margin-bottom:2px">${dLabel(d)}${I.tag ? '　' + esc(I.tag) : ''} 出勤／住宿</div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:8px">${I.place ? '📍 ' + esc(I.place) + '　' : ''}${I.roomM || I.roomF ? '房號：男 ' + esc(I.roomM || '—') + '／女 ' + esc(I.roomF || '—') : ''}</div>
+        <div class="dgrid">${tbl(M, '男', '#1d4ed8', '#eff6ff')}${tbl(F, '女', '#be185d', '#fdf2f8')}</div>
+        ${U.length ? `<div style="margin-top:6px">${tbl(U, '未填身分證', '#475569', '#f1f5f9')}</div>` : ''}
+        <div class="eq-btn" style="margin-top:10px"><button id="eq-no">關閉</button><button id="d-edit" style="background:#fef9c3;color:#854d0e">✏️ 住宿地點／房號</button></div></div>`;
       document.body.appendChild(ov);
       ov.onclick = e2 => { if (e2.target === ov) ov.remove(); };
       ov.querySelector('#eq-no').onclick = () => ov.remove();
