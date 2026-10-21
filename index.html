@@ -547,6 +547,9 @@
         .page-nav-btn{background:var(--soft) !important;}
         .header-btns button.active{background:rgba(214,90,104,.14) !important;color:var(--primary) !important;}
         .side-arrow{color:var(--primary) !important;animation:none;}
+        /* 換頁箭頭移到最下方（地板那一帶），不要擋到架子上的標籤 */
+        .side-arrow{top:auto !important;margin-top:0 !important;bottom:calc(112px + env(safe-area-inset-bottom));width:40px;height:40px;border-radius:50%;opacity:.88;}
+        .side-arrow svg{width:18px;height:18px;}
         .mode-hint{background:rgba(255,255,255,.92) !important;color:#c2410c !important;border-color:rgba(240,131,57,.35) !important;box-shadow:0 6px 16px rgba(0,0,0,.08);}
         #map-loading-overlay .spinner{border-color:rgba(214,90,104,.15);border-top-color:var(--primary);}
 
