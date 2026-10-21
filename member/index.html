@@ -2786,7 +2786,7 @@
   let jPhotos = [];
   async function openJourney() {
     $('sheet-body').innerHTML = `<h3>📸 醫護足跡照片</h3>
-      <div style="font-size:13px;color:var(--sub);line-height:1.7;margin:4px 0 10px">在 LINE 點選單「醫護足跡」，會出現可以左右滑的照片（依這裡的順序，前 11 張，最後一張是 FB／IG 連結）。<br>直的照片效果最好（會裁成 4:5）。每張可以寫一句說明。</div>
+      <div style="font-size:13px;color:var(--sub);line-height:1.7;margin:4px 0 10px">在 LINE 點選單「醫護足跡」，會出現一張拼貼相簿卡：<b>第 1 張是大圖</b>，下面 6 張小圖，按「看全部照片」會打開相簿網頁看全部。<br>第 1 張建議放橫的、最有代表性的照片。每張可以寫一句說明（相簿網頁會顯示）。</div>
       <label class="sbtn" style="background:#C4622E;color:#fff;display:inline-block;cursor:pointer">＋ 上傳照片（可一次選多張）<input type="file" id="j-file" accept="image/*" multiple style="display:none"></label>
       <div id="j-msg" style="font-size:13px;color:var(--sub);margin:8px 0"></div>
       <div id="j-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">讀取中…</div>`;
@@ -2804,8 +2804,8 @@
   async function jLoad() {
     try { jPhotos = (await jApi({ action: 'list' })).photos || []; } catch (e) { $('j-list').textContent = '❌ ' + (e.message || e); return; }
     if (!jPhotos.length) { $('j-list').innerHTML = '<div style="color:var(--sub);font-size:14px">還沒有照片，先上傳幾張吧。</div>'; return; }
-    $('j-list').innerHTML = jPhotos.map((p, i) => `<div style="border:1px solid #efe4e0;border-radius:14px;overflow:hidden;background:#fff;${i >= 11 ? 'opacity:.55' : ''}">
-        <div style="position:relative;aspect-ratio:4/5;background:#f3efed url('${AUTH_URL}/j/${p.id}.jpg') center/cover"><span style="position:absolute;left:6px;top:6px;background:rgba(0,0,0,.55);color:#fff;font-size:12px;font-weight:800;border-radius:8px;padding:2px 7px">${i + 1}${i >= 11 ? '（不會顯示）' : ''}</span></div>
+    $('j-list').innerHTML = jPhotos.map((p, i) => `<div style="border:1px solid #efe4e0;border-radius:14px;overflow:hidden;background:#fff;">
+        <div style="position:relative;aspect-ratio:4/5;background:#f3efed url('${AUTH_URL}/j/${p.id}.jpg') center/cover"><span style="position:absolute;left:6px;top:6px;background:rgba(0,0,0,.55);color:#fff;font-size:12px;font-weight:800;border-radius:8px;padding:2px 7px">${i === 0 ? '★ 大圖' : i + 1}</span></div>
         <input data-jc="${p.id}" value="${esc(p.caption || '')}" maxlength="60" placeholder="說明（可不填）" style="width:100%;border:0;border-top:1px solid #f1e8e5;padding:8px;font:inherit;font-size:13px;box-sizing:border-box">
         <div style="display:flex;border-top:1px solid #f1e8e5">
           <button data-jm="${i}" data-d="-1" ${i ? '' : 'disabled'} style="flex:1;border:0;background:#fff;padding:8px;cursor:pointer">◀</button>

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>醫護足跡｜白沙屯拱天宮醫護團</title>
+<style>
+  :root{--bg:#f6f3ee;--ink:#1f2430;--sub:#6b7280;--acc:#C4622E;-webkit-text-size-adjust:100%}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif}
+  header{padding:28px 18px 14px;max-width:1100px;margin:0 auto}
+  .tag{font-size:12px;letter-spacing:4px;font-weight:800;color:var(--acc)}
+  h1{margin:6px 0 4px;font-size:30px;letter-spacing:2px}
+  .sub{color:var(--sub);font-size:14px;line-height:1.6}
+  .bar{width:46px;height:5px;border-radius:3px;background:var(--acc);margin:12px 0 0}
+  .grid{max-width:1100px;margin:0 auto;padding:6px 12px 40px;columns:2 170px;column-gap:8px}
+  .ph{break-inside:avoid;margin:0 0 8px;border-radius:14px;overflow:hidden;background:#e9e3df;cursor:zoom-in;position:relative;box-shadow:0 2px 10px rgba(80,50,30,.08)}
+  .ph img{display:block;width:100%;height:auto}
+  .ph .cap{position:absolute;left:0;right:0;bottom:0;padding:18px 10px 8px;font-size:12px;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.6))}
+  .empty{text-align:center;color:var(--sub);padding:60px 20px}
+  .lb{position:fixed;inset:0;background:rgba(10,10,12,.96);display:none;z-index:10;touch-action:pan-y}
+  .lb.on{display:block}
+  .lb img{position:absolute;inset:0;margin:auto;max-width:100%;max-height:calc(100% - 90px);object-fit:contain;transition:opacity .15s}
+  .lb .cap{position:absolute;left:0;right:0;bottom:calc(18px + env(safe-area-inset-bottom));text-align:center;color:#eee;font-size:14px;padding:0 20px}
+  .lb .n{position:absolute;top:calc(14px + env(safe-area-inset-top));left:16px;color:#bbb;font-size:13px}
+  .lb button{position:absolute;background:rgba(255,255,255,.12);border:0;color:#fff;width:44px;height:44px;border-radius:50%;font-size:22px;cursor:pointer}
+  .lb .x{top:calc(8px + env(safe-area-inset-top));right:12px}
+  .lb .pv{left:10px;top:50%;transform:translateY(-50%)} .lb .nx{right:10px;top:50%;transform:translateY(-50%)}
+  @media (max-width:600px){.lb .pv,.lb .nx{display:none}}
+  footer{text-align:center;color:#a39a95;font-size:12px;letter-spacing:2px;padding:0 0 30px}
+</style>
+</head>
+<body>
+<header>
+  <div class="tag">OUR JOURNEY</div>
+  <h1>醫護足跡</h1>
+  <div class="sub">白沙屯拱天宮醫護團・一路隨香的精彩照片<span id="cnt"></span></div>
+  <div class="bar"></div>
+</header>
+<div class="grid" id="grid"><div class="empty">讀取中…</div></div>
+<footer>© 白沙屯慈昕醫護文化協會</footer>
+<div class="lb" id="lb"><span class="n" id="lb-n"></span><img id="lb-img" alt=""><div class="cap" id="lb-cap"></div>
+  <button class="x" id="lb-x" aria-label="關閉">✕</button><button class="pv" id="lb-pv" aria-label="上一張">‹</button><button class="nx" id="lb-nx" aria-label="下一張">›</button></div>
+<script>
+(function () {
+  var API = 'https://bst-auth.eurekateamstar.workers.dev', list = [], cur = 0;
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s || '').replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  var src = function (p) { return API + '/j/' + p.id + '.jpg'; };
+  function show(i) {
+    cur = (i + list.length) % list.length; var p = list[cur];
+    $('lb-img').src = src(p); $('lb-cap').textContent = p.caption || ''; $('lb-n').textContent = (cur + 1) + ' / ' + list.length;
+    $('lb').classList.add('on'); try { history.replaceState(null, '', '#' + p.id); } catch (e) {}
+    [cur + 1, cur - 1].forEach(function (k) { if (list[(k + list.length) % list.length]) new Image().src = src(list[(k + list.length) % list.length]); });
+  }
+  function close() { $('lb').classList.remove('on'); try { history.replaceState(null, '', location.pathname); } catch (e) {} }
+  $('lb-x').onclick = close; $('lb-pv').onclick = function () { show(cur - 1); }; $('lb-nx').onclick = function () { show(cur + 1); };
+  $('lb').onclick = function (e) { if (e.target.id === 'lb') close(); };
+  document.onkeydown = function (e) { if (!$('lb').classList.contains('on')) return; if (e.key === 'Escape') close(); if (e.key === 'ArrowLeft') show(cur - 1); if (e.key === 'ArrowRight') show(cur + 1); };
+  var sx = null; $('lb').addEventListener('touchstart', function (e) { sx = e.touches[0].clientX; }, { passive: true });
+  $('lb').addEventListener('touchend', function (e) { if (sx === null) return; var dx = e.changedTouches[0].clientX - sx; sx = null; if (Math.abs(dx) > 50) show(cur + (dx < 0 ? 1 : -1)); });
+  fetch(API + '/journey-list').then(function (r) { return r.json(); }).then(function (j) {
+    list = j.photos || [];
+    if (!list.length) { $('grid').innerHTML = '<div class="empty">照片整理中，敬請期待！</div>'; return; }
+    $('cnt').textContent = '・' + list.length + ' 張';
+    $('grid').innerHTML = list.map(function (p, i) { return '<div class="ph" data-i="' + i + '"><img loading="lazy" src="' + src(p) + '" alt="' + esc(p.caption) + '">' + (p.caption ? '<div class="cap">' + esc(p.caption) + '</div>' : '') + '</div>'; }).join('');
+    Array.prototype.forEach.call(document.querySelectorAll('.ph'), function (el) { el.onclick = function () { show(+el.dataset.i); }; });
+    var h = location.hash.slice(1), k = list.findIndex(function (p) { return p.id === h; }); if (k >= 0) show(k);
+  }).catch(function () { $('grid').innerHTML = '<div class="empty">讀取失敗，請稍後再試。</div>'; });
+})();
+</script>
+</body>
+</html>

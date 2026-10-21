@@ -28,6 +28,11 @@ export default {
 
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
     { const m = new URL(req.url).pathname.match(/^\/j\/([A-Za-z0-9_-]{6,40})\.jpg$/); if (m && req.method === 'GET') return journeyImg(m[1], env, req); }
+    if (new URL(req.url).pathname === '/journey-list' && req.method === 'GET') {
+      try { const ps = (await fsList(await saToken(env), 'journey')).sort((x, y) => (x.order ?? 0) - (y.order ?? 0)).map(p => ({ id: p.id, caption: p.caption || '' }));
+        return new Response(JSON.stringify({ photos: ps }), { headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60' } }); }
+      catch (e) { return json({ error: 'failed' }, 500); }
+    }
     if (req.method !== 'POST') return json({ ok: true, service: 'bst-auth', configured: !!env.SERVICE_ACCOUNT, ai: !!env.AI, lineBot: !!env.LINE_BOT_TOKEN, webhook: !!env.LINE_CHANNEL_SECRET });
     const path = new URL(req.url).pathname;
     if (path === '/webhook') return webhookRoute(req, env);
@@ -301,29 +306,42 @@ const EDU = [
 const REPLIES = {
   '醫護足跡': async (env, origin) => {
     let photos = [];
-    try { photos = (await fsList(await saToken(env), 'journey')).sort((x, y) => (x.order ?? 0) - (y.order ?? 0)).slice(0, 11); } catch (e) {}
-    const more = {
-      type: 'bubble', size: 'kilo',
-      body: { type: 'box', layout: 'vertical', paddingAll: '20px', spacing: 'md', justifyContent: 'center', contents: [
-        { type: 'text', text: 'OUR JOURNEY', size: 'xs', color: '#C4622E', weight: 'bold' },
-        { type: 'text', text: '更多照片', weight: 'bold', size: 'xl', color: '#1f2430' },
-        { type: 'text', text: '進香的點點滴滴，都在我們的粉絲專頁和 IG', size: 'sm', color: '#6b7280', wrap: true },
-        { type: 'box', layout: 'vertical', spacing: 'sm', margin: 'lg', contents: [
-          iconBtn('ic-fb.png', 'Facebook', '#1877F2', FB_URL + 'photos'),
-          iconBtn('ic-ig.png', 'Instagram', { type: 'linearGradient', angle: '90deg', startColor: '#F58529', centerColor: '#DD2A7B', endColor: '#8134AF' }, IG_URL),
+    try { photos = (await fsList(await saToken(env), 'journey')).sort((x, y) => (x.order ?? 0) - (y.order ?? 0)); } catch (e) {}
+    const GALLERY = SITE + '/journey/';
+    const img = (p, ratio) => ({ type: 'image', url: `${origin}/j/${p.id}.jpg`, size: 'full', aspectRatio: ratio, aspectMode: 'cover',
+      action: { type: 'uri', label: '看照片', uri: `${GALLERY}#${p.id}` } });
+    const small = photos.slice(1, 7), extra = photos.length - 7;
+    const cell = (p, i) => !p ? { type: 'box', layout: 'vertical', flex: 1, backgroundColor: '#F3EFED', contents: [] }
+      : (i === 5 && extra > 0) ? { type: 'box', layout: 'vertical', flex: 1, action: { type: 'uri', label: '看全部', uri: GALLERY }, contents: [
+          img(p, '1:1'),
+          { type: 'box', layout: 'vertical', position: 'absolute', offsetTop: '0px', offsetBottom: '0px', offsetStart: '0px', offsetEnd: '0px',
+            backgroundColor: '#00000080', justifyContent: 'center', alignItems: 'center', contents: [
+              { type: 'text', text: `+${extra}`, color: '#ffffff', size: 'xxl', weight: 'bold', align: 'center' } ] } ] }
+      : { type: 'box', layout: 'vertical', flex: 1, contents: [img(p, '1:1')] };
+    const rows = small.length ? [0, 3].filter(k => k === 0 || small.length > 3).map(k => ({ type: 'box', layout: 'horizontal', spacing: '3px',
+      contents: [0, 1, 2].map(j => cell(small[k + j], k + j)) })) : [];
+    return {
+      type: 'flex', altText: '醫護足跡：一路隨香的精彩照片',
+      contents: {
+        type: 'bubble', size: 'giga',
+        ...(photos.length ? { hero: { type: 'box', layout: 'vertical', spacing: '3px', paddingAll: '0px', contents: [
+          { type: 'box', layout: 'vertical', contents: [img(photos[0], '16:10')] }, ...rows ] } } : {}),
+        body: { type: 'box', layout: 'vertical', paddingAll: '20px', contents: [
+          { type: 'text', text: 'OUR JOURNEY', size: 'xs', color: '#C4622E', weight: 'bold' },
+          { type: 'box', layout: 'baseline', margin: 'sm', contents: [
+            { type: 'text', text: '醫護足跡', weight: 'bold', size: 'xxl', color: '#1f2430', flex: 0 },
+            ...(photos.length ? [{ type: 'text', text: `${photos.length} 張照片`, size: 'sm', color: '#9a8f8b', margin: 'md', flex: 0 }] : []) ] },
+          { type: 'text', margin: 'md', wrap: true, size: 'sm', color: '#4b5563',
+            text: '每一年跟著媽祖一步一腳印，救護、陪伴、守護每一位香燈腳。' },
         ] },
-      ] },
+        footer: { type: 'box', layout: 'vertical', paddingAll: '14px', paddingTop: '0px', spacing: 'sm', contents: [
+          ...(photos.length ? [{ type: 'button', style: 'primary', color: '#C4622E', height: 'md', action: { type: 'uri', label: '看全部照片', uri: GALLERY } }] : []),
+          { type: 'box', layout: 'horizontal', spacing: 'sm', contents: [
+            iconBtn('ic-fb.png', 'Facebook', '#1877F2', FB_URL + 'photos'),
+            iconBtn('ic-ig.png', 'Instagram', { type: 'linearGradient', angle: '90deg', startColor: '#F58529', centerColor: '#DD2A7B', endColor: '#8134AF' }, IG_URL) ] },
+        ] },
+      },
     };
-    const bubbles = photos.map(p => {
-      const url = `${origin}/j/${p.id}.jpg`;
-      return {
-        type: 'bubble', size: 'kilo',
-        hero: { type: 'image', url, size: 'full', aspectRatio: '4:5', aspectMode: 'cover', action: { type: 'uri', label: '看大圖', uri: url } },
-        ...(p.caption ? { body: { type: 'box', layout: 'vertical', paddingAll: '12px', contents: [
-          { type: 'text', text: String(p.caption).slice(0, 60), size: 'sm', color: '#374151', wrap: true, maxLines: 2 } ] } } : {}),
-      };
-    });
-    return { type: 'flex', altText: '醫護足跡：一路隨香的精彩照片（往左滑看更多）', contents: { type: 'carousel', contents: [...bubbles, more] } };
   },
   '認識醫護團': () => ({
     type: 'flex', altText: '認識白沙屯慈昕醫護文化協會',
@@ -482,7 +500,7 @@ async function journeyRoute(req, env, json) {
     if (action === 'add') {
       const data = String(body.data || '');
       if (!/^[A-Za-z0-9+/=]+$/.test(data) || data.length > 1000000) return json({ error: '照片太大或格式不對' }, 400);
-      const cur = await list(); if (cur.length >= 30) return json({ error: '最多 30 張，請先刪掉一些' }, 400);
+      const cur = await list(); if (cur.length >= 200) return json({ error: '最多 200 張，請先刪掉一些' }, 400);
       const rnd = new Uint8Array(9); crypto.getRandomValues(rnd); const id = b64url(rnd);
       const w1 = await patch(`journey_img/${id}`, { data }); if (!w1.ok) return json({ error: 'save failed ' + w1.status }, 500);
       const order = cur.length ? Math.max(...cur.map(x => x.order ?? 0)) + 1 : 0;
