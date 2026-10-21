@@ -1948,7 +1948,7 @@
     return out;
   }
   // 每天：當天值班的人（時段涵蓋那天）組成 轎前1～4、轎後1～6，大約每組 size 人；前一天已經在某組的人盡量留在同一組
-  const LBL_ORDER = l => (l.startsWith('轎前') ? +l.slice(2) : 10 + (+l.slice(2)));   // 轎前1、2、3…再轎後1、2…
+  const LBL_ORDER = l => (l.startsWith('轎前') ? -(+l.slice(2)) : 10 + (+l.slice(2)));   // 轎前4、3、2、1（轎前1 緊貼粗線）再轎後1、2…
   function buildDay(present, prevTeams, size, ppl) {
     const n = present.length; if (!n) return [];
     const k = Math.max(1, Math.min(10, Math.round(n / size))), F = Math.min(4, Math.max(k > 1 ? 1 : 0, Math.round(k * 0.4))), B = Math.min(6, k - F);
@@ -2031,7 +2031,7 @@
         .xt .xl{background:#fdf6f4!important;border-right:1px solid #f1e6e2!important;padding:0 4px!important;line-height:1}
         .xt .xl{text-align:center!important}.xt .xl .xl-a{display:block;font-size:10px;font-weight:700;color:#b98d94;letter-spacing:3px;text-indent:3px;text-align:center}
         .xt .xl .xl-n{display:block;font-size:20px;font-weight:800;color:#c2414f;margin-top:2px;text-align:center;font-variant-numeric:tabular-nums}
-        .xt tr.xb>*{border-top:3px solid #efe6e3!important}
+        .xt tr.xb>*{border-top:3px solid #c2414f!important}
         .xt td.xm{border-right:2px solid #fff!important;border-bottom:2px solid #fff!important}
         .xt td.xm>span{color:#2b2f3a;letter-spacing:.5px}
         .xt td.xm[data-sk]:nth-child(2)>span{font-weight:900}
@@ -2041,7 +2041,7 @@
         .xnote:not(.emp){padding:2px 6px!important;border-left:3px solid #f3c7cc;border-radius:0!important}
         .xt .xf{background:#fbf7f6!important;color:#6b7280!important}
         .xsbar{background:#fbf7f6!important;padding:4px 10px 10px!important}.xsbar .xshot{background:#fff!important;color:#1f2430!important;border:1px solid #e8dcd8!important;border-radius:999px!important;box-shadow:0 2px 6px rgba(0,0,0,.05)}
-        .xtag{font-size:.6em!important;padding:3px 10px!important;border-radius:6px!important;letter-spacing:2px;background:#1e3a8a!important;vertical-align:4px!important}
+        .xtag{font-size:.6em!important;padding:3px 10px!important;border-radius:6px!important;letter-spacing:2px;background:#1e3a8a!important;vertical-align:4px!important}.xtag.emp{background:none!important;color:#d6c6c1!important;border:1px dashed #e5d5d0!important;letter-spacing:0;font-weight:600!important}
         .xt .xdate{letter-spacing:.5px}.xt .xcmd{color:#475569!important}.xcnt{color:#94a3b8!important;font-weight:600!important}
         .xt td.xm>span{font-weight:500}.xt td.xm[data-sk]:nth-child(2)>span{font-weight:800}
         .xt .xf{border-top:1px solid #efe6e3}.xt .xf b{color:#334155!important}
