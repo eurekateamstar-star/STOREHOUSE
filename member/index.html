@@ -2140,7 +2140,7 @@
         <div><label>每組人數</label><input type="number" id="sc-size" min="2" max="6" value="${sc.size || 5}" style="width:70px"></div>
         <button class="sbtn" id="sc-auto" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">🔀 自動排班</button>
         ${days.length && Object.keys(dt).length ? '<button class="sbtn" id="sc-xlsx" style="background:#1f2430;color:#fff;">⬇ 下載排班 Excel</button><button class="sbtn" id="sc-shotall" style="background:#0f766e;color:#fff;">📷 全部天數存成一張圖</button>' : ''}
-        ${days.length ? '<button class="sbtn" id="sc-att" style="background:#7c3aed;color:#fff;">🛏 出勤／住宿表</button><button class="sbtn" id="sc-car" style="background:#0f766e;color:#fff;">🚐 座車統計</button>' : ''}
+        ${days.length ? '<button class="sbtn" id="sc-att" style="background:#7c3aed;color:#fff;">🛏 出勤／住宿／座車</button>' : ''}
       </div>
       ${!all.length ? '<div class="card empty" style="margin-top:12px;">還沒有人回覆出席</div>' : `${editor}<div class="sc-grid">${SLOTS.map(slotBox).join('')}</div>
         <div class="sc-grid">${box('全程', '每天都值班', all.filter(p => p.mode === 'all'))}${box('自訂日期', '特定幾天', all.filter(p => p.mode === 'range'))}${box('不排班', '指揮官、團長、車輛組、教官團…', all.filter(p => p.mode === 'off'))}</div>`}
@@ -2213,7 +2213,6 @@
     if ($('sc-xlsx')) $('sc-xlsx').onclick = () => exportSchedXlsx(eid);
     if ($('sc-shotall')) $('sc-shotall').onclick = () => shotAll();
     if ($('sc-att')) $('sc-att').onclick = () => { attOpen = true; attBrush = null; renderAtt(eid); $('sheet').scrollTop = 0; };
-    if ($('sc-car')) $('sc-car').onclick = () => { attOpen = true; carOpen = true; renderCar(eid); $('sheet').scrollTop = 0; };
   }
   async function exportSchedXlsx(eid) {
     try { await loadExcelJS(); } catch (err) { return toast('❌ 無法載入 Excel 元件'); }
@@ -2310,8 +2309,9 @@
   function renderAtt(eid) {
     if ($('sheet').style.display === 'none') return;
     const e = eventsCache.find(x => x.id === eid) || {}, sc = evSched[eid] || {}, info = sc.info || {};
-    const days = dayList(sc.start, sc.end), get = attVals(eid), all = attPeople(eid);
+    const days = dayList(sc.start, sc.end), get = attVals(eid), all = attPeople(eid), gc = carVals(eid);
     const list = all;
+    const Z = '<td class="cz dl0"></td><td class="cz"></td><td class="cz"></td>';
     const cnt = (d, f) => list.filter(p => f(get(p.key, d))).length;
     const ow = document.querySelector('.at-wrap'), keep = ow ? [ow.scrollLeft, ow.scrollTop] : null, keepS = $('sheet').scrollTop;
     $('sheet-body').innerHTML = `
@@ -2331,36 +2331,49 @@
         .cp-g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.cp-g button{border:1.5px solid rgba(0,0,0,.06);border-radius:12px;padding:12px 4px;font:inherit;font-size:14px;cursor:pointer;color:#1f2430}.cp-g button b{display:block;font-size:20px}.cp-g button.on{outline:3px solid var(--primary)}
         .at tr.lg td{cursor:pointer;white-space:normal;font-size:11px;line-height:1.15}.at tr.lg td.lm{color:#1d4ed8}.at tr.lg td.lf{color:#be185d}.at tr.lg td.pl{background:#fef9c3;color:#854d0e}.at tr.lg th{font-size:11px;white-space:normal;line-height:1.1;text-overflow:clip}
         .at tr.sum td,.at tr.sum th{background:#fbf7f6;font-weight:800;font-size:12px}
+        .at td.cv{cursor:pointer;font-weight:800;font-size:11px;letter-spacing:-.4px;-webkit-tap-highlight-color:transparent;user-select:none}.at td.cv.au{font-weight:600;opacity:.8}
+        .at .dl0{border-left:1.5px solid #e9dcd7}.at td.cz{background:#fbf7f6}.at th.dh{border-left:2px solid #e5d5d0}
         .at .gp th{font-size:13px;font-weight:900;text-align:left;padding-left:10px;height:26px;color:#fff}.at .gp.m th{background:#3b82f6}.at .gp.f th{background:#db2777}.at .gp.u th{background:#94a3b8}
       </style>
       <button class="sbtn" id="at-back">← 回排班表</button>
-      <h3 style="margin-top:10px;">🛏 出勤／住宿表</h3>
+      <h3 style="margin-top:10px;">🛏 出勤／住宿／座車</h3>
       <div style="font-size:13px;color:var(--sub);line-height:1.7;">${esc(e.title || '')}　排進轎前／轎後的人自動帶出勤「輪班」（綠字）。👆 點「出勤」格子選類別；點「住宿」格子會跳出確認，選住或不住（依身分證自動判斷男女）。</div>
       <div class="at-tools">
         <button class="at-b" id="at-auto" style="background:#ede9fe">⚡ 有出勤的天自動帶住宿（最後一天不住）</button>
-        <button class="at-b" id="at-car" style="background:#0f766e;color:#fff">🚐 座車統計</button></div>
-      <div class="at-wrap"><table class="at" style="width:${84 + days.length * 86}px"><colgroup><col style="width:84px">${days.map(() => '<col style="width:48px"><col style="width:38px">').join('')}</colgroup><thead>
-        <tr><th class="nm" rowspan="2">姓名</th>${days.map(d => `<th colspan="2" data-place="${d}" style="cursor:pointer">${dLabel(d)}${(info[d] || {}).tag || (info[d] || {}).place ? `<br><span style="font-size:10px"><span style="color:#1d4ed8">${esc((info[d] || {}).tag || '')}</span> <span style="color:#9a3412">${esc((info[d] || {}).place || '')}</span></span>` : ''}</th>`).join('')}</tr>
-        <tr>${days.map(() => '<th>出勤</th><th>住宿<br>男/女</th>').join('')}</tr></thead><tbody>
+</div>
+      <div class="at-wrap"><table class="at" style="width:${84 + days.length * 188}px"><colgroup><col style="width:84px">${days.map(() => '<col style="width:48px"><col style="width:38px"><col style="width:34px"><col style="width:34px"><col style="width:34px">').join('')}</colgroup><thead>
+        <tr><th class="nm" rowspan="2">姓名</th>${days.map(d => `<th colspan="5" class="dh" data-place="${d}" style="cursor:pointer">${dLabel(d)}${(info[d] || {}).tag || (info[d] || {}).place ? `<br><span style="font-size:10px"><span style="color:#1d4ed8">${esc((info[d] || {}).tag || '')}</span> <span style="color:#9a3412">${esc((info[d] || {}).place || '')}</span></span>` : ''}</th>`).join('')}</tr>
+        <tr>${days.map(() => '<th class="dh">出勤</th><th>住宿<br>男/女</th><th class="dl0">出門</th><th>白天</th><th>回家</th>').join('')}</tr></thead><tbody>
         ${list.map((p, i) => { const head = '';
           return head + `<tr><th class="nm${p.name.length >= 4 ? ' l4' : ''}" style="background:${CAT_BG[p.cat]}"><i>${i + 1}</i>${esc(p.name)}</th>${days.map(d => { const v = get(p.key, d);
-            return `<td class="c ${v.auto ? 'au' : ''}" data-ak="${esc(p.key)}" data-ad="${d}" data-af="w" style="${v.w && !v.auto ? 'background:' + (W_BG[v.w] || '#f1f5f9') : ''}" title="${esc(v.team)}">${esc(wTxt(v.w))}</td><td class="c sv ${v.s === '8' ? 's8' : ''}" data-ak="${esc(p.key)}" data-ad="${d}" data-af="s" style="${v.s === '7' ? 'background:#dbeafe' : v.s === '8' ? 'background:#fce7f3' : ''}">${v.s === '7' ? '男' : v.s === '8' ? '女' : esc(v.s)}</td>`; }).join('')}</tr>`; }).join('')}
-        <tr class="sum"><th class="nm">當日人數</th>${days.map(d => `<td>${cnt(d, v => v.w)}</td><td>${cnt(d, v => v.s)}</td>`).join('')}</tr>
+            return `<td class="c ${v.auto ? 'au' : ''}" data-ak="${esc(p.key)}" data-ad="${d}" data-af="w" style="${v.w && !v.auto ? 'background:' + (W_BG[v.w] || '#f1f5f9') : ''}" title="${esc(v.team)}">${esc(wTxt(v.w))}</td><td class="c sv ${v.s === '8' ? 's8' : ''}" data-ak="${esc(p.key)}" data-ad="${d}" data-af="s" style="${v.s === '7' ? 'background:#dbeafe' : v.s === '8' ? 'background:#fce7f3' : ''}">${v.s === '7' ? '男' : v.s === '8' ? '女' : esc(v.s)}</td>` + (c => CAR_SLOTS.map(([f], k) => `<td class="cv ${c.auto[f] ? 'au' : ''} ${k ? '' : 'dl0'}" data-ck="${esc(p.key)}" data-cd="${d}" data-cf="${f}" style="${c[f] ? 'background:' + (CAR_BG[c[f]] || '#f1f5f9') : ''}">${esc(CAR_T[c[f]] || c[f])}</td>`).join(''))(gc(p.key, d)); }).join('')}</tr>`; }).join('')}
+        <tr class="sum"><th class="nm">當日人數</th>${days.map(d => `<td>${cnt(d, v => v.w)}</td><td>${cnt(d, v => v.s)}</td>${Z}`).join('')}</tr>
         ${(() => { const I = d => info[d] || {}, n = x => (x === '' || x == null) ? '' : +x, m = d => cnt(d, v => v.s === '7'), f = d => cnt(d, v => v.s === '8');
-          const pair = (a, b, d) => `<td data-lod2="${d}">${a}</td><td data-lod2="${d}">${b}</td>`;
-          return `<tr class="sum lg"><th class="nm">住宿地點</th>${days.map(d => `<td colspan="2" data-lod2="${d}" class="pl">${esc(I(d).place || '')}</td>`).join('')}</tr>
-          <tr class="sum lg"><th class="nm">住宿人數(男/女)</th>${days.map(d => `<td data-lod="${d}" class="lm">${m(d)}</td><td data-lod="${d}" class="lf">${f(d)}</td>`).join('')}</tr>
+          const pair = (a, b, d) => `<td data-lod2="${d}">${a}</td><td data-lod2="${d}">${b}</td>${Z}`;
+          return `<tr class="sum lg"><th class="nm">住宿地點</th>${days.map(d => `<td colspan="2" data-lod2="${d}" class="pl">${esc(I(d).place || '')}</td>${Z}`).join('')}</tr>
+          <tr class="sum lg"><th class="nm">住宿人數(男/女)</th>${days.map(d => `<td data-lod="${d}" class="lm">${m(d)}</td><td data-lod="${d}" class="lf">${f(d)}</td>${Z}`).join('')}</tr>
           <tr class="sum lg"><th class="nm">住宿中巴(男/女)</th>${days.map(d => pair(n(I(d).busM), n(I(d).busF), d)).join('')}</tr>
-          <tr class="sum lg"><th class="nm">住宿合計(男/女)</th>${days.map(d => `<td class="lm">${m(d) + (+I(d).busM || 0)}</td><td class="lf">${f(d) + (+I(d).busF || 0)}</td>`).join('')}</tr>
+          <tr class="sum lg"><th class="nm">住宿合計(男/女)</th>${days.map(d => `<td class="lm">${m(d) + (+I(d).busM || 0)}</td><td class="lf">${f(d) + (+I(d).busF || 0)}</td>${Z}`).join('')}</tr>
           <tr class="sum lg"><th class="nm">房號</th>${days.map(d => pair(esc(I(d).roomM || ''), esc(I(d).roomF || ''), d)).join('')}</tr>
           <tr class="sum lg"><th class="nm">可住人數</th>${days.map(d => pair(n(I(d).capM), n(I(d).capF), d)).join('')}</tr>`; })()}
-        ${W_CODES.map(([c, t]) => `<tr class="sum"><th class="nm">${wTxt(c)}</th>${days.map(d => `<td colspan="2">${cnt(d, v => v.w === c) || ''}</td>`).join('')}</tr>`).join('')}
+        ${W_CODES.map(([c, t]) => `<tr class="sum"><th class="nm">${wTxt(c)}</th>${days.map(d => `<td colspan="2">${cnt(d, v => v.w === c) || ''}</td>${Z}`).join('')}</tr>`).join('')}
+        ${CAR_CODES.map(([code, t]) => `<tr class="sum"><th class="nm">坐${t}</th>${days.map(d => `<td colspan="2" class="cz"></td>${CAR_SLOTS.map(([f], k) => `<td class="${k ? '' : 'dl0'}" style="color:#0f766e">${list.filter(p => gc(p.key, d)[f] === code).length || ''}</td>`).join('')}`).join('')}</tr>`).join('')}
       </tbody></table></div>
-      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button class="sbtn" id="at-xlsx" style="background:#1f2430;color:#fff;">⬇ 下載出勤統計 Excel</button>
-        <span style="font-size:12px;color:var(--sub);align-self:center">點日期看當天出勤／住宿名單；點下方住宿欄位可填地點、中巴、房號、可住人數</span></div>`;
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button class="sbtn" id="at-xlsx" style="background:#1f2430;color:#fff;">⬇ 下載出勤＋座車統計 Excel</button>
+        <span style="font-size:12px;color:var(--sub);align-self:center">點日期看當天名單；點下方住宿欄位可填地點、中巴、房號、可住人數；出門／白天／回家＝坐什麼車（淡字為自動帶入，點格子可改）</span></div>`;
     const save = async (patch, msg) => { evSched[eid] = { ...(evSched[eid] || {}), ...patch }; try { await saveDraw(eid, { ...(evDraw[eid] || {}) }, { ...(evDrawBy[eid] || {}) }, { ...(evOver[eid] || {}) }); if (msg) toast(msg); } catch (err) { console.error(err); toast('❌ 儲存失敗'); } renderAtt(eid); };
     $('at-back').onclick = () => { attOpen = false; renderSched(eid); };
-    $('at-car').onclick = () => { carOpen = true; renderCar(eid); $('sheet').scrollTop = 0; };
+    let cPending = null;
+    const cSave = async () => { try { await saveDraw(eid, { ...(evDraw[eid] || {}) }, { ...(evDrawBy[eid] || {}) }, { ...(evOver[eid] || {}) }); } catch (err) { console.error(err); toast('❌ 儲存失敗'); } };
+    document.querySelectorAll('[data-ck]').forEach(td => td.onclick = async () => {
+      const k = td.dataset.ck, d = td.dataset.cd, f = td.dataset.cf, cur = carVals(eid)(k, d)[f], pp = list.find(x => x.key === k) || {};
+      const c = await codePicker(`${pp.name}　${dLabel(d)} ${Object.fromEntries(CAR_SLOTS)[f]}坐車`, CAR_CODES, cur, '不坐（自行）');
+      if (c === null) return;
+      const car = JSON.parse(JSON.stringify((evSched[eid] || {}).car || {})); car[k] = car[k] || {}; car[k][d] = car[k][d] || {};
+      car[k][d][f] = c === '' ? 'x' : c; evSched[eid] = { ...(evSched[eid] || {}), car };
+      td.textContent = CAR_T[c] || ''; td.classList.remove('au'); td.style.background = c ? (CAR_BG[c] || '') : '';
+      clearTimeout(cPending); cPending = setTimeout(cSave, 500);
+    });
     const nw = document.querySelector('.at-wrap'); if (keep && nw) { nw.scrollLeft = keep[0]; nw.scrollTop = keep[1]; } $('sheet').scrollTop = keepS;
     let pending = null;
     const putAtt = (k, f, d, v) => { const att = JSON.parse(JSON.stringify((evSched[eid] || {}).att || {})); att[k] = att[k] || {}; att[k][f] = att[k][f] || {};
