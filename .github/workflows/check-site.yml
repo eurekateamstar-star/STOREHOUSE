@@ -1,0 +1,12 @@
+name: 檢查網站版本
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          H=$(curl -s "https://tsushin-buishatun.pages.dev/member/?t=$(date +%s)")
+          echo "::notice title=site::merged=$(echo "$H" | grep -c '出勤／住宿／座車') newver=$(echo "$H" | grep -c '有新版本時提示') len=${#H}"
