@@ -229,10 +229,10 @@ const FB_URL = 'https://www.facebook.com/tszshinems/';
 const IG_URL = 'https://www.instagram.com/tszshinems/';
 // 前面有圖示的按鈕（Flex 內建按鈕不能放圖示，改用 box 做）
 const iconBtn = (icon, label, color, uri) => ({
-  type: 'box', layout: 'horizontal', backgroundColor: color, cornerRadius: '12px', height: '50px',
+  type: 'box', layout: 'horizontal', ...(typeof color === 'string' ? { backgroundColor: color } : { background: color }), cornerRadius: '12px', height: '50px',
   justifyContent: 'center', alignItems: 'center', spacing: 'md', action: { type: 'uri', label, uri },
   contents: [
-    { type: 'image', url: `${SITE}/richmenu/${icon}?v=2`, size: '30px', aspectRatio: '1:1', flex: 0 },
+    { type: 'image', url: `${SITE}/richmenu/${icon}?v=3`, size: '30px', aspectRatio: '1:1', flex: 0 },
     { type: 'text', text: label, color: '#ffffff', weight: 'bold', size: 'md', flex: 0 },
   ],
 });
@@ -252,7 +252,7 @@ const REPLIES = {
       ] },
       footer: { type: 'box', layout: 'vertical', paddingAll: '14px', spacing: 'sm', contents: [
         iconBtn('ic-fb.png', 'Facebook 粉絲專頁', '#1877F2', FB_URL),
-        iconBtn('ic-ig.png', 'Instagram', '#D62976', IG_URL),
+        iconBtn('ic-ig.png', 'Instagram', { type: 'linearGradient', angle: '90deg', startColor: '#F58529', centerColor: '#DD2A7B', endColor: '#8134AF' }, IG_URL),
       ] },
     },
   }),
