@@ -2355,7 +2355,7 @@
         ${W_CODES.map(([c, t]) => `<tr class="sum"><th class="nm">${wTxt(c)}</th>${days.map(d => `<td colspan="2">${cnt(d, v => v.w === c) || ''}</td>`).join('')}</tr>`).join('')}
       </tbody></table></div>
       <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button class="sbtn" id="at-xlsx" style="background:#1f2430;color:#fff;">⬇ 下載出勤統計 Excel</button>
-        <span style="font-size:12px;color:var(--sub);align-self:center">點日期或下方住宿欄位可填住宿地點、中巴、房號、可住人數</span></div>`;
+        <span style="font-size:12px;color:var(--sub);align-self:center">點日期看當天出勤／住宿名單；點下方住宿欄位可填地點、中巴、房號、可住人數</span></div>`;
     const save = async (patch, msg) => { evSched[eid] = { ...(evSched[eid] || {}), ...patch }; try { await saveDraw(eid, { ...(evDraw[eid] || {}) }, { ...(evDrawBy[eid] || {}) }, { ...(evOver[eid] || {}) }); if (msg) toast(msg); } catch (err) { console.error(err); toast('❌ 儲存失敗'); } renderAtt(eid); };
     $('at-back').onclick = () => { attOpen = false; renderSched(eid); };
     const nw = document.querySelector('.at-wrap'); if (keep && nw) { nw.scrollLeft = keep[0]; nw.scrollTop = keep[1]; } $('sheet').scrollTop = keepS;
@@ -2400,7 +2400,32 @@
       ov.querySelector('#eq-no').onclick = () => ov.remove();
       ov.querySelector('#eq-ok').onclick = () => { ov.querySelectorAll('[data-k]').forEach(x => I[x.dataset.k] = x.value.trim()); ov.remove(); save({ info: { ...info, [d]: I } }, '已儲存'); };
     };
-    document.querySelectorAll('[data-place],[data-lod2]').forEach(el => el.onclick = () => lodEdit(el.dataset.place || el.dataset.lod2));
+    document.querySelectorAll('[data-lod2]').forEach(el => el.onclick = () => lodEdit(el.dataset.lod2));
+    // 點日期：當天出勤名單＋住宿名單（男／女），都有序號
+    document.querySelectorAll('[data-place]').forEach(el => el.onclick = () => {
+      const d = el.dataset.place, g = attVals(eid), I = info[d] || {};
+      const W = list.filter(p => g(p.key, d).w), M = list.filter(p => g(p.key, d).s === '7'), F = list.filter(p => g(p.key, d).s === '8');
+      const ol = (arr, extra, col) => arr.length ? `<ol class="dl">${arr.map(p => `<li><span class="nm2" style="background:${CAT_BG[p.cat]}">${esc(p.name)}</span>${extra ? extra(p) : ''}</li>`).join('')}</ol>` : '<div style="color:#9a8f8b;font-size:13px;padding:6px 2px">無</div>';
+      const sec = (t, n, col, body) => `<div class="dsec"><div class="dh" style="color:${col}">${t}<span>${n} 人</span></div>${body}</div>`;
+      const ov = document.createElement('div'); ov.className = 'eq-ov';
+      ov.innerHTML = `<div class="eq-box" style="max-width:760px">
+        <style>.dgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}@media(max-width:640px){.dgrid{grid-template-columns:1fr}}
+          .dsec{border:1px solid #efe4e0;border-radius:12px;overflow:hidden}.dh{background:#fdf6f4;padding:7px 10px;font-weight:900;font-size:14px;display:flex;justify-content:space-between}.dh span{color:#6b7280;font-size:12px}
+          ol.dl{margin:0;padding:4px 8px 6px 34px;max-height:52vh;overflow:auto}ol.dl li{font-size:14px;padding:3px 0;border-bottom:1px solid #f6efec}ol.dl li::marker{color:#9a8f8b;font-size:12px}
+          .nm2{display:inline-block;border-radius:6px;padding:1px 6px;font-weight:700}.wt{font-size:11px;color:#15803d;margin-left:6px;font-weight:700}</style>
+        <div class="eq-t">${dLabel(d)}${I.tag ? '　' + esc(I.tag) : ''} 出勤／住宿名單</div>
+        <div style="font-size:13px;color:#6b7280;margin:-4px 0 10px">${I.place ? '📍 ' + esc(I.place) + '　' : ''}${I.roomM || I.roomF ? '房號：男 ' + esc(I.roomM || '—') + '／女 ' + esc(I.roomF || '—') : ''}</div>
+        <div class="dgrid">
+          ${sec('出勤', W.length, '#15803d', ol(W, p => `<span class="wt">${esc(wTxt(g(p.key, d).w))}</span>`))}
+          ${sec('🛏 住宿（男）', M.length, '#1d4ed8', ol(M))}
+          ${sec('🛏 住宿（女）', F.length, '#be185d', ol(F))}
+        </div>
+        <div class="eq-btn" style="margin-top:14px"><button id="eq-no">關閉</button><button id="d-edit" style="background:#fef9c3;color:#854d0e">✏️ 住宿地點／房號</button></div></div>`;
+      document.body.appendChild(ov);
+      ov.onclick = e2 => { if (e2.target === ov) ov.remove(); };
+      ov.querySelector('#eq-no').onclick = () => ov.remove();
+      ov.querySelector('#d-edit').onclick = () => { ov.remove(); lodEdit(d); };
+    });
     $('at-auto').onclick = async () => {
       if (!(await dialog({ title: '自動帶住宿？', msg: '有出勤的天會依身分證填住宿（男 7、女 8），最後一天不住宿。\n已經填過的住宿不會被改。', okText: '套用' }))) return;
       const att = JSON.parse(JSON.stringify((evSched[eid] || {}).att || {})); let n = 0;
