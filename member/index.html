@@ -2292,7 +2292,7 @@
       </style>
       <button class="sbtn" id="at-back">← 回排班表</button>
       <h3 style="margin-top:10px;">🛏 出勤／住宿表</h3>
-      <div style="font-size:13px;color:var(--sub);line-height:1.7;">${esc(e.title || '')}　排進轎前／轎後的人自動帶出勤「2」（綠字）。👆 點「出勤」格子選類別；點「住宿」格子直接切換住／不住（依身分證自動判斷男女）。</div>
+      <div style="font-size:13px;color:var(--sub);line-height:1.7;">${esc(e.title || '')}　排進轎前／轎後的人自動帶出勤「2」（綠字）。👆 點「出勤」格子選類別；點「住宿」格子會跳出確認，選住或不住（依身分證自動判斷男女）。</div>
       <div class="at-tools">
         <button class="at-b" id="at-auto" style="background:#ede9fe">⚡ 有出勤的天自動帶住宿（最後一天不住）</button></div>
       <div class="at-wrap"><table class="at" style="width:${84 + days.length * 76}px"><colgroup><col style="width:84px">${days.map(() => '<col style="width:38px"><col style="width:38px">').join('')}</colgroup><thead>
@@ -2318,9 +2318,10 @@
     document.querySelectorAll('[data-ak]').forEach(td => td.onclick = async () => {
       const k = td.dataset.ak, d = td.dataset.ad, f = td.dataset.af, v = attVals(eid)(k, d);
       if (f === 's') {          // 住宿：直接切換 住 ↔ 不住
-        let g = genderOf(pmap[k]);
-        if (!v.s && !g) { const c = await codePicker(`${pmap[k].name} 住宿`, [['7', '男'], ['8', '女']], ''); if (!c) return; g = c; }
-        const nv = v.s ? '' : g; td.textContent = nv === '7' ? '男' : nv === '8' ? '女' : ''; td.classList.toggle('s8', nv === '8');
+        const g = genderOf(pmap[k]), opts = g === '8' ? [['8', '要住宿']] : g === '7' ? [['7', '要住宿']] : [['7', '要住宿'], ['8', '要住宿']];
+        const c = await codePicker(`${pmap[k].name}　${dLabel(d)} 住宿？`, opts, v.s, '不住');
+        if (c === null || c === v.s) return;
+        const nv = c; td.textContent = nv === '7' ? '男' : nv === '8' ? '女' : ''; td.classList.toggle('s8', nv === '8');
         putAtt(k, 's', d, nv || null); return;
       }
       const c = await codePicker(`${pmap[k].name}　${dLabel(d)} 出勤`, W_CODES, v.w);
@@ -2348,12 +2349,12 @@
     };
     $('at-xlsx').onclick = () => exportAttXlsx(eid);
   }
-  function codePicker(title, codes, cur) {
+  function codePicker(title, codes, cur, clrTxt) {
     return new Promise(res => {
       const ov = document.createElement('div'); ov.className = 'eq-ov';
       ov.innerHTML = `<div class="eq-box"><div class="eq-t">${esc(title)}</div>
-        <div class="cp-g">${codes.map(([v, t]) => `<button data-c="${v}" class="${cur === v ? 'on' : ''}" style="background:${W_BG[v] || (v === '7' ? '#dbeafe' : '#fce7f3')}"><b>${v}</b>${esc(t)}</button>`).join('')}</div>
-        <div class="eq-btn" style="margin-top:12px"><button id="eq-no">取消</button><button id="cp-clr" style="background:#f1f5f9;color:#334155">清除</button></div></div>`;
+        <div class="cp-g" style="${codes.length < 3 ? 'grid-template-columns:repeat(' + codes.length + ',1fr)' : ''}">${codes.map(([v, t]) => `<button data-c="${v}" class="${cur === v ? 'on' : ''}" style="background:${W_BG[v] || (v === '7' ? '#dbeafe' : '#fce7f3')}"><b>${v === '7' ? '🛏 男' : v === '8' ? '🛏 女' : v}</b>${esc(t)}</button>`).join('')}</div>
+        <div class="eq-btn" style="margin-top:12px"><button id="eq-no">取消</button><button id="cp-clr" style="background:#f1f5f9;color:#334155">${clrTxt || '清除'}</button></div></div>`;
       document.body.appendChild(ov);
       ov.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { ov.remove(); res(b.dataset.c); });
       ov.querySelector('#eq-no').onclick = () => { ov.remove(); res(null); };
