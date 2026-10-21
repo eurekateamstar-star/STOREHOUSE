@@ -27,6 +27,7 @@ export default {
       new Response(JSON.stringify(o), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
+    { const m = new URL(req.url).pathname.match(/^\/j\/([A-Za-z0-9_-]{6,40})\.jpg$/); if (m && req.method === 'GET') return journeyImg(m[1], env, req); }
     if (req.method !== 'POST') return json({ ok: true, service: 'bst-auth', configured: !!env.SERVICE_ACCOUNT, ai: !!env.AI, lineBot: !!env.LINE_BOT_TOKEN, webhook: !!env.LINE_CHANNEL_SECRET });
     const path = new URL(req.url).pathname;
     if (path === '/webhook') return webhookRoute(req, env);
@@ -34,6 +35,7 @@ export default {
     if (path === '/parse') return parseRoute(req, env, json);
     if (path === '/menu') return menuRoute(req, env, json);
     if (path === '/menu-setup') return menuSetupRoute(req, env, json);
+    if (path === '/journey') return journeyRoute(req, env, json);
 
     try {
       const { accessToken } = await req.json();
@@ -297,30 +299,32 @@ const EDU = [
     ] },
 ];
 const REPLIES = {
-  '醫護足跡': () => ({
-    type: 'flex', altText: '醫護足跡：一路隨香的精彩照片',
-    contents: {
-      type: 'bubble', size: 'giga',
-      hero: { type: 'image', url: SITE + '/richmenu/about-banner.jpg', size: 'full', aspectRatio: '1179:422', aspectMode: 'cover',
-        action: { type: 'uri', label: '照片', uri: FB_URL + 'photos' } },
-      body: { type: 'box', layout: 'vertical', paddingAll: '20px', contents: [
+  '醫護足跡': async (env, origin) => {
+    let photos = [];
+    try { photos = (await fsList(await saToken(env), 'journey')).sort((x, y) => (x.order ?? 0) - (y.order ?? 0)).slice(0, 11); } catch (e) {}
+    const more = {
+      type: 'bubble', size: 'kilo',
+      body: { type: 'box', layout: 'vertical', paddingAll: '20px', spacing: 'md', justifyContent: 'center', contents: [
         { type: 'text', text: 'OUR JOURNEY', size: 'xs', color: '#C4622E', weight: 'bold' },
-        { type: 'text', text: '醫護足跡', weight: 'bold', size: 'xxl', color: '#1f2430', margin: 'sm' },
-        { type: 'text', text: '一路隨香的精彩照片', size: 'sm', color: '#B68D40', weight: 'bold', margin: 'sm' },
-        { type: 'separator', margin: 'lg' },
-        { type: 'text', margin: 'lg', wrap: true, size: 'sm', color: '#4b5563',
-          text: '每一年跟著媽祖一步一腳印，救護、陪伴、守護每一位香燈腳。進香的點點滴滴，都記錄在我們的相簿裡。' },
+        { type: 'text', text: '更多照片', weight: 'bold', size: 'xl', color: '#1f2430' },
+        { type: 'text', text: '進香的點點滴滴，都在我們的粉絲專頁和 IG', size: 'sm', color: '#6b7280', wrap: true },
+        { type: 'box', layout: 'vertical', spacing: 'sm', margin: 'lg', contents: [
+          iconBtn('ic-fb.png', 'Facebook', '#1877F2', FB_URL + 'photos'),
+          iconBtn('ic-ig.png', 'Instagram', { type: 'linearGradient', angle: '90deg', startColor: '#F58529', centerColor: '#DD2A7B', endColor: '#8134AF' }, IG_URL),
+        ] },
       ] },
-      footer: { type: 'box', layout: 'vertical', paddingAll: '14px', spacing: 'sm', contents: [
-        iconBtn('ic-fb.png', 'Facebook 相簿', '#1877F2', FB_URL + 'photos'),
-        iconBtn('ic-ig.png', 'Instagram', { type: 'linearGradient', angle: '90deg', startColor: '#F58529', centerColor: '#DD2A7B', endColor: '#8134AF' }, IG_URL),
-      ] },
-    },
-  }),
-  '衛教須知': () => ({
-    type: 'flex', altText: '衛教須知：中暑、水泡、抽筋、曬傷、扭傷，往左滑看更多',
-    contents: { type: 'carousel', contents: EDU.map(eduCard) },
-  }),
+    };
+    const bubbles = photos.map(p => {
+      const url = `${origin}/j/${p.id}.jpg`;
+      return {
+        type: 'bubble', size: 'kilo',
+        hero: { type: 'image', url, size: 'full', aspectRatio: '4:5', aspectMode: 'cover', action: { type: 'uri', label: '看大圖', uri: url } },
+        ...(p.caption ? { body: { type: 'box', layout: 'vertical', paddingAll: '12px', contents: [
+          { type: 'text', text: String(p.caption).slice(0, 60), size: 'sm', color: '#374151', wrap: true, maxLines: 2 } ] } } : {}),
+      };
+    });
+    return { type: 'flex', altText: '醫護足跡：一路隨香的精彩照片（往左滑看更多）', contents: { type: 'carousel', contents: [...bubbles, more] } };
+  },
   '認識醫護團': () => ({
     type: 'flex', altText: '認識白沙屯慈昕醫護文化協會',
     contents: {
@@ -357,7 +361,7 @@ async function webhookRoute(req, env) {
     if (!make) continue;
     await fetch('https://api.line.me/v2/bot/message/reply', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + env.LINE_BOT_TOKEN },
-      body: JSON.stringify({ replyToken: ev.replyToken, messages: [make()] }),
+      body: JSON.stringify({ replyToken: ev.replyToken, messages: [await make(env, new URL(req.url).origin)] }),
     });
   }
   return ok();
@@ -451,6 +455,54 @@ async function lotRoute(req, env, json) {
   } catch (e) {
     return json({ error: String((e && e.message) || e) }, 500);
   }
+}
+// ===== 醫護足跡照片：會員中心管理員上傳，LINE 點「醫護足跡」輪播 =====
+// journey/{id}：{ caption, order, at }；journey_img/{id}：{ data: JPEG base64 }（用服務帳戶讀寫，不用改資料庫規則）
+async function journeyImg(id, env, req) {
+  try {
+    const cache = caches.default, hit = req && await cache.match(req); if (hit) return hit;
+    const d = await fsGet(await saToken(env), `journey_img/${id}`);
+    if (!d) return new Response('not found', { status: 404 });
+    const b = atob(fobj(d.fields).data || ''); const u8 = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u8[i] = b.charCodeAt(i);
+    const res = new Response(u8, { headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=31536000, immutable', 'Access-Control-Allow-Origin': '*' } });
+    if (req) await cache.put(req, res.clone());
+    return res;
+  } catch (e) { return new Response('error', { status: 500 }); }
+}
+async function journeyRoute(req, env, json) {
+  try {
+    const body = await req.json(), { idToken, action } = body;
+    if (!idToken) return json({ error: 'missing' }, 400);
+    const me = await fsUser(idToken, uidOfToken(idToken));
+    if (!memberAdmin(me)) return json({ error: '只有會員中心管理員可以管理照片' }, 403);
+    const tok = await saToken(env), H = { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' };
+    const list = async () => (await fsList(tok, 'journey')).sort((x, y) => (x.order ?? 0) - (y.order ?? 0));
+    const patch = (path, fields) => fetch(`${FS}/${path}?${Object.keys(fields).map(k => 'updateMask.fieldPaths=' + k).join('&')}`, { method: 'PATCH', headers: H, body: JSON.stringify({ fields: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, tv(v)])) }) });
+    if (action === 'list') return json({ ok: true, photos: await list() });
+    if (action === 'add') {
+      const data = String(body.data || '');
+      if (!/^[A-Za-z0-9+/=]+$/.test(data) || data.length > 1000000) return json({ error: '照片太大或格式不對' }, 400);
+      const cur = await list(); if (cur.length >= 30) return json({ error: '最多 30 張，請先刪掉一些' }, 400);
+      const rnd = new Uint8Array(9); crypto.getRandomValues(rnd); const id = b64url(rnd);
+      const w1 = await patch(`journey_img/${id}`, { data }); if (!w1.ok) return json({ error: 'save failed ' + w1.status }, 500);
+      const order = cur.length ? Math.max(...cur.map(x => x.order ?? 0)) + 1 : 0;
+      await patch(`journey/${id}`, { caption: String(body.caption || '').slice(0, 60), order, at: Date.now() });
+      return json({ ok: true, id });
+    }
+    const id = String(body.id || ''); 
+    if (action === 'del') {
+      if (!/^[A-Za-z0-9_-]{6,40}$/.test(id)) return json({ error: 'bad id' }, 400);
+      await fetch(`${FS}/journey/${id}`, { method: 'DELETE', headers: H }); await fetch(`${FS}/journey_img/${id}`, { method: 'DELETE', headers: H });
+      return json({ ok: true });
+    }
+    if (action === 'caption') { await patch(`journey/${id}`, { caption: String(body.caption || '').slice(0, 60) }); return json({ ok: true }); }
+    if (action === 'order') {
+      const ids = (body.ids || []).filter(x => /^[A-Za-z0-9_-]{6,40}$/.test(x)).slice(0, 60);
+      await Promise.all(ids.map((x, i) => patch(`journey/${x}`, { order: i })));
+      return json({ ok: true });
+    }
+    return json({ error: 'unknown action' }, 400);
+  } catch (e) { return json({ error: String((e && e.message) || e) }, e && e.code || 500); }
 }
 async function signJwt(sa, payload) {
   const enc = (o) => b64url(new TextEncoder().encode(JSON.stringify(o)));

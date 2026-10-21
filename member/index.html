@@ -475,6 +475,7 @@
         <input class="inp" id="us-q" placeholder="🔍 搜尋姓名、LINE 名稱…">
         <button class="sbtn violet" id="btn-autopair">🔗 依身分證自動配對名冊</button>
         <button class="sbtn" id="btn-richmenu" style="background:#06c755;color:#fff;">🧩 發佈 LINE 圖文選單</button>
+        <button class="sbtn" id="btn-journey" style="background:#C4622E;color:#fff;">📸 醫護足跡照片</button>
       </div>
       <div class="card tbl-wrap"><table class="tbl" id="us-table"></table></div>
       <div class="cards-list" id="us-cards"></div>
@@ -2757,6 +2758,68 @@
     } catch (e) { dialog({ title: '發佈失敗', msg: String(e.message || e) + (String(e.message).includes('LINE_BOT_TOKEN') ? '\n\n請先在 Cloudflare Worker 加上 Secret：LINE_BOT_TOKEN' : ''), okText: '知道了' }); }
     btn.disabled = false; btn.textContent = '🧩 發佈 LINE 圖文選單';
   };
+
+  // ===== 醫護足跡照片：LINE 點「醫護足跡」會輪播這些照片（前 11 張）=====
+  const jApi = async (body) => {
+    const idToken = await auth.currentUser.getIdToken();
+    const r = await fetch(AUTH_URL + '/journey', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, ...body }) });
+    const j = await r.json().catch(() => ({})); if (!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status)); return j;
+  };
+  function jCompress(file) {     // 縮到長邊 1600、JPEG，確保 < 950KB（base64）
+    return new Promise((res, rej) => {
+      const img = new Image(), url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        let w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, 1600 / Math.max(w, h));
+        for (let tries = 0; tries < 8; tries++) {
+          const c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          for (const q of [0.85, 0.75, 0.65]) { const b64 = c.toDataURL('image/jpeg', q).split(',')[1]; if (b64.length < 950000) return res(b64); }
+          k *= 0.8;
+        }
+        rej(new Error('照片太大'));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('讀不到這張照片')); };
+      img.src = url;
+    });
+  }
+  let jPhotos = [];
+  async function openJourney() {
+    $('sheet-body').innerHTML = `<h3>📸 醫護足跡照片</h3>
+      <div style="font-size:13px;color:var(--sub);line-height:1.7;margin:4px 0 10px">在 LINE 點選單「醫護足跡」，會出現可以左右滑的照片（依這裡的順序，前 11 張，最後一張是 FB／IG 連結）。<br>直的照片效果最好（會裁成 4:5）。每張可以寫一句說明。</div>
+      <label class="sbtn" style="background:#C4622E;color:#fff;display:inline-block;cursor:pointer">＋ 上傳照片（可一次選多張）<input type="file" id="j-file" accept="image/*" multiple style="display:none"></label>
+      <div id="j-msg" style="font-size:13px;color:var(--sub);margin:8px 0"></div>
+      <div id="j-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">讀取中…</div>`;
+    $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open'); $('sheet').scrollTop = 0;
+    $('j-file').onchange = async (e) => {
+      const files = [...e.target.files]; e.target.value = '';
+      for (let i = 0; i < files.length; i++) {
+        $('j-msg').textContent = `上傳中… ${i + 1}/${files.length}`;
+        try { await jApi({ action: 'add', data: await jCompress(files[i]) }); } catch (err) { toast('❌ ' + (err.message || err)); }
+      }
+      $('j-msg').textContent = files.length ? `✅ 已上傳 ${files.length} 張` : ''; jLoad();
+    };
+    jLoad();
+  }
+  async function jLoad() {
+    try { jPhotos = (await jApi({ action: 'list' })).photos || []; } catch (e) { $('j-list').textContent = '❌ ' + (e.message || e); return; }
+    if (!jPhotos.length) { $('j-list').innerHTML = '<div style="color:var(--sub);font-size:14px">還沒有照片，先上傳幾張吧。</div>'; return; }
+    $('j-list').innerHTML = jPhotos.map((p, i) => `<div style="border:1px solid #efe4e0;border-radius:14px;overflow:hidden;background:#fff;${i >= 11 ? 'opacity:.55' : ''}">
+        <div style="position:relative;aspect-ratio:4/5;background:#f3efed url('${AUTH_URL}/j/${p.id}.jpg') center/cover"><span style="position:absolute;left:6px;top:6px;background:rgba(0,0,0,.55);color:#fff;font-size:12px;font-weight:800;border-radius:8px;padding:2px 7px">${i + 1}${i >= 11 ? '（不會顯示）' : ''}</span></div>
+        <input data-jc="${p.id}" value="${esc(p.caption || '')}" maxlength="60" placeholder="說明（可不填）" style="width:100%;border:0;border-top:1px solid #f1e8e5;padding:8px;font:inherit;font-size:13px;box-sizing:border-box">
+        <div style="display:flex;border-top:1px solid #f1e8e5">
+          <button data-jm="${i}" data-d="-1" ${i ? '' : 'disabled'} style="flex:1;border:0;background:#fff;padding:8px;cursor:pointer">◀</button>
+          <button data-jm="${i}" data-d="1" ${i < jPhotos.length - 1 ? '' : 'disabled'} style="flex:1;border:0;background:#fff;padding:8px;cursor:pointer">▶</button>
+          <button data-jd="${p.id}" style="flex:1;border:0;background:#fff;padding:8px;cursor:pointer;color:#dc2626">🗑</button></div></div>`).join('');
+    document.querySelectorAll('[data-jc]').forEach(inp => inp.onchange = async () => { try { await jApi({ action: 'caption', id: inp.dataset.jc, caption: inp.value.trim() }); toast('已儲存說明'); } catch (e) { toast('❌ ' + e.message); } });
+    document.querySelectorAll('[data-jm]').forEach(b => b.onclick = async () => {
+      const i = +b.dataset.jm, j = i + +b.dataset.d; const ids = jPhotos.map(x => x.id); [ids[i], ids[j]] = [ids[j], ids[i]];
+      try { await jApi({ action: 'order', ids }); jLoad(); } catch (e) { toast('❌ ' + e.message); } });
+    document.querySelectorAll('[data-jd]').forEach(b => b.onclick = async () => {
+      if (!await dialog({ title: '刪除這張照片？', okText: '刪除', danger: true })) return;
+      try { await jApi({ action: 'del', id: b.dataset.jd }); toast('已刪除'); jLoad(); } catch (e) { toast('❌ ' + e.message); } });
+  }
+  $('btn-journey').onclick = () => openJourney();
 
   // 依身分證＋姓名，把已存在的會員自動配對到名冊
   $('btn-autopair').onclick = async () => {
