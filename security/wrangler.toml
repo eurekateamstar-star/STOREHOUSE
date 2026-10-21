@@ -1,0 +1,10 @@
+# Cloudflare Worker「bst-auth」的部署設定（GitHub Actions 自動部署用）
+# 密鑰（SERVICE_ACCOUNT、LINE_BOT_TOKEN、LINE_CHANNEL_SECRET）仍放在 Cloudflare 後台，這裡不放任何密碼
+name = "bst-auth"
+main = "worker.js"
+compatibility_date = "2024-09-23"
+workers_dev = true
+keep_vars = true
+
+[ai]
+binding = "AI"
