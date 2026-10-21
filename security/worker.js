@@ -232,7 +232,7 @@ const iconBtn = (icon, label, color, uri) => ({
   type: 'box', layout: 'horizontal', ...(typeof color === 'string' ? { backgroundColor: color } : { background: color }), cornerRadius: '12px', height: '50px',
   justifyContent: 'center', alignItems: 'center', spacing: 'md', action: { type: 'uri', label, uri },
   contents: [
-    { type: 'image', url: `${SITE}/richmenu/${icon}?v=5`, size: '30px', aspectRatio: '1:1', flex: 0 },
+    { type: 'image', url: `${SITE}/richmenu/${icon}?v=6`, size: '30px', aspectRatio: '1:1', flex: 0 },
     { type: 'text', text: label, color: '#ffffff', weight: 'bold', size: 'md', flex: 0 },
   ],
 });
