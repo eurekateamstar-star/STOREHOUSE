@@ -1975,7 +1975,10 @@
     const chip = (k, lead, d) => { const p = ppl[k]; if (!p) return '';
       return `<button class="sc-p ${schSel && schSel.k === k && schSel.d === d ? 'sel' : ''}" ${d ? `data-sd="${d}"` : ''} data-sk="${esc(k)}" style="background:${CAT_BG[p.cat]};${lead ? 'font-weight:900;' : ''}">${lead ? '★' : ''}${esc(p.name)}</button>`; };
     const pchip = p => `<button class="sc-p ${schPk === p.key ? 'sel' : ''}" data-pk="${esc(p.key)}" style="background:${CAT_BG[p.cat]};">${esc(p.name)}${p.mode === 'off' && p.pos && p.pos !== '團員' ? `<i>${esc(p.pos)}</i>` : ''}${p.mode === 'range' && p.range ? `<i>${dLabel(p.range[0])}～${dLabel(p.range[1])}</i>` : ''}</button>`;
-    const box = (title, sub, list) => `<div class="sc-col"><div class="sc-ch">${title}　<span>${sub}</span>　<span>${list.length} 人</span></div>${list.sort((a, b) => CAT_RANK[a.cat] - CAT_RANK[b.cat]).map(pchip).join('') || '<div class="sc-empty">—</div>'}</div>`;
+    const pcell = (p, i) => p ? `<td class="n">${i + 1}</td><td class="nm ${schPk === p.key ? 'sel' : ''}" data-pk="${esc(p.key)}" style="background:${CAT_BG[p.cat]}">${esc(p.name)}${p.mode === 'off' && p.pos && p.pos !== '團員' ? `<i>${esc(p.pos)}</i>` : ''}${p.mode === 'range' && p.range ? `<i>${dLabel(p.range[0])}～${dLabel(p.range[1])}</i>` : ''}</td>` : '<td class="n"></td><td class="nm e"></td>';
+    const box = (title, sub, list) => { const L = list.sort((a, b) => CAT_RANK[a.cat] - CAT_RANK[b.cat]), rows = [];
+      for (let i = 0; i < L.length; i += 3) rows.push(`<tr>${[0, 1, 2].map(j => pcell(L[i + j], i + j)).join('')}</tr>`);
+      return `<div class="sc-col"><div class="sc-ch">${title}<span>${sub}</span><span class="cnt">${list.length} 人</span></div>${rows.length ? `<table class="sl"><colgroup>${'<col style="width:26px"><col>'.repeat(3)}</colgroup><tbody>${rows.join('')}</tbody></table>` : '<div class="sc-empty">—</div>'}</div>`; };
     const all = Object.values(ppl);
     const slotBox = sl => box(sl, rg[sl] ? dLabel(rg[sl][0]) + '～' + dLabel(rg[sl][1]) : '—', all.filter(p => p.mode === 'slot' && p.slot === sl));
     const pe = schPk && ppl[schPk];
@@ -2089,6 +2092,27 @@
         .sc-mv{margin-left:auto;border:none;border-radius:8px;background:var(--primary);color:#fff;font:inherit;font-size:12px;font-weight:800;padding:3px 8px;cursor:pointer}
         .sc-empty{font-size:13px;color:var(--sub);padding:8px}.sc-p i{font-style:normal;font-size:10px;color:#7c3aed;margin-left:3px}.sc-ed{margin-top:10px;padding:10px 12px;border-radius:14px;background:#fff7f5;border:1.5px solid #f5c2c8}.sc-ed span{font-size:12px;color:var(--sub)}.sc-ed input{padding:4px 6px;border-radius:8px;border:1px solid #ddd;font:inherit;font-size:13px}.sc-miss{font-size:12px;color:#9a3412;margin-top:4px}.sc-leg span{display:inline-block;border-radius:6px;padding:1px 8px;margin-right:4px;font-size:12px;font-weight:800}
         @media (max-width:899px){.sc-grid{grid-template-columns:1fr}}
+        /* ===== 跟出勤／住宿表一樣的表格風格 ===== */
+        .sc-col{background:#fff!important;border:1px solid #efe4e0;border-radius:14px;padding:0!important;overflow:hidden}
+        .sc-ch{background:#fdf6f4;margin:0!important;padding:8px 12px;border-bottom:1px solid #f1e8e5;font-size:15px!important;display:flex;gap:10px;align-items:baseline}.sc-ch span{font-weight:700}.sc-ch .cnt{margin-left:auto}
+        table.sl{width:100%;border-collapse:collapse;table-layout:fixed}
+        .sl td{border-right:1px solid #f1e8e5;border-bottom:1px solid #f1e8e5;height:32px;font-size:13px;padding:0}
+        .sl tr:last-child td{border-bottom:none}.sl td:last-child{border-right:none}
+        .sl td.n{color:#9a8f8b;font-size:11px;font-weight:700;text-align:center;background:#fff}
+        .sl td.nm{font-weight:700;padding:0 6px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#1f2430}
+        .sl td.nm.e{background:#fff;cursor:default}.sl td.nm.sel{outline:2.5px solid var(--primary);outline-offset:-2.5px}
+        .sl td.nm i{font-style:normal;font-size:10px;color:#7c3aed;margin-left:4px;font-weight:600}
+        .xd{border:1px solid #efe4e0!important;border-radius:14px!important;box-shadow:none!important}
+        .xt thead tr{background:#fdf6f4!important}.xt thead th{border-bottom:1px solid #f1e8e5!important}
+        .xt th,.xt td{border-bottom:1px solid #f1e8e5!important}
+        .xt td.xm{border-right:1px solid #f1e8e5!important;border-bottom:1px solid #f1e8e5!important}
+        .xt td.xm:not([data-sk]){background:#fff!important}
+        .xt .xl{background:#fdf6f4!important;border-right:1px solid #f1e8e5!important}
+        .xt td.xm>span{font-weight:700!important;color:#1f2430}
+        @media (max-width:760px){.xt td.xm>span{font-weight:600!important}}
+        .xt tr.xb>*{border-top:2px solid #c2414f!important}
+        .xt .xf{background:#fff!important;border-top:1px solid #f1e8e5}
+        .xsbar{background:#fff!important}
       </style>
       <button class="sbtn" id="sc-back">← 回分組名單</button>
       <h3 style="margin-top:10px;">📅 進香排班表</h3>
