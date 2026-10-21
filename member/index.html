@@ -2281,7 +2281,7 @@
         .at th,.at td{border-right:1px solid #f1e8e5;border-bottom:1px solid #f1e8e5;text-align:center;padding:0;height:34px;white-space:nowrap;overflow:hidden;box-sizing:border-box}
         .at thead th{position:sticky;top:0;background:#fdf6f4;z-index:2;font-size:12px;padding:4px 6px}.at thead tr:first-child th{height:44px;line-height:1.2}.at thead tr:nth-child(2) th{top:44px;height:30px;font-size:10px;color:var(--sub);line-height:1.15}
         .at .nm{position:sticky;left:0;background:#fff;z-index:1;text-align:left;padding:0 6px;width:84px;font-weight:700;text-overflow:ellipsis}.at thead .nm{z-index:3;background:#fdf6f4}
-        .at .nm i{font-style:normal;display:inline-block;width:22px;color:#9a8f8b;font-size:11px;font-weight:700}
+        .at .nm.l4{font-size:11px;letter-spacing:-.3px}.at .nm i{font-style:normal;display:inline-block;width:22px;color:#9a8f8b;font-size:11px;font-weight:700}
         .at td.c{width:38px;cursor:pointer;font-weight:800;-webkit-tap-highlight-color:transparent;user-select:none}.at td.c.au{color:#15803d;font-weight:600}.at td.c.sv{color:#1d4ed8}.at td.c.s8{color:#be185d}
         .eq-ov{position:fixed;inset:0;z-index:9500;background:rgba(31,36,48,.45);display:flex;align-items:center;justify-content:center;padding:16px}
         .eq-box{background:#fff;border-radius:20px;padding:18px;width:100%;max-width:360px;max-height:92vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.25)}
@@ -2299,10 +2299,10 @@
         <tr><th class="nm" rowspan="2">姓名</th>${days.map(d => `<th colspan="2" data-place="${d}" style="cursor:pointer">${dLabel(d)}${(info[d] || {}).tag || (info[d] || {}).place ? `<br><span style="font-size:10px"><span style="color:#1d4ed8">${esc((info[d] || {}).tag || '')}</span> <span style="color:#9a3412">${esc((info[d] || {}).place || '')}</span></span>` : ''}</th>`).join('')}</tr>
         <tr>${days.map(() => '<th>出勤</th><th>住宿<br>男/女</th>').join('')}</tr></thead><tbody>
         ${list.map((p, i) => { const head = '';
-          return head + `<tr><th class="nm"><i>${i + 1}</i>${esc(p.name)}</th>${days.map(d => { const v = get(p.key, d);
+          return head + `<tr><th class="nm${p.name.length >= 4 ? ' l4' : ''}" style="background:${CAT_BG[p.cat]}"><i>${i + 1}</i>${esc(p.name)}</th>${days.map(d => { const v = get(p.key, d);
             return `<td class="c ${v.auto ? 'au' : ''}" data-ak="${esc(p.key)}" data-ad="${d}" data-af="w" style="${v.w && !v.auto ? 'background:' + (W_BG[v.w] || '#f1f5f9') : ''}" title="${esc(v.team)}">${esc(v.w)}</td><td class="c sv ${v.s === '8' ? 's8' : ''}" data-ak="${esc(p.key)}" data-ad="${d}" data-af="s">${v.s === '7' ? '男' : v.s === '8' ? '女' : esc(v.s)}</td>`; }).join('')}</tr>`; }).join('')}
         <tr class="sum"><th class="nm">當日人數</th>${days.map(d => `<td>${cnt(d, v => v.w)}</td><td>${cnt(d, v => v.s)}</td>`).join('')}</tr>
-        <tr class="sum"><th class="nm">住宿 男／女</th>${days.map(d => `<td colspan="2">${cnt(d, v => v.s === '7')}／${cnt(d, v => v.s === '8')}</td>`).join('')}</tr>
+        <tr class="sum"><th class="nm">住宿 男／女</th>${days.map(d => `<td colspan="2" data-lod="${d}" style="cursor:pointer;color:#1d4ed8;text-decoration:underline">${cnt(d, v => v.s === '7')}／${cnt(d, v => v.s === '8')}</td>`).join('')}</tr>
         ${W_CODES.map(([c, t]) => `<tr class="sum"><th class="nm">${t}（${c}）</th>${days.map(d => `<td colspan="2">${cnt(d, v => v.w === c) || ''}</td>`).join('')}</tr>`).join('')}
       </tbody></table></div>
       <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button class="sbtn" id="at-xlsx" style="background:#1f2430;color:#fff;">⬇ 下載出勤統計 Excel</button>
@@ -2328,6 +2328,13 @@
       const nv = c === '' ? 'x' : c;
       td.textContent = c; td.classList.remove('au'); td.style.background = c ? (W_BG[c] || '') : '';
       putAtt(k, 'w', d, nv);
+    });
+    document.querySelectorAll('[data-lod]').forEach(td => td.onclick = () => {
+      const d = td.dataset.lod, g = attVals(eid), sec = (c, t, col) => { const ns = list.filter(p => g(p.key, d).s === c);
+        return `<div style="font-weight:900;color:${col};margin:10px 0 6px">${t}（${ns.length}）</div><div style="display:flex;flex-wrap:wrap;gap:5px">${ns.map(p => `<span style="background:${CAT_BG[p.cat]};border-radius:8px;padding:4px 8px;font-size:14px">${esc(p.name)}</span>`).join('') || '<span style="color:#9a8f8b">無</span>'}</div>`; };
+      const ov = document.createElement('div'); ov.className = 'eq-ov';
+      ov.innerHTML = `<div class="eq-box"><div class="eq-t">${dLabel(d)} 住宿名單${((evSched[eid] || {}).info || {})[d] && evSched[eid].info[d].place ? '・' + esc(evSched[eid].info[d].place) : ''}</div>${sec('7', '👨 男', '#1d4ed8')}${sec('8', '👩 女', '#be185d')}<div class="eq-btn" style="margin-top:14px"><button id="eq-no">關閉</button></div></div>`;
+      document.body.appendChild(ov); ov.onclick = e2 => { if (e2.target === ov || e2.target.id === 'eq-no') ov.remove(); };
     });
     document.querySelectorAll('[data-place]').forEach(th => th.onclick = async () => {
       const d = th.dataset.place, v = await dialog({ title: `${dLabel(d)} 住宿地點`, input: { value: (info[d] || {}).place || '', placeholder: '例如：苑裡、四湖' }, okText: '儲存' });
