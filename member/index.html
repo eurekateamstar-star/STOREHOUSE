@@ -2001,7 +2001,7 @@
           return p ? `<td class="xm ${schSel && schSel.k === k && schSel.d === d ? 'sel' : ''}" data-sd="${d}" data-sk="${esc(k)}" style="background:${CAT_BG[p.cat]}"><span style="${j === 0 ? 'font-weight:900;' : ''}">${esc(p.name)}</span><em class="xpn">${(t.pn || {})[k] ? esc(t.pn[k]) : '&nbsp;'}</em></td>` : '<td class="xm xe"><span style="visibility:hidden">　</span><em class="xpn">&nbsp;</em></td>'; }).join('');
         const extra = ms.length > NC ? `<div style="font-size:11px;color:#b91c1c">＋${ms.slice(NC).map(k => esc(ppl[k].name)).join('、')}</div>` : '';
         const mv = schSel && schSel.d === d;
-        return `<tr class="${cls}"><th class="xl ${mv ? 'mv' : ''}" ${mv ? `data-mvd="${d}" data-mvl="${t.l}" title="移到這組"` : ''}>${mv ? '⬅ ' : ''}<span class="xl-a">${t.l.slice(0, 2)}</span><span class="xl-n">${t.l.slice(2)}</span></th>${cells}<td class="xn"><div class="xnote ${t.note ? '' : 'emp'}" data-nd="${d}" data-nl="${t.l}">${t.note ? eqHtml(t.note) : '＋裝備'}</div>${extra}</td></tr>`; }).join('');
+        return `<tr class="${cls}"><th class="xl ${mv ? 'mv' : ''}" ${mv ? `data-mvd="${d}" data-mvl="${t.l}" title="移到這組"` : ''}>${mv ? '⬅ ' : ''}<span class="xl-a">${t.l.slice(0, 2)}</span><span class="xl-n">${t.l.slice(2)}</span></th>${cells}<td class="xn"><div class="xnote ${tNote(t) ? '' : 'emp'}" data-nd="${d}" data-nl="${t.l}">${tNote(t) ? eqHtml(tNote(t)) : '＋裝備'}</div>${extra}</td></tr>`; }).join('');
       return `<div class="xd" data-day="${d}"><table class="xt"><thead><tr><th class="xc">組別</th><th colspan="${NC}" class="xdate"><span class="xtag ${(info[d] || {}).tag ? '' : 'emp'}" data-tag="${d}">${esc((info[d] || {}).tag || '＋標記')}</span>${dd.getMonth() + 1}月${dd.getDate()}日(${WK[dd.getDay()]})</th><th class="xcmd">指揮官:${esc(cmd)}<div class="xcnt">${ts.length} 組・${pres.length} 人</div></th></tr></thead>
         <tbody>${rows || `<tr><td colspan="${NC + 2}" class="sc-empty">按「自動排班」</td></tr>`}
         ${dutyHtml(info[d]).map(h => `<tr><td colspan="${NC + 2}" class="xf" data-duty="${d}">${h}</td></tr>`).join('')}</tbody></table>
@@ -2124,8 +2124,8 @@
         .xcap .xt .xcmd,.xcap .xt .xn{width:74px!important}.xcap .xt .xcmd{font-size:9.5px!important;letter-spacing:-.3px}
         /* 器材：一排兩個，字小一點 */
         .eqg{display:grid;grid-template-columns:auto auto;justify-content:start;column-gap:6px;row-gap:1px}.eqi{white-space:nowrap;font-size:.88em;letter-spacing:-.2px}.xnote .xsub{display:block}
-        @media (max-width:760px){.xt .xnote .eqi{font-size:7px;letter-spacing:-.3px}.eqg{column-gap:3px}}
-        .xcap .xt .xnote .eqi{font-size:7px;letter-spacing:-.3px}.xcap .eqg{column-gap:3px}
+        @media (max-width:760px){.xt .xnote .eqi{font-size:7px;letter-spacing:-.5px}.eqg{column-gap:2px}.xt .xnote:not(.emp){padding:2px 3px!important}}
+        .xcap .xt .xnote .eqi{font-size:7px;letter-spacing:-.5px}.xcap .eqg{column-gap:2px}.xcap .xt .xnote:not(.emp){padding:2px 3px!important}
         .xcap .xt td.xm{height:40px!important}.xcap .xt td.xm .xpn{bottom:2px;font-size:7px!important}
       </style>
       <button class="sbtn" id="sc-back">← 回分組名單</button>
@@ -2252,7 +2252,7 @@
       ts.forEach(t => {
         const ms = t.m.filter(k => ppl[k]).slice(0, MAXP), isBack = t.l.startsWith('轎後');
         ws.mergeCells(`A${r}:A${r + 1}`); Object.assign(ws.getCell(`A${r}`), { value: t.l, font: font({ size: 14 }), alignment: { horizontal: 'center', vertical: 'middle' }, fill: fillC('FFD9D9D9') });
-        ws.mergeCells(`H${r}:H${r + 1}`); Object.assign(ws.getCell(`H${r}`), { value: t.note ? { richText: String(t.note).split(/(AMBU包(?:\*\d+)?)/).filter(Boolean).map(x => ({ text: x, font: font({ size: 10, color: { argb: x.startsWith('AMBU') ? 'FF0070C0' : 'FFC00000' } }) })) } : '', alignment: { horizontal: 'center', vertical: 'middle', wrapText: true } });
+        ws.mergeCells(`H${r}:H${r + 1}`); Object.assign(ws.getCell(`H${r}`), { value: tNote(t) ? { richText: String(tNote(t)).split(/(AMBU包(?:\*\d+)?)/).filter(Boolean).map(x => ({ text: x, font: font({ size: 10, color: { argb: x.startsWith('AMBU') ? 'FF0070C0' : 'FFC00000' } }) })) } : '', alignment: { horizontal: 'center', vertical: 'middle', wrapText: true } });
         for (let j = 0; j < MAXP; j++) {
           const c = ws.getRow(r).getCell(2 + j), c2 = ws.getRow(r + 1).getCell(2 + j), p = ppl[ms[j]];
           c.alignment = { horizontal: 'center', vertical: 'middle' }; c2.alignment = { horizontal: 'center' }; c2.font = font({ size: 9, color: { argb: 'FFFF0000' } });
@@ -2500,11 +2500,12 @@
   }
   // ===== 器材：救護包×n、AMBU包×n（藍色）、儀器包×n＋自己填 =====
   const EQ = [['kit', '救護包', '#dc2626'], ['ambu', 'AMBU包', '#2563eb'], ['inst', '儀器包', '#dc2626']];
-  const eqText = v => { const a = EQ.filter(([k]) => v[k] > 0).map(([k, n]) => n + (k === 'kit' || v[k] > 1 ? '*' + v[k] : '')).join('、'); return [a, (v.text || '').trim()].filter(Boolean).join('\n'); };
+  const eqText = v => { const a = EQ.filter(([k]) => v[k] > 0).map(([k, n]) => n + '*' + v[k]).join('、'); return [a, (v.text || '').trim()].filter(Boolean).join('\n'); };
   const eqParse = s0 => { const v = { kit: 0, ambu: 0, inst: 0, text: '' }, rest = [];
     String(s0 || '').split(/[、,，\n]/).map(x => x.trim()).filter(Boolean).forEach(x => { const e = EQ.find(([, n]) => x.replace(/\s/g, '').toUpperCase().startsWith(n.toUpperCase()));
       if (e) { const m = x.match(/[*xX×]\s*(\d+)/); v[e[0]] = m ? +m[1] : 1; } else rest.push(x); });
     v.text = rest.join('、'); return v; };
+  const tNote = t => t.eq ? eqText(t.eq) : (t.note || '');
   const eqHtml = s0 => String(s0 || '').split('\n').map((ln, i) => { const hl = t => esc(t).replace(/AMBU包(\*\d+)?/g, m => `<b style="color:#2563eb">${m}</b>`);
     return i ? `<span class="xsub">${hl(ln)}</span>` : `<span class="eqg">${ln.split('、').map(x => `<span class="eqi">${hl(x)}</span>`).join('')}</span>`; }).join('');
   function eqPicker(title, cur) {
