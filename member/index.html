@@ -2122,6 +2122,10 @@
         .xt .xcmd,.xt .xn{width:118px!important}
         @media (max-width:760px){.xt .xcmd,.xt .xn{width:74px!important}.xt .xcmd{font-size:9.5px!important;letter-spacing:-.3px}}
         .xcap .xt .xcmd,.xcap .xt .xn{width:74px!important}.xcap .xt .xcmd{font-size:9.5px!important;letter-spacing:-.3px}
+        /* 器材：一排兩個，字小一點 */
+        .eqg{display:grid;grid-template-columns:auto auto;justify-content:start;column-gap:6px;row-gap:1px}.eqi{white-space:nowrap;font-size:.88em;letter-spacing:-.2px}.xnote .xsub{display:block}
+        @media (max-width:760px){.xt .xnote .eqi{font-size:7px;letter-spacing:-.3px}.eqg{column-gap:3px}}
+        .xcap .xt .xnote .eqi{font-size:7px;letter-spacing:-.3px}.xcap .eqg{column-gap:3px}
         .xcap .xt td.xm{height:40px!important}.xcap .xt td.xm .xpn{bottom:2px;font-size:7px!important}
       </style>
       <button class="sbtn" id="sc-back">← 回分組名單</button>
@@ -2501,7 +2505,8 @@
     String(s0 || '').split(/[、,，\n]/).map(x => x.trim()).filter(Boolean).forEach(x => { const e = EQ.find(([, n]) => x.replace(/\s/g, '').toUpperCase().startsWith(n.toUpperCase()));
       if (e) { const m = x.match(/[*xX×]\s*(\d+)/); v[e[0]] = m ? +m[1] : 1; } else rest.push(x); });
     v.text = rest.join('、'); return v; };
-  const eqHtml = s0 => String(s0 || '').split('\n').map((ln, i) => { const h = esc(ln).replace(/AMBU包(\*\d+)?/g, m => `<b style="color:#2563eb">${m}</b>`); return i ? `<span class="xsub">${h}</span>` : h; }).join('<br>');
+  const eqHtml = s0 => String(s0 || '').split('\n').map((ln, i) => { const hl = t => esc(t).replace(/AMBU包(\*\d+)?/g, m => `<b style="color:#2563eb">${m}</b>`);
+    return i ? `<span class="xsub">${hl(ln)}</span>` : `<span class="eqg">${ln.split('、').map(x => `<span class="eqi">${hl(x)}</span>`).join('')}</span>`; }).join('');
   function eqPicker(title, cur) {
     return new Promise(res => {
       const v = { kit: 0, ambu: 0, inst: 0, text: '', ...(cur || {}) };
