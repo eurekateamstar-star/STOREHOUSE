@@ -127,7 +127,7 @@ const tabs = () => [
 const PUBLIC = [
   { type: 'message', label: '認識醫護團', text: '認識醫護團' },
   { type: 'message', label: '衛教須知', text: '衛教須知' },
-  { type: 'message', label: '聯絡管理員', text: '聯絡管理員' },
+  { type: 'message', label: '醫護足跡', text: '醫護足跡' },
 ];
 const MEMBER = [
   { type: 'uri', label: '會員中心', uri: LIFF('2011820105-x1KU6xLW') },
@@ -297,6 +297,26 @@ const EDU = [
     ] },
 ];
 const REPLIES = {
+  '醫護足跡': () => ({
+    type: 'flex', altText: '醫護足跡：一路隨香的精彩照片',
+    contents: {
+      type: 'bubble', size: 'giga',
+      hero: { type: 'image', url: SITE + '/richmenu/about-banner.jpg', size: 'full', aspectRatio: '1179:422', aspectMode: 'cover',
+        action: { type: 'uri', label: '照片', uri: FB_URL + 'photos' } },
+      body: { type: 'box', layout: 'vertical', paddingAll: '20px', contents: [
+        { type: 'text', text: 'OUR JOURNEY', size: 'xs', color: '#C4622E', weight: 'bold' },
+        { type: 'text', text: '醫護足跡', weight: 'bold', size: 'xxl', color: '#1f2430', margin: 'sm' },
+        { type: 'text', text: '一路隨香的精彩照片', size: 'sm', color: '#B68D40', weight: 'bold', margin: 'sm' },
+        { type: 'separator', margin: 'lg' },
+        { type: 'text', margin: 'lg', wrap: true, size: 'sm', color: '#4b5563',
+          text: '每一年跟著媽祖一步一腳印，救護、陪伴、守護每一位香燈腳。進香的點點滴滴，都記錄在我們的相簿裡。' },
+      ] },
+      footer: { type: 'box', layout: 'vertical', paddingAll: '14px', spacing: 'sm', contents: [
+        iconBtn('ic-fb.png', 'Facebook 相簿', '#1877F2', FB_URL + 'photos'),
+        iconBtn('ic-ig.png', 'Instagram', { type: 'linearGradient', angle: '90deg', startColor: '#F58529', centerColor: '#DD2A7B', endColor: '#8134AF' }, IG_URL),
+      ] },
+    },
+  }),
   '衛教須知': () => ({
     type: 'flex', altText: '衛教須知：中暑、水泡、抽筋、曬傷、扭傷，往左滑看更多',
     contents: { type: 'carousel', contents: EDU.map(eduCard) },
