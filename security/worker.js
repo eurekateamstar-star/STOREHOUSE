@@ -227,6 +227,15 @@ async function menuSetupRoute(req, env, json) {
 // 官方帳號收到訊息 → LINE 呼叫這裡 → 認得的關鍵字就回卡片；其他訊息不回（交給官方帳號後台的自動回應／真人回覆）
 const FB_URL = 'https://www.facebook.com/tszshinems/';
 const IG_URL = 'https://www.instagram.com/tszshinems/';
+// 前面有圖示的按鈕（Flex 內建按鈕不能放圖示，改用 box 做）
+const iconBtn = (icon, label, color, uri) => ({
+  type: 'box', layout: 'horizontal', backgroundColor: color, cornerRadius: '12px', height: '50px',
+  justifyContent: 'center', alignItems: 'center', spacing: 'md', action: { type: 'uri', label, uri },
+  contents: [
+    { type: 'image', url: `${SITE}/richmenu/${icon}`, size: '24px', aspectRatio: '1:1', flex: 0 },
+    { type: 'text', text: label, color: '#ffffff', weight: 'bold', size: 'md', flex: 0 },
+  ],
+});
 const REPLIES = {
   '認識醫護團': () => ({
     type: 'flex', altText: '認識白沙屯慈昕醫護文化協會',
@@ -242,10 +251,8 @@ const REPLIES = {
           text: '我們是白沙屯媽祖進香的醫護志工團隊，一路隨香提供救護、衛教與 CPR／AED 推廣。想多認識我們，歡迎追蹤我們的 Facebook 和 Instagram！' },
       ] },
       footer: { type: 'box', layout: 'vertical', paddingAll: '14px', spacing: 'sm', contents: [
-        { type: 'button', style: 'primary', color: '#1877F2', height: 'md',
-          action: { type: 'uri', label: 'Facebook 粉絲專頁', uri: FB_URL } },
-        { type: 'button', style: 'primary', color: '#D62976', height: 'md',
-          action: { type: 'uri', label: 'Instagram', uri: IG_URL } },
+        iconBtn('ic-fb.png', 'Facebook 粉絲專頁', '#1877F2', FB_URL),
+        iconBtn('ic-ig.png', 'Instagram', '#D62976', IG_URL),
       ] },
     },
   }),
