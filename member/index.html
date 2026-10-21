@@ -2249,7 +2249,9 @@
   }
   // ===================== 出勤／住宿表（每人每天）=====================
   // 出勤代號：2 輪班（排進轎前／轎後自動帶入）、1 指揮車、3 指揮官、4 機車機動組、5 媽祖車、6 物資車、D 醫師、a 復健組、b 教官醫師；住宿：7 男、8 女
-  const W_CODES = [['2', '輪班'], ['1', '指揮車'], ['3', '指揮官'], ['4', '機車機動'], ['5', '媽祖車'], ['6', '物資車'], ['D', '醫師'], ['a', '復健組'], ['b', '教官醫師']];
+  const W_CODES = [['2', '在隊伍中輪班'], ['1', '指揮車'], ['3', '指揮官'], ['4', '機車機動組'], ['5', '媽祖車駕駛'], ['6', '物資車駕駛'], ['D', '醫師'], ['a', '復健組'], ['b', '教官醫師']];
+  const W_SHORT = { '2': '輪班', '1': '指揮車', '3': '指揮官', '4': '機車', '5': '媽祖車', '6': '物資車', D: '醫師', a: '復健', b: '教官' };
+  const wTxt = c => W_SHORT[c] || c;
   const S_CODES = [['7', '住宿(男)'], ['8', '住宿(女)']];
   const POS_ORDER = ['團長', '秘書長', '指揮官', '教官團', '顧問', '行政組', '物資盤點組', '器材組', '後勤補給組', '媒體文宣紀錄組', '車輛組', '機車組'];
   const W_BG = { '2': '#dcfce7', '1': '#dbeafe', '3': '#fde68a', '4': '#e9d5ff', '5': '#fecaca', '6': '#fed7aa', D: '#fce7f3', a: '#ccfbf1', b: '#e0e7ff' };
@@ -2283,7 +2285,7 @@
         .at thead th{position:sticky;top:0;background:#fdf6f4;z-index:2;font-size:12px;padding:4px 6px}.at thead tr:first-child th{height:44px;line-height:1.2}.at thead tr:nth-child(2) th{top:44px;height:30px;font-size:10px;color:var(--sub);line-height:1.15}
         .at .nm{position:sticky;left:0;background:#fff;z-index:1;text-align:left;padding:0 6px;width:84px;font-weight:700;text-overflow:ellipsis}.at thead .nm{z-index:3;background:#fdf6f4}
         .at .nm.l4{font-size:11px;letter-spacing:-.3px}.at .nm i{font-style:normal;display:inline-block;width:22px;color:#9a8f8b;font-size:11px;font-weight:700}
-        .at td.c{width:38px;cursor:pointer;font-weight:800;-webkit-tap-highlight-color:transparent;user-select:none}.at td.c.au{color:#15803d;font-weight:600}.at td.c.sv{color:#1d4ed8}.at td.c.s8{color:#be185d}
+        .at td.c{cursor:pointer;font-weight:800;-webkit-tap-highlight-color:transparent;user-select:none}.at td.c.au{color:#15803d;font-weight:600}.at td.c[data-af=w]{font-size:12px;letter-spacing:-.3px}.at td.c.sv{color:#1d4ed8}.at td.c.s8{color:#be185d}
         .eq-ov{position:fixed;inset:0;z-index:9500;background:rgba(31,36,48,.45);display:flex;align-items:center;justify-content:center;padding:16px}
         .eq-box{background:#fff;border-radius:20px;padding:18px;width:100%;max-width:360px;max-height:92vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.25)}
         .eq-t{font-weight:900;font-size:17px;margin-bottom:10px}.eq-btn{display:flex;gap:8px;margin-top:6px}.eq-btn>*{flex:1;text-align:center;border:none;border-radius:12px;padding:11px;font:inherit;font-size:15px;font-weight:900;cursor:pointer}#eq-no{background:#f1f5f9;color:#334155}
@@ -2293,18 +2295,18 @@
       </style>
       <button class="sbtn" id="at-back">← 回排班表</button>
       <h3 style="margin-top:10px;">🛏 出勤／住宿表</h3>
-      <div style="font-size:13px;color:var(--sub);line-height:1.7;">${esc(e.title || '')}　排進轎前／轎後的人自動帶出勤「2」（綠字）。👆 點「出勤」格子選類別；點「住宿」格子會跳出確認，選住或不住（依身分證自動判斷男女）。</div>
+      <div style="font-size:13px;color:var(--sub);line-height:1.7;">${esc(e.title || '')}　排進轎前／轎後的人自動帶出勤「輪班」（綠字）。👆 點「出勤」格子選類別；點「住宿」格子會跳出確認，選住或不住（依身分證自動判斷男女）。</div>
       <div class="at-tools">
         <button class="at-b" id="at-auto" style="background:#ede9fe">⚡ 有出勤的天自動帶住宿（最後一天不住）</button></div>
-      <div class="at-wrap"><table class="at" style="width:${84 + days.length * 76}px"><colgroup><col style="width:84px">${days.map(() => '<col style="width:38px"><col style="width:38px">').join('')}</colgroup><thead>
+      <div class="at-wrap"><table class="at" style="width:${84 + days.length * 86}px"><colgroup><col style="width:84px">${days.map(() => '<col style="width:48px"><col style="width:38px">').join('')}</colgroup><thead>
         <tr><th class="nm" rowspan="2">姓名</th>${days.map(d => `<th colspan="2" data-place="${d}" style="cursor:pointer">${dLabel(d)}${(info[d] || {}).tag || (info[d] || {}).place ? `<br><span style="font-size:10px"><span style="color:#1d4ed8">${esc((info[d] || {}).tag || '')}</span> <span style="color:#9a3412">${esc((info[d] || {}).place || '')}</span></span>` : ''}</th>`).join('')}</tr>
         <tr>${days.map(() => '<th>出勤</th><th>住宿<br>男/女</th>').join('')}</tr></thead><tbody>
         ${list.map((p, i) => { const head = '';
           return head + `<tr><th class="nm${p.name.length >= 4 ? ' l4' : ''}" style="background:${CAT_BG[p.cat]}"><i>${i + 1}</i>${esc(p.name)}</th>${days.map(d => { const v = get(p.key, d);
-            return `<td class="c ${v.auto ? 'au' : ''}" data-ak="${esc(p.key)}" data-ad="${d}" data-af="w" style="${v.w && !v.auto ? 'background:' + (W_BG[v.w] || '#f1f5f9') : ''}" title="${esc(v.team)}">${esc(v.w)}</td><td class="c sv ${v.s === '8' ? 's8' : ''}" data-ak="${esc(p.key)}" data-ad="${d}" data-af="s">${v.s === '7' ? '男' : v.s === '8' ? '女' : esc(v.s)}</td>`; }).join('')}</tr>`; }).join('')}
+            return `<td class="c ${v.auto ? 'au' : ''}" data-ak="${esc(p.key)}" data-ad="${d}" data-af="w" style="${v.w && !v.auto ? 'background:' + (W_BG[v.w] || '#f1f5f9') : ''}" title="${esc(v.team)}">${esc(wTxt(v.w))}</td><td class="c sv ${v.s === '8' ? 's8' : ''}" data-ak="${esc(p.key)}" data-ad="${d}" data-af="s">${v.s === '7' ? '男' : v.s === '8' ? '女' : esc(v.s)}</td>`; }).join('')}</tr>`; }).join('')}
         <tr class="sum"><th class="nm">當日人數</th>${days.map(d => `<td>${cnt(d, v => v.w)}</td><td>${cnt(d, v => v.s)}</td>`).join('')}</tr>
         <tr class="sum"><th class="nm">住宿 男／女</th>${days.map(d => `<td colspan="2" data-lod="${d}" style="cursor:pointer;color:#1d4ed8;text-decoration:underline">${cnt(d, v => v.s === '7')}／${cnt(d, v => v.s === '8')}</td>`).join('')}</tr>
-        ${W_CODES.map(([c, t]) => `<tr class="sum"><th class="nm">${t}（${c}）</th>${days.map(d => `<td colspan="2">${cnt(d, v => v.w === c) || ''}</td>`).join('')}</tr>`).join('')}
+        ${W_CODES.map(([c, t]) => `<tr class="sum"><th class="nm">${wTxt(c)}</th>${days.map(d => `<td colspan="2">${cnt(d, v => v.w === c) || ''}</td>`).join('')}</tr>`).join('')}
       </tbody></table></div>
       <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button class="sbtn" id="at-xlsx" style="background:#1f2430;color:#fff;">⬇ 下載出勤統計 Excel</button>
         <span style="font-size:12px;color:var(--sub);align-self:center">點日期可填住宿地點（苑裡、四湖…）</span></div>`;
@@ -2328,7 +2330,7 @@
       const c = await codePicker(`${pmap[k].name}　${dLabel(d)} 出勤`, W_CODES, v.w);
       if (c === null) return;
       const nv = c === '' ? 'x' : c;
-      td.textContent = c; td.classList.remove('au'); td.style.background = c ? (W_BG[c] || '') : '';
+      td.textContent = wTxt(c); td.classList.remove('au'); td.style.background = c ? (W_BG[c] || '') : '';
       putAtt(k, 'w', d, nv);
     });
     document.querySelectorAll('[data-lod]').forEach(td => td.onclick = () => {
@@ -2354,7 +2356,7 @@
     return new Promise(res => {
       const ov = document.createElement('div'); ov.className = 'eq-ov';
       ov.innerHTML = `<div class="eq-box"><div class="eq-t">${esc(title)}</div>
-        <div class="cp-g" style="${codes.length < 3 ? 'grid-template-columns:repeat(' + codes.length + ',1fr)' : ''}">${codes.map(([v, t]) => `<button data-c="${v}" class="${cur === v ? 'on' : ''}" style="background:${W_BG[v] || (v === '7' ? '#dbeafe' : '#fce7f3')}"><b>${v === '7' ? '🛏 男' : v === '8' ? '🛏 女' : v}</b>${esc(t)}</button>`).join('')}</div>
+        <div class="cp-g" style="${codes.length < 3 ? 'grid-template-columns:repeat(' + codes.length + ',1fr)' : ''}">${codes.map(([v, t]) => `<button data-c="${v}" class="${cur === v ? 'on' : ''}" style="background:${W_BG[v] || (v === '7' ? '#dbeafe' : '#fce7f3')}">${v === '7' || v === '8' ? `<b>${v === '7' ? '🛏 男' : '🛏 女'}</b>${esc(t)}` : `<b style="font-size:16px">${esc(t)}</b><small style="color:#6b7280">代號 ${v}</small>`}</button>`).join('')}</div>
         <div class="eq-btn" style="margin-top:12px"><button id="eq-no">取消</button><button id="cp-clr" style="background:#f1f5f9;color:#334155">${clrTxt || '清除'}</button></div></div>`;
       document.body.appendChild(ov);
       ov.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { ov.remove(); res(b.dataset.c); });
