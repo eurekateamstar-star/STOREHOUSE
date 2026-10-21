@@ -227,8 +227,9 @@
             transform: translate(-50%, -50%); 
             touch-action: none; 
             z-index: 50;
-            border: 2px dashed rgba(10, 132, 255, 0.6); /* 預設藍色透明線框 */
-            background: rgba(10, 132, 255, 0.1); 
+            border: 1.5px solid rgba(130, 190, 255, .55); /* 跟全景一樣的淡藍實線框 */
+            background: rgba(10, 132, 255, .10);
+            box-shadow: 0 0 0 .5px rgba(0,0,0,.35), inset 0 0 14px rgba(10,132,255,.12);
             border-radius: 8px;
             box-sizing: border-box;
             transition: border-color 0.2s, background 0.2s;
