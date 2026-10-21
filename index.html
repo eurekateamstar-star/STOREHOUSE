@@ -1131,7 +1131,7 @@
 <script type="module">
     // ⭐️ 已經不需要 Firebase Storage，直接使用 Firestore 即可
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, getDocs, addDoc as _addDoc, doc, updateDoc as _updateDoc, getDoc, setDoc, deleteDoc as _deleteDoc, runTransaction, onSnapshot, query, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { initializeFirestore, getFirestore, collection, getDocs, addDoc as _addDoc, doc, updateDoc as _updateDoc, getDoc, setDoc, deleteDoc as _deleteDoc, runTransaction, onSnapshot, query, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
     // 與「白沙屯救護紀錄表」共用同一個 Firebase 專案（同一份 users，綁定一次即可）
@@ -1145,11 +1145,11 @@
       measurementId: "G-1Z55WR53W7"
     };
     const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
 
     // ===== Firebase 身分驗證：LINE → 驗證伺服器（Cloudflare）→ Firebase，資料庫規則靠這個認人 =====
     const AUTH_URL = 'https://bst-auth.eurekateamstar.workers.dev';   // Cloudflare Worker 網址
-    const auth = initializeAuth(app, { persistence: [indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence] });   // 不載入彈出視窗登入模組，LINE 裡啟動快很多
+    const auth = initializeAuth(app, { persistence: (/iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) ? [browserLocalPersistence, inMemoryPersistence] : [indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence] });   // iPhone 的 LINE 從背景回來時 IndexedDB 常會卡死 → iPhone 改用 localStorage
     const liffUid = () => { try { const t = liff.getDecodedIDToken(); return (t && t.sub) || null; } catch (e) { return null; } };
     let fbAuthError = '';
     async function fbSignIn(uid) {

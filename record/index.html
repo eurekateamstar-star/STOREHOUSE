@@ -1037,12 +1037,13 @@
 
     const app = initializeApp(firebaseConfig);
     const analytics = getAnalytics(app);
-    const db = initializeFirestore(app, { localCache: persistentLocalCache() });
+    const IOS_WV = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const db = initializeFirestore(app, IOS_WV ? { experimentalAutoDetectLongPolling: true } : { localCache: persistentLocalCache(), experimentalAutoDetectLongPolling: true });   // iPhone 不用 IndexedDB 快取（LINE 背景回來會卡死）
     const recAdmin = d => !!d && (d.role === 'admin' || d.adminRecord === true);   // 救護紀錄表管理員（權限在會員中心設定）
 
     // ===== Firebase 身分驗證：LINE → 驗證伺服器（Cloudflare）→ Firebase，資料庫規則靠這個認人 =====
     const AUTH_URL = 'https://bst-auth.eurekateamstar.workers.dev';   // Cloudflare Worker 網址
-    const auth = initializeAuth(app, { persistence: [indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence] });   // 不載入彈出視窗登入模組，LINE 裡啟動快很多
+    const auth = initializeAuth(app, { persistence: (/iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) ? [browserLocalPersistence, inMemoryPersistence] : [indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence] });   // iPhone 的 LINE 從背景回來時 IndexedDB 常會卡死 → iPhone 改用 localStorage
     const liffUid = () => { try { const t = liff.getDecodedIDToken(); return (t && t.sub) || null; } catch (e) { return null; } };
     let fbAuthError = '';
     async function fbSignIn(uid) {
