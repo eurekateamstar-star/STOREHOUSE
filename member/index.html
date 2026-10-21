@@ -1438,7 +1438,7 @@
     }
   }
 
-  function closeSheet() { drawSheetEid = null; schedOpen = false; $('sheet').classList.remove('wide'); $('sheet-close').classList.remove('hidden'); confirmLock = false; document.body.classList.remove('sheet-open'); sheetRid = null; sheetUid = null; $('sheet-bg').style.display = 'none'; $('sheet').style.display = 'none'; }
+  function closeSheet() { drawSheetEid = null; schedOpen = false; attOpen = false; $('sheet').classList.remove('wide'); $('sheet-close').classList.remove('hidden'); confirmLock = false; document.body.classList.remove('sheet-open'); sheetRid = null; sheetUid = null; $('sheet-bg').style.display = 'none'; $('sheet').style.display = 'none'; }
   const closeAny = () => { const back = editFromConfirm && editCtx && editCtx.role === 'self' && $('ed-save'); closeSheet(); if (back) backToConfirm(); };
   $('sheet-bg').onclick = () => { if (!confirmLock) closeAny(); }; $('sheet-close').onclick = closeAny;
 
@@ -1475,7 +1475,7 @@
   const ATT_SHORT = { yes: '✅ 出席', join: '⚠️ 不出席但參與進香', no: '❌ 不參與' };
   const LUNCH = ['葷', '素（方便素）', '自行處理'];
   const eventLink = id => `https://tsushin-buishatun.pages.dev/attend/?e=${encodeURIComponent(id)}`;   // 公開表單：不用先綁會員中心
-  let evPaid = {}, drPayMode = false, evSched = {}, schedOpen = false, schSel = null, schPk = null;
+  let evPaid = {}, drPayMode = false, evSched = {}, schedOpen = false, schSel = null, schPk = null, attOpen = false, attBrush = null;
   let evDraw = {}, evDrawBy = {}, evOver = {}, drawSheetEid = null, drSel = null;
   let eventsCache = [], eventsUnsub = null, myResp = {}, evRespCache = {}, evRespUnsub = null, evOpenId = null, evFilter = 'all';
   // 連結 liff.line.me/…?e=活動ID：LIFF 開啟時參數可能包在 liff.state 裡
@@ -1577,7 +1577,7 @@
       evRespCache[eid] = s.docs.map(d => ({ id: d.id, ...d.data() }));
       if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid);
     }, () => toast('讀取回覆失敗'));
-    const u2 = onSnapshot(doc(db, 'events', eid, 'admin', 'draw'), s => { const d = s.exists() ? s.data() : {}; evDraw[eid] = d.map || {}; evDrawBy[eid] = d.by2 || {}; evOver[eid] = d.groupOverride || {}; evPaid[eid] = d.paid || {}; evSched[eid] = schedFromDb(d.sched); if (drawSheetEid === eid) (schedOpen ? renderSched(eid) : renderDrawSheet(eid)); if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid); }, () => {});
+    const u2 = onSnapshot(doc(db, 'events', eid, 'admin', 'draw'), s => { const d = s.exists() ? s.data() : {}; evDraw[eid] = d.map || {}; evDrawBy[eid] = d.by2 || {}; evOver[eid] = d.groupOverride || {}; evPaid[eid] = d.paid || {}; evSched[eid] = schedFromDb(d.sched); if (drawSheetEid === eid) (attOpen ? renderAtt(eid) : schedOpen ? renderSched(eid) : renderDrawSheet(eid)); if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid); }, () => {});
     evRespUnsub = () => { u1(); u2(); };
     evRespUnsub._eid = eid;
   }
@@ -2101,6 +2101,7 @@
         <div><label>每組人數</label><input type="number" id="sc-size" min="2" max="6" value="${sc.size || 5}" style="width:70px"></div>
         <button class="sbtn" id="sc-auto" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">🔀 自動排班</button>
         ${days.length && Object.keys(dt).length ? '<button class="sbtn" id="sc-xlsx" style="background:#1f2430;color:#fff;">⬇ 下載排班 Excel</button><button class="sbtn" id="sc-shotall" style="background:#0f766e;color:#fff;">📷 全部天數存成一張圖</button>' : ''}
+        ${days.length ? '<button class="sbtn" id="sc-att" style="background:#7c3aed;color:#fff;">🛏 出勤／住宿表</button>' : ''}
       </div>
       ${!all.length ? '<div class="card empty" style="margin-top:12px;">還沒有人回覆出席</div>' : `${editor}<div class="sc-grid">${SLOTS.map(slotBox).join('')}</div>
         <div class="sc-grid">${box('全程', '每天都值班', all.filter(p => p.mode === 'all'))}${box('自訂日期', '特定幾天', all.filter(p => p.mode === 'range'))}${box('不排班', '指揮官、團長、車輛組、教官團…', all.filter(p => p.mode === 'off'))}</div>`}
@@ -2172,6 +2173,7 @@
     document.querySelectorAll('[data-shot]').forEach(b => b.onclick = e2 => { e2.stopPropagation(); shotDay(b.dataset.shot); });
     if ($('sc-xlsx')) $('sc-xlsx').onclick = () => exportSchedXlsx(eid);
     if ($('sc-shotall')) $('sc-shotall').onclick = () => shotAll();
+    if ($('sc-att')) $('sc-att').onclick = () => { attOpen = true; attBrush = null; renderAtt(eid); $('sheet').scrollTop = 0; };
   }
   async function exportSchedXlsx(eid) {
     try { await loadExcelJS(); } catch (err) { return toast('❌ 無法載入 Excel 元件'); }
@@ -2243,6 +2245,123 @@
     const buf = await wb.xlsx.writeBuffer();
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
     a.download = `${e.title || '進香'}_值班表.xlsx`; a.click(); toast('⬇ 已下載值班表');
+  }
+  // ===================== 出勤／住宿表（每人每天）=====================
+  // 出勤代號：2 輪班（排進轎前／轎後自動帶入）、1 指揮車、3 指揮官、4 機車機動組、5 媽祖車、6 物資車、D 醫師、a 復健組、b 教官醫師；住宿：7 男、8 女
+  const W_CODES = [['2', '輪班'], ['1', '指揮車'], ['3', '指揮官'], ['4', '機車機動'], ['5', '媽祖車'], ['6', '物資車'], ['D', '醫師'], ['a', '復健組'], ['b', '教官醫師']];
+  const S_CODES = [['7', '住宿(男)'], ['8', '住宿(女)']];
+  const POS_ORDER = ['團長', '秘書長', '指揮官', '教官團', '顧問', '行政組', '物資盤點組', '器材組', '後勤補給組', '媒體文宣紀錄組', '車輛組', '機車組'];
+  const W_BG = { '2': '#dcfce7', '1': '#dbeafe', '3': '#fde68a', '4': '#e9d5ff', '5': '#fecaca', '6': '#fed7aa', D: '#fce7f3', a: '#ccfbf1', b: '#e0e7ff' };
+  function attPeople(eid) {
+    const ppl = schedPeople(eid);
+    const po = p => { const i = POS_ORDER.indexOf(p.pos); return i < 0 ? 99 : i; };
+    return Object.values(ppl).sort((a, b) => po(a) - po(b) || CAT_RANK[a.cat] - CAT_RANK[b.cat] || (a.ro && b.ro ? rosterOrder(a.ro, b.ro) : 0));
+  }
+  function attVals(eid) {   // 回傳 get(k, d) → { w, s, auto }
+    const sc = evSched[eid] || {}, dt = sc.days || {}, att = sc.att || {};
+    const inTeam = {}; Object.entries(dt).forEach(([d, ts]) => (ts || []).forEach(t => t.m.forEach(k => (inTeam[k] = inTeam[k] || {})[d] = t.l)));
+    return (k, d) => { const a = att[k] || {}, w0 = (a.w || {})[d], s0 = (a.s || {})[d];
+      const auto = (inTeam[k] || {})[d] ? '2' : '';
+      return { w: w0 === undefined ? auto : (w0 === 'x' ? '' : w0), s: s0 || '', auto: w0 === undefined && !!auto, team: (inTeam[k] || {})[d] || '' }; };
+  }
+  const genderOf = p => { const c = String((p.ro && p.ro.idCard) || '').toUpperCase(); return c[1] === '1' ? '7' : c[1] === '2' ? '8' : ''; };
+  function renderAtt(eid) {
+    if ($('sheet').style.display === 'none') return;
+    const e = eventsCache.find(x => x.id === eid) || {}, sc = evSched[eid] || {}, info = sc.info || {};
+    const days = dayList(sc.start, sc.end), list = attPeople(eid), get = attVals(eid);
+    const cnt = (d, f) => list.filter(p => f(get(p.key, d))).length;
+    const brushBtn = (kind, v, t, bg) => `<button class="at-b ${attBrush && attBrush.kind === kind && attBrush.v === v ? 'on' : ''}" data-bk="${kind}" data-bv="${v}" style="background:${bg}">${v === 'x' ? '' : `<b>${v}</b> `}${t}</button>`;
+    $('sheet-body').innerHTML = `
+      <style>
+        .at-tools{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0}.at-tools .lab{font-size:12px;font-weight:800;color:var(--sub);margin-right:2px}
+        .at-b{border:1.5px solid rgba(0,0,0,.08);border-radius:10px;padding:6px 10px;font:inherit;font-size:13px;cursor:pointer;color:#1f2430}.at-b.on{outline:3px solid var(--primary);outline-offset:1px}
+        .at-wrap{overflow:auto;max-height:70vh;border:1px solid #efe4e0;border-radius:14px;background:#fff;margin-top:6px}
+        .at{border-collapse:separate;border-spacing:0;font-size:13px;min-width:100%}
+        .at th,.at td{border-right:1px solid #f1e8e5;border-bottom:1px solid #f1e8e5;text-align:center;padding:0;height:32px;white-space:nowrap}
+        .at thead th{position:sticky;top:0;background:#fdf6f4;z-index:2;font-size:12px;padding:4px 6px}.at thead tr:nth-child(2) th{top:26px;font-size:11px;color:var(--sub)}
+        .at .nm{position:sticky;left:0;background:#fff;z-index:1;text-align:left;padding:0 8px;width:96px;min-width:96px;max-width:110px;font-weight:700}.at thead .nm{z-index:3;background:#fdf6f4}
+        .at .nm small{display:block;font-size:10px;color:#9a8f8b;font-weight:600;line-height:1}
+        .at td.c{min-width:34px;cursor:pointer;font-weight:800}.at td.c.au{color:#15803d;font-weight:600}.at td.c.sv{color:#1d4ed8}.at td.c.s8{color:#be185d}
+        .at td.c:hover{outline:2px solid var(--primary);outline-offset:-2px}.at tr.sum td,.at tr.sum th{background:#fbf7f6;font-weight:800;font-size:12px}
+        .at .gp td,.at .gp th{background:#fff7ed!important;font-size:11px;color:#9a3412;font-weight:900;text-align:left;padding-left:8px;height:22px}
+      </style>
+      <button class="sbtn" id="at-back">← 回排班表</button>
+      <h3 style="margin-top:10px;">🛏 出勤／住宿表</h3>
+      <div style="font-size:13px;color:var(--sub);line-height:1.7;">${esc(e.title || '')}　團長、秘書長、指揮官、教官團…排在最上面，再來護理師、EMTP／EMT2、EMT1。<br>
+        排進轎前／轎後的人自動帶出勤「2」（綠字）。👆 先點下面一個代號，再點表格的格子就能填；點「清除」再點格子可清掉。</div>
+      <div class="at-tools"><span class="lab">出勤</span>${W_CODES.map(([v, t]) => brushBtn('w', v, t, W_BG[v])).join('')}${brushBtn('w', 'x', '🧽 清除出勤', '#f1f5f9')}</div>
+      <div class="at-tools"><span class="lab">住宿</span>${S_CODES.map(([v, t]) => brushBtn('s', v, t, v === '7' ? '#dbeafe' : '#fce7f3')).join('')}${brushBtn('s', 'x', '🧽 清除住宿', '#f1f5f9')}
+        <button class="at-b" id="at-auto" style="background:#ede9fe">⚡ 有出勤的天自動帶住宿（依身分證男 7／女 8，最後一天不住）</button></div>
+      <div class="at-wrap"><table class="at"><thead>
+        <tr><th class="nm" rowspan="2">姓名</th>${days.map(d => `<th colspan="2" data-place="${d}" style="cursor:pointer">${dLabel(d)}${(info[d] || {}).tag ? `<br><span style="color:#1d4ed8">${esc(info[d].tag)}</span>` : ''}${(info[d] || {}).place ? `<br><span style="color:#9a3412">${esc(info[d].place)}</span>` : ''}</th>`).join('')}</tr>
+        <tr>${days.map(() => '<th>出勤</th><th>住宿</th>').join('')}</tr></thead><tbody>
+        ${list.map((p, i) => { const prevPos = i ? (list[i - 1].pos && POS_ORDER.includes(list[i - 1].pos) ? 'L' : list[i - 1].cat) : null, curPos = p.pos && POS_ORDER.includes(p.pos) ? 'L' : p.cat;
+          const head = curPos !== prevPos ? `<tr class="gp"><th colspan="${1 + days.length * 2}">${curPos === 'L' ? '幹部／教官' : CAT_TXT[curPos]}</th></tr>` : '';
+          return head + `<tr><th class="nm" style="background:${CAT_BG[p.cat]}">${esc(p.name)}<small>${esc(p.pos && p.pos !== '團員' ? p.pos : CAT_TXT[p.cat])}</small></th>${days.map(d => { const v = get(p.key, d);
+            return `<td class="c ${v.auto ? 'au' : ''}" data-ak="${esc(p.key)}" data-ad="${d}" data-af="w" style="${v.w && !v.auto ? 'background:' + (W_BG[v.w] || '#f1f5f9') : ''}" title="${esc(v.team)}">${esc(v.w)}</td><td class="c sv ${v.s === '8' ? 's8' : ''}" data-ak="${esc(p.key)}" data-ad="${d}" data-af="s">${esc(v.s)}</td>`; }).join('')}</tr>`; }).join('')}
+        <tr class="sum"><th class="nm">當日人數</th>${days.map(d => `<td>${cnt(d, v => v.w)}</td><td>${cnt(d, v => v.s)}</td>`).join('')}</tr>
+        <tr class="sum"><th class="nm">住宿 男／女</th>${days.map(d => `<td colspan="2">${cnt(d, v => v.s === '7')}／${cnt(d, v => v.s === '8')}</td>`).join('')}</tr>
+        ${W_CODES.map(([c, t]) => `<tr class="sum"><th class="nm">${t}（${c}）</th>${days.map(d => `<td colspan="2">${cnt(d, v => v.w === c) || ''}</td>`).join('')}</tr>`).join('')}
+      </tbody></table></div>
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button class="sbtn" id="at-xlsx" style="background:#1f2430;color:#fff;">⬇ 下載出勤統計 Excel</button>
+        <span style="font-size:12px;color:var(--sub);align-self:center">點日期可填住宿地點（苑裡、四湖…）</span></div>`;
+    const save = async (patch, msg) => { evSched[eid] = { ...(evSched[eid] || {}), ...patch }; try { await saveDraw(eid, { ...(evDraw[eid] || {}) }, { ...(evDrawBy[eid] || {}) }, { ...(evOver[eid] || {}) }); if (msg) toast(msg); } catch (err) { console.error(err); toast('❌ 儲存失敗'); } renderAtt(eid); };
+    $('at-back').onclick = () => { attOpen = false; renderSched(eid); };
+    document.querySelectorAll('[data-bk]').forEach(b => b.onclick = () => { const k = b.dataset.bk, v = b.dataset.bv; attBrush = attBrush && attBrush.kind === k && attBrush.v === v ? null : { kind: k, v }; renderAtt(eid); });
+    let pending = null;
+    document.querySelectorAll('[data-ak]').forEach(td => td.onclick = () => {
+      if (!attBrush) return toast('先點上面的代號（例如 2 輪班、7 住宿男）');
+      const f = td.dataset.af; if (attBrush.kind !== f) return toast(f === 'w' ? '這是出勤欄，請選出勤代號' : '這是住宿欄，請選住宿代號');
+      const k = td.dataset.ak, d = td.dataset.ad, att = JSON.parse(JSON.stringify((evSched[eid] || {}).att || {}));
+      att[k] = att[k] || {}; att[k][f] = att[k][f] || {};
+      if (attBrush.v === 'x') { if (f === 'w') att[k].w[d] = 'x'; else delete att[k].s[d]; } else att[k][f][d] = attBrush.v;
+      evSched[eid] = { ...(evSched[eid] || {}), att };
+      td.textContent = attBrush.v === 'x' ? '' : attBrush.v; td.classList.remove('au');
+      if (f === 'w') td.style.background = attBrush.v === 'x' ? '' : (W_BG[attBrush.v] || '');
+      clearTimeout(pending); pending = setTimeout(() => save({ att }), 600);
+    });
+    document.querySelectorAll('[data-place]').forEach(th => th.onclick = async () => {
+      const d = th.dataset.place, v = await dialog({ title: `${dLabel(d)} 住宿地點`, input: { value: (info[d] || {}).place || '', placeholder: '例如：苑裡、四湖' }, okText: '儲存' });
+      if (v !== null) save({ info: { ...info, [d]: { ...(info[d] || {}), place: v } } }, '已儲存');
+    });
+    $('at-auto').onclick = async () => {
+      if (!(await dialog({ title: '自動帶住宿？', msg: '有出勤的天會依身分證填住宿（男 7、女 8），最後一天不住宿。\n已經填過的住宿不會被改。', okText: '套用' }))) return;
+      const att = JSON.parse(JSON.stringify((evSched[eid] || {}).att || {})); let n = 0;
+      list.forEach(p => { const g = genderOf(p); if (!g) return; days.slice(0, -1).forEach(d => { const v = get(p.key, d); if (v.w && !v.s) { att[p.key] = att[p.key] || {}; att[p.key].s = att[p.key].s || {}; att[p.key].s[d] = g; n++; } }); });
+      save({ att }, `已帶入 ${n} 格住宿`);
+    };
+    $('at-xlsx').onclick = () => exportAttXlsx(eid);
+  }
+  async function exportAttXlsx(eid) {
+    try { await loadExcelJS(); } catch (err) { return toast('❌ 無法載入 Excel 元件'); }
+    const e = eventsCache.find(x => x.id === eid) || {}, sc = evSched[eid] || {}, info = sc.info || {};
+    const days = dayList(sc.start, sc.end), list = attPeople(eid), get = attVals(eid);
+    const roc = new Date(sc.start + 'T12:00:00').getFullYear() - 1911;
+    const wb = new ExcelJS.Workbook(), thin = { style: 'thin', color: { argb: 'FF777777' } }, border = { top: thin, left: thin, bottom: thin, right: thin };
+    const font = (o = {}) => ({ name: '新細明體', size: 11, ...o });
+    const ws = wb.addWorksheet(`${roc}出勤統計`, { pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: '1:2' }, views: [{ state: 'frozen', xSplit: 2, ySplit: 2 }] });
+    ws.columns = [{ width: 5 }, { width: 11 }, { width: 13 }, { width: 10 }, { width: 13 }, ...days.flatMap(() => [{ width: 6 }, { width: 6 }])];
+    const set = (r, c, v, f = {}, extra = {}) => { const cell = ws.getRow(r).getCell(c); cell.value = v; cell.font = font(f); cell.border = border; cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true, ...extra }; return cell; };
+    ['序', '姓名', '電話', '生日', '身分證號碼'].forEach((h, i) => { ws.mergeCells(1, i + 1, 2, i + 1); set(1, i + 1, h, { bold: true }); });
+    days.forEach((d, j) => { const c = 6 + j * 2, dd = new Date(d + 'T12:00:00'); ws.mergeCells(1, c, 1, c + 1);
+      set(1, c, `${dd.getMonth() + 1}/${dd.getDate()}\n(${WK[dd.getDay()]})${(info[d] || {}).tag ? info[d].tag : ''}`, { bold: true }); set(2, c, '出勤', { size: 10 }); set(2, c + 1, '住宿', { size: 10 }); });
+    ws.getRow(1).height = 42;
+    list.forEach((p, i) => { const r = 3 + i, ro = p.ro || {};
+      [i + 1, p.name, ro.phone || '', rv(ro, 'birthdayRaw') || '', rv(ro, 'idCard') || ''].forEach((v, k) => set(r, k + 1, v));
+      days.forEach((d, j) => { const v = get(p.key, d), c = 6 + j * 2; set(r, c, v.w === '' ? null : (isNaN(+v.w) ? v.w : +v.w)); set(r, c + 1, v.s === '' ? null : +v.s); }); });
+    const L = 2 + list.length, col = c => ws.getColumn(c).letter;
+    let r = L + 1;
+    const row = (label, fn, merge) => { ws.mergeCells(r, 1, r, 5); set(r, 1, label, { bold: true }); days.forEach((d, j) => { const c = 6 + j * 2; fn(c, d); }); r++; };
+    row('當日人數(出團/住宿)', (c, d) => { set(r, c, { formula: `COUNTA(${col(c)}3:${col(c)}${L})`, result: list.filter(p => get(p.key, d).w).length }, { bold: true }); set(r, c + 1, { formula: `COUNT(${col(c + 1)}3:${col(c + 1)}${L})`, result: list.filter(p => get(p.key, d).s).length }, { bold: true }); });
+    row('住宿地點', (c, d) => { ws.mergeCells(r, c, r, c + 1); set(r, c, (info[d] || {}).place || ''); });
+    row('住宿人數(男/女)', (c, d) => { set(r, c, { formula: `COUNTIF(${col(c + 1)}3:${col(c + 1)}${L},7)`, result: list.filter(p => get(p.key, d).s === '7').length }); set(r, c + 1, { formula: `COUNTIF(${col(c + 1)}3:${col(c + 1)}${L},8)`, result: list.filter(p => get(p.key, d).s === '8').length }); });
+    r++;
+    W_CODES.forEach(([code, t]) => row(t, (c, d) => { ws.mergeCells(r, c, r, c + 1); set(r, c, { formula: `COUNTIF(${col(c)}3:${col(c)}${L},${isNaN(+code) ? `"${code}"` : code})`, result: list.filter(p => get(p.key, d).w === code).length }); }));
+    r++;
+    ['說明：', '出團 1-指揮車、2-在隊伍中輪班、3-指揮官、4-機車機動組、5-媽祖車駕駛、6-物資車駕駛、D-醫師、a-復健組、b-教官醫師', '住宿 7-住宿(男)、8-住宿(女)'].forEach(t => { ws.mergeCells(r, 1, r, 5 + days.length * 2); ws.getCell(r, 1).value = t; ws.getCell(r, 1).font = font(); r++; });
+    const buf = await wb.xlsx.writeBuffer();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    a.download = `${e.title || '進香'}_出勤統計.xlsx`; a.click(); toast('⬇ 已下載出勤統計');
   }
   // ===== 每天的值日生、到達時間、洗衣服 =====
   const DUTY = [['bus', '中巴'], ['stay', '住宿'], ['stock', '物資車盤點'], ['wash', '洗衣服'], ['arrive', '到達時間']];
