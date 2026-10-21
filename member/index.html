@@ -2113,6 +2113,12 @@
         .xt tr.xb>*{border-top:2px solid #c2414f!important}
         .xt .xf{background:#fff!important;border-top:1px solid #f1e8e5}
         .xsbar{background:#fff!important}
+        /* 名字一律置中對齊；個人備註（幾點到…）小字貼在格子底部，不影響置中 */
+        .xt td.xm{position:relative!important;height:48px!important;padding:0 1px!important;vertical-align:middle!important}
+        .xt td.xm>span{padding:0!important;line-height:1.2!important}
+        .xt td.xm .xpn{position:absolute!important;left:0;right:0;bottom:3px;margin:0!important;padding:0!important;min-height:0!important;height:auto!important;line-height:1!important;text-align:center}
+        @media (max-width:760px){.xt td.xm{height:40px!important}.xt td.xm .xpn{bottom:2px;font-size:7.5px!important}}
+        .xcap .xt td.xm{height:40px!important}.xcap .xt td.xm .xpn{bottom:2px;font-size:7px!important}
       </style>
       <button class="sbtn" id="sc-back">← 回分組名單</button>
       <h3 style="margin-top:10px;">📅 進香排班表</h3>
