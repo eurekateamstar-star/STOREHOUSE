@@ -2268,37 +2268,41 @@
   function renderAtt(eid) {
     if ($('sheet').style.display === 'none') return;
     const e = eventsCache.find(x => x.id === eid) || {}, sc = evSched[eid] || {}, info = sc.info || {};
-    const days = dayList(sc.start, sc.end), list = attPeople(eid), get = attVals(eid);
+    const days = dayList(sc.start, sc.end), get = attVals(eid), all = attPeople(eid);
+    const gk = p => { const g = genderOf(p); return g === '7' ? 0 : g === '8' ? 1 : 2; };
+    const list = all.map((p, i) => [p, i]).sort((a, b) => gk(a[0]) - gk(b[0]) || a[1] - b[1]).map(x => x[0]);
     const cnt = (d, f) => list.filter(p => f(get(p.key, d))).length;
-    const brushBtn = (kind, v, t, bg) => `<button class="at-b ${attBrush && attBrush.kind === kind && attBrush.v === v ? 'on' : ''}" data-bk="${kind}" data-bv="${v}" style="background:${bg}">${v === 'x' ? '' : `<b>${v}</b> `}${t}</button>`;
+    const ow = document.querySelector('.at-wrap'), keep = ow ? [ow.scrollLeft, ow.scrollTop] : null, keepS = $('sheet').scrollTop;
     $('sheet-body').innerHTML = `
       <style>
         .at-tools{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0}.at-tools .lab{font-size:12px;font-weight:800;color:var(--sub);margin-right:2px}
         .at-b{border:1.5px solid rgba(0,0,0,.08);border-radius:10px;padding:6px 10px;font:inherit;font-size:13px;cursor:pointer;color:#1f2430}.at-b.on{outline:3px solid var(--primary);outline-offset:1px}
-        .at-wrap{overflow:auto;max-height:70vh;border:1px solid #efe4e0;border-radius:14px;background:#fff;margin-top:6px}
-        .at{border-collapse:separate;border-spacing:0;font-size:13px;min-width:100%}
-        .at th,.at td{border-right:1px solid #f1e8e5;border-bottom:1px solid #f1e8e5;text-align:center;padding:0;height:32px;white-space:nowrap}
-        .at thead th{position:sticky;top:0;background:#fdf6f4;z-index:2;font-size:12px;padding:4px 6px}.at thead tr:nth-child(2) th{top:26px;font-size:11px;color:var(--sub)}
-        .at .nm{position:sticky;left:0;background:#fff;z-index:1;text-align:left;padding:0 8px;width:96px;min-width:96px;max-width:110px;font-weight:700}.at thead .nm{z-index:3;background:#fdf6f4}
+        .at-wrap{overflow:auto;max-height:70vh;width:fit-content;max-width:100%;touch-action:pan-x pan-y;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;border:1px solid #efe4e0;border-radius:14px;background:#fff;margin-top:6px}
+        .at{border-collapse:separate;border-spacing:0;font-size:13px;table-layout:fixed}
+        .at th,.at td{border-right:1px solid #f1e8e5;border-bottom:1px solid #f1e8e5;text-align:center;padding:0;height:34px;white-space:nowrap;overflow:hidden;box-sizing:border-box}
+        .at thead th{position:sticky;top:0;background:#fdf6f4;z-index:2;font-size:12px;padding:4px 6px}.at thead tr:nth-child(2) th{top:26px;font-size:10px;color:var(--sub);line-height:1.15}
+        .at .nm{position:sticky;left:0;background:#fff;z-index:1;text-align:left;padding:0 6px;width:84px;font-weight:700;text-overflow:ellipsis}.at thead .nm{z-index:3;background:#fdf6f4}
         .at .nm small{display:block;font-size:10px;color:#9a8f8b;font-weight:600;line-height:1}
-        .at td.c{min-width:34px;cursor:pointer;font-weight:800}.at td.c.au{color:#15803d;font-weight:600}.at td.c.sv{color:#1d4ed8}.at td.c.s8{color:#be185d}
-        .at td.c:hover{outline:2px solid var(--primary);outline-offset:-2px}.at tr.sum td,.at tr.sum th{background:#fbf7f6;font-weight:800;font-size:12px}
-        .at .gp td,.at .gp th{background:#fff7ed!important;font-size:11px;color:#9a3412;font-weight:900;text-align:left;padding-left:8px;height:22px}
+        .at td.c{width:38px;cursor:pointer;font-weight:800;-webkit-tap-highlight-color:transparent;user-select:none}.at td.c.au{color:#15803d;font-weight:600}.at td.c.sv{color:#1d4ed8}.at td.c.s8{color:#be185d}
+        .eq-ov{position:fixed;inset:0;z-index:9500;background:rgba(31,36,48,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+        .eq-box{background:#fff;border-radius:20px;padding:18px;width:100%;max-width:360px;max-height:92vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+        .eq-t{font-weight:900;font-size:17px;margin-bottom:10px}.eq-btn{display:flex;gap:8px;margin-top:6px}.eq-btn>*{flex:1;text-align:center;border:none;border-radius:12px;padding:11px;font:inherit;font-size:15px;font-weight:900;cursor:pointer}#eq-no{background:#f1f5f9;color:#334155}
+        .cp-g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.cp-g button{border:1.5px solid rgba(0,0,0,.06);border-radius:12px;padding:12px 4px;font:inherit;font-size:14px;cursor:pointer;color:#1f2430}.cp-g button b{display:block;font-size:20px}.cp-g button.on{outline:3px solid var(--primary)}
+        .at tr.sum td,.at tr.sum th{background:#fbf7f6;font-weight:800;font-size:12px}
+        .at .gp th{font-size:13px;font-weight:900;text-align:left;padding-left:10px;height:26px;color:#fff}.at .gp.m th{background:#3b82f6}.at .gp.f th{background:#db2777}.at .gp.u th{background:#94a3b8}
       </style>
       <button class="sbtn" id="at-back">← 回排班表</button>
       <h3 style="margin-top:10px;">🛏 出勤／住宿表</h3>
       <div style="font-size:13px;color:var(--sub);line-height:1.7;">${esc(e.title || '')}　團長、秘書長、指揮官、教官團…排在最上面，再來護理師、EMTP／EMT2、EMT1。<br>
-        排進轎前／轎後的人自動帶出勤「2」（綠字）。👆 先點下面一個代號，再點表格的格子就能填；點「清除」再點格子可清掉。</div>
-      <div class="at-tools"><span class="lab">出勤</span>${W_CODES.map(([v, t]) => brushBtn('w', v, t, W_BG[v])).join('')}${brushBtn('w', 'x', '🧽 清除出勤', '#f1f5f9')}</div>
-      <div class="at-tools"><span class="lab">住宿</span>${S_CODES.map(([v, t]) => brushBtn('s', v, t, v === '7' ? '#dbeafe' : '#fce7f3')).join('')}${brushBtn('s', 'x', '🧽 清除住宿', '#f1f5f9')}
-        <button class="at-b" id="at-auto" style="background:#ede9fe">⚡ 有出勤的天自動帶住宿（依身分證男 7／女 8，最後一天不住）</button></div>
-      <div class="at-wrap"><table class="at"><thead>
+        排進轎前／轎後的人自動帶出勤「2」（綠字）。👆 點「出勤」格子選類別；點「住宿」格子直接切換住／不住（依身分證自動判斷男女）。</div>
+      <div class="at-tools">
+        <button class="at-b" id="at-auto" style="background:#ede9fe">⚡ 有出勤的天自動帶住宿（最後一天不住）</button></div>
+      <div class="at-wrap"><table class="at" style="width:${84 + days.length * 76}px"><colgroup><col style="width:84px">${days.map(() => '<col style="width:38px"><col style="width:38px">').join('')}</colgroup><thead>
         <tr><th class="nm" rowspan="2">姓名</th>${days.map(d => `<th colspan="2" data-place="${d}" style="cursor:pointer">${dLabel(d)}${(info[d] || {}).tag ? `<br><span style="color:#1d4ed8">${esc(info[d].tag)}</span>` : ''}${(info[d] || {}).place ? `<br><span style="color:#9a3412">${esc(info[d].place)}</span>` : ''}</th>`).join('')}</tr>
-        <tr>${days.map(() => '<th>出勤</th><th>住宿</th>').join('')}</tr></thead><tbody>
-        ${list.map((p, i) => { const prevPos = i ? (list[i - 1].pos && POS_ORDER.includes(list[i - 1].pos) ? 'L' : list[i - 1].cat) : null, curPos = p.pos && POS_ORDER.includes(p.pos) ? 'L' : p.cat;
-          const head = curPos !== prevPos ? `<tr class="gp"><th colspan="${1 + days.length * 2}">${curPos === 'L' ? '幹部／教官' : CAT_TXT[curPos]}</th></tr>` : '';
+        <tr>${days.map(() => '<th>出勤</th><th>住宿<br>男/女</th>').join('')}</tr></thead><tbody>
+        ${list.map((p, i) => { const g = gk(p), head = !i || gk(list[i - 1]) !== g ? `<tr class="gp ${['m', 'f', 'u'][g]}"><th colspan="${1 + days.length * 2}">${['👨 男', '👩 女', '❔ 未填身分證'][g]}（${list.filter(x => gk(x) === g).length}）</th></tr>` : '';
           return head + `<tr><th class="nm" style="background:${CAT_BG[p.cat]}">${esc(p.name)}<small>${esc(p.pos && p.pos !== '團員' ? p.pos : CAT_TXT[p.cat])}</small></th>${days.map(d => { const v = get(p.key, d);
-            return `<td class="c ${v.auto ? 'au' : ''}" data-ak="${esc(p.key)}" data-ad="${d}" data-af="w" style="${v.w && !v.auto ? 'background:' + (W_BG[v.w] || '#f1f5f9') : ''}" title="${esc(v.team)}">${esc(v.w)}</td><td class="c sv ${v.s === '8' ? 's8' : ''}" data-ak="${esc(p.key)}" data-ad="${d}" data-af="s">${esc(v.s)}</td>`; }).join('')}</tr>`; }).join('')}
+            return `<td class="c ${v.auto ? 'au' : ''}" data-ak="${esc(p.key)}" data-ad="${d}" data-af="w" style="${v.w && !v.auto ? 'background:' + (W_BG[v.w] || '#f1f5f9') : ''}" title="${esc(v.team)}">${esc(v.w)}</td><td class="c sv ${v.s === '8' ? 's8' : ''}" data-ak="${esc(p.key)}" data-ad="${d}" data-af="s">${v.s === '7' ? '男' : v.s === '8' ? '女' : esc(v.s)}</td>`; }).join('')}</tr>`; }).join('')}
         <tr class="sum"><th class="nm">當日人數</th>${days.map(d => `<td>${cnt(d, v => v.w)}</td><td>${cnt(d, v => v.s)}</td>`).join('')}</tr>
         <tr class="sum"><th class="nm">住宿 男／女</th>${days.map(d => `<td colspan="2">${cnt(d, v => v.s === '7')}／${cnt(d, v => v.s === '8')}</td>`).join('')}</tr>
         ${W_CODES.map(([c, t]) => `<tr class="sum"><th class="nm">${t}（${c}）</th>${days.map(d => `<td colspan="2">${cnt(d, v => v.w === c) || ''}</td>`).join('')}</tr>`).join('')}
@@ -2307,18 +2311,25 @@
         <span style="font-size:12px;color:var(--sub);align-self:center">點日期可填住宿地點（苑裡、四湖…）</span></div>`;
     const save = async (patch, msg) => { evSched[eid] = { ...(evSched[eid] || {}), ...patch }; try { await saveDraw(eid, { ...(evDraw[eid] || {}) }, { ...(evDrawBy[eid] || {}) }, { ...(evOver[eid] || {}) }); if (msg) toast(msg); } catch (err) { console.error(err); toast('❌ 儲存失敗'); } renderAtt(eid); };
     $('at-back').onclick = () => { attOpen = false; renderSched(eid); };
-    document.querySelectorAll('[data-bk]').forEach(b => b.onclick = () => { const k = b.dataset.bk, v = b.dataset.bv; attBrush = attBrush && attBrush.kind === k && attBrush.v === v ? null : { kind: k, v }; renderAtt(eid); });
+    const nw = document.querySelector('.at-wrap'); if (keep && nw) { nw.scrollLeft = keep[0]; nw.scrollTop = keep[1]; } $('sheet').scrollTop = keepS;
     let pending = null;
-    document.querySelectorAll('[data-ak]').forEach(td => td.onclick = () => {
-      if (!attBrush) return toast('先點上面的代號（例如 2 輪班、7 住宿男）');
-      const f = td.dataset.af; if (attBrush.kind !== f) return toast(f === 'w' ? '這是出勤欄，請選出勤代號' : '這是住宿欄，請選住宿代號');
-      const k = td.dataset.ak, d = td.dataset.ad, att = JSON.parse(JSON.stringify((evSched[eid] || {}).att || {}));
-      att[k] = att[k] || {}; att[k][f] = att[k][f] || {};
-      if (attBrush.v === 'x') { if (f === 'w') att[k].w[d] = 'x'; else delete att[k].s[d]; } else att[k][f][d] = attBrush.v;
-      evSched[eid] = { ...(evSched[eid] || {}), att };
-      td.textContent = attBrush.v === 'x' ? '' : attBrush.v; td.classList.remove('au');
-      if (f === 'w') td.style.background = attBrush.v === 'x' ? '' : (W_BG[attBrush.v] || '');
-      clearTimeout(pending); pending = setTimeout(() => save({ att }), 600);
+    const putAtt = (k, f, d, v) => { const att = JSON.parse(JSON.stringify((evSched[eid] || {}).att || {})); att[k] = att[k] || {}; att[k][f] = att[k][f] || {};
+      if (v === null) delete att[k][f][d]; else att[k][f][d] = v; evSched[eid] = { ...(evSched[eid] || {}), att }; clearTimeout(pending); pending = setTimeout(() => saveQuiet(), 500); };
+    const saveQuiet = async () => { try { await saveDraw(eid, { ...(evDraw[eid] || {}) }, { ...(evDrawBy[eid] || {}) }, { ...(evOver[eid] || {}) }); } catch (err) { console.error(err); toast('❌ 儲存失敗'); } };
+    const pmap = Object.fromEntries(list.map(p => [p.key, p]));
+    document.querySelectorAll('[data-ak]').forEach(td => td.onclick = async () => {
+      const k = td.dataset.ak, d = td.dataset.ad, f = td.dataset.af, v = attVals(eid)(k, d);
+      if (f === 's') {          // 住宿：直接切換 住 ↔ 不住
+        let g = genderOf(pmap[k]);
+        if (!v.s && !g) { const c = await codePicker(`${pmap[k].name} 住宿`, [['7', '男'], ['8', '女']], ''); if (!c) return; g = c; }
+        const nv = v.s ? '' : g; td.textContent = nv === '7' ? '男' : nv === '8' ? '女' : ''; td.classList.toggle('s8', nv === '8');
+        putAtt(k, 's', d, nv || null); return;
+      }
+      const c = await codePicker(`${pmap[k].name}　${dLabel(d)} 出勤`, W_CODES, v.w);
+      if (c === null) return;
+      const nv = c === '' ? 'x' : c;
+      td.textContent = c; td.classList.remove('au'); td.style.background = c ? (W_BG[c] || '') : '';
+      putAtt(k, 'w', d, nv);
     });
     document.querySelectorAll('[data-place]').forEach(th => th.onclick = async () => {
       const d = th.dataset.place, v = await dialog({ title: `${dLabel(d)} 住宿地點`, input: { value: (info[d] || {}).place || '', placeholder: '例如：苑裡、四湖' }, okText: '儲存' });
@@ -2331,6 +2342,19 @@
       save({ att }, `已帶入 ${n} 格住宿`);
     };
     $('at-xlsx').onclick = () => exportAttXlsx(eid);
+  }
+  function codePicker(title, codes, cur) {
+    return new Promise(res => {
+      const ov = document.createElement('div'); ov.className = 'eq-ov';
+      ov.innerHTML = `<div class="eq-box"><div class="eq-t">${esc(title)}</div>
+        <div class="cp-g">${codes.map(([v, t]) => `<button data-c="${v}" class="${cur === v ? 'on' : ''}" style="background:${W_BG[v] || (v === '7' ? '#dbeafe' : '#fce7f3')}"><b>${v}</b>${esc(t)}</button>`).join('')}</div>
+        <div class="eq-btn" style="margin-top:12px"><button id="eq-no">取消</button><button id="cp-clr" style="background:#f1f5f9;color:#334155">清除</button></div></div>`;
+      document.body.appendChild(ov);
+      ov.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { ov.remove(); res(b.dataset.c); });
+      ov.querySelector('#eq-no').onclick = () => { ov.remove(); res(null); };
+      ov.querySelector('#cp-clr').onclick = () => { ov.remove(); res(''); };
+      ov.onclick = e2 => { if (e2.target === ov) { ov.remove(); res(null); } };
+    });
   }
   async function exportAttXlsx(eid) {
     try { await loadExcelJS(); } catch (err) { return toast('❌ 無法載入 Excel 元件'); }
