@@ -238,63 +238,59 @@ const iconBtn = (icon, label, color, uri) => ({
 });
 
 // ===== 衛教須知：進香常見狀況（左右滑的卡片）=====
-const eduSec = (icon, title, color, items) => ({
-  type: 'box', layout: 'vertical', margin: 'lg', spacing: 'xs', contents: [
-    { type: 'text', text: `${icon} ${title}`, weight: 'bold', size: 'sm', color },
-    ...items.map(t => ({ type: 'box', layout: 'baseline', spacing: 'sm', contents: [
-      { type: 'text', text: '•', size: 'sm', color, flex: 0 },
-      { type: 'text', text: t, size: 'sm', color: '#374151', wrap: true, flex: 1 },
+const eduSec = (_icon, title, color, items) => ({
+  type: 'box', layout: 'vertical', margin: 'xl', spacing: 'sm', contents: [
+    { type: 'box', layout: 'horizontal', spacing: 'sm', alignItems: 'center', contents: [
+      { type: 'box', layout: 'vertical', width: '4px', height: '16px', cornerRadius: '2px', backgroundColor: color, contents: [] },
+      { type: 'text', text: title, weight: 'bold', size: 'md', color: '#111827', flex: 1 },
+    ] },
+    ...items.map(t => ({ type: 'box', layout: 'horizontal', spacing: 'md', paddingStart: '2px', contents: [
+      { type: 'box', layout: 'vertical', width: '6px', height: '6px', cornerRadius: '3px', backgroundColor: color, offsetTop: '8px', contents: [] },
+      { type: 'text', text: t, size: 'sm', color: '#374151', wrap: true, flex: 1, lineSpacing: '4px' },
     ] })),
   ],
 });
-const eduCard = ({ emoji, tag, title, sub, c1, c2, secs, warn }) => ({
+const eduCard = ({ img, secs, warn }) => ({
   type: 'bubble', size: 'mega',
-  header: { type: 'box', layout: 'vertical', paddingAll: '18px', paddingBottom: '16px',
-    background: { type: 'linearGradient', angle: '135deg', startColor: c1, endColor: c2 },
-    contents: [
-      { type: 'box', layout: 'horizontal', alignItems: 'center', contents: [
-        { type: 'box', layout: 'vertical', flex: 1, contents: [
-          { type: 'text', text: tag, size: 'xxs', color: '#ffffffcc', weight: 'bold' },
-          { type: 'text', text: title, size: 'xl', color: '#ffffff', weight: 'bold', margin: 'sm', wrap: true },
-          { type: 'text', text: sub, size: 'xs', color: '#ffffffdd', margin: 'sm', wrap: true },
-        ] },
-        { type: 'text', text: emoji, size: '4xl', flex: 0, align: 'end' },
-      ] },
-    ] },
-  body: { type: 'box', layout: 'vertical', paddingAll: '16px', paddingTop: '6px', contents: [
+  hero: { type: 'image', url: `${SITE}/richmenu/edu-${img}.jpg?v=1`, size: 'full', aspectRatio: '15:7', aspectMode: 'cover' },
+  body: { type: 'box', layout: 'vertical', paddingAll: '18px', paddingTop: '4px', contents: [
     ...secs.map(x => eduSec(...x)),
-    ...(warn ? [{ type: 'box', layout: 'vertical', margin: 'lg', paddingAll: '10px', cornerRadius: '10px', backgroundColor: '#FEF2F2', contents: [
-      { type: 'text', text: '🚨 ' + warn, size: 'xs', color: '#B91C1C', weight: 'bold', wrap: true } ] }] : []),
+    ...(warn ? [{ type: 'box', layout: 'horizontal', margin: 'xl', cornerRadius: '8px', backgroundColor: '#FEF2F2', contents: [
+      { type: 'box', layout: 'vertical', width: '4px', backgroundColor: '#DC2626', contents: [] },
+      { type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'xs', flex: 1, contents: [
+        { type: 'text', text: '緊急狀況', size: 'xs', color: '#DC2626', weight: 'bold' },
+        { type: 'text', text: warn, size: 'sm', color: '#7F1D1D', wrap: true } ] },
+    ] }] : []),
   ] },
 });
 const EDU = [
-  { emoji: '🥵', tag: 'HEAT ILLNESS', title: '中暑・熱衰竭', sub: '白天走在大太陽下最常見', c1: '#F97316', c2: '#DC2626',
+  { emoji: '🥵', tag: 'HEAT ILLNESS', img: 'heat', title: '中暑・熱衰竭', sub: '白天走在大太陽下最常見', c1: '#F97316', c2: '#DC2626',
     secs: [
       ['⚠️', '注意這些徵兆', '#DC2626', ['頭暈、頭痛、噁心想吐', '大量流汗、全身無力、臉色蒼白', '中暑：體溫很高、皮膚又乾又燙、意識不清']],
       ['✅', '馬上這樣做', '#15803D', ['移到陰涼通風處，躺下、抬高雙腳', '鬆開衣物，用濕毛巾擦身體、搧風', '冰敷脖子、腋下、大腿根部', '意識清楚才小口喝水或運動飲料']],
       ['🛡️', '預防', '#2563EB', ['戴帽子、穿淺色排汗衣', '少量多次喝水，不要等口渴', '中午最熱時多找陰涼處休息']],
     ], warn: '意識不清、叫不太醒、抽搐：立刻撥 119，並找身邊醫護團；不要灌水' },
-  { emoji: '🦶', tag: 'BLISTERS', title: '腳底水泡', sub: '長時間走路，腳是最辛苦的', c1: '#F59E0B', c2: '#EA580C',
+  { emoji: '🦶', tag: 'BLISTERS', img: 'blister', title: '腳底水泡', sub: '長時間走路，腳是最辛苦的', c1: '#F59E0B', c2: '#EA580C',
     secs: [
       ['🛡️', '預防最重要', '#2563EB', ['穿已經穿習慣、合腳的鞋，不要穿新鞋', '穿排汗襪，多帶幾雙替換，濕了就換', '容易磨的地方先貼人工皮或抹凡士林', '一覺得「熱熱刺刺」就先停下來處理']],
       ['✅', '起水泡了怎麼辦', '#15803D', ['水泡不要自己弄破，貼人工皮保護', '水泡很大或很痛：考慮先休息，減少走路摩擦', '破掉了：清水沖乾淨，表皮不要撕掉，再覆蓋保護']],
     ], warn: '紅、腫、熱、痛越來越嚴重或流膿，可能是感染了，請找醫護團或就醫' },
-  { emoji: '💪', tag: 'MUSCLE CRAMPS', title: '抽筋', sub: '小腿最常抽，多半是累了或缺電解質', c1: '#8B5CF6', c2: '#6D28D9',
+  { emoji: '💪', tag: 'MUSCLE CRAMPS', img: 'cramp', title: '抽筋', sub: '小腿最常抽，多半是累了或缺電解質', c1: '#8B5CF6', c2: '#6D28D9',
     secs: [
       ['✅', '馬上這樣做', '#15803D', ['停下來，找地方坐下', '小腿抽筋：腳伸直，把腳尖慢慢往身體方向扳', '輕輕按摩，等放鬆了再慢慢走', '補充運動飲料或加鹽的水']],
       ['🛡️', '預防', '#2563EB', ['出發前、休息後先伸展', '流很多汗時，喝水也要補一點鹽分', '累了就休息，不要硬撐']],
     ] },
-  { emoji: '☀️', tag: 'SUNBURN', title: '曬傷', sub: '連續好幾天曝曬，皮膚會受不了', c1: '#FBBF24', c2: '#F97316',
+  { emoji: '☀️', tag: 'SUNBURN', img: 'sunburn', title: '曬傷', sub: '連續好幾天曝曬，皮膚會受不了', c1: '#FBBF24', c2: '#F97316',
     secs: [
       ['🛡️', '預防', '#2563EB', ['擦防曬，流汗後 2 小時補擦一次', '戴寬邊帽、穿袖套或薄長袖', '脖子後面、耳朵、腳背也別忘了']],
       ['✅', '曬傷了怎麼辦', '#15803D', ['用冷水或冷毛巾冷敷降溫', '擦蘆薈膠或保濕乳液', '多喝水，起水泡不要弄破']],
     ] },
-  { emoji: '🩹', tag: 'SPRAINS & SCRAPES', title: '扭傷・擦傷', sub: '人多、天暗、路不平，走路要小心', c1: '#14B8A6', c2: '#0F766E',
+  { emoji: '🩹', tag: 'SPRAINS & SCRAPES', img: 'sprain', title: '扭傷・擦傷', sub: '人多、天暗、路不平，走路要小心', c1: '#14B8A6', c2: '#0F766E',
     secs: [
       ['✅', '扭傷', '#15803D', ['先休息，不要再走', '冰敷 15～20 分鐘，用彈性繃帶包紮', '坐下或躺下時把腳抬高']],
       ['✅', '擦傷', '#15803D', ['用乾淨的水把沙子、髒東西沖掉', '用乾淨紗布或 OK 繃蓋住']],
     ], warn: '腳不能踩地、明顯變形或傷口很深流血不止，請找醫護團或撥 119' },
-  { emoji: '🚑', tag: 'NEED HELP', title: '需要幫忙時', sub: '白沙屯拱天宮醫護團隨香服務', c1: '#D65A68', c2: '#B4232F',
+  { emoji: '🚑', tag: 'NEED HELP', img: 'help', title: '需要幫忙時', sub: '白沙屯拱天宮醫護團隨香服務', c1: '#D65A68', c2: '#B4232F',
     secs: [
       ['📍', '找醫護團', '#B4232F', ['找穿醫護團背心的志工', '隊伍前後都有救護人員跟著', '覺得不舒服就說，不要硬撐']],
       ['☎️', '緊急狀況', '#B4232F', ['昏倒、胸痛、呼吸困難、叫不醒', '立刻撥 119，並告訴對方在哪個路口或明顯地標']],
