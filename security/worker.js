@@ -352,6 +352,10 @@ const REPLIES = {
       },
     };
   },
+  '衛教須知': () => ({
+    type: 'flex', altText: '衛教須知：中暑、水泡、抽筋、曬傷、扭傷，往左滑看更多',
+    contents: { type: 'carousel', contents: EDU.map(eduCard) },
+  }),
   '認識醫護團': () => ({
     type: 'flex', altText: '認識白沙屯慈昕醫護文化協會',
     contents: {
