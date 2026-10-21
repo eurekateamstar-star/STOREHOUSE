@@ -125,7 +125,7 @@ const tabs = () => [
 ];
 // 一般民眾也看得到的三格：按下去會在聊天室送出這句話，內容請在 LINE 官方帳號後台設定「關鍵字自動回應」
 const PUBLIC = [
-  { type: 'message', label: '認識醫療團', text: '認識醫療團' },
+  { type: 'message', label: '認識醫護團', text: '認識醫護團' },
   { type: 'message', label: '衛教須知', text: '衛教須知' },
   { type: 'message', label: '聯絡管理員', text: '聯絡管理員' },
 ];
@@ -228,7 +228,7 @@ async function menuSetupRoute(req, env, json) {
 const FB_URL = 'https://www.facebook.com/tszshinems/';
 const IG_URL = 'https://www.instagram.com/tszshinems/';
 const REPLIES = {
-  '認識醫療團': () => ({
+  '認識醫護團': () => ({
     type: 'flex', altText: '認識白沙屯慈昕醫護文化協會',
     contents: {
       type: 'bubble', size: 'giga',
@@ -262,7 +262,7 @@ async function webhookRoute(req, env) {
   try { events = JSON.parse(body).events || []; } catch (e) { return ok(); }
   for (const ev of events) {
     if (ev.type !== 'message' || ev.message?.type !== 'text' || !ev.replyToken) continue;
-    const make = REPLIES[String(ev.message.text).trim()];
+    const t0 = String(ev.message.text).trim(), make = REPLIES[t0 === '認識醫療團' ? '認識醫護團' : t0];   // 舊選單的文字也接受
     if (!make) continue;
     await fetch('https://api.line.me/v2/bot/message/reply', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + env.LINE_BOT_TOKEN },
