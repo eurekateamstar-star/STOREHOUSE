@@ -32,8 +32,8 @@ export default {
     if (new URL(req.url).pathname === '/share-get' && req.method === 'GET') {   // 分享卡片內容（公開，給 LIFF 分享頁用）
       const id = new URL(req.url).searchParams.get('id') || '';
       if (!/^[A-Za-z0-9_-]{6,40}$/.test(id)) return json({ error: 'bad id' }, 400);
-      try { const d = await fsGet(await saToken(env), `share/${id}`); if (!d) return json({ error: '這張卡片已經刪除了' }, 404);
-        const card = { id, ...fobj(d.fields) };
+      try { let card = EDU_CARDS[id];
+        if (!card) { const d = await fsGet(await saToken(env), `share/${id}`); if (!d) return json({ error: '這張卡片已經刪除了' }, 404); card = { id, ...fobj(d.fields) }; }
         return new Response(JSON.stringify({ ok: true, card: { ...card, flex: shareFlex(card, new URL(req.url).origin) } }), { headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=30' } }); }
       catch (e) { return json({ error: 'failed' }, 500); }
     }
@@ -45,7 +45,7 @@ export default {
         out[k] = r.ok ? 'ok' : await r.text();
       }
       { const r = await fetch('https://api.line.me/v2/bot/message/validate/reply', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + env.LINE_BOT_TOKEN },
-          body: JSON.stringify({ messages: [shareFlex({ id: 'sample000', title: '標題', text: '說明', w: 1080, h: 1350 }, new URL(req.url).origin)] }) });
+          body: JSON.stringify({ messages: [shareFlex({ id: 'sample000', title: '標題', text: '說明', w: 1080, h: 1350 }, new URL(req.url).origin), shareFlex(EDU_CARDS['edu-heat'], '')] }) });
         out['分享卡片'] = r.ok ? 'ok' : await r.text(); }
       return json(out);
     }
@@ -296,6 +296,8 @@ const eduCard = ({ img, secs, warn }) => ({
         { type: 'text', text: warn, size: 'sm', color: '#7F1D1D', wrap: true } ] },
     ] }] : []),
   ] },
+  footer: { type: 'box', layout: 'vertical', paddingAll: '12px', paddingTop: '0px', contents: [
+    { type: 'button', style: 'secondary', height: 'sm', action: { type: 'uri', label: '➦ 分享這張衛教小卡', uri: `${SHARE_LIFF}?share=edu-${img}` } }] },
 });
 const EDU = [
   { emoji: '🥵', tag: 'HEAT ILLNESS', img: 'heat', title: '中暑・熱衰竭', sub: '白天走在大太陽下最常見', c1: '#F97316', c2: '#DC2626',
@@ -554,17 +556,21 @@ async function journeyRoute(req, env, json) {
   } catch (e) { return json({ error: String((e && e.message) || e) }, e && e.code || 500); }
 }
 const SHARE_LIFF = 'https://liff.line.me/2011820105-x1KU6xLW', OA_URL = 'https://line.me/R/ti/p/@393geitc';
+// 內建衛教小卡（圖在 /richmenu/card-*.jpg，由 scratchpad edu_card.py 產生）
+const EDU_H = { heat: 1849, blister: 1509, cramp: 1350, sunburn: 1350, sprain: 1390, help: 1350 };
+const EDU_CARDS = Object.fromEntries(EDU.map(e => ['edu-' + e.img, { id: 'edu-' + e.img, builtin: true, w: 1080, h: EDU_H[e.img] || 1350,
+  alt: '衛教小卡：' + e.title, imgUrl: `${SITE}/richmenu/card-${e.img}.jpg?v=1` }]));
 function shareFlex(c, origin) {
   const ratio = Math.min(3, Math.max(1 / 3, (c.w || 1) / (c.h || 1))), W = 1000, H = Math.round(W / ratio);
-  const body = [];
+  const body = [], heroUrl = c.imgUrl || `${origin}/c/${c.id}.jpg`;
   if (c.title) body.push({ type: 'text', text: c.title, weight: 'bold', size: 'lg', color: '#ffffff', wrap: true });
   if (c.text) body.push({ type: 'text', text: c.text, size: 'sm', color: '#ffffffcc', wrap: true, margin: c.title ? 'sm' : 'none', lineSpacing: '4px' });
   body.push({ type: 'box', layout: 'vertical', backgroundColor: '#ffffff', cornerRadius: '10px', paddingAll: '13px', margin: body.length ? 'lg' : 'none',
     action: { type: 'uri', label: '看更多', uri: c.url || OA_URL },
     contents: [{ type: 'text', text: c.btn || '🏥 到白沙屯醫護團 LINE 看更多', weight: 'bold', size: 'md', color: '#1e3a5f', align: 'center', wrap: true }] });
   body.push({ type: 'text', text: '➦ 分享給親友', size: 'md', color: '#ffffff', align: 'center', margin: 'lg', action: { type: 'uri', label: '分享給親友', uri: `${SHARE_LIFF}?share=${c.id}` } });
-  return { type: 'flex', altText: c.title || '白沙屯醫護團', contents: { type: 'bubble', size: 'giga',
-    hero: { type: 'image', url: `${origin}/c/${c.id}.jpg`, size: 'full', aspectMode: 'cover', aspectRatio: `${W}:${H}` },
+  return { type: 'flex', altText: c.alt || c.title || '白沙屯醫護團', contents: { type: 'bubble', size: 'giga',
+    hero: { type: 'image', url: heroUrl, size: 'full', aspectMode: 'cover', aspectRatio: `${W}:${H}` },
     body: { type: 'box', layout: 'vertical', paddingAll: '16px', backgroundColor: '#1e3a5f', contents: body } } };
 }
 // ===== 分享卡片：管理員上傳圖文，團員用 LIFF shareTargetPicker 轉傳給親友／群組 =====
@@ -578,7 +584,7 @@ async function shareCardRoute(req, env, json) {
     const patch = (path, fields) => fetch(`${FS}/${path}?${Object.keys(fields).map(k => 'updateMask.fieldPaths=' + k).join('&')}`, { method: 'PATCH', headers: H, body: JSON.stringify({ fields: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, tv(v)])) }) });
     const clean = b => ({ title: String(b.title || '').slice(0, 60), text: String(b.text || '').slice(0, 300), btn: String(b.btn || '').slice(0, 30),
       url: /^https:\/\/[^\s]{4,400}$/.test(b.url || '') ? b.url : 'https://line.me/R/ti/p/@393geitc' });
-    if (action === 'list') return json({ ok: true, cards: (await fsList(tok, 'share')).sort((x, y) => (y.at ?? 0) - (x.at ?? 0)).map(c => ({ ...c, flex: shareFlex(c, new URL(req.url).origin) })) });
+    if (action === 'list') return json({ ok: true, cards: [...(await fsList(tok, 'share')).sort((x, y) => (y.at ?? 0) - (x.at ?? 0)), ...Object.values(EDU_CARDS)].map(c => ({ ...c, flex: shareFlex(c, new URL(req.url).origin) })) });
     if (action === 'add') {
       const data = String(body.data || '');
       if (!/^[A-Za-z0-9+/=]+$/.test(data) || data.length > 1000000) return json({ error: '圖片太大或格式不對' }, 400);
