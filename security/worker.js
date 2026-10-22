@@ -719,7 +719,7 @@ function noticeFlex(body, ttl, msg, btn, link) {
   // 版型：衛教小卡同色系漸層抬頭＋白底資訊表格（正式通知風格）
   const kind = String(body.kind || '通知').slice(0, 10), sub = String(body.sub || '').slice(0, 60);
   const rows = (Array.isArray(body.rows) ? body.rows : []).slice(0, 6).map(x => [String(x[0] || '').slice(0, 8), String(x[1] || '').slice(0, 60)]).filter(x => x[0] && x[1]);
-  const [c1, c2, en] = ({ '用餐登記': ['#F97316', '#DC2626', 'MEAL REGISTRATION'], '排班分享': ['#14B8A6', '#0F766E', 'SCHEDULE SHARED'] })[kind] || ['#E0566A', '#9F1D2B', 'NOTICE'];
+  const [c1, c2, en, ic] = ({ '用餐登記': ['#F97316', '#DC2626', 'MEAL REGISTRATION', 'meal'], '排班分享': ['#14B8A6', '#0F766E', 'SCHEDULE SHARED', 'sched'] })[kind] || ['#E0566A', '#9F1D2B', 'NOTICE', 'bell'];
   const rowBox = ([k, v], i) => ({ type: 'box', layout: 'horizontal', paddingTop: '10px', paddingBottom: '10px', contents: [
     { type: 'text', text: k, size: 'sm', color: '#6B7280', flex: 2, gravity: 'center' },
     { type: 'text', text: v, size: 'sm', color: '#111827', weight: 'bold', flex: 5, align: 'end', wrap: true, gravity: 'center' }] });
@@ -729,8 +729,10 @@ function noticeFlex(body, ttl, msg, btn, link) {
     header: { type: 'box', layout: 'vertical', paddingAll: '20px', paddingBottom: '18px', background: { type: 'linearGradient', angle: '135deg', startColor: c1, endColor: c2 }, contents: [
       { type: 'text', text: en, size: 'xxs', color: '#FFFFFFD9', weight: 'bold' },
       { type: 'box', layout: 'vertical', width: '24px', height: '3px', backgroundColor: '#FFFFFFD9', cornerRadius: '2px', margin: 'sm', contents: [] },
-      { type: 'text', text: ttl, size: 'xl', color: '#FFFFFF', weight: 'bold', wrap: true, margin: 'md' },
+      { type: 'text', text: ttl, size: 'xl', color: '#FFFFFF', weight: 'bold', wrap: true, margin: 'md', offsetEnd: '0px' },
       ...(sub ? [{ type: 'text', text: sub, size: 'xs', color: '#FFFFFFE0', wrap: true, margin: 'xs' }] : []),
+      { type: 'box', layout: 'vertical', position: 'absolute', offsetTop: '16px', offsetEnd: '16px', width: '52px', height: '52px',
+        contents: [{ type: 'image', url: `${SITE}/richmenu/ic-n-${ic}.png`, size: 'full', aspectRatio: '1:1', aspectMode: 'fit' }] },
     ] },
     body: { type: 'box', layout: 'vertical', paddingAll: '20px', paddingTop: '10px', paddingBottom: '6px', contents: [
       ...table,
