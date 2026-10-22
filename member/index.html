@@ -1531,16 +1531,42 @@
       .ms-card{background:#fff;border-radius:20px;box-shadow:0 8px 24px rgba(120,60,50,.08);border:1px solid #f1e8e4;overflow:hidden;margin:14px 0}
       .ms-h{padding:12px 16px;background:linear-gradient(120deg,#fff5f3,#fff8ef);font-weight:900;font-size:16px;color:var(--ink)}.ms-h small{display:block;font-size:12px;color:var(--sub);font-weight:700;margin-top:2px}
       .ms-d{display:grid;grid-template-columns:74px 1fr;border-top:1px solid #f3ece9}
-      .ms-dl{background:#fdf6f4;padding:10px 6px;text-align:center;border-right:1px solid #f1e6e2}.ms-dl b{display:block;font-size:17px;color:var(--ink)}.ms-dl span{font-size:11px;color:var(--sub)}.ms-dl i{display:block;font-style:normal;font-size:11px;color:#fff;background:#1e3a8a;border-radius:6px;margin-top:4px;padding:1px 0}
+      .ms-dl{background:#fdf6f4;padding:10px 6px;text-align:center;border-right:1px solid #f1e6e2;cursor:pointer}.ms-dl u{display:block;text-decoration:none;font-size:10px;color:#c2414f;font-weight:800;margin-top:4px}.ms-dl b{display:block;font-size:17px;color:var(--ink)}.ms-dl span{font-size:11px;color:var(--sub)}.ms-dl i{display:block;font-style:normal;font-size:11px;color:#fff;background:#1e3a8a;border-radius:6px;margin-top:4px;padding:1px 0}
       .ms-r{padding:9px 12px;min-width:0}.ms-t{font-weight:900;color:#c2414f;font-size:15px}.ms-t small{color:var(--sub);font-weight:700;font-size:12px;margin-left:6px}
       .ms-m{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}.ms-m span{font-size:13px;padding:2px 8px;border-radius:8px;background:#f5f1ef}.ms-m span.me{background:#fde8ea;color:#b91c1c;font-weight:900}
       .ms-x{font-size:12px;color:#6b7280;margin-top:5px;line-height:1.5}.ms-x b{color:#b91c1c}</style>
       ${evs.map(e => `<div class="ms-card"><div class="ms-h">📅 我的排班<small>${esc(e.title)}・共 ${e.days.length} 天</small></div>
         ${e.days.map(x => { const dd = new Date(x.d + 'T12:00:00');
-          return `<div class="ms-d"><div class="ms-dl"><b>${dd.getMonth() + 1}/${dd.getDate()}</b><span>(${WK[dd.getDay()]})</span>${x.tag ? `<i>${esc(x.tag)}</i>` : ''}</div>
-          <div class="ms-r"><div class="ms-t">${esc(x.team)}<small>${x.place ? '🛏 ' + esc(x.place) : ''}</small></div>
+          return `<div class="ms-d"><div class="ms-dl" data-msd="${e.id}|${x.d}"><b>${dd.getMonth() + 1}/${dd.getDate()}</b><span>(${WK[dd.getDay()]})</span>${x.tag ? `<i>${esc(x.tag)}</i>` : ''}<u>看全部 ›</u></div>
+          <div class="ms-r" data-msd="${e.id}|${x.d}" style="cursor:pointer"><div class="ms-t">${esc(x.team)}<small>${x.place ? '🛏 ' + esc(x.place) : ''}</small></div>
           <div class="ms-m">${x.members.map(n => `<span class="${n === e.name ? 'me' : ''}">${esc(n)}</span>`).join('')}</div>
           ${x.eq || x.note || x.duty.length || x.arrive ? `<div class="ms-x">${x.eq ? '🎒 ' + esc(x.eq) + '<br>' : ''}${x.note ? '<b>📝 ' + esc(x.note) + '</b><br>' : ''}${x.duty.length ? '<b>◎ ' + esc(x.duty.join('、')) + '</b><br>' : ''}${x.arrive ? '⏰ ' + esc(x.arrive) : ''}</div>` : ''}</div></div>`; }).join('')}</div>`).join('')}`;
+    box.querySelectorAll('[data-msd]').forEach(el => el.onclick = () => { const [a, b] = el.dataset.msd.split('|'); showMyDay(a, b); });
+  }
+  function showMyDay(eid, d) {
+    const e = (mySchedData || []).find(x => x.id === eid); const x = e && e.days.find(y => y.d === d); if (!x) return;
+    const dd = new Date(d + 'T12:00:00'), NC = Math.max(5, ...x.teams.map(t => t.m.length)), I = x.info || {};
+    let first = true;
+    const rows = x.teams.map(t => { const back = t.l.startsWith('轎後'), cls = back && first ? 'b' : ''; if (back) first = false;
+      return `<tr class="${cls} ${t.l === x.team ? 'mine' : ''}"><th><span>${esc(t.l.slice(0, 2))}</span>${esc(t.l.slice(2))}</th>${Array.from({ length: NC }, (_, j) => { const k = t.m[j];
+        return k ? `<td style="background:${CAT_BG[e.cats[k]] || '#fff'}" class="${k === e.name ? 'me' : ''}">${esc(k)}${t.pn[k] ? `<em>${esc(t.pn[k])}</em>` : ''}</td>` : '<td></td>'; }).join('')}<td class="q">${esc(t.eq).replace(/AMBU包(\*\d+)?/g, m => `<b style="color:#2563eb">${m}</b>`)}</td></tr>`; }).join('');
+    const duty = [I.bus || I.stay || I.stock ? `◎<b>值日生</b>：<b>中巴</b>－${esc(I.bus || '　')}。<b>住宿</b>－${esc(I.stay || '　')}。<b>物資車盤點</b>－${esc(I.stock || '　')}` : '', I.wash ? `<span style="color:#dc2626">◎<b>洗衣服</b>：${esc(I.wash)}</span>` : '', I.arrive ? '◎' + esc(I.arrive) : ''].filter(Boolean);
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(31,36,48,.5);display:flex;align-items:center;justify-content:center;padding:10px';
+    ov.innerHTML = `<div style="background:#fff;border-radius:18px;width:100%;max-width:560px;max-height:92vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.3)">
+      <style>.md-t{width:100%;border-collapse:collapse;table-layout:fixed}.md-t th,.md-t td{border:1px solid #f1e8e5;height:40px;text-align:center;font-size:13px;padding:0 1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .md-t th{width:44px;background:#fdf6f4;color:#c2414f;font-size:16px;font-weight:900;line-height:1}.md-t th span{display:block;font-size:9px;color:#b98d94;letter-spacing:2px;margin-bottom:2px}
+        .md-t td.q{width:74px;font-size:9.5px;white-space:normal;line-height:1.2;color:#b91c1c;text-align:left;padding:2px 4px}.md-t td em{display:block;font-style:normal;font-size:8px;color:#dc2626;font-weight:700}
+        .md-t td{font-weight:700;color:#1f2430}.md-t td.me{outline:3px solid #c2414f;outline-offset:-3px;color:#b91c1c}.md-t tr.b>*{border-top:3px solid #c2414f}.md-t tr.mine th{background:#fde8ea}</style>
+      <div style="padding:14px 14px 10px;display:flex;justify-content:space-between;align-items:center;background:#fdf6f4;border-bottom:1px solid #f1e8e5">
+        <div><div style="font-size:22px;font-weight:900">${x.tag ? `<span style="font-size:13px;background:#1e3a8a;color:#fff;border-radius:6px;padding:2px 8px;vertical-align:4px;margin-right:6px">${esc(x.tag)}</span>` : ''}${dd.getMonth() + 1}月${dd.getDate()}日(${WK[dd.getDay()]})</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:2px">${x.place ? '🛏 ' + esc(x.place) + '　' : ''}${e.cmd.length ? '指揮官：' + esc(e.cmd.join('、')) + '　' : ''}${x.teams.length} 組・${x.teams.reduce((n, t) => n + t.m.length, 0)} 人</div></div>
+        <button id="md-x" style="border:none;background:#fff;border-radius:50%;width:36px;height:36px;font-size:18px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.1)">✕</button></div>
+      <table class="md-t">${rows}</table>
+      ${duty.length ? `<div style="padding:8px 12px;font-size:11.5px;line-height:1.7;color:#475569">${duty.join('<br>')}</div>` : ''}
+      <div style="padding:6px 12px 12px;font-size:11px;color:#9a8f8b">紅框是你，淺紅底是你這組</div></div>`;
+    document.body.appendChild(ov);
+    ov.onclick = ev => { if (ev.target === ov || ev.target.id === 'md-x') ov.remove(); };
   }
   // ===== 首頁：自己抽籤（管理員在出席調查「開放自己抽籤」後才會出現）=====
   const lotState = {};      // eid → 伺服器回來的狀態
