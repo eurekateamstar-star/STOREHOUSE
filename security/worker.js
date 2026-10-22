@@ -47,6 +47,7 @@ export default {
     if (path === '/webhook') return webhookRoute(req, env);
     if (path === '/lot') return lotRoute(req, env, json);
     if (path === '/mysched') return mySchedRoute(req, env, json);
+    if (path === '/myplan') return myPlanRoute(req, env, json);
     if (path === '/parse') return parseRoute(req, env, json);
     if (path === '/menu') return menuRoute(req, env, json);
     if (path === '/menu-setup') return menuSetupRoute(req, env, json);
@@ -548,7 +549,7 @@ async function mySchedRoute(req, env, json) {
     if (u.status !== 'approved' || !u.rosterId) return json({ events: [] });
     const tok = await saToken(env);
     const ro = await fsGet(tok, `member_roster/${encodeURIComponent(u.rosterId)}`); if (!ro) return json({ events: [] });
-    const myKey = normName(fobj(ro.fields).name);
+    const roF = fobj(ro.fields), myKey = normName(roF.name), myG = String(roF.idCard || '').toUpperCase()[1] === '2' ? '8' : '7';
     const evs = (await fsList(tok, 'events')).filter(e => e.schedPublic);
     const roster = evs.length ? await fsList(tok, 'member_roster') : [], byName = {};
     roster.forEach(x => { const k = normName(x.name); if (k && !byName[k]) byName[k] = x; });
@@ -573,9 +574,48 @@ async function mySchedRoute(req, env, json) {
         return { d, tag: I.tag || '', place: I.place || '', team: t.l, members: t.m, eq, note: (t.pn || {})[myKey] || '', duty, arrive,
           teams: full(d), info: { bus: I.bus || '', stay: I.stay || '', stock: I.stock || '', wash: I.wash || '', arrive: I.arrive || '' } };
       }).filter(Boolean);
-      out.push({ id: e.id, title: e.title || '', name: myKey, days: mine, cats, cmd });
+      // 我的住宿／中巴：管理員設定 > 自己登記 > 自動
+      const selfDoc = await fsGet(tok, `events/${e.id}/admin/self_${u.rosterId}`), self = selfDoc ? (fobj(selfDoc.fields).days || {}) : {};
+      const att = (sc.att || {})[myKey] || {}, car = (sc.car || {})[myKey] || {};
+      const inT = d => (days[d] || []).some(t => (t.m || []).includes(myKey));
+      const W = d => { const w0 = (att.w || {})[d]; return w0 === undefined ? (inT(d) ? '2' : '') : (w0 === 'x' ? '' : w0); };
+      const S = d => { const s0 = (att.s || {})[d], ss = (self[d] || {}).s; return s0 === 'x' ? '' : s0 ? s0 : ss && ss !== 'x' ? ss : ''; };
+      const plan = d => { const w = W(d), veh = ['1', '4', '5', '6'].includes(w) ? w : '9';
+        const au = !w ? { o: '', y: '', h: '' } : w === '1' ? { o: '1', y: '1', h: '1' } : { o: S(isoAddW(d, -1)) ? veh : '', y: veh, h: S(d) ? veh : '' };
+        const st = { ...(self[d] || {}), ...((car[d]) || {}) }, o = { d, w, s: S(d), adminS: (att.s || {})[d] !== undefined, adminCar: {} };
+        ['o', 'y', 'h'].forEach(f => { const v = st[f]; o[f] = v === undefined ? au[f] : (v === 'x' ? '' : v); o.adminCar[f] = (car[d] || {})[f] !== undefined; });
+        return o; };
+      const ds = mine.map(x => x.d), first = ds[0], pre = first ? isoAddW(first, -1) : null;
+      const planDays = [...(pre && (!sc.start || pre >= isoAddW(sc.start, -1)) ? [pre] : []), ...ds, ...Object.keys(self).filter(d => !ds.includes(d) && d !== pre)].sort();
+      out.push({ id: e.id, title: e.title || '', name: myKey, days: mine, cats, cmd, g: myG, plan: planDays.map(plan) });
     }
     return json({ events: out });
+  } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
+}
+const isoAddW = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+// 團員自己登記某天的住宿／中巴：{ idToken, eid, d, s:'7'|'8'|'x'|null, o/y/h:'9'|'x'|null }（null = 回到自動）
+async function myPlanRoute(req, env, json) {
+  try {
+    const { idToken, eid, d, ...v } = await req.json();
+    if (!idToken || !/^[A-Za-z0-9_-]{1,64}$/.test(eid || '') || !/^\d{4}-\d{2}-\d{2}$/.test(d || '')) return json({ error: 'missing' }, 400);
+    const uid = uidOfToken(idToken);
+    const me = await fetch(`${FS}/users/${encodeURIComponent(uid)}`, { headers: { Authorization: 'Bearer ' + idToken } });
+    if (!me.ok) return json({ error: 'not signed in' }, 401);
+    const u = fobj((await me.json()).fields);
+    if (u.status !== 'approved' || !u.rosterId) return json({ error: 'not member' }, 403);
+    const tok = await saToken(env);
+    const ev = await fsGet(tok, `events/${eid}`); if (!ev || !fobj(ev.fields).schedPublic) return json({ error: '排班未公開' }, 403);
+    const ro = await fsGet(tok, `member_roster/${encodeURIComponent(u.rosterId)}`); if (!ro) return json({ error: 'no roster' }, 403);
+    const key = normName(fobj(ro.fields).name), path = `events/${eid}/admin/self_${u.rosterId}`;
+    const cur = await fsGet(tok, path), days = cur ? (fobj(cur.fields).days || {}) : {};
+    const dv = { ...(days[d] || {}) };
+    if ('s' in v) { if (v.s === null) delete dv.s; else if (['7', '8', 'x'].includes(v.s)) dv.s = v.s; }
+    ['o', 'y', 'h'].forEach(f => { if (f in v) { if (v[f] === null) delete dv[f]; else if (['9', 'x'].includes(v[f])) dv[f] = v[f]; } });
+    days[d] = dv; if (!Object.keys(dv).length) delete days[d];
+    const w = await fetch(`${FS}/${path}`, { method: 'PATCH', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields: { key: tv(key), days: tv(days), at: { timestampValue: new Date().toISOString() } } }) });
+    if (!w.ok) return json({ error: 'write failed ' + w.status }, 500);
+    return json({ ok: true });
   } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
 }
 async function signJwt(sa, payload) {
