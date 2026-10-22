@@ -1506,7 +1506,41 @@
       </div>`;
     }).join('');
     el.querySelectorAll('[data-att]').forEach(b => b.onclick = () => { const url = eventLink(b.dataset.att); try { if (inLine()) { liff.openWindow({ url, external: false }); return; } } catch (e) {} location.href = url; });
-    renderLotCards();
+    renderLotCards(); loadMySched();
+  }
+  // ===== 首頁：我的排班（管理員在排班表打開「公開給團員看」才會出現）=====
+  let mySchedKey = null, mySchedData = null;
+  async function loadMySched() {
+    if (!user || user.status !== 'approved' || !user.rosterId || !auth.currentUser) return;
+    const k = eventsCache.filter(e => e.schedPublic).map(e => e.id + ':' + tsMs(e.schedPublicAt)).join(',');
+    if (k === mySchedKey) return; mySchedKey = k;
+    if (!k) { mySchedData = null; renderMySched(); return; }
+    try {
+      const idToken = await auth.currentUser.getIdToken();
+      const r = await fetch(AUTH_URL + '/mysched', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken }) });
+      const j = await r.json(); mySchedData = j.events || [];
+    } catch (e) { mySchedData = null; mySchedKey = null; }
+    renderMySched();
+  }
+  function renderMySched() {
+    let box = $('my-sched');
+    if (!box) { box = document.createElement('div'); box.id = 'my-sched'; ($('lot-cards') || $('attend-cards')).after(box); }
+    const evs = (mySchedData || []).filter(e => e.days.length);
+    if (!evs.length) { box.innerHTML = ''; return; }
+    box.innerHTML = `<style>
+      .ms-card{background:#fff;border-radius:20px;box-shadow:0 8px 24px rgba(120,60,50,.08);border:1px solid #f1e8e4;overflow:hidden;margin:14px 0}
+      .ms-h{padding:12px 16px;background:linear-gradient(120deg,#fff5f3,#fff8ef);font-weight:900;font-size:16px;color:var(--ink)}.ms-h small{display:block;font-size:12px;color:var(--sub);font-weight:700;margin-top:2px}
+      .ms-d{display:grid;grid-template-columns:74px 1fr;border-top:1px solid #f3ece9}
+      .ms-dl{background:#fdf6f4;padding:10px 6px;text-align:center;border-right:1px solid #f1e6e2}.ms-dl b{display:block;font-size:17px;color:var(--ink)}.ms-dl span{font-size:11px;color:var(--sub)}.ms-dl i{display:block;font-style:normal;font-size:11px;color:#fff;background:#1e3a8a;border-radius:6px;margin-top:4px;padding:1px 0}
+      .ms-r{padding:9px 12px;min-width:0}.ms-t{font-weight:900;color:#c2414f;font-size:15px}.ms-t small{color:var(--sub);font-weight:700;font-size:12px;margin-left:6px}
+      .ms-m{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}.ms-m span{font-size:13px;padding:2px 8px;border-radius:8px;background:#f5f1ef}.ms-m span.me{background:#fde8ea;color:#b91c1c;font-weight:900}
+      .ms-x{font-size:12px;color:#6b7280;margin-top:5px;line-height:1.5}.ms-x b{color:#b91c1c}</style>
+      ${evs.map(e => `<div class="ms-card"><div class="ms-h">📅 我的排班<small>${esc(e.title)}・共 ${e.days.length} 天</small></div>
+        ${e.days.map(x => { const dd = new Date(x.d + 'T12:00:00');
+          return `<div class="ms-d"><div class="ms-dl"><b>${dd.getMonth() + 1}/${dd.getDate()}</b><span>(${WK[dd.getDay()]})</span>${x.tag ? `<i>${esc(x.tag)}</i>` : ''}</div>
+          <div class="ms-r"><div class="ms-t">${esc(x.team)}<small>${x.place ? '🛏 ' + esc(x.place) : ''}</small></div>
+          <div class="ms-m">${x.members.map(n => `<span class="${n === e.name ? 'me' : ''}">${esc(n)}</span>`).join('')}</div>
+          ${x.eq || x.note || x.duty.length || x.arrive ? `<div class="ms-x">${x.eq ? '🎒 ' + esc(x.eq) + '<br>' : ''}${x.note ? '<b>📝 ' + esc(x.note) + '</b><br>' : ''}${x.duty.length ? '<b>◎ ' + esc(x.duty.join('、')) + '</b><br>' : ''}${x.arrive ? '⏰ ' + esc(x.arrive) : ''}</div>` : ''}</div></div>`; }).join('')}</div>`).join('')}`;
   }
   // ===== 首頁：自己抽籤（管理員在出席調查「開放自己抽籤」後才會出現）=====
   const lotState = {};      // eid → 伺服器回來的狀態
@@ -2140,6 +2174,7 @@
         <div><label>每組人數</label><input type="number" id="sc-size" min="2" max="6" value="${sc.size || 5}" style="width:70px"></div>
         <button class="sbtn" id="sc-auto" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">🔀 自動排班</button>
         ${days.length && Object.keys(dt).length ? '<button class="sbtn" id="sc-xlsx" style="background:#1f2430;color:#fff;">⬇ 下載排班 Excel</button><button class="sbtn" id="sc-shotall" style="background:#0f766e;color:#fff;">📷 全部天數存成一張圖</button>' : ''}
+        ${days.length && Object.keys(dt).length ? `<button class="sbtn" id="sc-pub" style="background:${e.schedPublic ? '#16a34a' : '#e5e7eb'};color:${e.schedPublic ? '#fff' : '#374151'};">${e.schedPublic ? '👁 團員看得到排班' : '🙈 排班未公開'}</button>` : ''}
         ${days.length ? '<button class="sbtn" id="sc-att" style="background:#7c3aed;color:#fff;">🛏 出勤／住宿表</button><button class="sbtn" id="sc-car" style="background:#0f766e;color:#fff;">🚐 座車統計</button>' : ''}
       </div>
       ${!all.length ? '<div class="card empty" style="margin-top:12px;">還沒有人回覆出席</div>' : `${editor}<div class="sc-grid">${SLOTS.map(slotBox).join('')}</div>
@@ -2212,6 +2247,11 @@
     document.querySelectorAll('[data-shot]').forEach(b => b.onclick = e2 => { e2.stopPropagation(); shotDay(b.dataset.shot); });
     if ($('sc-xlsx')) $('sc-xlsx').onclick = () => exportSchedXlsx(eid);
     if ($('sc-shotall')) $('sc-shotall').onclick = () => shotAll();
+    if ($('sc-pub')) $('sc-pub').onclick = async () => {
+      const on = !e.schedPublic;
+      if (!(await dialog({ title: on ? '公開排班給團員？' : '隱藏排班？', msg: on ? '團員在會員中心首頁會看到「我的排班」：自己每天在哪一組、同組有誰、裝備、備註、值日生。' : '團員首頁的「我的排班」會消失。', okText: on ? '公開' : '隱藏' }))) return;
+      try { await updateDoc(doc(db, 'events', eid), { schedPublic: on, schedPublicAt: serverTimestamp() }); e.schedPublic = on; toast(on ? '✅ 已公開' : '已隱藏'); renderSched(eid); } catch (err) { toast('❌ 失敗'); }
+    };
     if ($('sc-att')) $('sc-att').onclick = () => { attOpen = true; attBrush = null; renderAtt(eid); $('sheet').scrollTop = 0; };
     if ($('sc-car')) $('sc-car').onclick = () => { attOpen = true; carOpen = true; renderCar(eid); $('sheet').scrollTop = 0; };
   }

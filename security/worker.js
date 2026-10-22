@@ -46,6 +46,7 @@ export default {
     const path = new URL(req.url).pathname;
     if (path === '/webhook') return webhookRoute(req, env);
     if (path === '/lot') return lotRoute(req, env, json);
+    if (path === '/mysched') return mySchedRoute(req, env, json);
     if (path === '/parse') return parseRoute(req, env, json);
     if (path === '/menu') return menuRoute(req, env, json);
     if (path === '/menu-setup') return menuSetupRoute(req, env, json);
@@ -534,6 +535,38 @@ async function journeyRoute(req, env, json) {
     }
     return json({ error: 'unknown action' }, 400);
   } catch (e) { return json({ error: String((e && e.message) || e) }, e && e.code || 500); }
+}
+// ===== 會員中心：我的排班（管理員在排班表打開「公開給團員看」才會回傳）=====
+async function mySchedRoute(req, env, json) {
+  try {
+    const { idToken } = await req.json();
+    if (!idToken) return json({ error: 'missing' }, 400);
+    const uid = uidOfToken(idToken);
+    const me = await fetch(`${FS}/users/${encodeURIComponent(uid)}`, { headers: { Authorization: 'Bearer ' + idToken } });
+    if (!me.ok) return json({ error: 'not signed in' }, 401);
+    const u = fobj((await me.json()).fields);
+    if (u.status !== 'approved' || !u.rosterId) return json({ events: [] });
+    const tok = await saToken(env);
+    const ro = await fsGet(tok, `member_roster/${encodeURIComponent(u.rosterId)}`); if (!ro) return json({ events: [] });
+    const myKey = normName(fobj(ro.fields).name);
+    const evs = (await fsList(tok, 'events')).filter(e => e.schedPublic);
+    const EQN = { kit: '救護包', ambu: 'AMBU包', inst: '儀器包' };
+    const out = [];
+    for (const e of evs) {
+      const dr = await fsGet(tok, `events/${e.id}/admin/draw`); if (!dr) continue;
+      const sc = fobj(dr.fields).sched || {}, days = sc.days || {}, info = sc.info || {};
+      const mine = Object.keys(days).sort().map(d => {
+        const t = (days[d] || []).find(x => (x.m || []).includes(myKey)); if (!t) return null;
+        const eq = t.eq ? [Object.entries(EQN).filter(([k]) => t.eq[k] > 0).map(([k, n]) => n + '*' + t.eq[k]).join('、'), (t.eq.text || '').trim()].filter(Boolean).join('　') : (t.note || '');
+        const I = info[d] || {}, duty = [];
+        [['bus', '中巴值日'], ['stay', '住宿值日'], ['stock', '物資車盤點'], ['wash', '洗衣服']].forEach(([k, n]) => { if (String(I[k] || '').split(/[、,，\s]+/).map(normName).includes(myKey)) duty.push(n); });
+        const arrive = String(I.arrive || '').includes(myKey) ? I.arrive : '';
+        return { d, tag: I.tag || '', place: I.place || '', team: t.l, members: t.m, eq, note: (t.pn || {})[myKey] || '', duty, arrive };
+      }).filter(Boolean);
+      out.push({ id: e.id, title: e.title || '', name: myKey, days: mine });
+    }
+    return json({ events: out });
+  } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
 }
 async function signJwt(sa, payload) {
   const enc = (o) => b64url(new TextEncoder().encode(JSON.stringify(o)));
