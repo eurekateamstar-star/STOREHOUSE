@@ -557,21 +557,21 @@ async function journeyRoute(req, env, json) {
 }
 const SHARE_LIFF = 'https://liff.line.me/2011820105-x1KU6xLW', OA_URL = 'https://line.me/R/ti/p/@393geitc';
 // 內建衛教小卡（圖在 /richmenu/card-*.jpg，由 scratchpad edu_card.py 產生）
-const EDU_H = { heat: 1311, blister: 1053, cramp: 915, sunburn: 867, sprain: 919, help: 819 };
+const EDU_H = {};   // 衛教小卡都是 1080×1080 正方形
 const EDU_CARDS = Object.fromEntries(EDU.map(e => ['edu-' + e.img, { id: 'edu-' + e.img, builtin: true, w: 1080, h: EDU_H[e.img] || 1350,
-  alt: '衛教小卡：' + e.title, imgUrl: `${SITE}/richmenu/card-${e.img}.jpg?v=2` }]));
+  alt: '衛教小卡：' + e.title, imgUrl: `${SITE}/richmenu/card-${e.img}.jpg?v=3` }]));
 function shareFlex(c, origin) {
   const ratio = Math.min(3, Math.max(1 / 3, (c.w || 1) / (c.h || 1))), W = 1000, H = Math.round(W / ratio);
   const body = [], heroUrl = c.imgUrl || `${origin}/c/${c.id}.jpg`;
   if (c.title) body.push({ type: 'text', text: c.title, weight: 'bold', size: 'lg', color: '#ffffff', wrap: true });
   if (c.text) body.push({ type: 'text', text: c.text, size: 'sm', color: '#ffffffcc', wrap: true, margin: c.title ? 'sm' : 'none', lineSpacing: '4px' });
-  body.push({ type: 'box', layout: 'vertical', backgroundColor: '#ffffff', cornerRadius: '10px', paddingAll: '13px', margin: body.length ? 'lg' : 'none',
+  body.push({ type: 'box', layout: 'vertical', backgroundColor: '#ffffff', cornerRadius: '10px', paddingAll: '11px', margin: body.length ? 'lg' : 'none',
     action: { type: 'uri', label: '看更多', uri: c.url || OA_URL },
-    contents: [{ type: 'text', text: c.btn || '🏥 到白沙屯醫護團 LINE 看更多', weight: 'bold', size: 'md', color: '#1e3a5f', align: 'center', wrap: true }] });
-  body.push({ type: 'text', text: '➦ 分享給親友', size: 'md', color: '#ffffff', align: 'center', margin: 'lg', action: { type: 'uri', label: '分享給親友', uri: `${SHARE_LIFF}?share=${c.id}` } });
-  return { type: 'flex', altText: c.alt || c.title || '白沙屯醫護團', contents: { type: 'bubble', size: 'giga',
+    contents: [{ type: 'text', text: c.btn || '🏥 到白沙屯醫護團 LINE 看更多', weight: 'bold', size: 'sm', color: '#1e3a5f', align: 'center', wrap: true }] });
+  body.push({ type: 'text', text: '➦ 分享給親友', size: 'sm', color: '#ffffff', align: 'center', margin: 'lg', action: { type: 'uri', label: '分享給親友', uri: `${SHARE_LIFF}?share=${c.id}` } });
+  return { type: 'flex', altText: c.alt || c.title || '白沙屯醫護團', contents: { type: 'bubble', size: 'mega',
     hero: { type: 'image', url: heroUrl, size: 'full', aspectMode: 'cover', aspectRatio: `${W}:${H}` },
-    body: { type: 'box', layout: 'vertical', paddingAll: '16px', backgroundColor: '#1e3a5f', contents: body } } };
+    body: { type: 'box', layout: 'vertical', paddingAll: '13px', backgroundColor: '#1e3a5f', contents: body } } };
 }
 // ===== 分享卡片：管理員上傳圖文，團員用 LIFF shareTargetPicker 轉傳給親友／群組 =====
 async function shareCardRoute(req, env, json) {
