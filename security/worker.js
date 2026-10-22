@@ -651,16 +651,28 @@ async function remindRoute(req, env, json) {
 async function nudgeRoute(req, env, json) {
   try {
     if (!env.LINE_BOT_TOKEN) return json({ error: 'LINE_BOT_TOKEN 尚未設定' }, 501);
-    const { idToken, uids, text } = await req.json();
+    const { idToken, uids, text, title, url, action } = await req.json();
     if (!idToken) return json({ error: 'missing' }, 400);
     const me = await fsUser(idToken, uidOfToken(idToken));
     if (!memberAdmin(me)) return json({ error: '只有會員中心管理員可以催' }, 403);
+    const quota = async () => {
+      const [q, c] = await Promise.all([lineApi(env, '/v2/bot/message/quota'), lineApi(env, '/v2/bot/message/quota/consumption')]);
+      const qj = q.ok ? await q.json() : {}, cj = c.ok ? await c.json() : {};
+      return { type: qj.type || '', limit: qj.type === 'limited' ? qj.value : null, used: cj.totalUsage ?? null };
+    };
+    if (action === 'quota') return json({ ok: true, ...(await quota()) });
     const list = [...new Set((uids || []).filter(u => /^U[0-9a-f]{32}$/.test(u)))].slice(0, 500);
     if (!list.length) return json({ error: '這些人都還沒綁定 LINE' }, 400);
-    const msg = String(text || '').slice(0, 900);
-    const r = await lineApi(env, '/v2/bot/message/multicast', { method: 'POST', type: 'application/json', body: JSON.stringify({ to: list, messages: [{ type: 'text', text: msg }] }) });
+    const msg = String(text || '').slice(0, 600), ttl = String(title || '提醒').slice(0, 40);
+    const link = /^https:\/\/liff\.line\.me\//.test(url || '') ? url : 'https://liff.line.me/2011820105-x1KU6xLW';
+    const flex = { type: 'flex', altText: `【白沙屯醫護團】${ttl}`, contents: { type: 'bubble', size: 'kilo',
+      header: { type: 'box', layout: 'vertical', paddingAll: '14px', background: { type: 'linearGradient', angle: '90deg', startColor: '#D65A68', endColor: '#F08339' },
+        contents: [{ type: 'text', text: '白沙屯醫護團', size: 'xxs', color: '#ffffffcc', weight: 'bold' }, { type: 'text', text: '🔔 ' + ttl, size: 'lg', color: '#ffffff', weight: 'bold', wrap: true, margin: 'xs' }] },
+      body: { type: 'box', layout: 'vertical', paddingAll: '16px', contents: [{ type: 'text', text: msg, wrap: true, size: 'sm', color: '#374151', lineSpacing: '4px' }] },
+      footer: { type: 'box', layout: 'vertical', paddingAll: '12px', paddingTop: '0px', contents: [{ type: 'button', style: 'primary', color: '#C2414F', height: 'md', action: { type: 'uri', label: '📝 前往登記', uri: link } }] } } };
+    const r = await lineApi(env, '/v2/bot/message/multicast', { method: 'POST', type: 'application/json', body: JSON.stringify({ to: list, messages: [flex] }) });
     if (!r.ok) return json({ error: 'LINE ' + r.status + ' ' + (await r.text()).slice(0, 200) }, 502);
-    return json({ ok: true, sent: list.length });
+    return json({ ok: true, sent: list.length, ...(await quota()) });
   } catch (e) { return json({ error: String((e && e.message) || e) }, e && e.code || 500); }
 }
 async function signJwt(sa, payload) {

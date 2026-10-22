@@ -590,9 +590,9 @@
   const JOIN_URL = 'https://tsushin-buishatun.pages.dev/join/';
 
   // ---------- 小工具 ----------
-  function toast(msg) {
+  function toast(msg, ms) {
     const t = $('toast'); t.textContent = msg; t.classList.add('show');
-    clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2000);
+    clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), ms || 2000);
   }
   function show(view) {
     ['v-loading', 'v-login', 'v-register', 'v-status', 'v-member', 'v-admin'].forEach(id => $(id).classList.toggle('hidden', id !== view));
@@ -2733,16 +2733,22 @@
   async function nudgeMeal(eid, d, miss) {
     const bound = miss.filter(p => p.ro && p.ro.boundUserId), nob = miss.filter(p => !(p.ro && p.ro.boundUserId));
     const e = eventsCache.find(x => x.id === eid) || {};
-    const def = `【白沙屯醫護團】提醒：${dLabel(d)} 的中餐／晚餐你還沒登記喔！\n請打開「會員中心」→「我的排班」→ 點 ${dLabel(d)}，選葷／素／自行處理。\nhttps://liff.line.me/${LIFF_ID}`;
+    const def = `${dLabel(d)} 的中餐／晚餐你還沒登記喔！\n請點下方按鈕 → 我的排班 → 點 ${dLabel(d)}，選葷／素／自行處理。`;
     if (!bound.length) return dialog({ title: '沒辦法用 LINE 提醒', msg: `這 ${miss.length} 人都還沒綁定 LINE：\n${nob.map(p => p.name).join('、')}`, okText: '知道了' });
     if (!e.schedPublic) { if (!(await dialog({ title: '排班還沒公開', msg: '團員要在「我的排班」登記，排班需要先公開。\n仍然要送出提醒嗎？', okText: '仍要送出' }))) return; }
-    const text = await dialog({ title: `用 LINE 提醒 ${bound.length} 人登記用餐`, msg: `會收到：${bound.map(p => p.name).join('、')}${nob.length ? `\n\n未綁定 LINE（收不到）：${nob.map(p => p.name).join('、')}` : ''}\n\n訊息內容（可以改）：`, input: { value: def }, okText: '📣 送出' });
+    const call = async body => { const idToken = await auth.currentUser.getIdToken();
+      const r = await fetch(AUTH_URL + '/nudge', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, ...body }) });
+      const j = await r.json(); if (!j.ok) throw new Error(j.error || 'fail'); return j; };
+    const qTxt = q => q && q.limit != null && q.used != null ? `本月推播額度：還剩 ${Math.max(0, q.limit - q.used)} 則（已用 ${q.used}／${q.limit}）` : q && q.type === 'none' ? '本月推播額度：不限' : '';
+    let q = null; try { q = await call({ action: 'quota' }); } catch (err) {}
+    const left = q && q.limit != null && q.used != null ? q.limit - q.used : null;
+    const text = await dialog({ title: `用 LINE 提醒 ${bound.length} 人登記用餐`,
+      msg: `${qTxt(q) ? '📊 ' + qTxt(q) + (left != null && left < bound.length ? '\n⚠️ 額度不夠，可能有人收不到' : '') + '\n\n' : ''}會收到：${bound.map(p => p.name).join('、')}${nob.length ? `\n\n未綁定 LINE（收不到）：${nob.map(p => p.name).join('、')}` : ''}\n\n卡片內容（可以改，下方會有「📝 前往登記」按鈕）：`,
+      input: { value: def }, okText: `📣 送出（用掉 ${bound.length} 則）` });
     if (!text) return;
     try {
-      const idToken = await auth.currentUser.getIdToken();
-      const r = await fetch(AUTH_URL + '/nudge', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, uids: bound.map(p => p.ro.boundUserId), text }) });
-      const j = await r.json(); if (!j.ok) throw new Error(j.error || 'fail');
-      toast(`✅ 已用 LINE 提醒 ${j.sent} 人`);
+      const j = await call({ uids: bound.map(p => p.ro.boundUserId), title: `${dLabel(d)} 用餐登記`, text, url: `https://liff.line.me/${LIFF_ID}` });
+      toast(`✅ 已用 LINE 提醒 ${j.sent} 人${qTxt(j) ? '｜' + qTxt(j).replace('本月推播額度：', '') : ''}`, 4000);
     } catch (err) { dialog({ title: '送出失敗', msg: String(err.message || err), okText: '知道了' }); }
   }
   function renderCar(eid) {
