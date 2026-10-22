@@ -1476,7 +1476,7 @@
   const ATT_SHORT = { yes: '✅ 出席', join: '⚠️ 不出席但參與進香', no: '❌ 不參與' };
   const LUNCH = ['葷', '素（方便素）', '自行處理'];
   const eventLink = id => `https://tsushin-buishatun.pages.dev/attend/?e=${encodeURIComponent(id)}`;   // 公開表單：不用先綁會員中心
-  let evPaid = {}, drPayMode = false, evSched = {}, schedOpen = false, schSel = null, schPk = null, attOpen = false, attBrush = null, carOpen = false, mealOpen = false, evSelf = {};
+  let evPaid = {}, drPayMode = false, evSched = {}, schedOpen = false, schSel = null, schPk = null, attOpen = false, attBrush = null, schFold = (() => { try { return JSON.parse(localStorage.getItem('schFold') || '{}'); } catch (e) { return {}; } })(), carOpen = false, mealOpen = false, evSelf = {};
   let evDraw = {}, evDrawBy = {}, evOver = {}, drawSheetEid = null, drSel = null;
   let eventsCache = [], eventsUnsub = null, myResp = {}, evRespCache = {}, evRespUnsub = null, evOpenId = null, evFilter = 'all';
   // 連結 liff.line.me/…?e=活動ID：LIFF 開啟時參數可能包在 liff.state 裡
@@ -2079,7 +2079,8 @@
     const pcell = (p, i) => p ? `<td class="n">${i + 1}</td><td class="nm ${schPk === p.key ? 'sel' : ''}" data-pk="${esc(p.key)}" style="background:${CAT_BG[p.cat]}">${esc(p.name)}${p.mode === 'off' && p.pos && p.pos !== '團員' ? `<i>${esc(p.pos)}</i>` : ''}${p.mode === 'range' && p.range ? `<i>${dLabel(p.range[0])}～${dLabel(p.range[1])}</i>` : ''}</td>` : '<td class="n"></td><td class="nm e"></td>';
     const box = (title, sub, list) => { const L = list.sort((a, b) => CAT_RANK[a.cat] - CAT_RANK[b.cat]), rows = [];
       for (let i = 0; i < L.length; i += 3) rows.push(`<tr>${[0, 1, 2].map(j => pcell(L[i + j], i + j)).join('')}</tr>`);
-      return `<div class="sc-col"><div class="sc-ch">${title}<span>${sub}</span><span class="cnt">${list.length} 人</span></div>${rows.length ? `<table class="sl"><colgroup>${'<col style="width:26px"><col>'.repeat(3)}</colgroup><tbody>${rows.join('')}</tbody></table>` : '<div class="sc-empty">—</div>'}</div>`; };
+      const op = !schFold[title] && !(schFold[title] === undefined && list.length === 0);
+      return `<div class="sc-col ${op ? '' : 'fold'}"><div class="sc-ch" data-fold="${title}" style="cursor:pointer">${title}<span>${sub}</span><span class="cnt">${list.length} 人 <i class="fa">${op ? '▾' : '▸'}</i></span></div>${!op ? '' : rows.length ? `<table class="sl"><colgroup>${'<col style="width:26px"><col>'.repeat(3)}</colgroup><tbody>${rows.join('')}</tbody></table>` : '<div class="sc-empty">—</div>'}</div>`; };
     const all = Object.values(ppl);
     const slotBox = sl => box(sl, rg[sl] ? dLabel(rg[sl][0]) + '～' + dLabel(rg[sl][1]) : '—', all.filter(p => p.mode === 'slot' && p.slot === sl));
     const pe = schPk && ppl[schPk];
@@ -2195,7 +2196,7 @@
         @media (max-width:899px){.sc-grid{grid-template-columns:1fr}}
         /* ===== 跟出勤／住宿表一樣的表格風格 ===== */
         .sc-col{background:#fff!important;border:1px solid #efe4e0;border-radius:14px;padding:0!important;overflow:hidden}
-        .sc-ch{background:#fdf6f4;margin:0!important;padding:8px 12px;border-bottom:1px solid #f1e8e5;font-size:15px!important;display:flex;gap:10px;align-items:baseline}.sc-ch span{font-weight:700}.sc-ch .cnt{margin-left:auto}
+        .sc-ch{background:#fdf6f4;margin:0!important;padding:8px 12px;border-bottom:1px solid #f1e8e5;font-size:15px!important;display:flex;gap:10px;align-items:baseline}.sc-ch span{font-weight:700}.sc-ch .cnt{margin-left:auto}.sc-ch .fa{font-style:normal;color:#9a8f8b;margin-left:4px}.sc-col.fold .sc-ch{border-bottom:none}
         table.sl{width:100%;border-collapse:collapse;table-layout:fixed}
         .sl td{border-right:1px solid #f1e8e5;border-bottom:1px solid #f1e8e5;height:32px;font-size:13px;padding:0}
         .sl tr:last-child td{border-bottom:none}.sl td:last-child{border-right:none}
@@ -2260,6 +2261,8 @@
         <div class="sc-grid">${box('全程', '每天都值班', all.filter(p => p.mode === 'all'))}${box('自訂日期', '特定幾天', all.filter(p => p.mode === 'range'))}${box('不排班', '指揮官、團長、車輛組、教官團…', all.filter(p => p.mode === 'off'))}</div>`}
       ${days.length ? `<div class="sc-days">${days.map(dayBox).join('')}</div>` : ''}`;
     const save = async (patch, msg) => { evSched[eid] = { ...(evSched[eid] || {}), ...patch }; try { await saveDraw(eid, { ...(evDraw[eid] || {}) }, { ...(evDrawBy[eid] || {}) }, { ...(evOver[eid] || {}) }); if (msg) toast(msg); } catch (err) { console.error(err); toast('❌ 儲存失敗'); } renderSched(eid); };
+    document.querySelectorAll('[data-fold]').forEach(h => h.onclick = () => { const t = h.dataset.fold, col = h.parentNode, open = !col.classList.contains('fold');
+      schFold[t] = open; try { localStorage.setItem('schFold', JSON.stringify(schFold)); } catch (e) {} renderSched(eid); });
     $('sc-back').onclick = () => { schedOpen = false; schPk = null; renderDrawSheet(eid); };
     document.querySelectorAll('[data-pk]').forEach(b => b.onclick = () => { schPk = schPk === b.dataset.pk ? null : b.dataset.pk; renderSched(eid); });
     document.querySelectorAll('[data-pm]').forEach(b => b.onclick = () => {
