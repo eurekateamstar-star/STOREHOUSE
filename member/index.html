@@ -1519,9 +1519,11 @@
       const idToken = await auth.currentUser.getIdToken();
       const r = await fetch(AUTH_URL + '/mysched', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken }) });
       const j = await r.json(); mySchedData = j.events || [];
-    } catch (e) { mySchedData = null; mySchedKey = null; }
+    } catch (e) { mySchedData = null; mySchedKey = null; setTimeout(loadMySched, 2500); }
     renderMySched();
   }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && user && user.status === 'approved') { mySchedKey = null; loadMySched(); } });
+  setInterval(() => { if (user && user.status === 'approved' && eventsCache.some(e => e.schedPublic) && mySchedData === null) { mySchedKey = null; loadMySched(); } }, 4000);
   function renderMySched() {
     let box = $('my-sched');
     if (!box) { box = document.createElement('div'); box.id = 'my-sched'; ($('lot-cards') || $('attend-cards')).after(box); }
@@ -3360,7 +3362,7 @@
       }
       first = false;
       watchMyRoster(user && user.status === 'approved' ? user.rosterId : null);
-      if (user && user.status === 'approved') watchEvents();
+      if (user && user.status === 'approved') { watchEvents(); setTimeout(loadMySched, 0); }
       try { const k = 'bst_menu_' + profile.userId, v = user ? user.status : 'none';
         if (localStorage.getItem(k) !== v && window.__menuSync !== v) (window.__menuSync = v, syncMenu()).then(res => { if (res && res.ok) try { localStorage.setItem(k, v); } catch (e) {} }); } catch (e) {}
       if (isAdmin()) startAdminWatch();
