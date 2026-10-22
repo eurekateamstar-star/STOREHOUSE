@@ -1718,9 +1718,9 @@
         <div style="font-size:18px; font-weight:900;">${e.open ? '🟢' : '⚪'} ${esc(e.title || '')}</div>
         <div style="font-size:13px; color:var(--sub); margin-top:4px;">${esc(e.date || '')}</div>
         <div class="join-link" style="margin-top:10px;"><div><b>🔗 回覆連結（傳到 LINE 群組）</b><div class="u">${esc(eventLink(e.id))}</div></div>
-          <div style="display:flex; gap:6px; flex-wrap:nowrap;" class="ev-row"><style>.ev-row{display:grid!important;grid-template-columns:repeat(4,1fr)}.ev-row .sbtn{min-width:0;white-space:nowrap;padding:10px 2px;font-size:15px;text-align:center}</style><button class="sbtn" id="ev-copy">🔗 複製</button>
-          <button class="sbtn ${e.open ? 'red' : 'green'}" id="ev-toggle">${e.open ? '⏸ 截止' : '▶ 開放'}</button>
-          <button class="sbtn violet" id="ev-edit">✏️ 編輯</button><button class="sbtn" id="ev-csv">⬇ 匯出</button></div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;"><button class="sbtn" id="ev-copy">複製連結</button>
+          <button class="sbtn ${e.open ? 'red' : 'green'}" id="ev-toggle">${e.open ? '截止回覆' : '重新開放'}</button>
+          <button class="sbtn violet" id="ev-edit">編輯</button><button class="sbtn" id="ev-csv">⬇ 匯出</button></div>
           <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; padding-top:8px; border-top:1px dashed rgba(0,0,0,.12);">
             <button class="sbtn" id="ev-draw" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">👥 分組名單・抽籤・簽到表</button>
             <button class="sbtn" id="ev-test-add" style="background:#ecfeff;color:#0e7490;">🧪 產生測試回覆（名冊 9 成）</button>
