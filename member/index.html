@@ -1528,19 +1528,20 @@
     const evs = (mySchedData || []).filter(e => e.days.length);
     if (!evs.length) { box.innerHTML = ''; return; }
     box.innerHTML = `<style>
-      .ms-card{background:#fff;border-radius:20px;box-shadow:0 8px 24px rgba(120,60,50,.08);border:1px solid #f1e8e4;overflow:hidden;margin:14px 0}
-      .ms-h{padding:12px 16px;background:linear-gradient(120deg,#fff5f3,#fff8ef);font-weight:900;font-size:16px;color:var(--ink)}.ms-h small{display:block;font-size:12px;color:var(--sub);font-weight:700;margin-top:2px}
-      .ms-d{display:grid;grid-template-columns:74px 1fr;border-top:1px solid #f3ece9}
-      .ms-dl{background:#fdf6f4;padding:10px 6px;text-align:center;border-right:1px solid #f1e6e2;cursor:pointer}.ms-dl u{display:block;text-decoration:none;font-size:10px;color:#c2414f;font-weight:800;margin-top:4px}.ms-dl b{display:block;font-size:17px;color:var(--ink)}.ms-dl span{font-size:11px;color:var(--sub)}.ms-dl i{display:block;font-style:normal;font-size:11px;color:#fff;background:#1e3a8a;border-radius:6px;margin-top:4px;padding:1px 0}
-      .ms-r{padding:9px 12px;min-width:0}.ms-t{font-weight:900;color:#c2414f;font-size:15px}.ms-t small{color:var(--sub);font-weight:700;font-size:12px;margin-left:6px}
-      .ms-m{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}.ms-m span{font-size:13px;padding:2px 8px;border-radius:8px;background:#f5f1ef}.ms-m span.me{background:#fde8ea;color:#b91c1c;font-weight:900}
-      .ms-x{font-size:12px;color:#6b7280;margin-top:5px;line-height:1.5}.ms-x b{color:#b91c1c}</style>
-      ${evs.map(e => `<div class="ms-card"><div class="ms-h">📅 我的排班<small>${esc(e.title)}・共 ${e.days.length} 天</small></div>
-        ${e.days.map(x => { const dd = new Date(x.d + 'T12:00:00');
-          return `<div class="ms-d"><div class="ms-dl" data-msd="${e.id}|${x.d}"><b>${dd.getMonth() + 1}/${dd.getDate()}</b><span>(${WK[dd.getDay()]})</span>${x.tag ? `<i>${esc(x.tag)}</i>` : ''}<u>看全部 ›</u></div>
-          <div class="ms-r" data-msd="${e.id}|${x.d}" style="cursor:pointer"><div class="ms-t">${esc(x.team)}<small>${x.place ? '🛏 ' + esc(x.place) : ''}</small></div>
-          <div class="ms-m">${x.members.map(n => `<span class="${n === e.name ? 'me' : ''}">${esc(n)}</span>`).join('')}</div>
-          ${x.eq || x.note || x.duty.length || x.arrive ? `<div class="ms-x">${x.eq ? '🎒 ' + esc(x.eq) + '<br>' : ''}${x.note ? '<b>📝 ' + esc(x.note) + '</b><br>' : ''}${x.duty.length ? '<b>◎ ' + esc(x.duty.join('、')) + '</b><br>' : ''}${x.arrive ? '⏰ ' + esc(x.arrive) : ''}</div>` : ''}</div></div>`; }).join('')}</div>`).join('')}`;
+      .ms-card{background:#fff;border-radius:16px;box-shadow:0 6px 18px rgba(120,60,50,.07);border:1px solid #f1e8e4;overflow:hidden;margin:12px 0}
+      .ms-h{padding:9px 14px;display:flex;justify-content:space-between;align-items:baseline;gap:8px;background:#fdf6f4;font-weight:900;font-size:14px;color:var(--ink)}.ms-h small{font-size:11px;color:var(--sub);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .ms-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid #f3ece9;cursor:pointer;-webkit-tap-highlight-color:transparent}.ms-row:active{background:#fff7f5}
+      .ms-dt{width:46px;flex:none;text-align:center;line-height:1.1}.ms-dt b{display:block;font-size:15px;color:var(--ink)}.ms-dt span{font-size:10px;color:var(--sub)}
+      .ms-tm{flex:none;font-size:12px;font-weight:900;color:#fff;background:#c2414f;border-radius:7px;padding:3px 7px}
+      .ms-mb{flex:1;min-width:0;font-size:12.5px;color:#4b5563;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ms-mb small{display:block;font-size:10.5px;color:#b91c1c;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .ms-tg{font-size:10px;color:#fff;background:#1e3a8a;border-radius:5px;padding:1px 5px;margin-left:4px;font-weight:700;vertical-align:1px}
+      .ms-ar{flex:none;color:#c9b5ae;font-size:18px;font-weight:700}</style>
+      ${evs.map(e => `<div class="ms-card"><div class="ms-h">📅 我的排班<small>${esc(e.title)}・${e.days.length} 天・點日期看全部</small></div>
+        ${e.days.map(x => { const dd = new Date(x.d + 'T12:00:00'), mates = x.members.filter(n => n !== e.name);
+          const extra = [x.note, x.duty.join('、'), x.eq ? '🎒' + x.eq : ''].filter(Boolean).join('・');
+          return `<div class="ms-row" data-msd="${e.id}|${x.d}"><div class="ms-dt"><b>${dd.getMonth() + 1}/${dd.getDate()}</b><span>(${WK[dd.getDay()]})</span></div>
+            <span class="ms-tm">${esc(x.team)}</span>
+            <div class="ms-mb">${x.tag ? `<span class="ms-tg">${esc(x.tag)}</span> ` : ''}${esc(mates.join('、'))}${extra ? `<small>${esc(extra)}</small>` : ''}</div><span class="ms-ar">›</span></div>`; }).join('')}</div>`).join('')}`;
     box.querySelectorAll('[data-msd]').forEach(el => el.onclick = () => { const [a, b] = el.dataset.msd.split('|'); showMyDay(a, b); });
   }
   function showMyDay(eid, d) {
