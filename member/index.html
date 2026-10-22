@@ -413,7 +413,6 @@
         <div class="member-foot"><span id="m-since"></span><span id="m-pos">白沙屯醫護團 團員</span></div>
       </div>
 
-      <button class="btn" id="btn-gcard" style="background:linear-gradient(90deg,#E0342F,#F08339);color:#fff;margin:10px 0 0">🪪 製作我的全民醫護證</button>
       <div id="attend-cards"></div>
       <div class="confirm-card hidden" id="confirm-card">
         <div class="t">⚠️ 重要‼️ 請確認你的團員資料</div>
@@ -3513,7 +3512,6 @@
   }
   $('btn-sharecard').onclick = () => openShareCards();
 
-  $('btn-gcard').onclick = () => { try { if (liff.isInClient() && GUARDIAN_URL.includes('liff.line.me')) return liff.openWindow({ url: GUARDIAN_URL }); } catch (e) {} location.href = GUARDIAN_URL; };
 
   // 依身分證＋姓名，把已存在的會員自動配對到名冊
   $('btn-autopair').onclick = async () => {
