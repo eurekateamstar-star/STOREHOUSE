@@ -1560,12 +1560,12 @@
     const e = (mySchedData || []).find(x => x.id === eid); if (!e) return; const x0 = e.days.find(y => y.d === d), pl = (e.plan || []).find(y => y.d === d);
     const x = x0 || { d, tag: '', place: '', team: '', teams: [], info: {} };
     const dd = new Date(d + 'T12:00:00'), NC = Math.max(5, ...x.teams.map(t => t.m.length), 0), I = x.info || {};
-    const tg = (on, lock, a, t) => `<button data-pa="${a}" ${lock ? 'data-lock="1"' : ''} class="pl-b ${on ? 'on' : ''} ${lock ? 'lk' : ''}">${t}${lock && on ? '<i class="ck">已確認</i>' : ''}</button>`;
+    const tg = (on, lock, a, t) => `<button data-pa="${a}" ${lock ? 'data-lock="1"' : ''} class="pl-b ${on ? 'on' : ''} ${lock ? 'lk' : ''}">${lock ? '🔒' : ''}${t}</button>`;
     const reg = !pl ? '' : `<div style="margin:10px 12px 4px;border:1.5px solid #f3c7cc;border-radius:14px;padding:10px 12px;background:#fffafa">
         <div style="font-weight:900;font-size:14px;margin-bottom:8px">🙋 我這天的住宿／中巴 <small style="font-weight:600;color:#9a8f8b;font-size:11px">（自己登記，管理員會看到）</small></div>
         <div class="pl-r"><span>🛏 今晚住宿</span>${tg(!!pl.s, pl.adminS, 's:' + e.g, '住')}${tg(!pl.s, pl.adminS, 's:x', '不住')}</div>
         <div class="pl-r"><span>🚌 坐中巴</span>${[['o', '出門'], ['y', '白天'], ['h', '回家']].map(([f, t]) => tg(pl[f] === '9', pl.adminCar[f], f + ':' + (pl[f] === '9' ? 'x' : '9'), (pl[f] === '9' ? '✓ ' : '') + t)).join('')}</div>
-        <div style="font-size:10.5px;color:#9a8f8b;margin-top:4px">例：前一天提早到→點「住」；最後一天退勤→「不住」、回家不坐中巴。${pl.adminS || Object.values(pl.adminCar).some(Boolean) ? '標「✔已確認」的是管理員確認過的，要改請洽管理員。' : ''}</div></div>`;
+        <div style="font-size:10.5px;color:#9a8f8b;margin-top:4px">例：前一天提早到→點「住」；最後一天退勤→「不住」、回家不坐中巴。${pl.adminS || Object.values(pl.adminCar).some(Boolean) ? '有 🔒 的是管理員已確認，要改請洽管理員。' : ''}</div></div>`;
     let first = true;
     const rows = x.teams.map(t => { const back = t.l.startsWith('轎後'), cls = back && first ? 'b' : ''; if (back) first = false;
       return `<tr class="${cls} ${t.l === x.team ? 'mine' : ''}"><th><span>${esc(t.l.slice(0, 2))}</span>${esc(t.l.slice(2))}</th>${Array.from({ length: NC }, (_, j) => { const k = t.m[j];
@@ -1591,7 +1591,7 @@
     document.body.appendChild(ov); if (keepScroll) ov.querySelector('div').scrollTop = keepScroll;
     ov.onclick = ev => { if (ev.target === ov || ev.target.id === 'md-x') ov.remove(); };
     ov.querySelectorAll('[data-pa]').forEach(b => b.onclick = ev => { ev.stopPropagation();
-      if (b.dataset.lock) { msFlash('✔ 管理員已確認，請洽管理員更改', true); return; }
+      if (b.dataset.lock) { msFlash('🔒 管理員已確認，請洽管理員更改', true); return; }
       const [f, v] = b.dataset.pa.split(':');
       // 先在畫面上立刻改好（含連動：今晚住宿 → 今天「回家」、隔天「出門」），再背景送出
       const P = (e.plan || []), cur = P.find(y => y.d === d), veh = y => ['1', '4', '5', '6'].includes(y.w) ? y.w : '9';
