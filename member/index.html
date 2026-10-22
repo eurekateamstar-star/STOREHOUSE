@@ -368,6 +368,24 @@
     <p id="sh-msg" style="font-size:13px;color:var(--sub);margin-top:10px"></p>
   </div>
 
+  <!-- 全民醫護證：任何人都能做，照片只在手機上合成 -->
+  <div id="v-card" class="card hidden" style="padding:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <b style="font-size:19px">🪪 我的全民醫護證</b><button class="btn ghost" id="gc-back" style="width:auto;padding:6px 14px;margin:0">返回</button></div>
+    <canvas id="gc-cv" width="1080" height="1919" style="width:100%;max-width:420px;display:block;margin:0 auto;border-radius:14px;box-shadow:0 4px 18px rgba(0,0,0,.15);touch-action:none;background:#FBF4EA"></canvas>
+    <div id="gc-zoomrow" class="hidden" style="display:flex;align-items:center;gap:10px;max-width:420px;margin:10px auto 0;font-size:13px;color:var(--sub)">🔍<input type="range" id="gc-zoom" min="1" max="3" step="0.01" value="1" style="flex:1">拖曳照片可移動</div>
+    <div style="max-width:420px;margin:12px auto 0;display:grid;gap:10px">
+      <label class="btn" style="background:#E0342F;color:#fff;margin:0;text-align:center;cursor:pointer">📷 選擇我的照片<input type="file" id="gc-file" accept="image/*" style="display:none"></label>
+      <div><div style="font-size:13px;font-weight:700;margin-bottom:4px">姓名</div><input class="inp" id="gc-name" maxlength="8" placeholder="你的名字" style="width:100%;box-sizing:border-box"></div>
+      <div><div style="font-size:13px;font-weight:700;margin-bottom:4px">身分</div><select class="inp" id="gc-pos" style="width:100%;box-sizing:border-box">
+        <option>全民守護員</option><option>志工</option><option>護理師</option><option>醫師</option><option>EMTP</option><option>EMT2</option><option>EMT1</option></select></div>
+      <div><div style="font-size:13px;font-weight:700;margin-bottom:4px">我會的守護技能（點選）</div><div id="gc-skills" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div></div>
+      <button class="btn line" id="gc-save" style="margin:4px 0 0">⬇ 存成圖片</button>
+      <button class="btn ghost" id="gc-invite" style="margin:0">➦ 邀請親友一起領</button>
+      <div style="font-size:12px;color:var(--sub);text-align:center;line-height:1.6">🔒 照片只在你的手機上合成，不會上傳</div>
+    </div>
+  </div>
+
   <!-- 需要 LINE 登入 / 錯誤 -->
   <div id="v-login" class="card auth hidden">
     <h2>會員登入</h2>
@@ -413,6 +431,7 @@
         <div class="member-foot"><span id="m-since"></span><span id="m-pos">白沙屯醫護團 團員</span></div>
       </div>
 
+      <button class="btn" id="btn-gcard" style="background:linear-gradient(90deg,#E0342F,#F08339);color:#fff;margin:10px 0 0">🪪 製作我的全民醫護證</button>
       <div id="attend-cards"></div>
       <div class="confirm-card hidden" id="confirm-card">
         <div class="t">⚠️ 重要‼️ 請確認你的團員資料</div>
@@ -594,7 +613,8 @@
   const LIFF_ID = '2011820105-x1KU6xLW';
   const pendingShare = (() => { try { const q = new URLSearchParams(location.search); let v = q.get('share');
     if (!v && q.get('liff.state')) v = new URLSearchParams(q.get('liff.state').replace(/^[^?]*\?/, '')).get('share');
-    return /^[A-Za-z0-9_-]{6,40}$/.test(v || '') ? v : ''; } catch (e) { return ''; } })();   // 會員中心專用 LIFF（Endpoint: /STOREHOUSE/member/）
+    return /^[A-Za-z0-9_-]{6,40}$/.test(v || '') ? v : ''; } catch (e) { return ''; } })();
+  const pendingCard = (() => { try { const q = new URLSearchParams(location.search); return q.get('card') === '1' || /card=1/.test(q.get('liff.state') || ''); } catch (e) { return false; } })();   // 會員中心專用 LIFF（Endpoint: /STOREHOUSE/member/）
   const CERTS = ['EMT-1', 'EMT-2', 'EMT-P', '護理師', '醫師', '無證照'];
   const ROSTER = 'member_roster';            // 團員名冊（舊資料匯入）；文件 ID = SHA-256(身分證|生日)
 
@@ -616,7 +636,7 @@
     clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), ms || 2000);
   }
   function show(view) {
-    ['v-loading', 'v-login', 'v-register', 'v-status', 'v-member', 'v-admin', 'v-share'].forEach(id => $(id).classList.toggle('hidden', id !== view));
+    ['v-loading', 'v-login', 'v-register', 'v-status', 'v-member', 'v-admin', 'v-share', 'v-card'].forEach(id => $(id).classList.toggle('hidden', id !== view));
     document.body.classList.toggle('wide', view === 'v-member' || view === 'v-admin');
     document.body.classList.toggle('admin-wide', view === 'v-admin');
   }
@@ -3510,6 +3530,92 @@
   }
   $('btn-sharecard').onclick = () => openShareCards();
 
+  // ===== 全民醫護證：Canvas 合成（模板 941×1672，輸出 1080 寬）=====
+  const GC_SKILLS = ['CPR＋AED', '中暑處理', '止血包紮', '陪伴與求救'];
+  const GC_FONT = '"PingFang TC","Noto Sans TC","Noto Sans CJK TC","Microsoft JhengHei",sans-serif';
+  const gc = { tpl: null, badge: null, photo: null, zoom: 1, ox: 0, oy: 0, skills: [true, true, false, true], standalone: false };
+  const gcLoad = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+  function gcRR(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+  function gcDraw() {
+    const cv = $('gc-cv'), c = cv.getContext('2d'), k = cv.width / 941;
+    c.setTransform(k, 0, 0, k, 0, 0); c.fillStyle = '#FBF4EA'; c.fillRect(0, 0, 941, 1672);
+    if (gc.tpl) c.drawImage(gc.tpl, 0, 0, 941, 1672);
+    const CX = 470, CY = 685, R = 170;
+    c.save(); c.beginPath(); c.arc(CX, CY, R, 0, Math.PI * 2); c.clip();
+    if (gc.photo) { const p = gc.photo, base = Math.max(2 * R / p.naturalWidth, 2 * R / p.naturalHeight) * gc.zoom, w = p.naturalWidth * base, h = p.naturalHeight * base;
+      c.drawImage(p, CX - w / 2 + gc.ox, CY - h / 2 + gc.oy, w, h); }
+    else { c.fillStyle = '#E8E2DE'; c.fillRect(CX - R, CY - R, 2 * R, 2 * R); c.fillStyle = '#CDBEB8'; c.beginPath(); c.arc(CX, CY - 45, 62, 0, Math.PI * 2); c.fill(); c.beginPath(); c.ellipse(CX, CY + 145, 125, 110, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#8C7A74'; c.font = `700 26px ${GC_FONT}`; c.textAlign = 'center'; c.fillText('點「選擇我的照片」', CX, CY + 40); }
+    c.restore();
+    if (gc.badge) c.drawImage(gc.badge, 625 - 60, 805 - 60, 120, 120);
+    // 姓名
+    const name = ($('gc-name').value || '').trim() || '你的名字';
+    c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillStyle = name === '你的名字' ? '#B8AEA9' : '#111';
+    let fs = 58; c.font = `900 ${fs}px ${GC_FONT}`; while (c.measureText(name).width > 440 && fs > 30) { fs -= 2; c.font = `900 ${fs}px ${GC_FONT}`; }
+    c.fillText(name, 110, 1045);
+    // 身分
+    const pos = $('gc-pos').value; let pf = 30; c.font = `900 ${pf}px ${GC_FONT}`; while (c.measureText(pos).width > 160 && pf > 20) { pf -= 1; c.font = `900 ${pf}px ${GC_FONT}`; }
+    const tw = c.measureText(pos).width, pw = tw + 28, px = 750 - pw / 2;
+    gcRR(c, px, 1019, pw, 48, 10); c.fillStyle = '#FDE8E6'; c.fill(); c.lineWidth = 3; c.strokeStyle = '#D43A3A'; c.stroke();
+    c.fillStyle = '#C8202A'; c.textAlign = 'center'; c.fillText(pos, 750, 1044);
+    // 技能
+    GC_SKILLS.forEach((t, i) => { const x = i % 2 ? 482 : 114, y = i < 2 ? 1135 : 1191, on = gc.skills[i];
+      gcRR(c, x, y, 350, 48, 9);
+      if (on) { const g = c.createLinearGradient(0, y, 0, y + 48); g.addColorStop(0, '#E0342F'); g.addColorStop(1, '#C9221F'); c.fillStyle = g; } else c.fillStyle = '#EFEDEB';
+      c.fill(); c.lineWidth = 2; c.strokeStyle = on ? '#A51A18' : '#CFCAC6'; c.stroke();
+      c.fillStyle = on ? '#fff' : '#9B9590'; c.font = `800 27px ${GC_FONT}`; c.fillText((on ? '✓ ' : '') + t, x + 175, y + 25); });
+  }
+  function gcSkillBtns() {
+    $('gc-skills').innerHTML = GC_SKILLS.map((t, i) => `<button type="button" data-gs="${i}" class="btn" style="margin:0;padding:9px 4px;font-size:14px;${gc.skills[i] ? 'background:#E0342F;color:#fff' : 'background:#f1eeec;color:#8a817c'}">${gc.skills[i] ? '✓ ' : ''}${t}</button>`).join('');
+    document.querySelectorAll('[data-gs]').forEach(b => b.onclick = () => { gc.skills[+b.dataset.gs] = !gc.skills[+b.dataset.gs]; gcSkillBtns(); gcDraw(); });
+  }
+  async function openCardMaker(prefillName, standalone) {
+    gc.standalone = !!standalone; show('v-card'); window.scrollTo(0, 0);
+    if (standalone) { document.documentElement.classList.add('share-mode'); document.title = '全民醫護證｜白沙屯醫護團'; }
+    $('gc-back').textContent = standalone ? '關閉' : '返回';
+    $('gc-back').onclick = () => { if (gc.standalone) { try { liff.closeWindow(); } catch (e) {} } else show('v-member'); };
+    if (!$('gc-name').value) {
+      let nm = prefillName || '';
+      if (!nm) try { if (window.liff && liff.isLoggedIn()) nm = (await liff.getProfile()).displayName || ''; } catch (e) {}
+      $('gc-name').value = String(nm).slice(0, 8);
+    }
+    gcSkillBtns(); gcDraw();
+    try { if (!gc.tpl) { [gc.tpl, gc.badge] = await Promise.all([gcLoad('gc-tpl.jpg?v=1'), gcLoad('gc-badge.png?v=1')]); } } catch (e) { toast('圖片載入失敗，請重新整理'); }
+    gcDraw();
+  }
+  $('gc-name').oninput = gcDraw; $('gc-pos').onchange = gcDraw;
+  $('gc-zoom').oninput = e => { gc.zoom = +e.target.value; gcDraw(); };
+  $('gc-file').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    try { const url = URL.createObjectURL(f); gc.photo = await gcLoad(url); gc.zoom = 1; gc.ox = gc.oy = 0; $('gc-zoom').value = 1; $('gc-zoomrow').classList.remove('hidden'); gcDraw(); }
+    catch (err) { toast('讀不到這張照片'); } };
+  { // 拖曳／雙指縮放照片
+    const cv = $('gc-cv'), pts = new Map(); let last = null, pinch = null;
+    const toCard = ev => { const r = cv.getBoundingClientRect(), f = 941 / r.width; return [(ev.clientX - r.left) * f, (ev.clientY - r.top) * f]; };
+    cv.addEventListener('pointerdown', ev => { if (!gc.photo) return; cv.setPointerCapture(ev.pointerId); pts.set(ev.pointerId, toCard(ev)); last = toCard(ev); pinch = null; });
+    cv.addEventListener('pointermove', ev => { if (!gc.photo || !pts.has(ev.pointerId)) return; pts.set(ev.pointerId, toCard(ev));
+      if (pts.size >= 2) { const [a, b] = [...pts.values()], dd = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        if (pinch) { gc.zoom = Math.min(3, Math.max(1, pinch.z * dd / pinch.d)); $('gc-zoom').value = gc.zoom; } else pinch = { d: dd, z: gc.zoom }; }
+      else { const p = toCard(ev); if (last) { gc.ox += p[0] - last[0]; gc.oy += p[1] - last[1]; } last = p; }
+      gcDraw(); });
+    const up = ev => { pts.delete(ev.pointerId); last = null; if (pts.size < 2) pinch = null; };
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  }
+  $('gc-save').onclick = () => {
+    gcDraw(); let url; try { url = $('gc-cv').toDataURL('image/jpeg', 0.92); } catch (e) { return toast('❌ 產生圖片失敗'); }
+    const ov = document.createElement('div'); ov.className = 'dlg-bg'; ov.style.cssText = 'position:fixed;inset:0;z-index:9800;background:rgba(0,0,0,.75);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:10px';
+    ov.innerHTML = `<div style="color:#fff;font-weight:800;font-size:15px;text-align:center">📱 長按圖片 →「儲存圖片」或分享</div><img src="${url}" style="max-width:100%;max-height:75vh;border-radius:12px">
+      <div style="display:flex;gap:10px"><a download="全民醫護證.jpg" href="${url}" class="btn" style="margin:0;background:#fff;color:#111;text-decoration:none;padding:10px 18px">⬇ 下載</a><button class="btn" style="margin:0;padding:10px 18px" id="gc-ovx">關閉</button></div>`;
+    document.body.appendChild(ov); ov.querySelector('#gc-ovx').onclick = () => ov.remove(); ov.onclick = e => { if (e.target === ov) ov.remove(); };
+  };
+  $('gc-invite').onclick = async () => {
+    try { const r = await fetch(AUTH_URL + '/share-get?id=guardian'), j = await r.json(); if (!j.ok) throw new Error(j.error || 'fail'); await doShare(j.card); }
+    catch (e) { dialog({ title: '沒辦法分享', msg: String(e.message || e), okText: '知道了' }); } };
+  $('btn-gcard').onclick = () => {
+    const cert = String((myRoster && (myRoster.cert || myRoster.certText)) || ''), opt = ['護理師', '醫師', 'EMTP', 'EMT2', 'EMT1'].find(x => cert.toUpperCase().includes(x));
+    if (opt && $('gc-pos').value === '全民守護員') $('gc-pos').value = opt;
+    openCardMaker((myRoster && myRoster.name) || (user && user.name) || '');
+  };
+
   // 依身分證＋姓名，把已存在的會員自動配對到名冊
   $('btn-autopair').onclick = async () => {
     const byId = {}; rosterCache.forEach(r => { if (r.idCard) (byId[normId(r.idCard)] = byId[normId(r.idCard)] || []).push(r); });
@@ -3672,6 +3778,7 @@
     try {
       await Promise.race([liff.init({ liffId: LIFF_ID }), new Promise((_, r) => setTimeout(() => r(new Error('逾時')), 9000))]);
     } catch (e) { return fail('無法啟動 LINE 登入，請從 LINE 開啟本頁，或稍後再試。'); }
+    if (pendingCard) return openCardMaker(null, true);
     if (!liff.isLoggedIn()) {
       $('btn-line-login').onclick = () => liff.login({ redirectUri: pendingShare ? location.href : location.origin + location.pathname });
       return show('v-login');
