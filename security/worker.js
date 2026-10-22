@@ -49,6 +49,7 @@ export default {
     if (path === '/mysched') return mySchedRoute(req, env, json);
     if (path === '/myplan') return myPlanRoute(req, env, json);
     if (path === '/nudge') return nudgeRoute(req, env, json);
+    if (path === '/viewsched') return viewSchedRoute(req, env, json);
     if (path === '/remind') return remindRoute(req, env, json);
     if (path === '/parse') return parseRoute(req, env, json);
     if (path === '/menu') return menuRoute(req, env, json);
@@ -651,7 +652,7 @@ async function remindRoute(req, env, json) {
 async function nudgeRoute(req, env, json) {
   try {
     if (!env.LINE_BOT_TOKEN) return json({ error: 'LINE_BOT_TOKEN 尚未設定' }, 501);
-    const { idToken, uids, text, title, url, action } = await req.json();
+    const { idToken, uids, text, title, url, action, btn } = await req.json();
     if (!idToken) return json({ error: 'missing' }, 400);
     const me = await fsUser(idToken, uidOfToken(idToken));
     if (!memberAdmin(me)) return json({ error: '只有會員中心管理員可以催' }, 403);
@@ -669,10 +670,31 @@ async function nudgeRoute(req, env, json) {
       header: { type: 'box', layout: 'vertical', paddingAll: '14px', background: { type: 'linearGradient', angle: '90deg', startColor: '#D65A68', endColor: '#F08339' },
         contents: [{ type: 'text', text: '白沙屯醫護團', size: 'xxs', color: '#ffffffcc', weight: 'bold' }, { type: 'text', text: '🔔 ' + ttl, size: 'lg', color: '#ffffff', weight: 'bold', wrap: true, margin: 'xs' }] },
       body: { type: 'box', layout: 'vertical', paddingAll: '16px', contents: [{ type: 'text', text: msg, wrap: true, size: 'sm', color: '#374151', lineSpacing: '4px' }] },
-      footer: { type: 'box', layout: 'vertical', paddingAll: '12px', paddingTop: '0px', contents: [{ type: 'button', style: 'primary', color: '#C2414F', height: 'md', action: { type: 'uri', label: '📝 前往登記', uri: link } }] } } };
+      footer: { type: 'box', layout: 'vertical', paddingAll: '12px', paddingTop: '0px', contents: [{ type: 'button', style: 'primary', color: '#C2414F', height: 'md', action: { type: 'uri', label: String(btn || '📝 前往登記').slice(0, 20), uri: link } }] } } };
     const r = await lineApi(env, '/v2/bot/message/multicast', { method: 'POST', type: 'application/json', body: JSON.stringify({ to: list, messages: [flex] }) });
     if (!r.ok) return json({ error: 'LINE ' + r.status + ' ' + (await r.text()).slice(0, 200) }, 502);
     return json({ ok: true, sent: list.length, ...(await quota()) });
+  } catch (e) { return json({ error: String((e && e.message) || e) }, e && e.code || 500); }
+}
+// 指揮官／團長唯讀檢視排班、出勤住宿、座車、用餐（管理員在排班表「分享」給指定的人）
+async function viewSchedRoute(req, env, json) {
+  try {
+    const { idToken, eid } = await req.json();
+    if (!idToken || !/^[A-Za-z0-9_-]{1,64}$/.test(eid || '')) return json({ error: 'missing' }, 400);
+    const uid = uidOfToken(idToken);
+    const me = await fsUser(idToken, uid);
+    if (!me || me.status !== 'approved') return json({ error: '請先登入會員中心' }, 403);
+    const tok = await saToken(env);
+    const ev = await fsGet(tok, `events/${eid}`); if (!ev) return json({ error: '找不到這個活動' }, 404);
+    const e = fobj(ev.fields);
+    if (!(e.viewers || []).includes(uid) && !memberAdmin(me)) return json({ error: '你沒有這份排班的檢視權限，請洽管理員' }, 403);
+    const dr = await fsGet(tok, `events/${eid}/admin/draw`), d = dr ? fobj(dr.fields) : {};
+    const resp = (await fsList(tok, `events/${eid}/responses`)).map(x => ({ id: x.id, name: x.name, attend: x.attend, rosterId: x.rosterId || '', createdAt: x.createdAt || 0 }));
+    const roster = (await fsList(tok, 'member_roster')).map(x => ({ id: x.id, name: x.name, nameRaw: x.nameRaw || '', cert: x.cert || '', position: x.position || '', rowIndex: x.rowIndex ?? null, serial: x.serial ?? null,
+      idCard: 'X' + (String(x.idCard || '').toUpperCase()[1] || '') }));   // 只給性別碼，不給身分證
+    const self = (await fsList(tok, `events/${eid}/admin`)).filter(x => x.id.startsWith('self_')).map(x => ({ key: x.key, days: x.days || {} }));
+    return json({ ok: true, event: { id: eid, title: e.title || '', date: e.date || '', schedPublic: !!e.schedPublic },
+      draw: { map: d.map || {}, by2: d.by2 || {}, groupOverride: d.groupOverride || {}, sched: d.sched || null }, resp, roster, self });
   } catch (e) { return json({ error: String((e && e.message) || e) }, e && e.code || 500); }
 }
 async function signJwt(sa, payload) {

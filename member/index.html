@@ -333,6 +333,9 @@
     padding: 11px 18px; border-radius: 14px; font-size: 14px; font-weight: 700; z-index: 99; opacity: 0; transition: opacity 0.25s; pointer-events: none; white-space: pre-line; text-align: center; }
   .toast.show { opacity: 1; }
   .hidden { display: none !important; }
+.ro #sc-back,.ro .sc-set .sc-row:nth-child(3),.ro #at-auto,.ro #at-okself,.ro #car-okself,.ro #meal-okself,.ro #meal-test,.ro #meal-clear,.ro #sc-xlsx,.ro #at-xlsx,.ro #car-xlsx,.ro #m-nudge,.ro .sc-help,.ro .xtag.emp,.ro .xnote.emp,.ro .sf::after{display:none!important}
+  .ro .dchip input{pointer-events:none}.ro .sf{box-shadow:none!important}.ro .at-tools{display:none!important}
+  .ro #sheet-body::before{content:'👀 唯讀檢視・只能看不能改';display:block;text-align:center;font-size:12px;font-weight:800;color:#0369a1;background:#e0f2fe;border-radius:10px;padding:6px;margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -1439,7 +1442,7 @@
     }
   }
 
-  function closeSheet() { drawSheetEid = null; schedOpen = false; attOpen = false; carOpen = false; mealOpen = false; $('sheet').classList.remove('wide'); $('sheet-close').classList.remove('hidden'); confirmLock = false; document.body.classList.remove('sheet-open'); sheetRid = null; sheetUid = null; $('sheet-bg').style.display = 'none'; $('sheet').style.display = 'none'; }
+  function closeSheet() { if (VIEW_ONLY) { VIEW_ONLY = false; $('sheet').classList.remove('ro'); } drawSheetEid = null; schedOpen = false; attOpen = false; carOpen = false; mealOpen = false; $('sheet').classList.remove('wide'); $('sheet-close').classList.remove('hidden'); confirmLock = false; document.body.classList.remove('sheet-open'); sheetRid = null; sheetUid = null; $('sheet-bg').style.display = 'none'; $('sheet').style.display = 'none'; }
   const closeAny = () => { const back = editFromConfirm && editCtx && editCtx.role === 'self' && $('ed-save'); closeSheet(); if (back) backToConfirm(); };
   $('sheet-bg').onclick = () => { if (!confirmLock) closeAny(); }; $('sheet-close').onclick = closeAny;
 
@@ -2271,7 +2274,7 @@
         .pm-o b{display:block;font-size:15px;color:#1f2430}.pm-o small{font-size:12px;color:var(--sub)}.pm-o.on{border-color:var(--primary);background:#fff5f5;box-shadow:0 0 0 2px #fbd5d9}
         .sz{display:inline-flex;align-items:center;height:30px;border-radius:999px;background:#f6f1ef;padding:0 3px;flex:none}.sz button{width:22px;height:22px;border-radius:50%;border:none;background:#fff;font-size:15px;font-weight:900;color:#c2414f;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:0}
         .sz b{display:inline-flex;align-items:baseline;padding:0 2px}.sz b input{width:18px!important;height:auto!important;border:none!important;background:none;font:inherit;font-size:16px!important;font-weight:900;text-align:center;padding:0;-moz-appearance:textfield}.sz b input::-webkit-inner-spin-button{-webkit-appearance:none}.sz small{font-size:10px;color:#9a8f8b;font-weight:700}
-        .sc-help{margin-top:8px;font-size:12px;color:var(--sub);line-height:1.7}.sc-help summary{cursor:pointer;font-weight:800;color:#9a8f8b}
+                .sc-help{margin-top:8px;font-size:12px;color:var(--sub);line-height:1.7}.sc-help summary{cursor:pointer;font-weight:800;color:#9a8f8b}
       </style>
       ${(() => { const dc = (attr, v) => { const dd = v ? new Date(v + 'T12:00:00') : null; return `<label class="dchip ${v ? '' : 'e'}">${dd ? `${dd.getMonth() + 1}/${dd.getDate()}<small style="font-size:11px;color:#9a8f8b;margin-left:2px">(${WK[dd.getDay()]})</small>` : '選日期'}<input type="date" ${attr} value="${esc(v || '')}"></label>`; };
         return `<div class="sc-set">
@@ -2281,7 +2284,7 @@
           <button class="sbtn" id="sc-auto" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">🔀 排班</button>
           ${days.length && Object.keys(dt).length ? `<button class="sbtn" id="sc-pub" style="background:${e.schedPublic ? '#16a34a' : '#e5e7eb'};color:${e.schedPublic ? '#fff' : '#374151'};">${e.schedPublic ? '👁 已公開' : '🙈 未公開'}</button>` : ''}</div></div>
         ${days.length ? `<div class="sc-row"><b>統計表</b><div class="sc-acts"><button class="sbtn" id="sc-att" style="background:#7c3aed;color:#fff;">🛏 出勤住宿</button><button class="sbtn" id="sc-car" style="background:#0f766e;color:#fff;">🚐 座車</button><button class="sbtn" id="sc-meal" style="background:#ca8a04;color:#fff;">🍱 用餐</button></div></div>` : ''}
-        ${days.length && Object.keys(dt).length ? `<div class="sc-row"><b>匯出</b><div class="sc-acts"><button class="sbtn" id="sc-xlsx" style="background:#1f2430;color:#fff;">⬇ 排班 Excel</button><button class="sbtn" id="sc-shotall" style="background:#475569;color:#fff;">📷 全部存圖</button></div></div>` : ''}
+        ${days.length && Object.keys(dt).length ? `<div class="sc-row"><b>匯出</b><div class="sc-acts"><button class="sbtn" id="sc-xlsx" style="background:#1f2430;color:#fff;">⬇ 排班 Excel</button><button class="sbtn" id="sc-shotall" style="background:#475569;color:#fff;">📷 全部存圖</button>${VIEW_ONLY ? '' : `<button class="sbtn" id="sc-share" style="background:#0ea5e9;color:#fff;">📤 分享${(e.viewers || []).length ? `（${e.viewers.length}）` : ''}</button>`}</div></div>` : ''}
       </div>`; })()}
       <details class="sc-help"><summary>ⓘ 使用說明</summary>前／中／後＝抽籤時段的值班日期；點下面的名字可以改成全程、自訂日期或不排班。每天把當天值班的人排成 轎前1～4、轎後1～6（約 ${sc.size || 5} 人一組，護理師、EMTP／EMT2、EMT1 平均分配；前一天同組的人盡量不換組）。<br>👆 點某天的名字 → 再點那天想去的組別（變成虛線框）就能換組。</details>
       <div class="sc-leg" style="margin-top:6px">${Object.entries(CAT_TXT).map(([c, t]) => `<span style="background:${CAT_BG[c]}">${t}</span>`).join('')}</div>
@@ -2294,6 +2297,7 @@
     $('sc-back').onclick = () => { schedOpen = false; schPk = null; renderDrawSheet(eid); };
     document.querySelectorAll('[data-pk]').forEach(b => b.onclick = () => { schPk = schPk === b.dataset.pk ? null : b.dataset.pk; renderSched(eid); });
     document.querySelectorAll('[data-sz]').forEach(b => b.onclick = () => { const i = $('sc-size'); i.value = Math.max(2, Math.min(6, (+i.value || 5) + +b.dataset.sz)); });
+    if ($('sc-share')) $('sc-share').onclick = () => shareSched(eid);
     if ($('pm-ov')) $('pm-ov').onclick = ev => { if (ev.target.id === 'pm-ov') { schPk = null; renderSched(eid); } };
     document.querySelectorAll('[data-pm]').forEach(b => b.onclick = () => {
       const m = b.dataset.pm, k = schPk; if (m === 'close') { schPk = null; return renderSched(eid); }
@@ -2633,6 +2637,76 @@
     try { await saveDraw(eid, { ...(evDraw[eid] || {}) }, { ...(evDrawBy[eid] || {}) }, { ...(evOver[eid] || {}) }); toast('✅ 已確認'); } catch (e) { toast('❌ 儲存失敗'); }
     mealOpen ? renderMeal(eid) : carOpen ? renderCar(eid) : renderAtt(eid);
   }
+  // ===================== 分享給指揮官／團長（唯讀）=====================
+  let VIEW_ONLY = false;
+  async function shareSched(eid) {
+    const e = eventsCache.find(x => x.id === eid) || {}, cur = new Set(e.viewers || []);
+    const LEAD = ['團長', '秘書長', '指揮官', '教官團', '顧問'];
+    const people = rosterCache.filter(r => r.boundUserId).sort((a, b) => { const ia = LEAD.indexOf(rv(a, 'position')), ib = LEAD.indexOf(rv(b, 'position')); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || rosterOrder(a, b); });
+    const sel = new Set([...cur].filter(u => people.some(p => p.boundUserId === u)));
+    const ov = document.createElement('div'); ov.className = 'pm-ov';
+    const draw = () => { ov.innerHTML = `<div class="pm-box" style="max-width:420px">
+        <div style="display:flex;align-items:center;justify-content:space-between"><div style="font-size:17px;font-weight:900">📤 分享排班（唯讀）</div><button class="pm-x" id="sh-x">✕</button></div>
+        <div style="font-size:12px;color:var(--sub);line-height:1.6;margin:6px 0 8px">勾選的人會收到 LINE 卡片，點開可以看<b>排班表、出勤住宿、座車、用餐</b>，只能看、不能改，也看不到後台。只有勾選的人打得開。</div>
+        <input id="sh-q" placeholder="🔍 搜尋姓名" style="width:100%;box-sizing:border-box;padding:8px 10px;border-radius:10px;border:1.5px solid #e5ddd9;font:inherit;font-size:14px;margin-bottom:6px">
+        <div id="sh-list" style="max-height:44vh;overflow:auto;border:1px solid #efe4e0;border-radius:12px"></div>
+        <div style="font-size:11px;color:var(--sub);margin-top:6px">只列出已綁定 LINE 的團員。已勾選 ${sel.size} 人${cur.size ? `（原本有權限 ${cur.size} 人，取消勾選就會收回）` : ''}。</div>
+        <div class="eq-btn" style="display:flex;gap:8px;margin-top:10px"><button id="sh-save" class="sbtn" style="flex:1;background:#f1f5f9;color:#334155">只更新權限</button><button id="sh-send" class="sbtn" style="flex:1.4;background:#0ea5e9;color:#fff">📣 更新並發 LINE 卡片</button></div></div>`;
+      const list = q => { ov.querySelector('#sh-list').innerHTML = people.filter(p => !q || String(p.name).includes(q) || String(rv(p, 'position')).includes(q)).map(p =>
+        `<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #f6efec;cursor:pointer"><input type="checkbox" data-u="${esc(p.boundUserId)}" ${sel.has(p.boundUserId) ? 'checked' : ''} style="width:18px;height:18px">
+          <b style="flex:1">${esc(p.name)}</b><span style="font-size:12px;color:${LEAD.includes(rv(p, 'position')) ? '#c2414f' : '#9a8f8b'};font-weight:700">${esc(rv(p, 'position'))}</span>${cur.has(p.boundUserId) ? '<span style="font-size:10px;color:#0ea5e9;font-weight:800">已分享</span>' : ''}</label>`).join('') || '<div style="padding:12px;color:#9a8f8b">沒有符合的人</div>';
+        ov.querySelectorAll('[data-u]').forEach(c => c.onchange = () => { c.checked ? sel.add(c.dataset.u) : sel.delete(c.dataset.u); }); };
+      list(''); ov.querySelector('#sh-q').oninput = ev => list(ev.target.value.trim());
+      ov.querySelector('#sh-x').onclick = () => ov.remove();
+      const save = async () => { await updateDoc(doc(db, 'events', eid), { viewers: [...sel] }); e.viewers = [...sel]; };
+      ov.querySelector('#sh-save').onclick = async () => { try { await save(); toast(`✅ 已更新，${sel.size} 人可以看`); ov.remove(); renderSched(eid); } catch (err) { toast('❌ 失敗'); } };
+      ov.querySelector('#sh-send').onclick = async () => {
+        const to = [...sel].filter(u => !cur.has(u)), all = [...sel];
+        if (!all.length) return toast('請先勾選');
+        const who = await dialog({ title: '要發 LINE 卡片給誰？', msg: `新加入的 ${to.length} 人${to.length < all.length ? `\n（全部勾選的有 ${all.length} 人）` : ''}`, okText: to.length ? `只發新加入的 ${to.length} 人` : `發給全部 ${all.length} 人` });
+        if (!who) return;
+        const target = to.length ? to : all;
+        try { await save();
+          const idToken = await auth.currentUser.getIdToken();
+          const r = await fetch(AUTH_URL + '/nudge', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, uids: target, title: `${e.title || '進香'} 排班表`,
+            text: '管理員分享了排班資料給你，可以查看：\n・每日排班表\n・出勤／住宿\n・座車\n・用餐\n（只能檢視，不能修改）', url: `https://liff.line.me/${LIFF_ID}?view=${eid}`, btn: '📋 查看排班' }) });
+          const j = await r.json(); if (!j.ok) throw new Error(j.error || 'fail');
+          toast(`✅ 已發給 ${j.sent} 人`, 3500); ov.remove(); renderSched(eid);
+        } catch (err) { dialog({ title: '送出失敗', msg: String(err.message || err), okText: '知道了' }); } };
+    };
+    draw(); document.body.appendChild(ov); ov.onclick = ev => { if (ev.target === ov) ov.remove(); };
+  }
+  const readViewParam = () => { try { const q = new URLSearchParams(location.search); if (q.get('view')) return q.get('view');
+    const st = q.get('liff.state'); if (st) return new URLSearchParams(st.replace(/^[^?]*\?/, '')).get('view') || ''; } catch (e) {} return ''; };
+  let pendingView = readViewParam();
+  async function openViewer(eid) {
+    pendingView = '';
+    toast('讀取排班中…', 6000);
+    try {
+      const idToken = await auth.currentUser.getIdToken();
+      const r = await fetch(AUTH_URL + '/viewsched', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, eid }) });
+      const j = await r.json(); if (!j.ok) throw new Error(j.error || 'fail');
+      VIEW_ONLY = !isAdmin();
+      if (VIEW_ONLY) {
+        rosterCache = j.roster; evRespCache[eid] = j.resp;
+        if (!eventsCache.find(x => x.id === eid)) eventsCache.push(j.event);
+        const d = j.draw; evDraw[eid] = d.map; evDrawBy[eid] = d.by2; evOver[eid] = d.groupOverride; evSched[eid] = schedFromDb(d.sched) || {};
+        evSelf[eid] = Object.fromEntries(j.self.map(x => [x.key, x.days]));
+      }
+      toast('', 1);
+      drawSheetEid = eid; schedOpen = true; $('sheet').classList.add('wide'); $('sheet').classList.toggle('ro', VIEW_ONLY);
+      renderSched(eid);
+      $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open'); $('sheet').scrollTop = 0;
+    } catch (err) { dialog({ title: '沒辦法開啟排班', msg: String(err.message || err), okText: '知道了' }); }
+  }
+  // 唯讀：擋掉所有會修改資料的點擊，只留切換頁面、看名單、存圖
+  const RO_OK = '#sc-att,#sc-car,#sc-meal,#at-back,#car-back,#meal-back,[data-fold],[data-place],[data-cday],[data-mday],[data-shot],#sc-shotall,#sh-dl,#sh-no,#eq-no,#md-x,#sheet-close,details,summary,.xshot';
+  document.addEventListener('click', ev => {
+    if (!VIEW_ONLY) return; const t = ev.target;
+    if (!t.closest('#sheet')) return;
+    if (t.closest(RO_OK) || !t.closest('button,[data-ak],[data-ck],[data-mk],[data-pk],[data-sk],[data-sd],[data-nd],[data-tag],[data-duty],[data-lod],[data-lod2],td.c,td.cv,td.mv,input,label,.xnote,.xm,.sz')) return;
+    ev.stopPropagation(); ev.preventDefault(); toast('👀 唯讀檢視，不能修改');
+  }, true);
   // ===================== 用餐統計：每天 中餐／晚餐 葷・素・自理 =====================
   const MEAL_CODES = [['葷', '葷食'], ['素', '素食'], ['自', '自行處理']];
   const MEAL_BG = { '葷': '#fee2e2', '素': '#dcfce7', '自': '#e5e7eb' };
@@ -3533,7 +3607,7 @@
       }
       first = false;
       watchMyRoster(user && user.status === 'approved' ? user.rosterId : null);
-      if (user && user.status === 'approved') { watchEvents(); setTimeout(loadMySched, 0); }
+      if (user && user.status === 'approved') { watchEvents(); setTimeout(loadMySched, 0); if (pendingView && auth.currentUser) openViewer(pendingView); }
       try { const k = 'bst_menu_' + profile.userId, v = user ? user.status : 'none';
         if (localStorage.getItem(k) !== v && window.__menuSync !== v) (window.__menuSync = v, syncMenu()).then(res => { if (res && res.ok) try { localStorage.setItem(k, v); } catch (e) {} }); } catch (e) {}
       if (isAdmin()) startAdminWatch();
