@@ -586,7 +586,7 @@ async function mySchedRoute(req, env, json) {
         ['o', 'y', 'h'].forEach(f => { const v = st[f]; o[f] = v === undefined ? au[f] : (v === 'x' ? '' : v); o.adminCar[f] = (car[d] || {})[f] !== undefined; });
         return o; };
       const ds = mine.map(x => x.d), first = ds[0], pre = first ? isoAddW(first, -1) : null;
-      const planDays = [...(pre && (!sc.start || pre >= isoAddW(sc.start, -1)) ? [pre] : []), ...ds, ...Object.keys(self).filter(d => !ds.includes(d) && d !== pre)].sort();
+      const planDays = [...(pre && sc.start && pre >= sc.start ? [pre] : []), ...ds, ...Object.keys(self).filter(d => !ds.includes(d) && d !== pre)].sort();
       out.push({ id: e.id, title: e.title || '', name: myKey, days: mine, cats, cmd, g: myG, plan: planDays.map(plan) });
     }
     return json({ events: out });
