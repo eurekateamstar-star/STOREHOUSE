@@ -28,6 +28,15 @@ export default {
 
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
     { const m = new URL(req.url).pathname.match(/^\/j\/([A-Za-z0-9_-]{6,40})\.jpg$/); if (m && req.method === 'GET') return journeyImg(m[1], env, req); }
+    { const m = new URL(req.url).pathname.match(/^\/c\/([A-Za-z0-9_-]{6,40})\.jpg$/); if (m && req.method === 'GET') return journeyImg(m[1], env, req, 'share_img'); }
+    if (new URL(req.url).pathname === '/share-get' && req.method === 'GET') {   // 分享卡片內容（公開，給 LIFF 分享頁用）
+      const id = new URL(req.url).searchParams.get('id') || '';
+      if (!/^[A-Za-z0-9_-]{6,40}$/.test(id)) return json({ error: 'bad id' }, 400);
+      try { const d = await fsGet(await saToken(env), `share/${id}`); if (!d) return json({ error: '這張卡片已經刪除了' }, 404);
+        const card = { id, ...fobj(d.fields) };
+        return new Response(JSON.stringify({ ok: true, card: { ...card, flex: shareFlex(card, new URL(req.url).origin) } }), { headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=30' } }); }
+      catch (e) { return json({ error: 'failed' }, 500); }
+    }
     if (new URL(req.url).pathname === '/validate' && req.method === 'GET') {   // 檢查每個自動回覆的格式（LINE 官方驗證）
       const out = {};
       for (const [k, make] of Object.entries(REPLIES)) {
@@ -35,6 +44,9 @@ export default {
           body: JSON.stringify({ messages: [await make(env, new URL(req.url).origin)] }) });
         out[k] = r.ok ? 'ok' : await r.text();
       }
+      { const r = await fetch('https://api.line.me/v2/bot/message/validate/reply', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + env.LINE_BOT_TOKEN },
+          body: JSON.stringify({ messages: [shareFlex({ id: 'sample000', title: '標題', text: '說明', w: 1080, h: 1350 }, new URL(req.url).origin)] }) });
+        out['分享卡片'] = r.ok ? 'ok' : await r.text(); }
       return json(out);
     }
     if (new URL(req.url).pathname === '/journey-list' && req.method === 'GET') {
@@ -55,6 +67,7 @@ export default {
     if (path === '/menu') return menuRoute(req, env, json);
     if (path === '/menu-setup') return menuSetupRoute(req, env, json);
     if (path === '/journey') return journeyRoute(req, env, json);
+    if (path === '/sharecard') return shareCardRoute(req, env, json);
 
     try {
       const { accessToken } = await req.json();
@@ -494,10 +507,10 @@ async function lotRoute(req, env, json) {
 }
 // ===== 醫護足跡照片：會員中心管理員上傳，LINE 點「醫護足跡」輪播 =====
 // journey/{id}：{ caption, order, at }；journey_img/{id}：{ data: JPEG base64 }（用服務帳戶讀寫，不用改資料庫規則）
-async function journeyImg(id, env, req) {
+async function journeyImg(id, env, req, coll = 'journey_img') {
   try {
     const cache = caches.default, hit = req && await cache.match(req); if (hit) return hit;
-    const d = await fsGet(await saToken(env), `journey_img/${id}`);
+    const d = await fsGet(await saToken(env), `${coll}/${id}`);
     if (!d) return new Response('not found', { status: 404 });
     const b = atob(fobj(d.fields).data || ''); const u8 = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u8[i] = b.charCodeAt(i);
     const res = new Response(u8, { headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=31536000, immutable', 'Access-Control-Allow-Origin': '*' } });
@@ -535,6 +548,50 @@ async function journeyRoute(req, env, json) {
     if (action === 'order') {
       const ids = (body.ids || []).filter(x => /^[A-Za-z0-9_-]{6,40}$/.test(x)).slice(0, 60);
       await Promise.all(ids.map((x, i) => patch(`journey/${x}`, { order: i })));
+      return json({ ok: true });
+    }
+    return json({ error: 'unknown action' }, 400);
+  } catch (e) { return json({ error: String((e && e.message) || e) }, e && e.code || 500); }
+}
+const SHARE_LIFF = 'https://liff.line.me/2011820105-x1KU6xLW', OA_URL = 'https://line.me/R/ti/p/@393geitc';
+function shareFlex(c, origin) {
+  const ratio = Math.min(3, Math.max(1 / 3, (c.w || 1) / (c.h || 1))), W = 1000, H = Math.round(W / ratio);
+  const body = [];
+  if (c.title) body.push({ type: 'text', text: c.title, weight: 'bold', size: 'lg', color: '#ffffff', wrap: true });
+  if (c.text) body.push({ type: 'text', text: c.text, size: 'sm', color: '#ffffffcc', wrap: true, margin: c.title ? 'sm' : 'none', lineSpacing: '4px' });
+  body.push({ type: 'box', layout: 'vertical', backgroundColor: '#ffffff', cornerRadius: '10px', paddingAll: '13px', margin: body.length ? 'lg' : 'none',
+    action: { type: 'uri', label: '看更多', uri: c.url || OA_URL },
+    contents: [{ type: 'text', text: c.btn || '🏥 到白沙屯醫護團 LINE 看更多', weight: 'bold', size: 'md', color: '#1e3a5f', align: 'center', wrap: true }] });
+  body.push({ type: 'text', text: '➦ 分享給親友', size: 'md', color: '#ffffff', align: 'center', margin: 'lg', action: { type: 'uri', label: '分享給親友', uri: `${SHARE_LIFF}?share=${c.id}` } });
+  return { type: 'flex', altText: c.title || '白沙屯醫護團', contents: { type: 'bubble', size: 'giga',
+    hero: { type: 'image', url: `${origin}/c/${c.id}.jpg`, size: 'full', aspectMode: 'cover', aspectRatio: `${W}:${H}` },
+    body: { type: 'box', layout: 'vertical', paddingAll: '16px', backgroundColor: '#1e3a5f', contents: body } } };
+}
+// ===== 分享卡片：管理員上傳圖文，團員用 LIFF shareTargetPicker 轉傳給親友／群組 =====
+async function shareCardRoute(req, env, json) {
+  try {
+    const body = await req.json(), { idToken, action } = body;
+    if (!idToken) return json({ error: 'missing' }, 400);
+    const me = await fsUser(idToken, uidOfToken(idToken));
+    if (!memberAdmin(me)) return json({ error: '只有會員中心管理員可以管理分享卡片' }, 403);
+    const tok = await saToken(env), H = { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' };
+    const patch = (path, fields) => fetch(`${FS}/${path}?${Object.keys(fields).map(k => 'updateMask.fieldPaths=' + k).join('&')}`, { method: 'PATCH', headers: H, body: JSON.stringify({ fields: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, tv(v)])) }) });
+    const clean = b => ({ title: String(b.title || '').slice(0, 60), text: String(b.text || '').slice(0, 300), btn: String(b.btn || '').slice(0, 30),
+      url: /^https:\/\/[^\s]{4,400}$/.test(b.url || '') ? b.url : 'https://line.me/R/ti/p/@393geitc' });
+    if (action === 'list') return json({ ok: true, cards: (await fsList(tok, 'share')).sort((x, y) => (y.at ?? 0) - (x.at ?? 0)).map(c => ({ ...c, flex: shareFlex(c, new URL(req.url).origin) })) });
+    if (action === 'add') {
+      const data = String(body.data || '');
+      if (!/^[A-Za-z0-9+/=]+$/.test(data) || data.length > 1000000) return json({ error: '圖片太大或格式不對' }, 400);
+      const rnd = new Uint8Array(9); crypto.getRandomValues(rnd); const id = b64url(rnd);
+      const w1 = await patch(`share_img/${id}`, { data }); if (!w1.ok) return json({ error: 'save failed ' + w1.status }, 500);
+      await patch(`share/${id}`, { ...clean(body), w: Math.max(1, +body.w || 1), h: Math.max(1, +body.h || 1), at: Date.now() });
+      return json({ ok: true, id });
+    }
+    const id = String(body.id || '');
+    if (!/^[A-Za-z0-9_-]{6,40}$/.test(id)) return json({ error: 'bad id' }, 400);
+    if (action === 'edit') { await patch(`share/${id}`, clean(body)); return json({ ok: true }); }
+    if (action === 'del') {
+      await fetch(`${FS}/share/${id}`, { method: 'DELETE', headers: H }); await fetch(`${FS}/share_img/${id}`, { method: 'DELETE', headers: H });
       return json({ ok: true });
     }
     return json({ error: 'unknown action' }, 400);

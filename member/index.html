@@ -358,6 +358,14 @@
     <p id="loading-text">正在識別 LINE 身分…</p>
   </div>
 
+  <!-- 分享卡片：從卡片「分享給親友」打開 → 選好友／群組轉傳 -->
+  <div id="v-share" class="card auth hidden" style="text-align:center">
+    <div id="sh-card"></div>
+    <button class="btn line" id="sh-go" style="margin-top:14px">➦ 分享給親友</button>
+    <button class="btn ghost" id="sh-close" style="margin-top:8px">關閉</button>
+    <p id="sh-msg" style="font-size:13px;color:var(--sub);margin-top:10px"></p>
+  </div>
+
   <!-- 需要 LINE 登入 / 錯誤 -->
   <div id="v-login" class="card auth hidden">
     <h2>會員登入</h2>
@@ -483,6 +491,7 @@
         <button class="sbtn violet" id="btn-autopair">🔗 依身分證自動配對名冊</button>
         <button class="sbtn" id="btn-richmenu" style="background:#06c755;color:#fff;">🧩 發佈 LINE 圖文選單</button>
         <button class="sbtn" id="btn-journey" style="background:#C4622E;color:#fff;">📸 醫護足跡照片</button>
+        <button class="sbtn" id="btn-sharecard" style="background:#1e3a5f;color:#fff;">📤 分享圖文卡片</button>
       </div>
       <div class="card tbl-wrap"><table class="tbl" id="us-table"></table></div>
       <div class="cards-list" id="us-cards"></div>
@@ -580,7 +589,10 @@
     }
 
 
-  const LIFF_ID = '2011820105-x1KU6xLW';   // 會員中心專用 LIFF（Endpoint: /STOREHOUSE/member/）
+  const LIFF_ID = '2011820105-x1KU6xLW';
+  const pendingShare = (() => { try { const q = new URLSearchParams(location.search); let v = q.get('share');
+    if (!v && q.get('liff.state')) v = new URLSearchParams(q.get('liff.state').replace(/^[^?]*\?/, '')).get('share');
+    return /^[A-Za-z0-9_-]{6,40}$/.test(v || '') ? v : ''; } catch (e) { return ''; } })();   // 會員中心專用 LIFF（Endpoint: /STOREHOUSE/member/）
   const CERTS = ['EMT-1', 'EMT-2', 'EMT-P', '護理師', '醫師', '無證照'];
   const ROSTER = 'member_roster';            // 團員名冊（舊資料匯入）；文件 ID = SHA-256(身分證|生日)
 
@@ -602,7 +614,7 @@
     clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), ms || 2000);
   }
   function show(view) {
-    ['v-loading', 'v-login', 'v-register', 'v-status', 'v-member', 'v-admin'].forEach(id => $(id).classList.toggle('hidden', id !== view));
+    ['v-loading', 'v-login', 'v-register', 'v-status', 'v-member', 'v-admin', 'v-share'].forEach(id => $(id).classList.toggle('hidden', id !== view));
     document.body.classList.toggle('wide', view === 'v-member' || view === 'v-admin');
     document.body.classList.toggle('admin-wide', view === 'v-admin');
   }
@@ -3418,6 +3430,84 @@
   }
   $('btn-journey').onclick = () => openJourney();
 
+  // ===== 分享圖文卡片：管理員上傳，任何人按「分享給親友」用 shareTargetPicker 轉傳 =====
+  const shareLink = id => `https://liff.line.me/${LIFF_ID}?share=${id}`;
+  async function doShare(c) {
+    if (!liff.isApiAvailable || !liff.isApiAvailable('shareTargetPicker')) { dialog({ title: '這裡不能分享', msg: '請在 LINE 裡打開這個連結，再按「分享給親友」。', okText: '知道了' }); return false; }
+    try { const res = await liff.shareTargetPicker([c.flex], { isMultiple: true }); if (res) toast('✅ 已分享'); return !!res; }
+    catch (e) { dialog({ title: '分享失敗', msg: String(e.message || e), okText: '知道了' }); return false; }
+  }
+  function shareCardHtml(c) {
+    return `<div style="border-radius:16px;overflow:hidden;background:#1e3a5f;text-align:left;box-shadow:0 4px 16px rgba(0,0,0,.12)">
+      <img src="${AUTH_URL}/c/${c.id}.jpg" style="display:block;width:100%;aspect-ratio:${Math.min(3, Math.max(1 / 3, (c.w || 1) / (c.h || 1)))};object-fit:cover">
+      <div style="padding:14px 16px">${c.title ? `<div style="color:#fff;font-weight:800;font-size:17px">${esc(c.title)}</div>` : ''}
+      ${c.text ? `<div style="color:#ffffffcc;font-size:13px;margin-top:4px;white-space:pre-wrap;line-height:1.6">${esc(c.text)}</div>` : ''}
+      <div style="background:#fff;color:#1e3a5f;border-radius:10px;padding:11px;text-align:center;font-weight:800;margin-top:12px">${esc(c.btn || '🏥 到白沙屯醫護團 LINE 看更多')}</div>
+      <div style="color:#fff;text-align:center;margin-top:10px;font-weight:700">➦ 分享給親友</div></div></div>`;
+  }
+  async function openSharePage(id) {
+    show('v-share'); $('sh-msg').textContent = '讀取中…'; $('sh-go').disabled = true;
+    $('sh-close').onclick = () => { try { liff.closeWindow(); } catch (e) {} if (!inLine()) location.href = location.pathname; };
+    try {
+      const r = await fetch(AUTH_URL + '/share-get?id=' + encodeURIComponent(id)), j = await r.json();
+      if (!j.ok) throw new Error(j.error || '讀不到卡片');
+      const c = j.card; $('sh-card').innerHTML = shareCardHtml(c); $('sh-msg').textContent = '選擇要分享的好友或群組（可以選多個）';
+      $('sh-go').disabled = false; $('sh-go').onclick = async () => { if (await doShare(c)) { $('sh-msg').textContent = '✅ 分享完成，可以關閉了'; } };
+      if (await doShare(c)) $('sh-msg').textContent = '✅ 分享完成，可以關閉了';
+    } catch (e) { $('sh-card').innerHTML = ''; $('sh-msg').textContent = '❌ ' + (e.message || e); }
+  }
+  const scApi = async (body) => {
+    const idToken = await auth.currentUser.getIdToken();
+    const r = await fetch(AUTH_URL + '/sharecard', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, ...body }) });
+    const j = await r.json().catch(() => ({})); if (!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status)); return j;
+  };
+  const imgSize = b64 => new Promise(res => { const i = new Image(); i.onload = () => res({ w: i.naturalWidth, h: i.naturalHeight }); i.onerror = () => res({ w: 1, h: 1 }); i.src = 'data:image/jpeg;base64,' + b64; });
+  async function openShareCards() {
+    $('sheet-body').innerHTML = `<h3>📤 分享圖文卡片</h3>
+      <div style="font-size:13px;color:var(--sub);line-height:1.7;margin:4px 0 10px">上傳一張圖做成 LINE 卡片。按「分享」選好友或群組就能傳出去；收到的人按卡片下面的「➦ 分享給親友」可以再轉傳，<b>不會用到官方帳號推播額度</b>。</div>
+      <div class="card" style="padding:14px;margin-bottom:14px">
+        <label class="sbtn" style="background:#1e3a5f;color:#fff;display:inline-block;cursor:pointer">🖼 選擇圖片<input type="file" id="sc-file" accept="image/*" style="display:none"></label>
+        <span id="sc-fname" style="font-size:13px;color:var(--sub);margin-left:8px">（直的、橫的都可以）</span>
+        <input class="inp" id="sc-title" maxlength="60" placeholder="標題（可不填）" style="width:100%;margin-top:10px;box-sizing:border-box">
+        <textarea class="inp" id="sc-text" maxlength="300" rows="2" placeholder="說明文字（可不填）" style="width:100%;margin-top:8px;box-sizing:border-box;font:inherit"></textarea>
+        <input class="inp" id="sc-btn" maxlength="30" placeholder="按鈕文字（預設：🏥 到白沙屯醫護團 LINE 看更多）" style="width:100%;margin-top:8px;box-sizing:border-box">
+        <input class="inp" id="sc-url" placeholder="按鈕連結（預設：加入官方帳號 @393geitc）" style="width:100%;margin-top:8px;box-sizing:border-box">
+        <button class="sbtn" id="sc-add" style="background:#06c755;color:#fff;margin-top:10px">＋ 建立卡片</button>
+        <span id="sc-amsg" style="font-size:13px;color:var(--sub);margin-left:8px"></span>
+      </div>
+      <div id="sc-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px">讀取中…</div>`;
+    $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open'); $('sheet').scrollTop = 0;
+    let file = null;
+    $('sc-file').onchange = e => { file = e.target.files[0] || null; $('sc-fname').textContent = file ? file.name : '（直的、橫的都可以）'; };
+    $('sc-add').onclick = async () => {
+      if (!file) return toast('請先選擇圖片');
+      const url = $('sc-url').value.trim(); if (url && !/^https:\/\//.test(url)) return toast('連結要 https:// 開頭');
+      $('sc-add').disabled = true; $('sc-amsg').textContent = '上傳中…';
+      try { const data = await jCompress(file), { w, h } = await imgSize(data);
+        await scApi({ action: 'add', data, w, h, title: $('sc-title').value.trim(), text: $('sc-text').value.trim(), btn: $('sc-btn').value.trim(), url });
+        file = null; ['sc-title', 'sc-text', 'sc-btn', 'sc-url'].forEach(k => $(k).value = ''); $('sc-fname').textContent = '（直的、橫的都可以）'; $('sc-amsg').textContent = '✅ 已建立'; scLoad();
+      } catch (e) { $('sc-amsg').textContent = '❌ ' + (e.message || e); }
+      $('sc-add').disabled = false;
+    };
+    scLoad();
+  }
+  let scCards = [];
+  async function scLoad() {
+    try { scCards = (await scApi({ action: 'list' })).cards || []; } catch (e) { $('sc-list').textContent = '❌ ' + (e.message || e); return; }
+    if (!scCards.length) { $('sc-list').innerHTML = '<div style="color:var(--sub);font-size:14px">還沒有卡片，先上傳一張吧。</div>'; return; }
+    $('sc-list').innerHTML = scCards.map(c => `<div>${shareCardHtml(c)}
+      <div style="display:flex;gap:6px;margin-top:8px"><button class="sbtn" data-scs="${c.id}" style="flex:1;background:#06c755;color:#fff">📤 分享</button>
+      <button class="sbtn" data-scl="${c.id}" style="flex:1">🔗 複製連結</button><button class="sbtn" data-scd="${c.id}" style="color:#dc2626">🗑</button></div></div>`).join('');
+    const byId = id => scCards.find(x => x.id === id);
+    document.querySelectorAll('[data-scs]').forEach(b => b.onclick = () => doShare(byId(b.dataset.scs)));
+    document.querySelectorAll('[data-scl]').forEach(b => b.onclick = async () => {
+      const u = shareLink(b.dataset.scl); try { await navigator.clipboard.writeText(u); toast('已複製連結'); } catch (e) { dialog({ title: '分享連結', msg: u, okText: '知道了' }); } });
+    document.querySelectorAll('[data-scd]').forEach(b => b.onclick = async () => {
+      if (!await dialog({ title: '刪除這張卡片？', msg: '已經傳出去的卡片圖片也會看不到。', okText: '刪除', danger: true })) return;
+      try { await scApi({ action: 'del', id: b.dataset.scd }); toast('已刪除'); scLoad(); } catch (e) { toast('❌ ' + e.message); } });
+  }
+  $('btn-sharecard').onclick = () => openShareCards();
+
   // 依身分證＋姓名，把已存在的會員自動配對到名冊
   $('btn-autopair').onclick = async () => {
     const byId = {}; rosterCache.forEach(r => { if (r.idCard) (byId[normId(r.idCard)] = byId[normId(r.idCard)] || []).push(r); });
@@ -3581,9 +3671,10 @@
       await Promise.race([liff.init({ liffId: LIFF_ID }), new Promise((_, r) => setTimeout(() => r(new Error('逾時')), 9000))]);
     } catch (e) { return fail('無法啟動 LINE 登入，請從 LINE 開啟本頁，或稍後再試。'); }
     if (!liff.isLoggedIn()) {
-      $('btn-line-login').onclick = () => liff.login({ redirectUri: location.origin + location.pathname });
+      $('btn-line-login').onclick = () => liff.login({ redirectUri: pendingShare ? location.href : location.origin + location.pathname });
       return show('v-login');
     }
+    if (pendingShare) return openSharePage(pendingShare);
     try {
       var fbP = fbSignIn(liffUid());
       profile = await liff.getProfile();
