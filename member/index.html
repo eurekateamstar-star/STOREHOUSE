@@ -1536,7 +1536,7 @@
       .ms-dt{width:34px;flex:none;text-align:center;line-height:1.05}.ms-dt b{display:block;font-size:12.5px;color:var(--ink)}.ms-dt span{font-size:9px;color:var(--sub)}
       .ms-tm{flex:none;font-size:10px;font-weight:900;color:#fff;background:#c2414f;border-radius:6px;padding:2px 4px}
       .ms-mb{flex:1;min-width:0;font-size:11.5px;letter-spacing:-.5px;color:#4b5563;white-space:nowrap;line-height:1.45;overflow:hidden}.ms-mb .nmw{white-space:nowrap}.ms-mb small{display:block;font-size:10.5px;color:#b91c1c;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      .ms-tg{font-size:9px;color:#fff;background:#1e3a8a;border-radius:4px;padding:1px 3px;margin-right:2px;font-weight:700;vertical-align:1px}
+      .ms-dt .ms-tg,.ms-tg{font-size:9px;color:#fff;background:#1e3a8a;border-radius:4px;padding:1px 3px;margin-right:2px;font-weight:700;vertical-align:1px}
       .ms-ar{flex:none;color:#c9b5ae;font-size:15px;font-weight:700}</style>
       ${evs.map(e => `<div class="ms-card"><div class="ms-h">📅 我的排班<small>${esc(e.title)}・${e.days.length} 天・點日期看全部</small></div>
         ${[...new Set([...e.days.map(x => x.d), ...(e.plan || []).map(x => x.d)])].sort().map(d => { const x = e.days.find(y => y.d === d), pl = (e.plan || []).find(y => y.d === d) || {};
@@ -1545,10 +1545,10 @@
             <span class="ms-tm" style="background:#94a3b8">${d < e.days[0].d ? '前一天' : '未排班'}</span><div class="ms-mb">${pl.s ? '提早到、住宿' : '提早到？點這裡登記住宿／中巴'}</div><span class="ms-ar" style="font-size:11px">${ic}</span><span class="ms-ar">›</span></div>`; }
           return msRow(e, x, ic); }).join('')}</div>`).join('')}`;
     function msRow(e, x, ic) { { const dd = new Date(x.d + 'T12:00:00'), mates = x.members;
-          const extra = [x.note, x.duty.join('、'), x.eq ? '🎒' + x.eq : ''].filter(Boolean).join('・');
+          const [eqA, ...eqT] = String(x.eq || '').split('　'), extra = [x.note, x.duty.join('、'), eqA ? '🎒' + eqA : ''].filter(Boolean).map(esc).join('・') + (eqT.join('') ? ` <span style="color:#9ca3af;font-weight:600">${esc(eqT.join(' '))}</span>` : '');
           return `<div class="ms-row" data-msd="${e.id}|${x.d}"><div class="ms-dt"><b>${dd.getMonth() + 1}/${dd.getDate()}</b><span>(${WK[dd.getDay()]})</span>${x.tag ? `<span class="ms-tg" style="display:block;margin:2px 0 0">${esc(x.tag)}</span>` : ''}</div>
             <span class="ms-tm">${esc(x.team)}</span>
-            <div class="ms-mb">${mates.map(n => `<span class="nmw">${n === e.name ? `<b style="color:#b91c1c">${esc(n)}</b>` : esc(n)}</span>`).join('<i style="font-style:normal;color:#cbbdb8">·</i>')}${extra ? `<small>${esc(extra)}</small>` : ''}</div><span class="ms-ar" style="font-size:11px">${ic}</span><span class="ms-ar">›</span></div>`; } }
+            <div class="ms-mb">${mates.map(n => `<span class="nmw">${n === e.name ? `<b style="color:#b91c1c">${esc(n)}</b>` : esc(n)}</span>`).join('<i style="font-style:normal;color:#cbbdb8">·</i>')}${extra.trim() ? `<small>${extra}</small>` : ''}</div><span class="ms-ar" style="font-size:11px">${ic}</span><span class="ms-ar">›</span></div>`; } }
     box.querySelectorAll('[data-msd]').forEach(el => el.onclick = () => { const [a, b] = el.dataset.msd.split('|'); showMyDay(a, b); });
   }
   function msFlash(t, bad) {
