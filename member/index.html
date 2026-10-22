@@ -1915,8 +1915,7 @@
         ${done ? '<button class="sbtn" id="dr-redo" style="background:#fef2f2;color:#b91c1c;">全部重抽</button><button class="sbtn" id="dr-clear" style="background:#f1f5f9;color:#334155;">全部取消抽籤</button>' : ''}
         <button class="sbtn" id="dr-pay" style="${drPayMode ? 'background:#16a34a;color:#fff;box-shadow:0 0 0 3px #bbf7d0;' : 'background:#dcfce7;color:#166534;'}">${drPayMode ? '✅ 繳費模式中（按這裡結束）' : '💰 繳費模式：點名字就打勾'}</button>
         <button class="sbtn" id="dr-sched" style="background:#7c3aed;color:#fff;">📅 排班表</button>
-        <button class="sbtn" id="dr-pdf" style="background:#b91c1c;color:#fff;">⬇ 下載 PDF（全部）</button>
-        <button class="sbtn" id="dr-xlsx" style="background:#1f2430;color:#fff;">⬇ 下載 Excel（簽到表・繳費紀錄）</button>
+        <button class="sbtn" id="dr-dl" style="background:#1f2430;color:#fff;">⬇ 下載</button>
       </div></div>
       ${drPayMode ? '<div style="margin-top:10px;padding:10px 14px;border-radius:12px;background:#16a34a;color:#fff;font-weight:800;">💰 繳費模式：直接點名字 → 變綠底＝已繳；再點一次取消。完成後按上面的按鈕結束。</div>' : ''}
       <div class="dr-grid" style="margin-top:10px;">${DRAW_GROUPS.map(grp).join('') || '<div class="card empty">還沒有人回覆出席</div>'}</div>
@@ -1965,8 +1964,20 @@
       if (!(await dialog({ title: '全部取消抽籤？', msg: `已抽的 ${done} 人（包含自己抽的）時段都會清空，回到還沒抽的狀態。\n手動換組的設定會保留。`, okText: '全部取消', danger: true }))) return;
       try { await saveDraw(eid, {}, {}, evOver[eid] || {}); evDraw[eid] = {}; evDrawBy[eid] = {}; toast('已全部取消抽籤'); renderDrawSheet(eid); } catch (err) { toast('❌ 操作失敗'); }
     };
-    $('dr-xlsx').onclick = () => exportDrawXlsx(eid);
-    $('dr-pdf').onclick = () => printDrawAll(eid);
+    $('dr-dl').onclick = () => {
+      const ov = document.createElement('div'); ov.className = 'eq-ov';
+      ov.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(31,36,48,.45);display:flex;align-items:center;justify-content:center;padding:16px';
+      const B = (id, bg, ic, t, d) => `<button id="${id}" style="display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:none;border-radius:14px;padding:14px;margin-top:10px;background:${bg};color:#fff;font:inherit;cursor:pointer"><span style="font-size:26px">${ic}</span><span><b style="display:block;font-size:16px">${t}</b><small style="opacity:.85">${d}</small></span></button>`;
+      ov.innerHTML = `<div style="background:#fff;border-radius:20px;padding:18px;width:100%;max-width:360px;box-shadow:0 20px 50px rgba(0,0,0,.25)">
+        <div style="font-weight:900;font-size:17px">⬇ 下載</div>
+        ${B('dl-pdf', '#b91c1c', '📄', 'PDF', '全部分組名單，直接列印或傳 LINE')}
+        ${B('dl-xlsx', '#15803d', '📊', 'Excel', '簽到表・繳費紀錄，可以再編輯')}
+        <button id="dl-no" style="width:100%;margin-top:12px;border:none;border-radius:12px;padding:11px;background:#f1f5f9;color:#334155;font:inherit;font-weight:900;cursor:pointer">取消</button></div>`;
+      document.body.appendChild(ov);
+      ov.onclick = e2 => { if (e2.target === ov || e2.target.id === 'dl-no') ov.remove(); };
+      ov.querySelector('#dl-pdf').onclick = () => { ov.remove(); printDrawAll(eid); };
+      ov.querySelector('#dl-xlsx').onclick = () => { ov.remove(); exportDrawXlsx(eid); };
+    };
     $('dr-sched').onclick = () => { schedOpen = true; schSel = null; renderSched(eid); $('sheet').scrollTop = 0; };
   }
   // 下載 PDF：自己排好每一頁（A4 直式、每頁 20 人、換頁重印標題），轉成圖片放進 PDF，沒有瀏覽器頁首頁尾、不會被切邊
