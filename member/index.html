@@ -337,7 +337,7 @@
   body.viewer-only>*:not(#sheet):not(#toast):not(.pm-ov):not(.eq-ov):not(.dlg-bg):not(script):not(style){display:none!important}
   body.viewer-only #sheet{position:static!important;display:block!important;transform:none!important;max-height:none!important;height:auto!important;border-radius:0!important;box-shadow:none!important;margin:0 auto;max-width:1100px}
   body.viewer-only #sheet-close,body.viewer-only #sheet-bg{display:none!important}body.viewer-only{background:#fff!important;overflow:auto!important}
-  body.viewer-only .xsbar,body.viewer-only .sc-export,body.viewer-only #sc-shotall{display:none!important}
+  body.viewer-only #m-nudge,body.viewer-only .xsbar,body.viewer-only .sc-export,body.viewer-only #sc-shotall{display:none!important}
   .ro .dchip input{pointer-events:none}.ro .sf{box-shadow:none!important}.ro .at-tools{display:none!important}
   .ro #sheet-body::before{content:'👀 唯讀檢視・只能看不能改';display:block;text-align:center;font-size:12px;font-weight:800;color:#0369a1;background:#e0f2fe;border-radius:10px;padding:6px;margin-bottom:8px}
 </style>
@@ -2816,12 +2816,12 @@
         <div style="max-height:55vh;overflow:auto;border:1px solid #efe4e0;border-radius:10px"><table class="ct"><thead><tr><th style="width:20px">#</th><th style="width:32%">姓名</th><th>出勤</th><th>中餐</th><th>晚餐</th></tr></thead><tbody>
           ${on.map((p, i) => { const a = ga(p.key, d), m = g(p.key, d); return `<tr><td class="n">${i + 1}</td><td class="nm2" style="background:${CAT_BG[p.cat]}">${esc(p.name)}</td><td class="w">${esc(wTxt(a.w))}</td>${cell(m.l)}${cell(m.n)}</tr>`; }).join('') || '<tr><td colspan="5" style="color:#9a8f8b">無</td></tr>'}
         </tbody></table></div>
-        <div class="eq-btn" style="margin-top:10px"><button id="eq-no">關閉</button>${miss.length ? `<button id="m-nudge" style="background:#f59e0b;color:#fff">📣 催 ${miss.length} 人登記</button>` : ''}</div></div>`;
+        <div class="eq-btn" style="margin-top:10px"><button id="eq-no">關閉</button>${miss.length && !VIEW_ONLY ? `<button id="m-nudge" style="background:#f59e0b;color:#fff">📣 催 ${miss.length} 人登記</button>` : ''}</div></div>`;
       document.body.appendChild(ov); ov.onclick = e2 => { if (e2.target === ov || e2.target.id === 'eq-no') ov.remove(); };
       if (ov.querySelector('#m-nudge')) ov.querySelector('#m-nudge').onclick = () => nudgeMeal(eid, d, miss);
     });
   }
-  async function nudgeMeal(eid, d, miss) {
+  async function nudgeMeal(eid, d, miss) { if (VIEW_ONLY) return;
     const bound = miss.filter(p => p.ro && p.ro.boundUserId), nob = miss.filter(p => !(p.ro && p.ro.boundUserId));
     const e = eventsCache.find(x => x.id === eid) || {};
     const def = `${dLabel(d)} 的中餐／晚餐你還沒登記喔！\n請點下方按鈕 → 我的排班 → 點 ${dLabel(d)}，選葷／素／自行處理。`;
