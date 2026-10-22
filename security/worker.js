@@ -589,7 +589,7 @@ async function mySchedRoute(req, env, json) {
         o.adminMeal = {}; ['l', 'n'].forEach(f => { const ex = (meal[d] || {})[f], sv = (self[d] || {})[f], m = ex !== undefined ? ex : sv; o[f] = !m || m === 'x' ? '' : m; o.adminMeal[f] = ex !== undefined; });
         return o; };
       const ds = mine.map(x => x.d), first = ds[0], pre = first ? isoAddW(first, -1) : null;
-      const planDays = [...(pre && sc.start && pre >= sc.start ? [pre] : []), ...ds, ...Object.keys(self).filter(d => !ds.includes(d) && d !== pre)].sort();
+      const planDays = [...(pre && sc.start && pre >= sc.start ? [pre] : []), ...ds].sort();   // 只有排班前一天＋排班的日子
       out.push({ id: e.id, title: e.title || '', name: myKey, days: mine, cats, cmd, g: myG, plan: planDays.map(plan) });
     }
     return json({ events: out });
