@@ -47,6 +47,9 @@ export default {
       { const r = await fetch('https://api.line.me/v2/bot/message/validate/reply', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + env.LINE_BOT_TOKEN },
           body: JSON.stringify({ messages: [shareFlex({ id: 'sample000', title: '標題', text: '說明', w: 1080, h: 1350 }, new URL(req.url).origin), shareFlex(EDU_CARDS['edu-heat'], '')] }) });
         out['分享卡片'] = r.ok ? 'ok' : await r.text(); }
+      { const r = await fetch('https://api.line.me/v2/bot/message/validate/reply', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + env.LINE_BOT_TOKEN },
+          body: JSON.stringify({ messages: [noticeFlex({ kind: '用餐登記', sub: '116年白沙屯往北港進香', rows: [['日期', '10/25(日)'], ['項目', '中餐・晚餐']] }, '請登記用餐', '說明文字', '前往登記', 'https://liff.line.me/x')] }) });
+        out['通知卡片'] = r.ok ? 'ok' : await r.text(); }
       return json(out);
     }
     if (new URL(req.url).pathname === '/journey-list' && req.method === 'GET') {
@@ -712,10 +715,34 @@ async function remindRoute(req, env, json) {
   } catch (e) { return json({ error: String((e && e.message) || e) }, e && e.code || 500); }
 }
 // 管理員催團員登記：LINE 推播提醒（只有會員中心管理員可以用）
+function noticeFlex(body, ttl, msg, btn, link) {
+    const kind = String(body.kind || '通知').slice(0, 10), sub = String(body.sub || '').slice(0, 60);
+    const rows = (Array.isArray(body.rows) ? body.rows : []).slice(0, 5).map(x => [String(x[0] || '').slice(0, 8), String(x[1] || '').slice(0, 80)]).filter(x => x[0] && x[1]);
+    const BRAND = '#B4323F', INK = '#1F2430', SUB = '#6B7280';
+    return { type: 'flex', altText: `【白沙屯醫護團】${ttl}`, contents: { type: 'bubble', size: 'mega',
+      body: { type: 'box', layout: 'vertical', paddingAll: '0px', contents: [
+        { type: 'box', layout: 'vertical', height: '5px', backgroundColor: BRAND, contents: [] },
+        { type: 'box', layout: 'vertical', paddingAll: '20px', paddingBottom: '8px', contents: [
+          { type: 'box', layout: 'horizontal', alignItems: 'center', contents: [
+            { type: 'text', text: '白沙屯醫護團', size: 'xs', color: SUB, weight: 'bold', flex: 1 },
+            { type: 'box', layout: 'vertical', flex: 0, cornerRadius: '4px', backgroundColor: '#FBEAEC', paddingStart: '8px', paddingEnd: '8px', paddingTop: '2px', paddingBottom: '2px',
+              contents: [{ type: 'text', text: kind, size: 'xxs', color: BRAND, weight: 'bold' }] }] },
+          { type: 'text', text: ttl, size: 'lg', weight: 'bold', color: INK, wrap: true, margin: 'md' },
+          ...(sub ? [{ type: 'text', text: sub, size: 'xs', color: SUB, wrap: true, margin: 'xs' }] : []),
+          { type: 'separator', margin: 'lg', color: '#E5E7EB' },
+          ...(rows.length ? [{ type: 'box', layout: 'vertical', margin: 'lg', spacing: 'sm', contents: rows.map(([k, v]) => ({ type: 'box', layout: 'horizontal', contents: [
+            { type: 'text', text: k, size: 'sm', color: SUB, flex: 2 }, { type: 'text', text: v, size: 'sm', color: INK, flex: 5, wrap: true }] })) }] : []),
+          ...(msg ? [{ type: 'text', text: msg, size: 'sm', color: '#374151', wrap: true, margin: 'lg', lineSpacing: '5px' }] : []),
+        ] },
+      ] },
+      footer: { type: 'box', layout: 'vertical', paddingAll: '20px', paddingTop: '12px', spacing: 'md', contents: [
+        { type: 'button', style: 'primary', color: BRAND, height: 'sm', action: { type: 'uri', label: String(btn || '前往登記').slice(0, 20), uri: link } },
+        { type: 'text', text: '此訊息由白沙屯醫護團管理員發送', size: 'xxs', color: '#9CA3AF', align: 'center' }] } } };
+}
 async function nudgeRoute(req, env, json) {
   try {
     if (!env.LINE_BOT_TOKEN) return json({ error: 'LINE_BOT_TOKEN 尚未設定' }, 501);
-    const { idToken, uids, text, title, url, action, btn } = await req.json();
+    const body = await req.json(), { idToken, uids, text, title, url, action, btn } = body;
     if (!idToken) return json({ error: 'missing' }, 400);
     const me = await fsUser(idToken, uidOfToken(idToken));
     if (!memberAdmin(me)) return json({ error: '只有會員中心管理員可以催' }, 403);
@@ -729,11 +756,7 @@ async function nudgeRoute(req, env, json) {
     if (!list.length) return json({ error: '這些人都還沒綁定 LINE' }, 400);
     const msg = String(text || '').slice(0, 600), ttl = String(title || '提醒').slice(0, 40);
     const link = /^https:\/\/liff\.line\.me\//.test(url || '') ? url : 'https://liff.line.me/2011820105-x1KU6xLW';
-    const flex = { type: 'flex', altText: `【白沙屯醫護團】${ttl}`, contents: { type: 'bubble', size: 'kilo',
-      header: { type: 'box', layout: 'vertical', paddingAll: '14px', background: { type: 'linearGradient', angle: '90deg', startColor: '#D65A68', endColor: '#F08339' },
-        contents: [{ type: 'text', text: '白沙屯醫護團', size: 'xxs', color: '#ffffffcc', weight: 'bold' }, { type: 'text', text: '🔔 ' + ttl, size: 'lg', color: '#ffffff', weight: 'bold', wrap: true, margin: 'xs' }] },
-      body: { type: 'box', layout: 'vertical', paddingAll: '16px', contents: [{ type: 'text', text: msg, wrap: true, size: 'sm', color: '#374151', lineSpacing: '4px' }] },
-      footer: { type: 'box', layout: 'vertical', paddingAll: '12px', paddingTop: '0px', contents: [{ type: 'button', style: 'primary', color: '#C2414F', height: 'md', action: { type: 'uri', label: String(btn || '📝 前往登記').slice(0, 20), uri: link } }] } } };
+    const flex = noticeFlex(body, ttl, msg, btn, link);
     const r = await lineApi(env, '/v2/bot/message/multicast', { method: 'POST', type: 'application/json', body: JSON.stringify({ to: list, messages: [flex] }) });
     if (!r.ok) return json({ error: 'LINE ' + r.status + ' ' + (await r.text()).slice(0, 200) }, 502);
     return json({ ok: true, sent: list.length, ...(await quota()) });

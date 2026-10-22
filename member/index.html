@@ -2697,8 +2697,8 @@
         const target = to.length ? to : all;
         try { await save();
           const idToken = await auth.currentUser.getIdToken();
-          const r = await fetch(AUTH_URL + '/nudge', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, uids: target, title: `${e.title || '進香'} 排班表`,
-            text: '管理員分享了排班資料給你，可以查看：\n・每日排班表\n・出勤／住宿\n・座車\n・用餐\n（只能檢視，不能修改）', url: `https://liff.line.me/${LIFF_ID}?view=${eid}`, btn: '📋 查看排班' }) });
+          const r = await fetch(AUTH_URL + '/nudge', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, uids: target, title: '排班表已分享給您', sub: e.title || '進香', kind: '排班分享',
+            rows: [['內容', '每日排班・出勤住宿・座車・用餐'], ['權限', '僅供檢視']], text: '', url: `https://liff.line.me/${LIFF_ID}?view=${eid}`, btn: '查看排班表' }) });
           const j = await r.json(); if (!j.ok) throw new Error(j.error || 'fail');
           toast(`✅ 已發給 ${j.sent} 人`, 3500); ov.remove(); renderSched(eid);
         } catch (err) { dialog({ title: '送出失敗', msg: String(err.message || err), okText: '知道了' }); } };
@@ -2838,7 +2838,7 @@
   async function nudgeMeal(eid, d, miss) { if (VIEW_ONLY) return;
     const bound = miss.filter(p => p.ro && p.ro.boundUserId), nob = miss.filter(p => !(p.ro && p.ro.boundUserId));
     const e = eventsCache.find(x => x.id === eid) || {};
-    const def = `${dLabel(d)} 的中餐／晚餐你還沒登記喔！\n請點下方按鈕 → 我的排班 → 點 ${dLabel(d)}，選葷／素／自行處理。`;
+    const def = `請點下方按鈕，於「我的排班」選擇 ${dLabel(d)}，登記葷食、素食或自行處理。`;
     if (!bound.length) return dialog({ title: '沒辦法用 LINE 提醒', msg: `這 ${miss.length} 人都還沒綁定 LINE：\n${nob.map(p => p.name).join('、')}`, okText: '知道了' });
     if (!e.schedPublic) { if (!(await dialog({ title: '排班還沒公開', msg: '團員要在「我的排班」登記，排班需要先公開。\n仍然要送出提醒嗎？', okText: '仍要送出' }))) return; }
     const call = async body => { const idToken = await auth.currentUser.getIdToken();
@@ -2852,7 +2852,7 @@
       input: { value: def }, okText: `📣 送出（用掉 ${bound.length} 則）` });
     if (!text) return;
     try {
-      const j = await call({ uids: bound.map(p => p.ro.boundUserId), title: `${dLabel(d)} 用餐登記`, text, url: `https://liff.line.me/${LIFF_ID}` });
+      const j = await call({ uids: bound.map(p => p.ro.boundUserId), title: '請登記用餐', sub: e.title || '', kind: '用餐登記', rows: [['日期', dLabel(d)], ['項目', '中餐・晚餐']], text, url: `https://liff.line.me/${LIFF_ID}`, btn: '前往登記' });
       toast(`✅ 已用 LINE 提醒 ${j.sent} 人${qTxt(j) ? '｜' + qTxt(j).replace('本月推播額度：', '') : ''}`, 4000);
     } catch (err) { dialog({ title: '送出失敗', msg: String(err.message || err), okText: '知道了' }); }
   }
