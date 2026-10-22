@@ -29,6 +29,13 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
     { const m = new URL(req.url).pathname.match(/^\/j\/([A-Za-z0-9_-]{6,40})\.jpg$/); if (m && req.method === 'GET') return journeyImg(m[1], env, req); }
     { const m = new URL(req.url).pathname.match(/^\/c\/([A-Za-z0-9_-]{6,40})\.jpg$/); if (m && req.method === 'GET') return journeyImg(m[1], env, req, 'share_img'); }
+    if (new URL(req.url).pathname === '/pic' && req.method === 'GET') {   // LINE 大頭貼代理（讓 canvas 可以存圖）
+      const u = new URL(req.url).searchParams.get('u') || '';
+      let h = ''; try { h = new URL(u).hostname; } catch (e) {}
+      if (!/^https:/.test(u) || !/(^|\.)line-scdn\.net$/.test(h)) return new Response('bad url', { status: 400 });
+      const r = await fetch(u, { cf: { cacheTtl: 3600 } }); if (!r.ok) return new Response('not found', { status: 404 });
+      return new Response(r.body, { headers: { 'Content-Type': r.headers.get('Content-Type') || 'image/jpeg', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=3600' } });
+    }
     if (new URL(req.url).pathname === '/share-get' && req.method === 'GET') {   // 分享卡片內容（公開，給 LIFF 分享頁用）
       const id = new URL(req.url).searchParams.get('id') || '';
       if (!/^[A-Za-z0-9_-]{6,40}$/.test(id)) return json({ error: 'bad id' }, 400);
@@ -71,6 +78,7 @@ export default {
     if (path === '/menu-setup') return menuSetupRoute(req, env, json);
     if (path === '/journey') return journeyRoute(req, env, json);
     if (path === '/sharecard') return shareCardRoute(req, env, json);
+    if (path === '/guardian-no') return guardianNoRoute(req, env, json);
 
     try {
       const { accessToken } = await req.json();
@@ -558,13 +566,14 @@ async function journeyRoute(req, env, json) {
     return json({ error: 'unknown action' }, 400);
   } catch (e) { return json({ error: String((e && e.message) || e) }, e && e.code || 500); }
 }
+const GUARDIAN_URL = 'https://tsushin-buishatun.pages.dev/guardian/';   // 全民醫護證（新 LIFF 建好後改成 liff.line.me 網址）
 const SHARE_LIFF = 'https://liff.line.me/2011820105-x1KU6xLW', OA_URL = 'https://line.me/R/ti/p/@393geitc';
 // 內建衛教小卡（圖在 /richmenu/card-*.jpg，由 scratchpad edu_card.py 產生）
 const EDU_H = {};   // 衛教小卡都是 1080×1080 正方形
 const EDU_CARDS = Object.fromEntries(EDU.map(e => ['edu-' + e.img, { id: 'edu-' + e.img, builtin: true, w: 1080, h: EDU_H[e.img] || 1080,
   alt: '衛教小卡：' + e.title, imgUrl: `${SITE}/richmenu/card-${e.img}.jpg?v=3` }]));
-EDU_CARDS.guardian = { id: 'guardian', builtin: true, w: 1040, h: 913, alt: '全民醫護證｜不用證照，也能守護身邊的人', imgUrl: `${SITE}/richmenu/guardian-promo.jpg?v=1`,
-  title: '領一張你的全民醫護證', text: '不用證照，也能守護身邊的人。放上照片、勾選你會的守護技能，做一張屬於你的醫護證！', btn: '🪪 領取我的全民醫護證', url: `${SHARE_LIFF}?card=1` };
+EDU_CARDS.guardian = { id: 'guardian', builtin: true, w: 1024, h: 756, alt: '全民醫護證｜不用證照，也能守護身邊的人', imgUrl: `${SITE}/richmenu/guardian-promo.jpg?v=2`,
+  title: '領一張你的全民醫護證', text: '不用證照，也能守護身邊的人。放上照片、勾選你會的守護技能，做一張屬於你的醫護證！', btn: '🪪 領取我的全民醫護證', url: GUARDIAN_URL };
 function shareFlex(c, origin) {
   const ratio = Math.min(3, Math.max(1 / 3, (c.w || 1) / (c.h || 1))), W = 1000, H = Math.round(W / ratio);
   const body = [], heroUrl = c.imgUrl || `${origin}/c/${c.id}.jpg`;
@@ -577,6 +586,31 @@ function shareFlex(c, origin) {
   return { type: 'flex', altText: c.alt || c.title || '白沙屯醫護團', contents: { type: 'bubble', size: 'mega',
     hero: { type: 'image', url: heroUrl, size: 'full', aspectMode: 'cover', aspectRatio: `${W}:${H}` },
     body: { type: 'box', layout: 'vertical', paddingAll: '13px', backgroundColor: '#1e3a5f', contents: body } } };
+}
+// ===== 全民醫護證：守護編號（同一個 LINE 帳號永遠拿到同一號，流水號）=====
+async function guardianNoRoute(req, env, json) {
+  try {
+    const { accessToken } = await req.json();
+    if (!accessToken) return json({ error: 'missing token' }, 400);
+    const [v, p] = await Promise.all([
+      fetch('https://api.line.me/oauth2/v2.1/verify?access_token=' + encodeURIComponent(accessToken)),
+      fetch('https://api.line.me/v2/profile', { headers: { Authorization: 'Bearer ' + accessToken } })]);
+    if (!v.ok || !p.ok) return json({ error: 'invalid token' }, 401);
+    const info = await v.json(); if (String(info.client_id) !== LINE_CHANNEL_ID) return json({ error: 'wrong channel' }, 401);
+    const { userId } = await p.json(); if (!/^U[0-9a-f]{32}$/.test(userId || '')) return json({ error: 'no user' }, 401);
+    const tok = await saToken(env), H = { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' };
+    const have = await fsGet(tok, `guardian/${userId}`);
+    if (have) return json({ ok: true, no: +fobj(have.fields).no, at: +fobj(have.fields).at });
+    const DOC = `projects/${PROJECT_ID}/databases/(default)/documents`;
+    const c = await fetch(`https://firestore.googleapis.com/v1/${DOC}:commit`, { method: 'POST', headers: H, body: JSON.stringify({ writes: [
+      { transform: { document: `${DOC}/meta/guardian`, fieldTransforms: [{ fieldPath: 'count', increment: { integerValue: '1' } }] } }] }) });
+    const cj = await c.json(); const no = +(((cj.writeResults || [])[0] || {}).transformResults || [{}])[0].integerValue;
+    if (!no) return json({ error: 'counter failed' }, 500);
+    const at = Date.now();
+    const w = await fetch(`${FS}/guardian/${userId}?currentDocument.exists=false`, { method: 'PATCH', headers: H, body: JSON.stringify({ fields: { no: tv(no), at: tv(at) } }) });
+    if (!w.ok) { const again = await fsGet(tok, `guardian/${userId}`); if (again) return json({ ok: true, no: +fobj(again.fields).no, at: +fobj(again.fields).at }); }
+    return json({ ok: true, no, at });
+  } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
 }
 // ===== 分享卡片：管理員上傳圖文，團員用 LIFF shareTargetPicker 轉傳給親友／群組 =====
 async function shareCardRoute(req, env, json) {

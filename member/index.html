@@ -614,6 +614,7 @@
   const pendingShare = (() => { try { const q = new URLSearchParams(location.search); let v = q.get('share');
     if (!v && q.get('liff.state')) v = new URLSearchParams(q.get('liff.state').replace(/^[^?]*\?/, '')).get('share');
     return /^[A-Za-z0-9_-]{6,40}$/.test(v || '') ? v : ''; } catch (e) { return ''; } })();
+  const GUARDIAN_URL = 'https://tsushin-buishatun.pages.dev/guardian/';   // 全民醫護證獨立頁（新 LIFF 建好後改成 liff.line.me 網址）
   const pendingCard = (() => { try { const q = new URLSearchParams(location.search); return q.get('card') === '1' || /card=1/.test(q.get('liff.state') || ''); } catch (e) { return false; } })();   // 會員中心專用 LIFF（Endpoint: /STOREHOUSE/member/）
   const CERTS = ['EMT-1', 'EMT-2', 'EMT-P', '護理師', '醫師', '無證照'];
   const ROSTER = 'member_roster';            // 團員名冊（舊資料匯入）；文件 ID = SHA-256(身分證|生日)
@@ -3610,11 +3611,7 @@
   $('gc-invite').onclick = async () => {
     try { const r = await fetch(AUTH_URL + '/share-get?id=guardian'), j = await r.json(); if (!j.ok) throw new Error(j.error || 'fail'); await doShare(j.card); }
     catch (e) { dialog({ title: '沒辦法分享', msg: String(e.message || e), okText: '知道了' }); } };
-  $('btn-gcard').onclick = () => {
-    const cert = String((myRoster && (myRoster.cert || myRoster.certText)) || ''), opt = ['護理師', '醫師', 'EMTP', 'EMT2', 'EMT1'].find(x => cert.toUpperCase().includes(x));
-    if (opt && $('gc-pos').value === '全民守護員') $('gc-pos').value = opt;
-    openCardMaker((myRoster && myRoster.name) || (user && user.name) || '');
-  };
+  $('btn-gcard').onclick = () => { try { if (liff.isInClient() && GUARDIAN_URL.includes('liff.line.me')) return liff.openWindow({ url: GUARDIAN_URL }); } catch (e) {} location.href = GUARDIAN_URL; };
 
   // 依身分證＋姓名，把已存在的會員自動配對到名冊
   $('btn-autopair').onclick = async () => {
@@ -3778,7 +3775,7 @@
     try {
       await Promise.race([liff.init({ liffId: LIFF_ID }), new Promise((_, r) => setTimeout(() => r(new Error('逾時')), 9000))]);
     } catch (e) { return fail('無法啟動 LINE 登入，請從 LINE 開啟本頁，或稍後再試。'); }
-    if (pendingCard) return openCardMaker(null, true);
+    if (pendingCard) { location.replace(GUARDIAN_URL); return; }
     if (!liff.isLoggedIn()) {
       $('btn-line-login').onclick = () => liff.login({ redirectUri: pendingShare ? location.href : location.origin + location.pathname });
       return show('v-login');

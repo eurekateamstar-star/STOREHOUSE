@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>全民醫護證｜白沙屯拱天宮醫護團</title>
+<meta property="og:title" content="全民醫護證｜白沙屯拱天宮醫護團">
+<meta property="og:description" content="不用證照，也能守護身邊的人。領一張屬於你的全民醫護證！">
+<meta property="og:image" content="https://tsushin-buishatun.pages.dev/richmenu/guardian-promo.jpg">
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  :root{--red:#D7262B;--ink:#1F1A18;--sub:#7B6F6A;--bg:#FBF5EC;--line:#EADFD5}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"PingFang TC","Noto Sans TC","Noto Sans CJK TC","Microsoft JhengHei",sans-serif;-webkit-text-size-adjust:100%}
+  .wrap{max-width:460px;margin:0 auto;padding:16px 16px 40px}
+  .hidden{display:none!important}
+  .hero{border-radius:16px;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,.08);background:#fff}
+  .hero img{display:block;width:100%}
+  h2{font-size:19px;margin:20px 0 6px}
+  .hint{font-size:13px;color:var(--sub);line-height:1.6;margin:0 0 10px}
+  .lbl{font-size:14px;font-weight:800;margin:16px 0 8px}
+  input.txt{width:100%;font:inherit;font-size:18px;padding:12px 14px;border:2px solid var(--line);border-radius:12px;background:#fff;outline:none}
+  input.txt:focus{border-color:var(--red)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chips button,.grid2 button{font:inherit;font-size:15px;font-weight:800;border:2px solid var(--line);background:#fff;color:#6b625e;border-radius:999px;padding:8px 14px;cursor:pointer}
+  .chips button.on{background:var(--red);border-color:var(--red);color:#fff}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .grid2 button{border-radius:12px;padding:12px 6px}
+  .grid2 button.on{background:linear-gradient(#E0342F,#C9221F);border-color:#A51A18;color:#fff}
+  .btn{display:block;width:100%;font:inherit;font-size:17px;font-weight:900;border:0;border-radius:14px;padding:14px;cursor:pointer;text-align:center;margin-top:10px;text-decoration:none}
+  .btn.main{background:linear-gradient(90deg,#E0342F,#F0763A);color:#fff;box-shadow:0 6px 16px rgba(224,52,47,.3)}
+  .btn.line{background:#06C755;color:#fff}
+  .btn.ghost{background:#EFE8E2;color:#4a403c}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row2 .btn{margin-top:0}
+  canvas{width:100%;display:block;border-radius:14px;box-shadow:0 6px 22px rgba(0,0,0,.16);touch-action:none;background:#FBF4EA}
+  .zoom{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--sub);margin:12px 2px 2px}
+  .zoom input{flex:1}
+  .note{font-size:12px;color:var(--sub);text-align:center;line-height:1.7;margin-top:14px}
+  .spin{width:34px;height:34px;border:4px solid #f0d9d4;border-top-color:var(--red);border-radius:50%;animation:sp 1s linear infinite;margin:80px auto 14px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  #toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:rgba(20,20,20,.88);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:99;max-width:88vw;text-align:center}
+  #toast.show{opacity:1}
+  .ov{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.8);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:12px}
+  .ov img{max-width:100%;max-height:74vh;border-radius:12px}
+  .ov .t{color:#fff;font-weight:800;font-size:15px;text-align:center}
+  .ov .row2{width:100%;max-width:360px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="v-loading"><div class="spin"></div><p class="hint" style="text-align:center">讀取中…</p></div>
+
+  <!-- 第 1 步：填資料 -->
+  <div id="v-form" class="hidden">
+    <div class="hero"><img src="../richmenu/guardian-promo.jpg?v=2" alt="全民醫護證"></div>
+    <h2>領取你的全民醫護證</h2>
+    <p class="hint">不用證照，只要一顆願意幫忙的心。填好下面三項，就能拿到屬於你的守護證。</p>
+    <div class="lbl">① 姓名</div>
+    <input class="txt" id="f-name" maxlength="8" placeholder="你的名字" autocomplete="off">
+    <div class="lbl">② 身分</div>
+    <div class="chips" id="f-pos"></div>
+    <div class="lbl">③ 我會的守護技能 <span style="font-weight:500;color:var(--sub);font-size:12px">（可複選，不會也沒關係）</span></div>
+    <div class="grid2" id="f-skills"></div>
+    <button class="btn main" id="f-next" style="margin-top:22px">產生我的醫護證 →</button>
+  </div>
+
+  <!-- 第 2 步：醫護證 -->
+  <div id="v-card" class="hidden">
+    <canvas id="cv" width="1080" height="1620"></canvas>
+    <div class="zoom" id="zoomrow">🔍<input type="range" id="zoom" min="1" max="3" step="0.01" value="1">拖曳照片可移動</div>
+    <div class="row2" style="margin-top:12px">
+      <label class="btn ghost" style="margin:0">📷 換照片<input type="file" id="file" accept="image/*" style="display:none"></label>
+      <button class="btn ghost" id="edit">✏️ 修改資料</button>
+    </div>
+    <button class="btn main" id="save">⬇ 存成圖片</button>
+    <button class="btn line" id="invite">➦ 邀請親友一起領</button>
+    <div class="note">🔒 照片只在你的手機上合成，不會上傳<br>白沙屯拱天宮醫護團 ・ 聖容慈悲心 佑民護萬年</div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+(function () {
+  const LIFF_ID = '';   // ← 新建的「全民醫護證」LIFF ID（建好後填入）
+  const AUTH_URL = 'https://bst-auth.eurekateamstar.workers.dev';
+  const POS = ['全民守護員', '志工', '護理師', '醫師', 'EMTP', 'EMT2', 'EMT1'];
+  const SKILLS = ['CPR＋AED', '中暑處理', '止血包紮', '陪伴與求救'];
+  const FONT = '"PingFang TC","Noto Sans TC","Noto Sans CJK TC","Microsoft JhengHei",sans-serif';
+  const W = 1024, H = 1536;                       // 模板原始尺寸
+  const PH = { x: 511, y: 582, r: 159 };          // 大頭照圓框
+  const $ = id => document.getElementById(id);
+  const st = { name: '', pos: '全民守護員', skills: [true, true, false, true], no: 0, date: '', photo: null, zoom: 1, ox: 0, oy: 0, tpl: null, badge: null, profile: null };
+  const KEY = 'bst_guardian_v1';
+  try { Object.assign(st, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {}
+  const remember = () => { try { localStorage.setItem(KEY, JSON.stringify({ name: st.name, pos: st.pos, skills: st.skills })); } catch (e) {} };
+  function toast(m, ms) { const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), ms || 2200); }
+  function view(id) { ['v-loading', 'v-form', 'v-card'].forEach(v => $(v).classList.toggle('hidden', v !== id)); window.scrollTo(0, 0); }
+  const load = (src, cors) => new Promise((res, rej) => { const i = new Image(); if (cors) i.crossOrigin = 'anonymous'; i.onload = () => res(i); i.onerror = rej; i.src = src; });
+  const today = () => { const d = new Date(); return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`; };
+  const hasLiff = () => !!(LIFF_ID && window.liff);
+
+  // ---------- 表單 ----------
+  function drawForm() {
+    $('f-name').value = st.name || '';
+    $('f-pos').innerHTML = POS.map(p => `<button type="button" data-p="${p}" class="${st.pos === p ? 'on' : ''}">${p}</button>`).join('');
+    $('f-skills').innerHTML = SKILLS.map((s, i) => `<button type="button" data-s="${i}" class="${st.skills[i] ? 'on' : ''}">${st.skills[i] ? '✓ ' : ''}${s}</button>`).join('');
+    document.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { st.pos = b.dataset.p; st.name = $('f-name').value.trim(); drawForm(); });
+    document.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { st.skills[+b.dataset.s] = !st.skills[+b.dataset.s]; st.name = $('f-name').value.trim(); drawForm(); });
+  }
+  $('f-next').onclick = () => {
+    st.name = $('f-name').value.trim();
+    if (!st.name) { $('f-name').focus(); return toast('請先填寫姓名'); }
+    remember(); view('v-card'); draw();
+  };
+  $('edit').onclick = () => { drawForm(); view('v-form'); };
+
+  // ---------- 畫醫護證 ----------
+  function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+  function fit(c, text, weight, size, maxW, min) { let f = size; c.font = `${weight} ${f}px ${FONT}`; while (c.measureText(text).width > maxW && f > min) { f -= 1; c.font = `${weight} ${f}px ${FONT}`; } return f; }
+  function draw() {
+    const cv = $('cv'), c = cv.getContext('2d'), k = cv.width / W;
+    c.setTransform(k, 0, 0, k, 0, 0); c.fillStyle = '#FBF4EA'; c.fillRect(0, 0, W, H);
+    if (st.tpl) c.drawImage(st.tpl, 0, 0, W, H);
+    // 大頭照
+    c.save(); c.beginPath(); c.arc(PH.x, PH.y, PH.r, 0, Math.PI * 2); c.clip();
+    if (st.photo) { const p = st.photo, s = Math.max(2 * PH.r / p.naturalWidth, 2 * PH.r / p.naturalHeight) * st.zoom, w = p.naturalWidth * s, h = p.naturalHeight * s;
+      c.drawImage(p, PH.x - w / 2 + st.ox, PH.y - h / 2 + st.oy, w, h); }
+    else { c.fillStyle = '#E3DCD8'; c.fillRect(PH.x - PH.r, PH.y - PH.r, PH.r * 2, PH.r * 2); c.fillStyle = '#C9BDB8';
+      c.beginPath(); c.arc(PH.x, PH.y - 40, 60, 0, Math.PI * 2); c.fill(); c.beginPath(); c.ellipse(PH.x, PH.y + 140, 120, 105, 0, 0, Math.PI * 2); c.fill(); }
+    c.restore();
+    if (st.badge) c.drawImage(st.badge, 657 - 54, 694 - 54, 108, 108);
+    c.textBaseline = 'middle';
+    // 姓名
+    c.textAlign = 'left'; c.fillStyle = '#111'; fit(c, st.name || '你的名字', 900, 64, 450, 30); c.fillText(st.name || '你的名字', 134, 912);
+    // 身分
+    fit(c, st.pos, 900, 34, 168, 20); const tw = c.measureText(st.pos).width, pw = tw + 30;
+    rr(c, 802 - pw / 2, 885, pw, 54, 10); c.fillStyle = '#FFF'; c.fill(); c.lineWidth = 3.5; c.strokeStyle = '#D7262B'; c.stroke();
+    c.fillStyle = '#C81E25'; c.textAlign = 'center'; c.fillText(st.pos, 802, 913);
+    // 技能
+    SKILLS.forEach((t, i) => { const x = i % 2 ? 519 : 137, y = i < 2 ? 998 : 1054, on = st.skills[i];
+      rr(c, x, y, 370, 50, 6);
+      if (on) { const g = c.createLinearGradient(0, y, 0, y + 50); g.addColorStop(0, '#DA2A2E'); g.addColorStop(1, '#C21B22'); c.fillStyle = g; } else c.fillStyle = '#E6E4E2';
+      c.fill(); c.lineWidth = 2; c.strokeStyle = on ? '#A3171C' : '#C9C5C2'; c.stroke();
+      c.fillStyle = on ? '#fff' : '#9A9592'; c.font = `800 30px ${FONT}`; c.textAlign = 'center'; c.fillText((on ? '✓ ' : '') + t, x + 185, y + 26); });
+    // 日期（左側直排）
+    c.save(); c.translate(70, 585); c.rotate(Math.PI / 2);
+    c.font = `900 30px ${FONT}`; const dw = c.measureText(st.date).width + 40;
+    rr(c, -dw / 2, -26, dw, 52, 26); c.fillStyle = '#C81E25'; c.fill();
+    c.fillStyle = '#fff'; c.textAlign = 'center'; c.fillText(st.date, 0, 1); c.restore();
+    // 守護編號（右側直排）
+    c.save(); c.translate(958, 470); c.rotate(Math.PI / 2);
+    const no = st.no ? 'NO.' + String(st.no).padStart(6, '0') : 'NO.------';
+    c.font = `700 20px ${FONT}`; c.fillStyle = '#8A7C76'; c.textAlign = 'center'; c.fillText('GUARDIAN', 0, -24);
+    c.font = `900 34px ${FONT}`; c.fillStyle = '#C81E25'; c.fillText(no, 0, 10); c.restore();
+  }
+
+  // 換照片、拖曳、縮放
+  $('zoom').oninput = e => { st.zoom = +e.target.value; draw(); };
+  $('file').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    try { st.photo = await load(URL.createObjectURL(f)); st.zoom = 1; st.ox = st.oy = 0; $('zoom').value = 1; draw(); } catch (err) { toast('讀不到這張照片'); } };
+  (function () {
+    const cv = $('cv'), pts = new Map(); let last = null, pinch = null;
+    const pos = ev => { const r = cv.getBoundingClientRect(), f = W / r.width; return [(ev.clientX - r.left) * f, (ev.clientY - r.top) * f]; };
+    const inPhoto = p => Math.hypot(p[0] - PH.x, p[1] - PH.y) < PH.r + 40;
+    cv.addEventListener('pointerdown', ev => { const p = pos(ev); if (!st.photo || (!pts.size && !inPhoto(p))) return; cv.setPointerCapture(ev.pointerId); pts.set(ev.pointerId, p); last = p; pinch = null; });
+    cv.addEventListener('pointermove', ev => { if (!pts.has(ev.pointerId)) return; ev.preventDefault(); pts.set(ev.pointerId, pos(ev));
+      if (pts.size >= 2) { const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        if (pinch) { st.zoom = Math.min(3, Math.max(1, pinch.z * d / pinch.d)); $('zoom').value = st.zoom; } else pinch = { d, z: st.zoom }; }
+      else { const p = pos(ev); if (last) { st.ox += p[0] - last[0]; st.oy += p[1] - last[1]; } last = p; }
+      draw(); });
+    const up = ev => { pts.delete(ev.pointerId); last = null; if (pts.size < 2) pinch = null; };
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  })();
+
+  // 存圖
+  $('save').onclick = () => {
+    draw(); let url; try { url = $('cv').toDataURL('image/jpeg', 0.92); } catch (e) { return toast('產生圖片失敗，請換一張照片再試'); }
+    const ov = document.createElement('div'); ov.className = 'ov';
+    ov.innerHTML = `<div class="t">📱 長按圖片 →「儲存圖片」或直接分享</div><img src="${url}" alt="全民醫護證">
+      <div class="row2"><a class="btn" style="background:#fff;color:#111" download="全民醫護證.jpg" href="${url}">⬇ 下載</a><button class="btn ghost" id="ovx">關閉</button></div>`;
+    document.body.appendChild(ov); ov.querySelector('#ovx').onclick = () => ov.remove(); ov.onclick = e => { if (e.target === ov) ov.remove(); };
+  };
+  // 邀請親友（傳的是邀請卡，不含個人照片）
+  $('invite').onclick = async () => {
+    if (!hasLiff() || !liff.isApiAvailable('shareTargetPicker')) return toast('請在 LINE 裡打開這個頁面才能分享');
+    try { const r = await fetch(AUTH_URL + '/share-get?id=guardian'), j = await r.json(); if (!j.ok) throw new Error(j.error || '讀不到卡片');
+      const res = await liff.shareTargetPicker([j.card.flex], { isMultiple: true }); if (res) toast('✅ 已分享'); }
+    catch (e) { toast('分享失敗：' + (e.message || e), 3500); }
+  };
+
+  // ---------- 啟動 ----------
+  async function start() {
+    st.date = today();
+    const assets = Promise.all([load('gc-tpl.jpg?v=1'), load('gc-badge.png?v=1')]).then(([a, b]) => { st.tpl = a; st.badge = b; }).catch(() => toast('圖片載入失敗，請重新整理'));
+    if (hasLiff()) {
+      try { await Promise.race([liff.init({ liffId: LIFF_ID }), new Promise((_, r) => setTimeout(() => r(new Error('逾時')), 9000))]); } catch (e) {}
+      try {
+        if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
+        const pf = await liff.getProfile(); st.profile = pf;
+        if (!st.name) st.name = String(pf.displayName || '').slice(0, 8);
+        if (pf.pictureUrl) load(AUTH_URL + '/pic?u=' + encodeURIComponent(pf.pictureUrl), true).then(i => { if (!st.photo) { st.photo = i; draw(); } }).catch(() => {});
+        const at = liff.getAccessToken();
+        if (at) fetch(AUTH_URL + '/guardian-no', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accessToken: at }) })
+          .then(r => r.json()).then(j => { if (j.ok) { st.no = j.no; draw(); } }).catch(() => {});
+      } catch (e) {}
+    }
+    await assets; drawForm(); view('v-form');
+  }
+  start();
+})();
+</script>
+</body>
+</html>
