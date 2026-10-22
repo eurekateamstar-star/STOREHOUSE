@@ -1535,7 +1535,7 @@
       .ms-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid #f3ece9;cursor:pointer;-webkit-tap-highlight-color:transparent}.ms-row:active{background:#fff7f5}
       .ms-dt{width:46px;flex:none;text-align:center;line-height:1.1}.ms-dt b{display:block;font-size:15px;color:var(--ink)}.ms-dt span{font-size:10px;color:var(--sub)}
       .ms-tm{flex:none;font-size:12px;font-weight:900;color:#fff;background:#c2414f;border-radius:7px;padding:3px 7px}
-      .ms-mb{flex:1;min-width:0;font-size:12.5px;color:#4b5563;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ms-mb small{display:block;font-size:10.5px;color:#b91c1c;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .ms-mb{flex:1;min-width:0;font-size:12.5px;color:#4b5563;white-space:normal;line-height:1.45;word-break:keep-all;overflow-wrap:anywhere}.ms-mb .nmw{white-space:nowrap}.ms-mb small{display:block;font-size:10.5px;color:#b91c1c;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
       .ms-tg{font-size:10px;color:#fff;background:#1e3a8a;border-radius:5px;padding:1px 5px;margin-left:4px;font-weight:700;vertical-align:1px}
       .ms-ar{flex:none;color:#c9b5ae;font-size:18px;font-weight:700}</style>
       ${evs.map(e => `<div class="ms-card"><div class="ms-h">📅 我的排班<small>${esc(e.title)}・${e.days.length} 天・點日期看全部</small></div>
@@ -1548,7 +1548,7 @@
           const extra = [x.note, x.duty.join('、'), x.eq ? '🎒' + x.eq : ''].filter(Boolean).join('・');
           return `<div class="ms-row" data-msd="${e.id}|${x.d}"><div class="ms-dt"><b>${dd.getMonth() + 1}/${dd.getDate()}</b><span>(${WK[dd.getDay()]})</span></div>
             <span class="ms-tm">${esc(x.team)}</span>
-            <div class="ms-mb">${x.tag ? `<span class="ms-tg">${esc(x.tag)}</span> ` : ''}${mates.map(n => n === e.name ? `<b style="color:#b91c1c">${esc(n)}</b>` : esc(n)).join('、')}${extra ? `<small>${esc(extra)}</small>` : ''}</div><span class="ms-ar" style="font-size:13px">${ic}</span><span class="ms-ar">›</span></div>`; } }
+            <div class="ms-mb">${x.tag ? `<span class="ms-tg">${esc(x.tag)}</span> ` : ''}${mates.map(n => `<span class="nmw">${n === e.name ? `<b style="color:#b91c1c">${esc(n)}</b>` : esc(n)}</span>`).join('、')}${extra ? `<small>${esc(extra)}</small>` : ''}</div><span class="ms-ar" style="font-size:13px">${ic}</span><span class="ms-ar">›</span></div>`; } }
     box.querySelectorAll('[data-msd]').forEach(el => el.onclick = () => { const [a, b] = el.dataset.msd.split('|'); showMyDay(a, b); });
   }
   function msFlash(t, bad) {
