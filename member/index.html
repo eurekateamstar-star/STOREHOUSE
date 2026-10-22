@@ -1718,7 +1718,7 @@
         <div style="font-size:18px; font-weight:900;">${e.open ? '🟢' : '⚪'} ${esc(e.title || '')}</div>
         <div style="font-size:13px; color:var(--sub); margin-top:4px;">${esc(e.date || '')}</div>
         <div class="join-link" style="margin-top:10px;"><div><b>🔗 回覆連結（傳到 LINE 群組）</b><div class="u">${esc(eventLink(e.id))}</div></div>
-          <div style="display:flex; gap:6px; flex-wrap:wrap;"><button class="sbtn" id="ev-copy">複製連結</button>
+          <div style="display:flex; gap:6px; flex-wrap:nowrap;" class="ev-row"><style>.ev-row .sbtn{flex:1 1 0;min-width:0;white-space:nowrap;padding:8px 4px;font-size:13px;text-align:center}</style><button class="sbtn" id="ev-copy">複製連結</button>
           <button class="sbtn ${e.open ? 'red' : 'green'}" id="ev-toggle">${e.open ? '截止回覆' : '重新開放'}</button>
           <button class="sbtn violet" id="ev-edit">編輯</button><button class="sbtn" id="ev-csv">⬇ 匯出</button></div>
           <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; padding-top:8px; border-top:1px dashed rgba(0,0,0,.12);">
@@ -2267,14 +2267,16 @@
         .pm-l{font-size:12px;font-weight:800;color:#9a8f8b;margin:12px 0 6px}
         .pm-o{display:block;width:100%;text-align:left;border:1.5px solid #ece4e1;background:#fff;border-radius:14px;padding:10px 12px;margin-bottom:8px;font:inherit;cursor:pointer;box-sizing:border-box}
         .pm-o b{display:block;font-size:15px;color:#1f2430}.pm-o small{font-size:12px;color:var(--sub)}.pm-o.on{border-color:var(--primary);background:#fff5f5;box-shadow:0 0 0 2px #fbd5d9}
+        .sz{display:inline-flex;align-items:center;height:30px;border-radius:999px;background:#f6f1ef;padding:0 3px;flex:none}.sz button{width:22px;height:22px;border-radius:50%;border:none;background:#fff;font-size:15px;font-weight:900;color:#c2414f;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:0}
+        .sz b{display:inline-flex;align-items:baseline;padding:0 2px}.sz b input{width:18px!important;height:auto!important;border:none!important;background:none;font:inherit;font-size:16px!important;font-weight:900;text-align:center;padding:0;-moz-appearance:textfield}.sz b input::-webkit-inner-spin-button{-webkit-appearance:none}.sz small{font-size:10px;color:#9a8f8b;font-weight:700}
         .sc-help{margin-top:8px;font-size:12px;color:var(--sub);line-height:1.7}.sc-help summary{cursor:pointer;font-weight:800;color:#9a8f8b}
       </style>
       ${(() => { const dc = (attr, v) => { const dd = v ? new Date(v + 'T12:00:00') : null; return `<label class="dchip ${v ? '' : 'e'}">${dd ? `${dd.getMonth() + 1}/${dd.getDate()}<small style="font-size:11px;color:#9a8f8b;margin-left:2px">(${WK[dd.getDay()]})</small>` : '選日期'}<input type="date" ${attr} value="${esc(v || '')}"></label>`; };
         return `<div class="sc-set">
         <div class="sc-row"><b>進香日期</b>${dc('id="sc-start"', sc.start)}<span class="sc-til">～</span>${dc('id="sc-end"', sc.end)}${days.length ? `<span style="font-size:12px;color:var(--sub)">共 ${days.length} 天</span>` : ''}</div>
         ${days.length ? `<div class="sc-row" style="align-items:flex-start"><b style="padding-top:8px">抽籤時段</b><div style="display:flex;flex-direction:column;gap:6px">${SLOTS.map(sl => `<span class="sc-slot"><i>${sl}</i>${dc(`data-rg="${sl}" data-i="0"`, rg[sl] && rg[sl][0])}<span class="sc-til">～</span>${dc(`data-rg="${sl}" data-i="1"`, rg[sl] && rg[sl][1])}</span>`).join('')}</div></div>` : ''}
-        <div class="sc-row"><b>排班</b><div class="sc-acts" style="align-items:center"><span style="font-size:12px;white-space:nowrap">每組<input type="number" id="sc-size" min="2" max="6" value="${sc.size || 5}">人</span>
-          <button class="sbtn" id="sc-auto" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">🔀 自動排班</button>
+        <div class="sc-row"><b>排班</b><div class="sc-acts" style="align-items:center"><span class="sz"><button type="button" data-sz="-1">−</button><b><input type="number" id="sc-size" min="2" max="6" value="${sc.size || 5}"><small>人</small></b><button type="button" data-sz="1">＋</button></span>
+          <button class="sbtn" id="sc-auto" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">🔀 排班</button>
           ${days.length && Object.keys(dt).length ? `<button class="sbtn" id="sc-pub" style="background:${e.schedPublic ? '#16a34a' : '#e5e7eb'};color:${e.schedPublic ? '#fff' : '#374151'};">${e.schedPublic ? '👁 已公開' : '🙈 未公開'}</button>` : ''}</div></div>
         ${days.length ? `<div class="sc-row"><b>統計表</b><div class="sc-acts"><button class="sbtn" id="sc-att" style="background:#7c3aed;color:#fff;">🛏 出勤住宿</button><button class="sbtn" id="sc-car" style="background:#0f766e;color:#fff;">🚐 座車</button><button class="sbtn" id="sc-meal" style="background:#ca8a04;color:#fff;">🍱 用餐</button></div></div>` : ''}
         ${days.length && Object.keys(dt).length ? `<div class="sc-row"><b>匯出</b><div class="sc-acts"><button class="sbtn" id="sc-xlsx" style="background:#1f2430;color:#fff;">⬇ 排班 Excel</button><button class="sbtn" id="sc-shotall" style="background:#475569;color:#fff;">📷 全部存圖</button></div></div>` : ''}
@@ -2289,6 +2291,7 @@
       schFold[t] = open; try { localStorage.setItem('schFold', JSON.stringify(schFold)); } catch (e) {} renderSched(eid); });
     $('sc-back').onclick = () => { schedOpen = false; schPk = null; renderDrawSheet(eid); };
     document.querySelectorAll('[data-pk]').forEach(b => b.onclick = () => { schPk = schPk === b.dataset.pk ? null : b.dataset.pk; renderSched(eid); });
+    document.querySelectorAll('[data-sz]').forEach(b => b.onclick = () => { const i = $('sc-size'); i.value = Math.max(2, Math.min(6, (+i.value || 5) + +b.dataset.sz)); });
     if ($('pm-ov')) $('pm-ov').onclick = ev => { if (ev.target.id === 'pm-ov') { schPk = null; renderSched(eid); } };
     document.querySelectorAll('[data-pm]').forEach(b => b.onclick = () => {
       const m = b.dataset.pm, k = schPk; if (m === 'close') { schPk = null; return renderSched(eid); }
