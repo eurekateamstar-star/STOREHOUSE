@@ -41,7 +41,7 @@ export default {
       if (!/^[A-Za-z0-9_-]{6,40}$/.test(id)) return json({ error: 'bad id' }, 400);
       try { let card = EDU_CARDS[id];
         if (!card) { const d = await fsGet(await saToken(env), `share/${id}`); if (!d) return json({ error: '這張卡片已經刪除了' }, 404); card = { id, ...fobj(d.fields) }; }
-        return new Response(JSON.stringify({ ok: true, card: { ...card, flex: shareFlex(card, new URL(req.url).origin) } }), { headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=30' } }); }
+        return new Response(JSON.stringify({ ok: true, card: { ...card, flex: id === 'guardian' ? guardianFlex() : shareFlex(card, new URL(req.url).origin) } }), { headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=30' } }); }
       catch (e) { return json({ error: 'failed' }, 500); }
     }
     if (new URL(req.url).pathname === '/validate' && req.method === 'GET') {   // 檢查每個自動回覆的格式（LINE 官方驗證）
@@ -345,7 +345,7 @@ const EDU = [
     ] },
 ];
 const REPLIES = {
-  '全民醫護證': (env, origin) => shareFlex(EDU_CARDS.guardian, origin),
+  '全民醫護證': () => guardianFlex(),
   '醫護足跡': async (env, origin) => {
     let photos = [];
     try { photos = (await fsList(await saToken(env), 'journey')).sort((x, y) => (x.order ?? 0) - (y.order ?? 0)); } catch (e) {}
@@ -614,6 +614,26 @@ async function guardianNoRoute(req, env, json) {
     return json({ ok: true, no, at });
   } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
 }
+// 全民醫護證邀請卡（跟證件同風格：米白底、紅框、紅按鈕）
+function guardianFlex() {
+  const RED = '#D7262B', INK = '#1F1A18', SUB = '#6E625C';
+  const step = (n, t) => ({ type: 'box', layout: 'vertical', flex: 1, borderWidth: '2px', borderColor: RED, cornerRadius: '8px', backgroundColor: '#FFFFFF', paddingTop: '8px', paddingBottom: '9px',
+    contents: [{ type: 'text', text: 'STEP ' + n, size: 'xxs', color: RED, weight: 'bold', align: 'center' }, { type: 'text', text: t, size: 'sm', color: INK, weight: 'bold', align: 'center', margin: 'xs' }] });
+  return { type: 'flex', altText: '全民醫護證｜不用證照，也能守護身邊的人', contents: { type: 'bubble', size: 'mega',
+    hero: { type: 'image', url: `${SITE}/richmenu/guardian-banner.jpg?v=1`, size: 'full', aspectRatio: '1024:456', aspectMode: 'cover', action: { type: 'uri', label: '領取', uri: GUARDIAN_URL } },
+    body: { type: 'box', layout: 'vertical', paddingAll: '14px', paddingTop: '6px', backgroundColor: '#FBF3E6', contents: [
+      { type: 'box', layout: 'vertical', borderWidth: '2px', borderColor: RED, cornerRadius: '12px', backgroundColor: '#FFFCF7', paddingAll: '14px', contents: [
+        { type: 'text', text: '我是守護員', size: 'xl', weight: 'bold', color: RED, align: 'center' },
+        { type: 'text', text: 'I  AM  A  GUARDIAN', size: 'xxs', color: SUB, align: 'center', margin: 'xs' },
+        { type: 'text', text: '不用證照，只要一顆願意幫忙的心，\n就能領一張屬於你的醫護證。', size: 'sm', color: '#3F3633', align: 'center', wrap: true, margin: 'md', lineSpacing: '4px' },
+        { type: 'box', layout: 'horizontal', spacing: 'sm', margin: 'lg', contents: [step(1, '填姓名'), step(2, '選身分'), step(3, '勾技能')] },
+      ] },
+      { type: 'box', layout: 'vertical', margin: 'lg', backgroundColor: RED, cornerRadius: '10px', paddingAll: '13px', action: { type: 'uri', label: '領取我的全民醫護證', uri: GUARDIAN_URL },
+        contents: [{ type: 'text', text: '領取我的全民醫護證  ›', size: 'md', weight: 'bold', color: '#FFFFFF', align: 'center' }] },
+      { type: 'text', text: '➦ 分享給親友', size: 'sm', weight: 'bold', color: RED, align: 'center', margin: 'lg', action: { type: 'uri', label: '分享給親友', uri: `${SHARE_LIFF}?share=guardian` } },
+      { type: 'text', text: '白沙屯拱天宮醫護團 ・ 聖容慈悲心 佑民護萬年', size: 'xxs', color: '#A39690', align: 'center', margin: 'md' },
+    ] } } };
+}
 // ===== 分享卡片：管理員上傳圖文，團員用 LIFF shareTargetPicker 轉傳給親友／群組 =====
 async function shareCardRoute(req, env, json) {
   try {
@@ -625,7 +645,7 @@ async function shareCardRoute(req, env, json) {
     const patch = (path, fields) => fetch(`${FS}/${path}?${Object.keys(fields).map(k => 'updateMask.fieldPaths=' + k).join('&')}`, { method: 'PATCH', headers: H, body: JSON.stringify({ fields: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, tv(v)])) }) });
     const clean = b => ({ title: String(b.title || '').slice(0, 60), text: String(b.text || '').slice(0, 300), btn: String(b.btn || '').slice(0, 30),
       url: /^https:\/\/[^\s]{4,400}$/.test(b.url || '') ? b.url : 'https://line.me/R/ti/p/@393geitc' });
-    if (action === 'list') return json({ ok: true, cards: [...(await fsList(tok, 'share')).sort((x, y) => (y.at ?? 0) - (x.at ?? 0)), ...Object.values(EDU_CARDS)].map(c => ({ ...c, flex: shareFlex(c, new URL(req.url).origin) })) });
+    if (action === 'list') return json({ ok: true, cards: [...(await fsList(tok, 'share')).sort((x, y) => (y.at ?? 0) - (x.at ?? 0)), ...Object.values(EDU_CARDS)].map(c => ({ ...c, flex: c.id === 'guardian' ? guardianFlex() : shareFlex(c, new URL(req.url).origin) })) });
     if (action === 'add') {
       const data = String(body.data || '');
       if (!/^[A-Za-z0-9+/=]+$/.test(data) || data.length > 1000000) return json({ error: '圖片太大或格式不對' }, 400);
