@@ -2235,24 +2235,24 @@
       <style>
         .sc-set{margin-top:10px;background:#fff;border:1px solid #efe4e0;border-radius:16px;overflow:hidden}
         .sc-row{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f4ece9}.sc-row>.sc-acts{flex:1;min-width:0}.sc-row:last-child{border-bottom:none}
-        .sc-row>b{width:62px;flex:none;font-size:13px;color:#6b7280}
+        .sc-row>b{width:52px;flex:none;font-size:12px;color:#6b7280}
         .dchip{position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:76px;height:34px;padding:0 10px;border-radius:10px;background:#f6f1ef;font-weight:900;font-size:15px;color:#1f2430;cursor:pointer}
         .dchip input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;border:none;padding:0}
         .dchip.e{color:#b8aca8;font-weight:700}.sc-til{color:#b8aca8;font-weight:700}
         .sc-slot{display:flex;align-items:center;gap:6px}.sc-slot i{font-style:normal;font-weight:900;color:var(--primary);font-size:14px;width:16px}
         .sc-row input[type=number]{width:56px;height:34px;border-radius:10px;border:1.5px solid #e5ddd9;font:inherit;font-size:15px;font-weight:900;text-align:center}
-        .sc-acts{display:flex;flex-wrap:wrap;gap:6px}.sc-acts .sbtn{padding:8px 12px;font-size:13px}
+        .sc-acts{display:flex;flex-wrap:nowrap;gap:5px}.sc-acts .sbtn{padding:7px 9px;font-size:12px;white-space:nowrap;flex:0 1 auto;min-width:0}.sc-acts input[type=number]{width:40px!important;height:30px!important;font-size:14px!important}
         .sc-help{margin-top:8px;font-size:12px;color:var(--sub);line-height:1.7}.sc-help summary{cursor:pointer;font-weight:800;color:#9a8f8b}
       </style>
       ${(() => { const dc = (attr, v) => { const dd = v ? new Date(v + 'T12:00:00') : null; return `<label class="dchip ${v ? '' : 'e'}">${dd ? `${dd.getMonth() + 1}/${dd.getDate()}<small style="font-size:11px;color:#9a8f8b;margin-left:2px">(${WK[dd.getDay()]})</small>` : '選日期'}<input type="date" ${attr} value="${esc(v || '')}"></label>`; };
         return `<div class="sc-set">
         <div class="sc-row"><b>進香日期</b>${dc('id="sc-start"', sc.start)}<span class="sc-til">～</span>${dc('id="sc-end"', sc.end)}${days.length ? `<span style="font-size:12px;color:var(--sub)">共 ${days.length} 天</span>` : ''}</div>
         ${days.length ? `<div class="sc-row" style="align-items:flex-start"><b style="padding-top:8px">抽籤時段</b><div style="display:flex;flex-direction:column;gap:6px">${SLOTS.map(sl => `<span class="sc-slot"><i>${sl}</i>${dc(`data-rg="${sl}" data-i="0"`, rg[sl] && rg[sl][0])}<span class="sc-til">～</span>${dc(`data-rg="${sl}" data-i="1"`, rg[sl] && rg[sl][1])}</span>`).join('')}</div></div>` : ''}
-        <div class="sc-row"><b>排班</b><div class="sc-acts" style="align-items:center"><span style="font-size:13px">每組 <input type="number" id="sc-size" min="2" max="6" value="${sc.size || 5}"> 人</span>
+        <div class="sc-row"><b>排班</b><div class="sc-acts" style="align-items:center"><span style="font-size:12px;white-space:nowrap">每組<input type="number" id="sc-size" min="2" max="6" value="${sc.size || 5}">人</span>
           <button class="sbtn" id="sc-auto" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">🔀 自動排班</button>
           ${days.length && Object.keys(dt).length ? `<button class="sbtn" id="sc-pub" style="background:${e.schedPublic ? '#16a34a' : '#e5e7eb'};color:${e.schedPublic ? '#fff' : '#374151'};">${e.schedPublic ? '👁 已公開' : '🙈 未公開'}</button>` : ''}</div></div>
-        ${days.length ? `<div class="sc-row"><b>統計表</b><div class="sc-acts"><button class="sbtn" id="sc-att" style="background:#7c3aed;color:#fff;">🛏 出勤／住宿</button><button class="sbtn" id="sc-car" style="background:#0f766e;color:#fff;">🚐 座車</button><button class="sbtn" id="sc-meal" style="background:#ca8a04;color:#fff;">🍱 用餐</button></div></div>` : ''}
-        ${days.length && Object.keys(dt).length ? `<div class="sc-row"><b>匯出</b><div class="sc-acts"><button class="sbtn" id="sc-xlsx" style="background:#1f2430;color:#fff;">⬇ 排班 Excel</button><button class="sbtn" id="sc-shotall" style="background:#475569;color:#fff;">📷 全部存成一張圖</button></div></div>` : ''}
+        ${days.length ? `<div class="sc-row"><b>統計表</b><div class="sc-acts"><button class="sbtn" id="sc-att" style="background:#7c3aed;color:#fff;">🛏 出勤住宿</button><button class="sbtn" id="sc-car" style="background:#0f766e;color:#fff;">🚐 座車</button><button class="sbtn" id="sc-meal" style="background:#ca8a04;color:#fff;">🍱 用餐</button></div></div>` : ''}
+        ${days.length && Object.keys(dt).length ? `<div class="sc-row"><b>匯出</b><div class="sc-acts"><button class="sbtn" id="sc-xlsx" style="background:#1f2430;color:#fff;">⬇ 排班 Excel</button><button class="sbtn" id="sc-shotall" style="background:#475569;color:#fff;">📷 全部存圖</button></div></div>` : ''}
       </div>`; })()}
       <details class="sc-help"><summary>ⓘ 使用說明</summary>前／中／後＝抽籤時段的值班日期；點下面的名字可以改成全程、自訂日期或不排班。每天把當天值班的人排成 轎前1～4、轎後1～6（約 ${sc.size || 5} 人一組，護理師、EMTP／EMT2、EMT1 平均分配；前一天同組的人盡量不換組）。<br>👆 點某天的名字 → 再點那天想去的組別（變成虛線框）就能換組。</details>
       <div class="sc-leg" style="margin-top:6px">${Object.entries(CAT_TXT).map(([c, t]) => `<span style="background:${CAT_BG[c]}">${t}</span>`).join('')}</div>
