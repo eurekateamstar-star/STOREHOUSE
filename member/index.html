@@ -1439,7 +1439,7 @@
     }
   }
 
-  function closeSheet() { drawSheetEid = null; schedOpen = false; attOpen = false; carOpen = false; $('sheet').classList.remove('wide'); $('sheet-close').classList.remove('hidden'); confirmLock = false; document.body.classList.remove('sheet-open'); sheetRid = null; sheetUid = null; $('sheet-bg').style.display = 'none'; $('sheet').style.display = 'none'; }
+  function closeSheet() { drawSheetEid = null; schedOpen = false; attOpen = false; carOpen = false; mealOpen = false; $('sheet').classList.remove('wide'); $('sheet-close').classList.remove('hidden'); confirmLock = false; document.body.classList.remove('sheet-open'); sheetRid = null; sheetUid = null; $('sheet-bg').style.display = 'none'; $('sheet').style.display = 'none'; }
   const closeAny = () => { const back = editFromConfirm && editCtx && editCtx.role === 'self' && $('ed-save'); closeSheet(); if (back) backToConfirm(); };
   $('sheet-bg').onclick = () => { if (!confirmLock) closeAny(); }; $('sheet-close').onclick = closeAny;
 
@@ -1476,7 +1476,7 @@
   const ATT_SHORT = { yes: '✅ 出席', join: '⚠️ 不出席但參與進香', no: '❌ 不參與' };
   const LUNCH = ['葷', '素（方便素）', '自行處理'];
   const eventLink = id => `https://tsushin-buishatun.pages.dev/attend/?e=${encodeURIComponent(id)}`;   // 公開表單：不用先綁會員中心
-  let evPaid = {}, drPayMode = false, evSched = {}, schedOpen = false, schSel = null, schPk = null, attOpen = false, attBrush = null, carOpen = false, evSelf = {};
+  let evPaid = {}, drPayMode = false, evSched = {}, schedOpen = false, schSel = null, schPk = null, attOpen = false, attBrush = null, carOpen = false, mealOpen = false, evSelf = {};
   let evDraw = {}, evDrawBy = {}, evOver = {}, drawSheetEid = null, drSel = null;
   let eventsCache = [], eventsUnsub = null, myResp = {}, evRespCache = {}, evRespUnsub = null, evOpenId = null, evFilter = 'all';
   // 連結 liff.line.me/…?e=活動ID：LIFF 開啟時參數可能包在 liff.state 裡
@@ -1562,9 +1562,10 @@
     const dd = new Date(d + 'T12:00:00'), NC = Math.max(5, ...x.teams.map(t => t.m.length), 0), I = x.info || {};
     const tg = (on, lock, a, t) => `<button data-pa="${a}" ${lock ? 'data-lock="1"' : ''} class="pl-b ${on ? 'on' : ''} ${lock ? 'lk' : ''}">${t}</button>`;
     const reg = !pl ? '' : `<div style="margin:10px 12px 4px;border:1.5px solid #f3c7cc;border-radius:14px;padding:10px 12px;background:#fffafa">
-        <div style="font-weight:900;font-size:14px;margin-bottom:8px">🙋 我這天的住宿／中巴 <small style="font-weight:600;color:#9a8f8b;font-size:11px">（自己登記，管理員會看到）</small></div>
+        <div style="font-weight:900;font-size:14px;margin-bottom:8px">🙋 我這天的住宿／中巴／用餐 <small style="font-weight:600;color:#9a8f8b;font-size:11px">（自己登記，管理員會看到）</small></div>
         <div class="pl-r"><span>🛏 今晚住宿</span>${tg(!!pl.s, pl.adminS, 's:' + e.g, '住')}${tg(!pl.s, pl.adminS, 's:x', '不住')}</div>
         <div class="pl-r"><span>🚌 坐中巴</span>${[['o', '出門'], ['y', '白天'], ['h', '回家']].map(([f, t]) => tg(pl[f] === '9', pl.adminCar[f], f + ':' + (pl[f] === '9' ? 'x' : '9'), (pl[f] === '9' ? '✓ ' : '') + t)).join('')}</div>
+        ${[['l', '🍱 中餐'], ['n', '🍱 晚餐']].map(([f, t]) => `<div class="pl-r"><span>${t}</span>${[['葷', '葷'], ['素', '素'], ['自', '自行處理']].map(([c, n]) => tg(pl[f] === c, (pl.adminMeal || {})[f], f + ':' + (pl[f] === c ? 'x' : c), n)).join('')}</div>`).join('')}
         <div style="font-size:10.5px;color:#9a8f8b;margin-top:4px">例：前一天提早到→點「住」；最後一天退勤→「不住」、回家不坐中巴。${pl.adminS || Object.values(pl.adminCar).some(Boolean) ? '<span style="display:inline-block;width:10px;height:10px;background:#16a34a;border-radius:3px;vertical-align:-1px"></span> 綠色是管理員已確認，要改請洽管理員。' : ''}</div></div>`;
     let first = true;
     const rows = x.teams.map(t => { const back = t.l.startsWith('轎後'), cls = back && first ? 'b' : ''; if (back) first = false;
@@ -1598,7 +1599,7 @@
       if (f === 's') { cur.s = v === 'x' ? '' : v;
         if (cur.w && cur.w !== '1' && !cur.adminCar.h) cur.h = cur.s ? veh(cur) : '';
         const nx = P.find(y => y.d === isoAdd(d, 1)); if (nx && nx.w && nx.w !== '1' && !nx.adminCar.o) nx.o = cur.s ? veh(nx) : ''; }
-      else cur[f] = v === 'x' ? '' : v;
+      else cur[f] = v === 'x' ? '' : v;   // 中巴／中餐／晚餐
       const keep = ov.querySelector('div').scrollTop; ov.remove(); showMyDay(eid, d, keep); renderMySched();
       (async () => { try { const idToken = await auth.currentUser.getIdToken();
         const r = await fetch(AUTH_URL + '/myplan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, eid, d, [f]: v }) });
@@ -1676,9 +1677,9 @@
       evRespCache[eid] = s.docs.map(d => ({ id: d.id, ...d.data() }));
       if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid);
     }, () => toast('讀取回覆失敗'));
-    const u2 = onSnapshot(doc(db, 'events', eid, 'admin', 'draw'), s => { const d = s.exists() ? s.data() : {}; evDraw[eid] = d.map || {}; evDrawBy[eid] = d.by2 || {}; evOver[eid] = d.groupOverride || {}; evPaid[eid] = d.paid || {}; evSched[eid] = schedFromDb(d.sched); if (drawSheetEid === eid) (carOpen ? renderCar(eid) : attOpen ? renderAtt(eid) : schedOpen ? renderSched(eid) : renderDrawSheet(eid)); if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid); }, () => {});
+    const u2 = onSnapshot(doc(db, 'events', eid, 'admin', 'draw'), s => { const d = s.exists() ? s.data() : {}; evDraw[eid] = d.map || {}; evDrawBy[eid] = d.by2 || {}; evOver[eid] = d.groupOverride || {}; evPaid[eid] = d.paid || {}; evSched[eid] = schedFromDb(d.sched); if (drawSheetEid === eid) (mealOpen ? renderMeal(eid) : carOpen ? renderCar(eid) : attOpen ? renderAtt(eid) : schedOpen ? renderSched(eid) : renderDrawSheet(eid)); if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid); }, () => {});
     const u3 = onSnapshot(collection(db, 'events', eid, 'admin'), s => { const o = {}; s.docs.forEach(d => { if (d.id.startsWith('self_')) { const x = d.data(); if (x.key) o[x.key] = x.days || {}; } }); evSelf[eid] = o;
-      if (drawSheetEid === eid) (carOpen ? renderCar(eid) : attOpen ? renderAtt(eid) : null); }, () => {});
+      if (drawSheetEid === eid) (mealOpen ? renderMeal(eid) : carOpen ? renderCar(eid) : attOpen ? renderAtt(eid) : null); }, () => {});
     evRespUnsub = () => { u1(); u2(); u3(); };
     evRespUnsub._eid = eid;
   }
@@ -2241,7 +2242,7 @@
         <button class="sbtn" id="sc-auto" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">🔀 自動排班</button>
         ${days.length && Object.keys(dt).length ? '<button class="sbtn" id="sc-xlsx" style="background:#1f2430;color:#fff;">⬇ 下載排班 Excel</button><button class="sbtn" id="sc-shotall" style="background:#0f766e;color:#fff;">📷 全部天數存成一張圖</button>' : ''}
         ${days.length && Object.keys(dt).length ? `<button class="sbtn" id="sc-pub" style="background:${e.schedPublic ? '#16a34a' : '#e5e7eb'};color:${e.schedPublic ? '#fff' : '#374151'};">${e.schedPublic ? '👁 團員看得到排班' : '🙈 排班未公開'}</button>` : ''}
-        ${days.length ? '<button class="sbtn" id="sc-att" style="background:#7c3aed;color:#fff;">🛏 出勤／住宿表</button><button class="sbtn" id="sc-car" style="background:#0f766e;color:#fff;">🚐 座車統計</button>' : ''}
+        ${days.length ? '<button class="sbtn" id="sc-att" style="background:#7c3aed;color:#fff;">🛏 出勤／住宿表</button><button class="sbtn" id="sc-car" style="background:#0f766e;color:#fff;">🚐 座車統計</button><button class="sbtn" id="sc-meal" style="background:#ca8a04;color:#fff;">🍱 用餐統計</button>' : ''}
       </div>
       ${!all.length ? '<div class="card empty" style="margin-top:12px;">還沒有人回覆出席</div>' : `${editor}<div class="sc-grid">${SLOTS.map(slotBox).join('')}</div>
         <div class="sc-grid">${box('全程', '每天都值班', all.filter(p => p.mode === 'all'))}${box('自訂日期', '特定幾天', all.filter(p => p.mode === 'range'))}${box('不排班', '指揮官、團長、車輛組、教官團…', all.filter(p => p.mode === 'off'))}</div>`}
@@ -2319,6 +2320,7 @@
       try { await updateDoc(doc(db, 'events', eid), { schedPublic: on, schedPublicAt: serverTimestamp() }); e.schedPublic = on; toast(on ? '✅ 已公開' : '已隱藏'); renderSched(eid); } catch (err) { toast('❌ 失敗'); }
     };
     if ($('sc-att')) $('sc-att').onclick = () => { attOpen = true; attBrush = null; renderAtt(eid); $('sheet').scrollTop = 0; };
+    if ($('sc-meal')) $('sc-meal').onclick = () => { attOpen = true; mealOpen = true; renderMeal(eid); $('sheet').scrollTop = 0; };
     if ($('sc-car')) $('sc-car').onclick = () => { attOpen = true; carOpen = true; renderCar(eid); $('sheet').scrollTop = 0; };
   }
   async function exportSchedXlsx(eid) {
@@ -2448,7 +2450,8 @@
         ${(() => { const n = selfPending(eid); return n ? `<button class="at-b" id="at-okself" style="background:#7c3aed;color:#fff">✓ 確認團員登記（${n} 格）</button>` : ''; })()}
         <span style="font-size:12px;color:#7c3aed;font-weight:700"><span style="display:inline-block;width:12px;height:12px;box-shadow:inset 0 0 0 1px #a855f7;border-radius:3px;vertical-align:-1px"></span> 紫框「自」＝團員自己登記、還沒確認</span>
         <style>.sf{box-shadow:inset 0 0 0 1px #a855f7!important;position:relative}.sf::after{content:'自';position:absolute;right:1px;top:0;font-size:7px;line-height:1;color:#7c3aed;font-weight:900}</style>
-        <button class="at-b" id="at-car" style="background:#0f766e;color:#fff">🚐 座車統計</button></div>
+        <button class="at-b" id="at-car" style="background:#0f766e;color:#fff">🚐 座車統計</button>
+        <button class="at-b" id="at-meal" style="background:#ca8a04;color:#fff">🍱 用餐統計</button></div>
       <div class="at-wrap"><table class="at" style="width:${84 + days.length * 86}px"><colgroup><col style="width:84px">${days.map(() => '<col style="width:48px"><col style="width:38px">').join('')}</colgroup><thead>
         <tr><th class="nm" rowspan="2">姓名</th>${days.map(d => `<th colspan="2" data-place="${d}" style="cursor:pointer">${dLabel(d)}${(info[d] || {}).tag || (info[d] || {}).place ? `<br><span style="font-size:10px"><span style="color:#1d4ed8">${esc((info[d] || {}).tag || '')}</span> <span style="color:#9a3412">${esc((info[d] || {}).place || '')}</span></span>` : ''}</th>`).join('')}</tr>
         <tr>${days.map(() => '<th>出勤</th><th>住宿<br>男/女</th>').join('')}</tr></thead><tbody>
@@ -2471,6 +2474,7 @@
     const save = async (patch, msg) => { evSched[eid] = { ...(evSched[eid] || {}), ...patch }; try { await saveDraw(eid, { ...(evDraw[eid] || {}) }, { ...(evDrawBy[eid] || {}) }, { ...(evOver[eid] || {}) }); if (msg) toast(msg); } catch (err) { console.error(err); toast('❌ 儲存失敗'); } renderAtt(eid); };
     $('at-back').onclick = () => { attOpen = false; renderSched(eid); };
     if ($('at-okself')) $('at-okself').onclick = () => confirmSelf(eid);
+    $('at-meal').onclick = () => { mealOpen = true; renderMeal(eid); $('sheet').scrollTop = 0; };
     $('at-car').onclick = () => { carOpen = true; renderCar(eid); $('sheet').scrollTop = 0; };
     const nw = document.querySelector('.at-wrap'); if (keep && nw) { nw.scrollLeft = keep[0]; nw.scrollTop = keep[1]; } $('sheet').scrollTop = keepS;
     let pending = null;
@@ -2569,19 +2573,91 @@
     const sc = evSched[eid] || {}, att = sc.att || {}, car = sc.car || {}; let n = 0;
     Object.entries(evSelf[eid] || {}).forEach(([k, days]) => Object.entries(days || {}).forEach(([d, v]) => {
       if (v.s !== undefined && ((att[k] || {}).s || {})[d] === undefined) n++;
-      ['o', 'y', 'h'].forEach(f => { if (v[f] !== undefined && (((car[k] || {})[d]) || {})[f] === undefined) n++; }); }));
+      ['o', 'y', 'h'].forEach(f => { if (v[f] !== undefined && (((car[k] || {})[d]) || {})[f] === undefined) n++; });
+      ['l', 'n'].forEach(f => { if (v[f] !== undefined && ((((sc.meal || {})[k] || {})[d]) || {})[f] === undefined) n++; }); }));
     return n;
   }
   async function confirmSelf(eid) {
     const n = selfPending(eid); if (!n) return;
     if (!(await dialog({ title: '確認團員自己登記的住宿／中巴？', msg: `共 ${n} 格會變成管理員確認過（紫框消失），之後團員就不能自己改，要改請找管理員。\n\n個別要改的格子，直接點那一格就好。`, okText: '全部確認' }))) return;
-    const sc = evSched[eid] || {}, att = JSON.parse(JSON.stringify(sc.att || {})), car = JSON.parse(JSON.stringify(sc.car || {}));
+    const sc = evSched[eid] || {}, att = JSON.parse(JSON.stringify(sc.att || {})), car = JSON.parse(JSON.stringify(sc.car || {})), meal = JSON.parse(JSON.stringify(sc.meal || {}));
     Object.entries(evSelf[eid] || {}).forEach(([k, days]) => Object.entries(days || {}).forEach(([d, v]) => {
       if (v.s !== undefined) { att[k] = att[k] || {}; att[k].s = att[k].s || {}; if (att[k].s[d] === undefined) att[k].s[d] = v.s; }
-      ['o', 'y', 'h'].forEach(f => { if (v[f] !== undefined) { car[k] = car[k] || {}; car[k][d] = car[k][d] || {}; if (car[k][d][f] === undefined) car[k][d][f] = v[f]; } }); }));
-    evSched[eid] = { ...sc, att, car };
+      ['o', 'y', 'h'].forEach(f => { if (v[f] !== undefined) { car[k] = car[k] || {}; car[k][d] = car[k][d] || {}; if (car[k][d][f] === undefined) car[k][d][f] = v[f]; } });
+      ['l', 'n'].forEach(f => { if (v[f] !== undefined) { meal[k] = meal[k] || {}; meal[k][d] = meal[k][d] || {}; if (meal[k][d][f] === undefined) meal[k][d][f] = v[f]; } }); }));
+    evSched[eid] = { ...sc, att, car, meal };
     try { await saveDraw(eid, { ...(evDraw[eid] || {}) }, { ...(evDrawBy[eid] || {}) }, { ...(evOver[eid] || {}) }); toast('✅ 已確認'); } catch (e) { toast('❌ 儲存失敗'); }
-    carOpen ? renderCar(eid) : renderAtt(eid);
+    mealOpen ? renderMeal(eid) : carOpen ? renderCar(eid) : renderAtt(eid);
+  }
+  // ===================== 用餐統計：每天 中餐／晚餐 葷・素・自理 =====================
+  const MEAL_CODES = [['葷', '葷食'], ['素', '素食'], ['自', '自行處理']];
+  const MEAL_BG = { '葷': '#fee2e2', '素': '#dcfce7', '自': '#e5e7eb' };
+  function mealVals(eid) {
+    const sc = evSched[eid] || {}, meal = sc.meal || {}, self = evSelf[eid] || {};
+    return (k, d) => { const ex = ((meal[k] || {})[d]) || {}, sv = ((self[k] || {})[d]) || {}, o = { self: {} };
+      ['l', 'n'].forEach(f => { const v = ex[f] !== undefined ? ex[f] : sv[f]; o[f] = v === 'x' || v === undefined ? '' : v; o.self[f] = ex[f] === undefined && sv[f] !== undefined; }); return o; };
+  }
+  function renderMeal(eid) {
+    if ($('sheet').style.display === 'none') return;
+    const e = eventsCache.find(x => x.id === eid) || {}, sc = evSched[eid] || {}, info = sc.info || {};
+    const days = dayList(sc.start, sc.end), ga = attVals(eid), gm = mealVals(eid);
+    const list = attPeople(eid).filter(p => days.some(d => { const a = ga(p.key, d), m = gm(p.key, d); return a.w || a.s || m.l || m.n; }));
+    const ow = document.querySelector('.at-wrap'), keep = ow ? [ow.scrollLeft, ow.scrollTop] : null, keepS = $('sheet').scrollTop;
+    const cnt = (d, f, c) => list.filter(p => gm(p.key, d)[f] === c).length;
+    const onDuty = (p, d) => { const a = ga(p.key, d); return !!(a.w || a.s); };
+    $('sheet-body').innerHTML = `
+      <style>
+        .at-wrap{overflow:auto;max-height:70vh;width:fit-content;max-width:100%;touch-action:pan-x pan-y;overscroll-behavior:none;border:1px solid #efe4e0;border-radius:14px;background:#fff;margin-top:6px}
+        .at{border-collapse:separate;border-spacing:0;font-size:12px;table-layout:fixed}
+        .at th,.at td{border-right:1px solid #f1e8e5;border-bottom:1px solid #f1e8e5;text-align:center;padding:0;height:32px;white-space:nowrap;overflow:hidden;box-sizing:border-box}
+        .at thead th{position:sticky;top:0;background:#fdf6f4;z-index:2;font-size:12px;padding:2px}.at thead tr:first-child th{height:40px;line-height:1.2}.at thead tr:nth-child(2) th{top:40px;height:24px;font-size:10px;color:var(--sub)}
+        .at .nm{position:sticky;left:0;background:#fff;z-index:1;text-align:left;padding:0 6px;font-weight:700;text-overflow:ellipsis}.at thead .nm{z-index:3;background:#fdf6f4}
+        .at .nm i{font-style:normal;display:inline-block;width:20px;color:#9a8f8b;font-size:10px;font-weight:700}.at .nm.l4{font-size:11px;letter-spacing:-.3px}
+        .at td.mv{cursor:pointer;font-weight:800;font-size:12px;-webkit-tap-highlight-color:transparent;user-select:none}.at td.off{background:#fafafa}
+        .at td.dl{border-left:2px solid #e5d5d0}
+        .at tr.sum td,.at tr.sum th{background:#fbf7f6;font-weight:800;font-size:12px}
+        .sf{box-shadow:inset 0 0 0 1px #a855f7!important;position:relative}.sf::after{content:'自';position:absolute;right:1px;top:0;font-size:7px;line-height:1;color:#7c3aed;font-weight:900}
+        .eq-ov{position:fixed;inset:0;z-index:9500;background:rgba(31,36,48,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+        .eq-box{background:#fff;border-radius:20px;padding:18px;width:100%;max-width:360px;max-height:92vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+        .eq-t{font-weight:900;font-size:17px;margin-bottom:10px}.eq-btn{display:flex;gap:8px;margin-top:6px}.eq-btn>*{flex:1;text-align:center;border:none;border-radius:12px;padding:11px;font:inherit;font-size:15px;font-weight:900;cursor:pointer}#eq-no{background:#f1f5f9;color:#334155}
+        .cp-g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.cp-g button{border:1.5px solid rgba(0,0,0,.06);border-radius:12px;padding:12px 4px;font:inherit;font-size:14px;cursor:pointer;color:#1f2430}.cp-g button b{display:block;font-size:16px}.cp-g button.on{outline:3px solid var(--primary)}
+      </style>
+      <button class="sbtn" id="meal-back">← 回出勤／住宿表</button>
+      ${(() => { const n = selfPending(eid); return n ? `<button class="sbtn" id="meal-okself" style="background:#7c3aed;color:#fff;margin-left:6px">✓ 確認團員登記（${n} 格）</button>` : ''; })()}
+      <h3 style="margin-top:10px;">🍱 用餐統計</h3>
+      <div style="font-size:13px;color:var(--sub);line-height:1.7;">${esc(e.title || '')}　團員在會員中心「我的排班」自己登記中餐／晚餐（紫框「自」＝還沒確認）。點格子可以改；灰底＝那天沒出勤也沒住宿。點日期看當天用餐名單。</div>
+      <div class="at-wrap"><table class="at" style="width:${84 + days.length * 84}px"><colgroup><col style="width:84px">${days.map(() => '<col style="width:42px"><col style="width:42px">').join('')}</colgroup><thead>
+        <tr><th class="nm" rowspan="2">姓名</th>${days.map(d => `<th colspan="2" class="dl" data-mday="${d}" style="cursor:pointer">${dLabel(d)}${(info[d] || {}).tag ? `<br><span style="font-size:10px;color:#1d4ed8">${esc(info[d].tag)}</span>` : ''}</th>`).join('')}</tr>
+        <tr>${days.map(() => '<th class="dl">中餐</th><th>晚餐</th>').join('')}</tr></thead><tbody>
+        ${list.map((p, i) => `<tr><th class="nm${p.name.length >= 4 ? ' l4' : ''}" style="background:${CAT_BG[p.cat]}"><i>${i + 1}</i>${esc(p.name)}</th>${days.map(d => { const m = gm(p.key, d), off = !onDuty(p, d);
+          return ['l', 'n'].map((f, j) => `<td class="mv ${j ? '' : 'dl'} ${m.self[f] ? 'sf' : ''} ${off && !m[f] ? 'off' : ''}" data-mk="${esc(p.key)}" data-md="${d}" data-mf="${f}" style="${m[f] ? 'background:' + MEAL_BG[m[f]] : ''}">${esc(m[f])}</td>`).join(''); }).join('')}</tr>`).join('')}
+        ${MEAL_CODES.map(([c, t]) => `<tr class="sum"><th class="nm">${t}</th>${days.map(d => `<td class="dl" style="color:${c === '葷' ? '#b91c1c' : c === '素' ? '#15803d' : '#475569'}">${cnt(d, 'l', c) || ''}</td><td style="color:${c === '葷' ? '#b91c1c' : c === '素' ? '#15803d' : '#475569'}">${cnt(d, 'n', c) || ''}</td>`).join('')}</tr>`).join('')}
+        <tr class="sum"><th class="nm">便當合計</th>${days.map(d => `<td class="dl">${cnt(d, 'l', '葷') + cnt(d, 'l', '素')}</td><td>${cnt(d, 'n', '葷') + cnt(d, 'n', '素')}</td>`).join('')}</tr>
+        <tr class="sum"><th class="nm" style="color:#9a8f8b">未登記</th>${days.map(d => `<td class="dl" style="color:#9a8f8b">${list.filter(p => onDuty(p, d) && !gm(p.key, d).l).length || ''}</td><td style="color:#9a8f8b">${list.filter(p => onDuty(p, d) && !gm(p.key, d).n).length || ''}</td>`).join('')}</tr>
+      </tbody></table></div>`;
+    const nw = document.querySelector('.at-wrap'); if (keep && nw) { nw.scrollLeft = keep[0]; nw.scrollTop = keep[1]; } $('sheet').scrollTop = keepS;
+    $('meal-back').onclick = () => { mealOpen = false; renderAtt(eid); };
+    if ($('meal-okself')) $('meal-okself').onclick = () => confirmSelf(eid);
+    let pending = null;
+    const saveQuiet = async () => { try { await saveDraw(eid, { ...(evDraw[eid] || {}) }, { ...(evDrawBy[eid] || {}) }, { ...(evOver[eid] || {}) }); } catch (err) { console.error(err); toast('❌ 儲存失敗'); } };
+    const pmap = Object.fromEntries(list.map(p => [p.key, p]));
+    document.querySelectorAll('[data-mk]').forEach(td => td.onclick = async () => {
+      const k = td.dataset.mk, d = td.dataset.md, f = td.dataset.mf, cur = mealVals(eid)(k, d)[f];
+      const c = await codePicker(`${pmap[k].name}　${dLabel(d)} ${f === 'l' ? '中餐' : '晚餐'}`, MEAL_CODES, cur, '清除');
+      if (c === null) return;
+      const meal = JSON.parse(JSON.stringify((evSched[eid] || {}).meal || {})); meal[k] = meal[k] || {}; meal[k][d] = meal[k][d] || {};
+      meal[k][d][f] = c === '' ? 'x' : c; evSched[eid] = { ...(evSched[eid] || {}), meal };
+      td.textContent = c; td.classList.remove('sf'); td.style.background = c ? MEAL_BG[c] : '';
+      clearTimeout(pending); pending = setTimeout(saveQuiet, 500);
+    });
+    document.querySelectorAll('[data-mday]').forEach(th => th.onclick = () => {
+      const d = th.dataset.mday, g = mealVals(eid);
+      const sec = (f, t) => `<div style="font-weight:900;margin:10px 0 4px">${t}</div>${MEAL_CODES.map(([c, n]) => { const ns = list.filter(p => g(p.key, d)[f] === c);
+        return ns.length ? `<div style="font-size:13px;margin:3px 0"><b style="display:inline-block;min-width:66px;background:${MEAL_BG[c]};border-radius:6px;padding:1px 6px">${n} ${ns.length}</b> ${ns.map(p => esc(p.name)).join('、')}</div>` : ''; }).join('') || '<div style="color:#9a8f8b;font-size:13px">還沒有人登記</div>'}`;
+      const ov = document.createElement('div'); ov.className = 'eq-ov';
+      ov.innerHTML = `<div class="eq-box" style="max-width:520px"><div class="eq-t">${dLabel(d)} 用餐名單</div>${sec('l', '🍱 中餐')}${sec('n', '🍱 晚餐')}<div class="eq-btn" style="margin-top:14px"><button id="eq-no">關閉</button></div></div>`;
+      document.body.appendChild(ov); ov.onclick = e2 => { if (e2.target === ov || e2.target.id === 'eq-no') ov.remove(); };
+    });
   }
   function renderCar(eid) {
     if ($('sheet').style.display === 'none') return;
@@ -2664,7 +2740,7 @@
     return new Promise(res => {
       const ov = document.createElement('div'); ov.className = 'eq-ov';
       ov.innerHTML = `<div class="eq-box"><div class="eq-t">${esc(title)}</div>
-        <div class="cp-g" style="${codes.length < 3 ? 'grid-template-columns:repeat(' + codes.length + ',1fr)' : ''}">${codes.map(([v, t]) => `<button data-c="${v}" class="${cur === v ? 'on' : ''}" style="background:${(codes === CAR_CODES ? CAR_BG[v] : W_BG[v]) || (v === '7' ? '#dbeafe' : '#fce7f3')}">${v === '7' || v === '8' ? `<b>${v === '7' ? '🛏 男' : '🛏 女'}</b>${esc(t)}` : `<b style="font-size:16px">${esc(t)}</b><small style="color:#6b7280">代號 ${v}</small>`}</button>`).join('')}</div>
+        <div class="cp-g" style="${codes.length < 3 ? 'grid-template-columns:repeat(' + codes.length + ',1fr)' : ''}">${codes.map(([v, t]) => `<button data-c="${v}" class="${cur === v ? 'on' : ''}" style="background:${(codes === CAR_CODES ? CAR_BG[v] : codes === MEAL_CODES ? MEAL_BG[v] : W_BG[v]) || (v === '7' ? '#dbeafe' : '#fce7f3')}">${v === '7' || v === '8' ? `<b>${v === '7' ? '🛏 男' : '🛏 女'}</b>${esc(t)}` : `<b style="font-size:16px">${esc(t)}</b><small style="color:#6b7280">代號 ${v}</small>`}</button>`).join('')}</div>
         <div class="eq-btn" style="margin-top:12px"><button id="eq-no">取消</button><button id="cp-clr" style="background:#f1f5f9;color:#334155">${clrTxt || '清除'}</button></div></div>`;
       document.body.appendChild(ov);
       ov.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { ov.remove(); res(b.dataset.c); });

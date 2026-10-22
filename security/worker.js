@@ -576,7 +576,7 @@ async function mySchedRoute(req, env, json) {
       }).filter(Boolean);
       // 我的住宿／中巴：管理員設定 > 自己登記 > 自動
       const selfDoc = await fsGet(tok, `events/${e.id}/admin/self_${u.rosterId}`), self = selfDoc ? (fobj(selfDoc.fields).days || {}) : {};
-      const att = (sc.att || {})[myKey] || {}, car = (sc.car || {})[myKey] || {};
+      const att = (sc.att || {})[myKey] || {}, car = (sc.car || {})[myKey] || {}, meal = (sc.meal || {})[myKey] || {};
       const inT = d => (days[d] || []).some(t => (t.m || []).includes(myKey));
       const W = d => { const w0 = (att.w || {})[d]; return w0 === undefined ? (inT(d) ? '2' : '') : (w0 === 'x' ? '' : w0); };
       const S = d => { const s0 = (att.s || {})[d], ss = (self[d] || {}).s; return s0 === 'x' ? '' : s0 ? s0 : ss && ss !== 'x' ? ss : ''; };
@@ -584,6 +584,7 @@ async function mySchedRoute(req, env, json) {
         const au = !w ? { o: '', y: '', h: '' } : w === '1' ? { o: '1', y: '1', h: '1' } : { o: S(isoAddW(d, -1)) ? veh : '', y: veh, h: S(d) ? veh : '' };
         const st = { ...(self[d] || {}), ...((car[d]) || {}) }, o = { d, w, s: S(d), adminS: (att.s || {})[d] !== undefined, adminCar: {} };
         ['o', 'y', 'h'].forEach(f => { const v = st[f]; o[f] = v === undefined ? au[f] : (v === 'x' ? '' : v); o.adminCar[f] = (car[d] || {})[f] !== undefined; });
+        o.adminMeal = {}; ['l', 'n'].forEach(f => { const ex = (meal[d] || {})[f], sv = (self[d] || {})[f], m = ex !== undefined ? ex : sv; o[f] = !m || m === 'x' ? '' : m; o.adminMeal[f] = ex !== undefined; });
         return o; };
       const ds = mine.map(x => x.d), first = ds[0], pre = first ? isoAddW(first, -1) : null;
       const planDays = [...(pre && sc.start && pre >= sc.start ? [pre] : []), ...ds, ...Object.keys(self).filter(d => !ds.includes(d) && d !== pre)].sort();
@@ -611,6 +612,7 @@ async function myPlanRoute(req, env, json) {
     const dv = { ...(days[d] || {}) };
     if ('s' in v) { if (v.s === null) delete dv.s; else if (['7', '8', 'x'].includes(v.s)) dv.s = v.s; }
     ['o', 'y', 'h'].forEach(f => { if (f in v) { if (v[f] === null) delete dv[f]; else if (['9', 'x'].includes(v[f])) dv[f] = v[f]; } });
+    ['l', 'n'].forEach(f => { if (f in v) { if (v[f] === null || v[f] === 'x') delete dv[f]; else if (['葷', '素', '自'].includes(v[f])) dv[f] = v[f]; } });
     days[d] = dv; if (!Object.keys(dv).length) delete days[d];
     const w = await fetch(`${FS}/${path}`, { method: 'PATCH', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
       body: JSON.stringify({ fields: { key: tv(key), days: tv(days), at: { timestampValue: new Date().toISOString() } } }) });
