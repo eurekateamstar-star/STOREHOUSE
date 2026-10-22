@@ -337,7 +337,7 @@
   body.viewer-only>*:not(#sheet):not(#toast):not(.pm-ov):not(.eq-ov):not(.dlg-bg):not(script):not(style){display:none!important}
   body.viewer-only #sheet{position:static!important;display:block!important;transform:none!important;max-height:none!important;height:auto!important;border-radius:0!important;box-shadow:none!important;margin:0 auto;max-width:1100px}
   body.viewer-only #sheet-close,body.viewer-only #sheet-bg{display:none!important}body.viewer-only{background:#fff!important;overflow:auto!important}
-  body.viewer-only .xsbar{display:none!important}
+  body.viewer-only .xsbar,body.viewer-only .sc-export,body.viewer-only #sc-shotall{display:none!important}
   .ro .dchip input{pointer-events:none}.ro .sf{box-shadow:none!important}.ro .at-tools{display:none!important}
   .ro #sheet-body::before{content:'👀 唯讀檢視・只能看不能改';display:block;text-align:center;font-size:12px;font-weight:800;color:#0369a1;background:#e0f2fe;border-radius:10px;padding:6px;margin-bottom:8px}
 </style>
@@ -2297,7 +2297,7 @@
           <button class="sbtn" id="sc-auto" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">🔀 排班</button>
           ${days.length && Object.keys(dt).length ? `<button class="sbtn" id="sc-pub" style="background:${e.schedPublic ? '#16a34a' : '#e5e7eb'};color:${e.schedPublic ? '#fff' : '#374151'};">${e.schedPublic ? '👁 已公開' : '🙈 未公開'}</button>` : ''}</div></div>
         ${days.length ? `<div class="sc-row"><b>統計表</b><div class="sc-acts"><button class="sbtn" id="sc-att" style="background:#7c3aed;color:#fff;">🛏 出勤住宿</button><button class="sbtn" id="sc-car" style="background:#0f766e;color:#fff;">🚐 座車</button><button class="sbtn" id="sc-meal" style="background:#ca8a04;color:#fff;">🍱 用餐</button></div></div>` : ''}
-        ${days.length && Object.keys(dt).length ? `<div class="sc-row"><b>匯出</b><div class="sc-acts"><button class="sbtn" id="sc-xlsx" style="background:#1f2430;color:#fff;">⬇ 排班 Excel</button><button class="sbtn" id="sc-shotall" style="background:#475569;color:#fff;">📷 全部存圖</button>${VIEW_ONLY ? '' : `<button class="sbtn" id="sc-share" style="background:#0ea5e9;color:#fff;">📤 分享${(e.viewers || []).length ? `（${e.viewers.length}）` : ''}</button>`}</div></div>` : ''}
+        ${days.length && Object.keys(dt).length ? `<div class="sc-row sc-export"><b>匯出</b><div class="sc-acts"><button class="sbtn" id="sc-xlsx" style="background:#1f2430;color:#fff;">⬇ 排班 Excel</button><button class="sbtn" id="sc-shotall" style="background:#475569;color:#fff;">📷 全部存圖</button>${VIEW_ONLY ? '' : `<button class="sbtn" id="sc-share" style="background:#0ea5e9;color:#fff;">📤 分享${(e.viewers || []).length ? `（${e.viewers.length}）` : ''}</button>`}</div></div>` : ''}
       </div>`; })()}
       <details class="sc-help"><summary>ⓘ 使用說明</summary>前／中／後＝抽籤時段的值班日期；點下面的名字可以改成全程、自訂日期或不排班。每天把當天值班的人排成 轎前1～4、轎後1～6（約 ${sc.size || 5} 人一組，護理師、EMTP／EMT2、EMT1 平均分配；前一天同組的人盡量不換組）。<br>👆 點某天的名字 → 再點那天想去的組別（變成虛線框）就能換組。</details>
       <div class="sc-leg" style="margin-top:6px">${Object.entries(CAT_TXT).map(([c, t]) => `<span style="background:${CAT_BG[c]}">${t}</span>`).join('')}</div>
