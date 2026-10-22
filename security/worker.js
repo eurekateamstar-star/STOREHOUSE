@@ -161,18 +161,19 @@ const LIFF = id => 'https://liff.line.me/' + id;
 // 團員兩頁上方 286px 是分頁列（左 團員專區、右 一般資訊）；一般民眾上方是標題列（整張卡都可按）；下面一排三張直卡
 const MW = 2500, MH = 1686, TAB = 286;
 const grid3 = (acts, top) => acts.map((a, i) => {
-  const cw = Math.floor(MW / 3), x = i * cw;
-  return { bounds: { x, y: top, width: i === 2 ? MW - x : cw, height: MH - top }, action: a };
+  const n = acts.length, cw = Math.floor(MW / n), x = i * cw;   // 依按鈕數平均切（3 格或 4 格）
+  return { bounds: { x, y: top, width: i === n - 1 ? MW - x : cw, height: MH - top }, action: a };
 });
 const tabs = () => [
   { bounds: { x: 0, y: 0, width: MW / 2, height: TAB }, action: { type: 'richmenuswitch', richMenuAliasId: 'bst-member', data: 'tab=member' } },
   { bounds: { x: MW / 2, y: 0, width: MW / 2, height: TAB }, action: { type: 'richmenuswitch', richMenuAliasId: 'bst-member-b', data: 'tab=public' } },
 ];
-// 一般民眾也看得到的三格：按下去會在聊天室送出這句話，內容請在 LINE 官方帳號後台設定「關鍵字自動回應」
+// 一般民眾也看得到的四格：按下去會在聊天室送出這句話，內容請在 LINE 官方帳號後台設定「關鍵字自動回應」
 const PUBLIC = [
   { type: 'message', label: '認識醫護團', text: '認識醫護團' },
   { type: 'message', label: '衛教須知', text: '衛教須知' },
   { type: 'message', label: '醫護足跡', text: '醫護足跡' },
+  { type: 'message', label: '全民醫護證', text: '全民醫護證' },
 ];
 const MEMBER = [
   { type: 'uri', label: '會員中心', uri: LIFF('2011820105-x1KU6xLW') },
@@ -344,6 +345,7 @@ const EDU = [
     ] },
 ];
 const REPLIES = {
+  '全民醫護證': (env, origin) => shareFlex(EDU_CARDS.guardian, origin),
   '醫護足跡': async (env, origin) => {
     let photos = [];
     try { photos = (await fsList(await saToken(env), 'journey')).sort((x, y) => (x.order ?? 0) - (y.order ?? 0)); } catch (e) {}

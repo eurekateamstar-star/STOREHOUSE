@@ -3353,7 +3353,7 @@
   // 發佈 LINE 圖文選單（只有最高管理員）：建立訪客／團員兩種選單，再把所有已開通的人換成團員選單
   $('btn-richmenu').onclick = async () => {
     if (!user || user.role !== 'admin') return toast('只有最高管理員（全部系統）可以發佈');
-    const ok = await dialog({ title: '發佈 LINE 圖文選單？', msg: '會建立 LINE 圖文選單：\n・一般民眾：認識醫護團／衛教須知／醫護足跡\n・團員：兩頁可左右切換\n　「團員專區」會員中心／救護紀錄表／倉儲管理\n　「一般資訊」同一般民眾那頁\n\n之後審核、停權、踢出都會自動切換。', okText: '發佈' });
+    const ok = await dialog({ title: '發佈 LINE 圖文選單？', msg: '會建立 LINE 圖文選單：\n・一般民眾：認識醫護團／衛教須知／醫護足跡／全民醫護證\n・團員：兩頁可左右切換\n　「團員專區」會員中心／救護紀錄表／倉儲管理\n　「一般資訊」同一般民眾那頁\n\n之後審核、停權、踢出都會自動切換。', okText: '發佈' });
     if (!ok) return;
     const btn = $('btn-richmenu'); btn.disabled = true; btn.textContent = '發佈中…';
     try {
