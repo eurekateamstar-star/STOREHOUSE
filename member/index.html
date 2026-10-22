@@ -2072,7 +2072,8 @@
   const LBL_ORDER = l => (l.startsWith('轎前') ? -(+l.slice(2)) : 10 + (+l.slice(2)));   // 轎前4、3、2、1（轎前1 緊貼粗線）再轎後1、2…
   function buildDay(present, prevTeams, size, ppl) {
     const n = present.length; if (!n) return [];
-    const k = Math.max(1, Math.min(10, Math.round(n / size))), F = Math.min(4, Math.max(k > 1 ? 1 : 0, Math.round(k * 0.4))), B = Math.min(6, k - F);
+    // 每組最多 size 人、最少 3 人：組數 = ceil(n / size)，再平均分（多的組往轎後 4、5、6…加）
+    const k = Math.max(1, Math.min(Math.ceil(n / size), Math.floor(n / 3) || 1)), F = Math.min(4, Math.max(k > 1 ? 1 : 0, Math.round(k * 0.4))), B = k - F;
     const labels = [...Array.from({ length: F }, (_, i) => '轎前' + (i + 1)), ...Array.from({ length: B }, (_, i) => '轎後' + (i + 1))];
     const teams = Object.fromEntries(labels.map(l => [l, []])), cap = Math.ceil(n / labels.length);
     const prevOf = {}; (prevTeams || []).forEach(t => t.m.forEach(k2 => prevOf[k2] = t.l));
@@ -2083,6 +2084,14 @@
       labels.forEach(l => { const t = teams[l], sc = t.filter(x => ppl[x].cat === c).length * 100 + t.length * 10 + (t.length >= cap ? 1000 : 0); if (sc < bs) { bs = sc; best = l; } });
       teams[best].push(k2);
     }));
+    // 補平：最多和最少差不能超過 1（確保每組 3～size 人）
+    for (let g = 0; g < 200; g++) {
+      const ls = labels.slice().sort((a, b) => teams[a].length - teams[b].length), lo = ls[0], hi = ls[ls.length - 1];
+      if (teams[hi].length - teams[lo].length <= 1) break;
+      const cnt = (l, c) => teams[l].filter(x => ppl[x].cat === c).length;
+      const mv = teams[hi].slice().sort((a, b) => (cnt(lo, ppl[a].cat) - cnt(hi, ppl[a].cat)) - (cnt(lo, ppl[b].cat) - cnt(hi, ppl[b].cat)) || (prevOf[a] === hi) - (prevOf[b] === hi))[0];
+      teams[hi] = teams[hi].filter(x => x !== mv); teams[lo].push(mv);
+    }
     return labels.map(l => ({ l, m: teams[l].sort((a, b) => CAT_RANK[ppl[a].cat] - CAT_RANK[ppl[b].cat]) })).filter(t => t.m.length);
   }
   function renderSched(eid) {
@@ -2283,7 +2292,7 @@
         return `<div class="sc-set">
         <div class="sc-row"><b>進香日期</b>${dc('id="sc-start"', sc.start)}<span class="sc-til">～</span>${dc('id="sc-end"', sc.end)}${days.length ? `<span style="font-size:12px;color:var(--sub)">共 ${days.length} 天</span>` : ''}</div>
         ${days.length ? `<div class="sc-row" style="align-items:flex-start"><b style="padding-top:8px">抽籤時段</b><div style="display:flex;flex-direction:column;gap:6px">${SLOTS.map(sl => `<span class="sc-slot"><i>${sl}</i>${dc(`data-rg="${sl}" data-i="0"`, rg[sl] && rg[sl][0])}<span class="sc-til">～</span>${dc(`data-rg="${sl}" data-i="1"`, rg[sl] && rg[sl][1])}</span>`).join('')}</div></div>` : ''}
-        <div class="sc-row"><b>排班</b><div class="sc-acts" style="align-items:center"><span class="sz"><button type="button" data-sz="-1">−</button><b><input type="number" id="sc-size" min="2" max="6" value="${sc.size || 5}"><small>人</small></b><button type="button" data-sz="1">＋</button></span>
+        <div class="sc-row"><b>排班</b><div class="sc-acts" style="align-items:center"><span class="sz"><button type="button" data-sz="-1">−</button><b><input type="number" id="sc-size" min="3" max="5" value="${sc.size || 5}"><small>人</small></b><button type="button" data-sz="1">＋</button></span>
           <button class="sbtn" id="sc-auto" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">🔀 排班</button>
           ${days.length && Object.keys(dt).length ? `<button class="sbtn" id="sc-pub" style="background:${e.schedPublic ? '#16a34a' : '#e5e7eb'};color:${e.schedPublic ? '#fff' : '#374151'};">${e.schedPublic ? '👁 已公開' : '🙈 未公開'}</button>` : ''}</div></div>
         ${days.length ? `<div class="sc-row"><b>統計表</b><div class="sc-acts"><button class="sbtn" id="sc-att" style="background:#7c3aed;color:#fff;">🛏 出勤住宿</button><button class="sbtn" id="sc-car" style="background:#0f766e;color:#fff;">🚐 座車</button><button class="sbtn" id="sc-meal" style="background:#ca8a04;color:#fff;">🍱 用餐</button></div></div>` : ''}
@@ -2299,7 +2308,7 @@
       schFold[t] = open; try { localStorage.setItem('schFold', JSON.stringify(schFold)); } catch (e) {} renderSched(eid); });
     $('sc-back').onclick = () => { schedOpen = false; schPk = null; renderDrawSheet(eid); };
     document.querySelectorAll('[data-pk]').forEach(b => b.onclick = () => { schPk = schPk === b.dataset.pk ? null : b.dataset.pk; renderSched(eid); });
-    document.querySelectorAll('[data-sz]').forEach(b => b.onclick = () => { const i = $('sc-size'); i.value = Math.max(2, Math.min(6, (+i.value || 5) + +b.dataset.sz)); });
+    document.querySelectorAll('[data-sz]').forEach(b => b.onclick = () => { const i = $('sc-size'); i.value = Math.max(3, Math.min(5, (+i.value || 5) + +b.dataset.sz)); });
     if ($('sc-share')) $('sc-share').onclick = () => shareSched(eid);
     if ($('pm-ov')) $('pm-ov').onclick = ev => { if (ev.target.id === 'pm-ov') { schPk = null; renderSched(eid); } };
     document.querySelectorAll('[data-pm]').forEach(b => b.onclick = () => {
@@ -2318,7 +2327,7 @@
     $('sc-auto').onclick = async () => {
       if (!sc.start || !sc.end) return toast('請先填進香開始和結束日期');
       if (Object.keys(dt).length && !(await dialog({ title: '重新自動排班？', msg: '每天的小組會全部重排（包含你手動換過的）。', okText: '重新排班', danger: true }))) return;
-      const size = Math.max(2, Math.min(6, +$('sc-size').value || 5)), out = {}; let prev = null;
+      const size = Math.max(3, Math.min(5, +$('sc-size').value || 5)), out = {}; let prev = null;
       days.forEach(d => { out[d] = buildDay(presentOn(d), prev, size, ppl).map(t => ({ ...t, note: ((dt[d] || []).find(x => x.l === t.l) || (prev || []).find(x => x.l === t.l) || {}).note || '' })); prev = out[d]; });
       save({ size, days: out }, '🔀 已自動排班');
     };
