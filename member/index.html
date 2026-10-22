@@ -322,7 +322,7 @@
   .sheet .rows .row { padding: 11px 4px; }
   .sheet .grp { font-size: 12px; font-weight: 800; color: var(--gold); margin: 16px 2px 2px; }
 
-  .dlg-bg { position: fixed; inset: 0; background: rgba(15,15,20,0.45); z-index: 90; display: none; align-items: center; justify-content: center; padding: 20px; }
+  .dlg-bg { position: fixed; inset: 0; background: rgba(15,15,20,0.45); z-index: 9800; display: none; align-items: center; justify-content: center; padding: 20px; }
   .dlg { background: #fff; border-radius: 20px; padding: 20px; width: 100%; max-width: 380px; }
   .dlg h4 { margin: 0 0 8px; font-size: 18px; }
   .dlg p { margin: 0 0 12px; color: var(--sub); font-size: 14px; white-space: pre-line; line-height: 1.6; }
@@ -511,7 +511,7 @@
   <div class="dlg">
     <h4 id="dlg-title"></h4>
     <p id="dlg-msg"></p>
-    <input class="inp hidden" id="dlg-input">
+    <textarea class="inp hidden" id="dlg-input" rows="1" style="resize:vertical;font:inherit"></textarea>
     <div class="row2"><button class="btn ghost" id="dlg-no">取消</button><button class="btn" id="dlg-yes">確定</button></div>
   </div>
 </div>
@@ -642,7 +642,7 @@
       $('dlg-title').textContent = title; $('dlg-msg').textContent = msg;
       const inp = $('dlg-input');
       inp.classList.toggle('hidden', input === null);
-      if (input !== null) { inp.value = input.value || ''; inp.placeholder = input.placeholder || ''; }
+      if (input !== null) { inp.value = input.value || ''; inp.placeholder = input.placeholder || ''; inp.rows = (input.value || '').includes('\n') ? 5 : 1; }
       $('dlg-yes').textContent = okText;
       $('dlg-yes').style.background = danger ? 'var(--red)' : '';
       $('dlg-bg').style.display = 'flex';
@@ -2670,6 +2670,7 @@
       const sum = MEAL_CODES.map(([c, t]) => `<tr><th style="text-align:left;padding-left:6px;background:${MEAL_BG[c]}">${t}</th>${['l', 'n'].map(f => `<td>${on.filter(p => g(p.key, d)[f] === c).length || ''}</td>`).join('')}</tr>`).join('')
         + `<tr><th style="text-align:left;padding-left:6px">便當合計</th>${['l', 'n'].map(f => `<td><b>${on.filter(p => ['葷', '素'].includes(g(p.key, d)[f])).length}</b></td>`).join('')}</tr>`
         + `<tr><th style="text-align:left;padding-left:6px;color:#9a8f8b">未登記</th>${['l', 'n'].map(f => `<td style="color:#9a8f8b">${on.filter(p => !g(p.key, d)[f]).length || ''}</td>`).join('')}</tr>`;
+      const miss = on.filter(p => { const m = g(p.key, d); return !m.l || !m.n; });
       const ov = document.createElement('div'); ov.className = 'eq-ov';
       ov.innerHTML = `<div class="eq-box" style="max-width:520px;padding:14px 12px">
         <style>table.ct{width:100%;border-collapse:collapse;table-layout:fixed}.ct th,.ct td{border-bottom:1px solid #f1e8e5;font-size:12px;height:24px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 2px}
@@ -2680,9 +2681,25 @@
         <div style="max-height:55vh;overflow:auto;border:1px solid #efe4e0;border-radius:10px"><table class="ct"><thead><tr><th style="width:20px">#</th><th style="width:32%">姓名</th><th>出勤</th><th>中餐</th><th>晚餐</th></tr></thead><tbody>
           ${on.map((p, i) => { const a = ga(p.key, d), m = g(p.key, d); return `<tr><td class="n">${i + 1}</td><td class="nm2" style="background:${CAT_BG[p.cat]}">${esc(p.name)}</td><td class="w">${esc(wTxt(a.w))}</td>${cell(m.l)}${cell(m.n)}</tr>`; }).join('') || '<tr><td colspan="5" style="color:#9a8f8b">無</td></tr>'}
         </tbody></table></div>
-        <div class="eq-btn" style="margin-top:10px"><button id="eq-no">關閉</button></div></div>`;
+        <div class="eq-btn" style="margin-top:10px"><button id="eq-no">關閉</button>${miss.length ? `<button id="m-nudge" style="background:#f59e0b;color:#fff">📣 催 ${miss.length} 人登記</button>` : ''}</div></div>`;
       document.body.appendChild(ov); ov.onclick = e2 => { if (e2.target === ov || e2.target.id === 'eq-no') ov.remove(); };
+      if (ov.querySelector('#m-nudge')) ov.querySelector('#m-nudge').onclick = () => nudgeMeal(eid, d, miss);
     });
+  }
+  async function nudgeMeal(eid, d, miss) {
+    const bound = miss.filter(p => p.ro && p.ro.boundUserId), nob = miss.filter(p => !(p.ro && p.ro.boundUserId));
+    const e = eventsCache.find(x => x.id === eid) || {};
+    const def = `【白沙屯醫護團】提醒：${dLabel(d)} 的中餐／晚餐你還沒登記喔！\n請打開「會員中心」→「我的排班」→ 點 ${dLabel(d)}，選葷／素／自行處理。\nhttps://liff.line.me/${LIFF_ID}`;
+    if (!bound.length) return dialog({ title: '沒辦法用 LINE 提醒', msg: `這 ${miss.length} 人都還沒綁定 LINE：\n${nob.map(p => p.name).join('、')}`, okText: '知道了' });
+    if (!e.schedPublic) { if (!(await dialog({ title: '排班還沒公開', msg: '團員要在「我的排班」登記，排班需要先公開。\n仍然要送出提醒嗎？', okText: '仍要送出' }))) return; }
+    const text = await dialog({ title: `用 LINE 提醒 ${bound.length} 人登記用餐`, msg: `會收到：${bound.map(p => p.name).join('、')}${nob.length ? `\n\n未綁定 LINE（收不到）：${nob.map(p => p.name).join('、')}` : ''}\n\n訊息內容（可以改）：`, input: { value: def }, okText: '📣 送出' });
+    if (!text) return;
+    try {
+      const idToken = await auth.currentUser.getIdToken();
+      const r = await fetch(AUTH_URL + '/nudge', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, uids: bound.map(p => p.ro.boundUserId), text }) });
+      const j = await r.json(); if (!j.ok) throw new Error(j.error || 'fail');
+      toast(`✅ 已用 LINE 提醒 ${j.sent} 人`);
+    } catch (err) { dialog({ title: '送出失敗', msg: String(err.message || err), okText: '知道了' }); }
   }
   function renderCar(eid) {
     if ($('sheet').style.display === 'none') return;

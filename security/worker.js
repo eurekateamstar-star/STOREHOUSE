@@ -48,6 +48,8 @@ export default {
     if (path === '/lot') return lotRoute(req, env, json);
     if (path === '/mysched') return mySchedRoute(req, env, json);
     if (path === '/myplan') return myPlanRoute(req, env, json);
+    if (path === '/nudge') return nudgeRoute(req, env, json);
+    if (path === '/remind') return remindRoute(req, env, json);
     if (path === '/parse') return parseRoute(req, env, json);
     if (path === '/menu') return menuRoute(req, env, json);
     if (path === '/menu-setup') return menuSetupRoute(req, env, json);
@@ -619,6 +621,47 @@ async function myPlanRoute(req, env, json) {
     if (!w.ok) return json({ error: 'write failed ' + w.status }, 500);
     return json({ ok: true });
   } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
+}
+// 管理員催促團員登記（LINE 推播）：{ idToken, names:[...], text }
+async function remindRoute(req, env, json) {
+  try {
+    const { idToken, names, text } = await req.json();
+    if (!idToken || !Array.isArray(names) || !names.length) return json({ error: 'missing' }, 400);
+    const me = await fsUser(idToken, uidOfToken(idToken));
+    if (!memberAdmin(me)) return json({ error: '只有會員中心管理員可以催促' }, 403);
+    if (!env.LINE_BOT_TOKEN) return json({ error: 'LINE_BOT_TOKEN 尚未設定' }, 501);
+    const tok = await saToken(env), want = new Set(names.map(normName));
+    const ids = [], found = new Set();
+    (await fsList(tok, 'member_roster')).forEach(x => { const k = normName(x.name); if (want.has(k) && x.boundUserId && !found.has(k)) { found.add(k); ids.push(x.boundUserId); } });
+    const noLine = [...want].filter(k => !found.has(k));
+    if (!ids.length) return json({ ok: true, sent: 0, noLine });
+    const msg = { type: 'flex', altText: String(text || '請到會員中心登記').slice(0, 300), contents: { type: 'bubble', size: 'kilo',
+      body: { type: 'box', layout: 'vertical', paddingAll: '18px', spacing: 'md', contents: [
+        { type: 'text', text: '📣 醫護團提醒', weight: 'bold', size: 'lg', color: '#c2414f' },
+        { type: 'text', text: String(text || '').slice(0, 300), wrap: true, size: 'sm', color: '#374151' } ] },
+      footer: { type: 'box', layout: 'vertical', paddingAll: '12px', contents: [
+        { type: 'button', style: 'primary', color: '#D65A68', action: { type: 'uri', label: '打開會員中心登記', uri: 'https://liff.line.me/2011820105-x1KU6xLW' } } ] } } };
+    const r = await fetch('https://api.line.me/v2/bot/message/multicast', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + env.LINE_BOT_TOKEN },
+      body: JSON.stringify({ to: ids.slice(0, 500), messages: [msg] }) });
+    if (!r.ok) return json({ error: 'LINE 傳送失敗：' + (await r.text()).slice(0, 200) }, 502);
+    return json({ ok: true, sent: ids.length, noLine });
+  } catch (e) { return json({ error: String((e && e.message) || e) }, e && e.code || 500); }
+}
+// 管理員催團員登記：LINE 推播提醒（只有會員中心管理員可以用）
+async function nudgeRoute(req, env, json) {
+  try {
+    if (!env.LINE_BOT_TOKEN) return json({ error: 'LINE_BOT_TOKEN 尚未設定' }, 501);
+    const { idToken, uids, text } = await req.json();
+    if (!idToken) return json({ error: 'missing' }, 400);
+    const me = await fsUser(idToken, uidOfToken(idToken));
+    if (!memberAdmin(me)) return json({ error: '只有會員中心管理員可以催' }, 403);
+    const list = [...new Set((uids || []).filter(u => /^U[0-9a-f]{32}$/.test(u)))].slice(0, 500);
+    if (!list.length) return json({ error: '這些人都還沒綁定 LINE' }, 400);
+    const msg = String(text || '').slice(0, 900);
+    const r = await lineApi(env, '/v2/bot/message/multicast', { method: 'POST', type: 'application/json', body: JSON.stringify({ to: list, messages: [{ type: 'text', text: msg }] }) });
+    if (!r.ok) return json({ error: 'LINE ' + r.status + ' ' + (await r.text()).slice(0, 200) }, 502);
+    return json({ ok: true, sent: list.length });
+  } catch (e) { return json({ error: String((e && e.message) || e) }, e && e.code || 500); }
 }
 async function signJwt(sa, payload) {
   const enc = (o) => b64url(new TextEncoder().encode(JSON.stringify(o)));
