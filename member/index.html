@@ -2664,11 +2664,23 @@
       clearTimeout(pending); pending = setTimeout(saveQuiet, 500);
     });
     document.querySelectorAll('[data-mday]').forEach(th => th.onclick = () => {
-      const d = th.dataset.mday, g = mealVals(eid);
-      const sec = (f, t) => `<div style="font-weight:900;margin:10px 0 4px">${t}</div>${MEAL_CODES.map(([c, n]) => { const ns = list.filter(p => g(p.key, d)[f] === c);
-        return ns.length ? `<div style="font-size:13px;margin:3px 0"><b style="display:inline-block;min-width:66px;background:${MEAL_BG[c]};border-radius:6px;padding:1px 6px">${n} ${ns.length}</b> ${ns.map(p => esc(p.name)).join('、')}</div>` : ''; }).join('') || '<div style="color:#9a8f8b;font-size:13px">還沒有人登記</div>'}`;
+      const d = th.dataset.mday, g = mealVals(eid), I = info[d] || {};
+      const on = list.filter(p => { const m = g(p.key, d); return onDuty(p, d) || m.l || m.n; });
+      const cell = v => v ? `<td style="background:${MEAL_BG[v]}">${esc(v === '自' ? '自理' : v)}</td>` : '<td></td>';
+      const sum = MEAL_CODES.map(([c, t]) => `<tr><th style="text-align:left;padding-left:6px;background:${MEAL_BG[c]}">${t}</th>${['l', 'n'].map(f => `<td>${on.filter(p => g(p.key, d)[f] === c).length || ''}</td>`).join('')}</tr>`).join('')
+        + `<tr><th style="text-align:left;padding-left:6px">便當合計</th>${['l', 'n'].map(f => `<td><b>${on.filter(p => ['葷', '素'].includes(g(p.key, d)[f])).length}</b></td>`).join('')}</tr>`
+        + `<tr><th style="text-align:left;padding-left:6px;color:#9a8f8b">未登記</th>${['l', 'n'].map(f => `<td style="color:#9a8f8b">${on.filter(p => !g(p.key, d)[f]).length || ''}</td>`).join('')}</tr>`;
       const ov = document.createElement('div'); ov.className = 'eq-ov';
-      ov.innerHTML = `<div class="eq-box" style="max-width:520px"><div class="eq-t">${dLabel(d)} 用餐名單</div>${sec('l', '🍱 中餐')}${sec('n', '🍱 晚餐')}<div class="eq-btn" style="margin-top:14px"><button id="eq-no">關閉</button></div></div>`;
+      ov.innerHTML = `<div class="eq-box" style="max-width:520px;padding:14px 12px">
+        <style>table.ct{width:100%;border-collapse:collapse;table-layout:fixed}.ct th,.ct td{border-bottom:1px solid #f1e8e5;font-size:12px;height:24px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 2px}
+          .ct thead th{font-size:10px;color:#9a8f8b;background:#fdf6f4}.ct td.n{color:#9a8f8b;font-size:10px}.ct td.nm2{text-align:left;font-weight:700;padding-left:5px}.ct td.w{color:#15803d;font-size:10.5px;font-weight:700}</style>
+        <div class="eq-t" style="font-size:16px;margin-bottom:2px">${dLabel(d)}${I.tag ? '　' + esc(I.tag) : ''} 出勤／用餐</div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:8px">${I.place ? '📍 ' + esc(I.place) + '　' : ''}共 ${on.length} 人</div>
+        <table class="ct" style="margin-bottom:10px;border:1px solid #efe4e0"><thead><tr><th style="width:34%">用餐人數</th><th>中餐</th><th>晚餐</th></tr></thead><tbody>${sum}</tbody></table>
+        <div style="max-height:55vh;overflow:auto;border:1px solid #efe4e0;border-radius:10px"><table class="ct"><thead><tr><th style="width:20px">#</th><th style="width:32%">姓名</th><th>出勤</th><th>中餐</th><th>晚餐</th></tr></thead><tbody>
+          ${on.map((p, i) => { const a = ga(p.key, d), m = g(p.key, d); return `<tr><td class="n">${i + 1}</td><td class="nm2" style="background:${CAT_BG[p.cat]}">${esc(p.name)}</td><td class="w">${esc(wTxt(a.w))}</td>${cell(m.l)}${cell(m.n)}</tr>`; }).join('') || '<tr><td colspan="5" style="color:#9a8f8b">無</td></tr>'}
+        </tbody></table></div>
+        <div class="eq-btn" style="margin-top:10px"><button id="eq-no">關閉</button></div></div>`;
       document.body.appendChild(ov); ov.onclick = e2 => { if (e2.target === ov || e2.target.id === 'eq-no') ov.remove(); };
     });
   }
