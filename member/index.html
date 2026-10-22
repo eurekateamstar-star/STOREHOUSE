@@ -2698,7 +2698,7 @@
         try { await save();
           const idToken = await auth.currentUser.getIdToken();
           const r = await fetch(AUTH_URL + '/nudge', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, uids: target, title: '排班表已分享給您', sub: e.title || '進香', kind: '排班分享',
-            rows: [['內容', '每日排班・出勤住宿・座車・用餐'], ['權限', '僅供檢視']], text: '', url: `https://liff.line.me/${LIFF_ID}?view=${eid}`, btn: '查看排班表' }) });
+            rows: [['每日', '排班表'], ['人員', '出勤住宿'], ['交通', '座車'], ['餐點', '用餐']], text: '以上資料僅供檢視，不能修改。', url: `https://liff.line.me/${LIFF_ID}?view=${eid}`, btn: '查看排班表' }) });
           const j = await r.json(); if (!j.ok) throw new Error(j.error || 'fail');
           toast(`✅ 已發給 ${j.sent} 人`, 3500); ov.remove(); renderSched(eid);
         } catch (err) { dialog({ title: '送出失敗', msg: String(err.message || err), okText: '知道了' }); } };
