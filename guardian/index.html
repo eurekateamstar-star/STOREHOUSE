@@ -9,54 +9,64 @@
 <meta property="og:image" content="https://tsushin-buishatun.pages.dev/richmenu/guardian-promo.jpg">
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <style>
-  :root{--red:#D7262B;--red2:#F0763A;--ink:#211816;--sub:#7B6F6A;--bg:#F7EFE6;--card:#FFFDFA;--line:#ECE1D6}
+  :root{--red:#E2231A;--red2:#C8161D;--ink:#1B1B1B;--sub:#6E625C;--paper:#FBF5EC;--cream:#FFFCF7;--line:#E2231A}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"PingFang TC","Noto Sans TC","Noto Sans CJK TC","Microsoft JhengHei",sans-serif;-webkit-text-size-adjust:100%}
-  .wrap{max-width:480px;margin:0 auto;padding:0 0 110px}
+  html,body{margin:0;color:var(--ink);font-family:"PingFang TC","Noto Sans TC","Noto Sans CJK TC","Microsoft JhengHei",sans-serif;-webkit-text-size-adjust:100%;
+    background:var(--paper) radial-gradient(rgba(170,120,80,.06) 1px,transparent 1.5px) 0 0/6px 6px}
+  .wrap{max-width:480px;margin:0 auto;padding:0 0 112px}
   .hidden{display:none!important}
-  .hero{position:relative;background:#FBF4EA}
+  /* 上方紅色字帶（跟證件一樣） */
+  .band{position:sticky;top:0;z-index:30;height:40px;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;font-size:12.5px;font-weight:800;letter-spacing:.5px;white-space:nowrap;overflow:hidden}
+  .band::before,.band::after{content:"";width:46px;height:16px;flex:none;background:repeating-conic-gradient(#fff 0 25%,transparent 0 50%) 0 0/16px 16px}
+  .band i{font-style:normal;opacity:.7}
+  .hero{position:relative}
   .hero img{display:block;width:100%}
-  .hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:90px;background:linear-gradient(transparent,var(--bg))}
-  .sheet{position:relative;margin:-46px 14px 0;z-index:2}
-  .intro{background:var(--card);border-radius:22px;padding:18px 18px 16px;box-shadow:0 10px 30px rgba(120,60,40,.10);text-align:center}
-  .step{display:inline-block;font-size:11px;font-weight:900;letter-spacing:2px;color:var(--red);background:#FDE8E4;border-radius:99px;padding:4px 12px}
-  .intro h1{font-size:23px;margin:10px 0 6px;letter-spacing:1px}
-  .intro p{font-size:13.5px;color:var(--sub);line-height:1.7;margin:0}
-  .sec{background:var(--card);border-radius:20px;padding:16px;margin-top:14px;box-shadow:0 6px 18px rgba(120,60,40,.06)}
-  .sh{display:flex;align-items:center;gap:10px;margin-bottom:12px}
-  .sh i{font-style:normal;width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--red),var(--red2));color:#fff;font-size:14px;font-weight:900;display:flex;align-items:center;justify-content:center;flex:none}
-  .sh b{font-size:16.5px}.sh small{font-size:12px;color:var(--sub);margin-left:auto}
-  input.txt{width:100%;font:inherit;font-size:19px;font-weight:700;padding:13px 15px;border:2px solid var(--line);border-radius:14px;background:#fff;outline:none;transition:.15s}
-  input.txt:focus{border-color:var(--red);box-shadow:0 0 0 4px rgba(215,38,43,.12)}
-  .roles{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-  .role{font:inherit;text-align:left;border:2px solid var(--line);background:#fff;border-radius:14px;padding:10px 12px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:.15s;color:var(--ink)}
-  .role .e{width:40px;height:40px;border-radius:12px;background:#FDECE8;color:#D7262B;padding:8px;flex:none;display:flex}
-  .role .e svg{width:100%;height:100%}
-  .role.on .e{background:linear-gradient(135deg,#E0342F,#F0763A);color:#fff}
-  .role b{display:block;font-size:15.5px;white-space:nowrap}.role span{display:block;font-size:11.5px;color:var(--sub);margin-top:1px;white-space:nowrap}
-  .role:not(.wide) .ck{display:none}
-  .role.wide{grid-column:1/-1;padding:13px 14px}
+  .hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:70px;background:linear-gradient(rgba(251,245,236,0),var(--paper))}
+  .sheet{position:relative;margin:-30px 14px 0;z-index:2}
+  /* 外框：跟證件資料卡一樣的紅框白底 */
+  .frame{background:var(--cream);border:3px solid var(--red);border-radius:18px;padding:14px 14px 16px;box-shadow:0 6px 0 rgba(226,35,26,.10)}
+  .ttl{display:flex;align-items:center;gap:10px;justify-content:center}
+  .ttl::before,.ttl::after{content:"";flex:1;max-width:84px;height:22px;background:repeating-conic-gradient(#1b1b1b 0 25%,#fff 0 50%) 0 0/16px 16px;border:2px solid #1b1b1b}
+  .ttl b{font-size:27px;font-weight:900;color:var(--red);letter-spacing:3px}
+  .en{text-align:center;font-size:11.5px;letter-spacing:5px;color:#3a3330;margin-top:2px}
+  .lead{text-align:center;font-size:13.5px;color:var(--sub);line-height:1.75;margin:10px 0 2px}
+  .box{border:2px solid var(--red);border-radius:12px;background:#fff;padding:11px 12px 12px;margin-top:12px}
+  .bh{display:flex;align-items:baseline;gap:8px;margin-bottom:9px}
+  .bh b{font-size:16px;font-weight:900}.bh em{font-style:normal;font-size:11.5px;font-weight:700;letter-spacing:1.5px;color:#EE6A62}
+  .bh small{margin-left:auto;font-size:11.5px;color:var(--sub)}
+  input.txt{width:100%;font:inherit;font-size:24px;font-weight:900;padding:6px 4px;border:0;border-bottom:2px dashed #E9B9B4;background:transparent;outline:none;color:var(--ink)}
+  input.txt::placeholder{color:#CFC3BD;font-weight:700}
+  input.txt:focus{border-bottom-color:var(--red)}
+  .roles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .role{font:inherit;text-align:left;border:2px solid #EED6D2;background:var(--cream);border-radius:10px;padding:8px 10px;cursor:pointer;display:flex;align-items:center;gap:10px;color:var(--ink)}
+  .role .e{width:40px;height:40px;border-radius:50%;background:#fff;color:var(--red);padding:7px;flex:none;display:flex;box-shadow:0 0 0 2px #fff,0 0 0 4px #1b1b1b,0 0 0 6px #fff,0 0 0 8.5px var(--red);margin:5px}
+  .role .e img,.role .e svg{width:100%;height:100%;object-fit:contain}
+  .role b{display:block;font-size:15.5px;font-weight:900;white-space:nowrap}.role span{display:block;font-size:11px;color:var(--sub);margin-top:1px;white-space:nowrap}
+  .role .ck{display:none}
+  .role.wide{grid-column:1/-1}
   .role.wide b{font-size:17px}
-  .role.on{border-color:var(--red);background:#FFF3F0;box-shadow:0 0 0 3px rgba(215,38,43,.12)}
-  .role.on:not(.wide){background:linear-gradient(135deg,#FFF3F0,#FFE4DE)}
-  .role.on b{color:var(--red)}
-  .role .ck{margin-left:auto;width:22px;height:22px;border-radius:50%;border:2px solid var(--line);flex:none;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff}
-  .role.on .ck{background:var(--red);border-color:var(--red)}
-  .skills{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-  .skill{font:inherit;font-size:15px;font-weight:800;border:2px solid var(--line);background:#fff;color:#8a7f7a;border-radius:14px;padding:13px 8px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:.15s}
-  .skill .c{width:20px;height:20px;border-radius:6px;border:2px solid #d8ccc4;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;flex:none}
-  .skill.on{background:linear-gradient(#E0342F,#C9221F);border-color:#A51A18;color:#fff;box-shadow:0 4px 10px rgba(201,34,31,.25)}
-  .skill.on .c{background:#fff;border-color:#fff;color:#C9221F}
-  .cta{position:fixed;left:0;right:0;bottom:0;z-index:20;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(rgba(247,239,230,0),var(--bg) 35%)}
+  .role.wide .ck{display:flex;margin-left:auto;width:24px;height:24px;border-radius:5px;border:2px solid #E9B9B4;align-items:center;justify-content:center;font-size:14px;color:#fff;flex:none}
+  .role.on{background:linear-gradient(#E83228,#C8161D);border-color:#9E1015;color:#fff;box-shadow:0 4px 0 #8E0E12}
+  .role.on b,.role.on span{color:#fff}
+  .role.on .e{color:var(--red)}
+  .role.on .ck{background:#fff;border-color:#fff;color:var(--red)}
+  .skills{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .skill{font:inherit;font-size:15.5px;font-weight:900;border:2px solid #CFCAC6;background:#E9E6E3;color:#9A9592;border-radius:6px;padding:11px 6px;cursor:pointer;text-align:center}
+  .skill .c{display:none}
+  .skill.on{background:linear-gradient(#E0342F,#C21B22);border-color:#A3171C;color:#fff;box-shadow:0 3px 0 #8E0E12}
+  .skill.on::before{content:"✓ "}
+  .pledge{text-align:center;font-size:12.5px;color:#4a3f3b;line-height:1.7;margin-top:12px}
+  .ecg{display:block;width:100%;height:26px;margin-top:4px}
+  .cta{position:fixed;left:0;right:0;bottom:0;z-index:20;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(rgba(251,245,236,0),var(--paper) 40%)}
   .cta .btn{max-width:448px;margin:0 auto}
-  .btn{display:block;width:100%;font:inherit;font-size:17px;font-weight:900;border:0;border-radius:16px;padding:15px;cursor:pointer;text-align:center;margin-top:10px;text-decoration:none}
-  .btn.main{background:linear-gradient(90deg,#E0342F,#F0763A);color:#fff;box-shadow:0 8px 20px rgba(224,52,47,.32)}
-  .btn.line{background:#06C755;color:#fff;box-shadow:0 6px 16px rgba(6,199,85,.25)}
-  .btn.ghost{background:#fff;color:#4a403c;border:2px solid var(--line)}
+  .btn{display:block;width:100%;font:inherit;font-size:17px;font-weight:900;border:0;border-radius:12px;padding:15px;cursor:pointer;text-align:center;margin-top:10px;text-decoration:none;letter-spacing:1px}
+  .btn.main{background:linear-gradient(#E83228,#C8161D);color:#fff;box-shadow:0 5px 0 #8E0E12,0 10px 20px rgba(200,22,29,.25)}
+  .btn.line{background:#06C755;color:#fff;box-shadow:0 5px 0 #048a3b}
+  .btn.ghost{background:var(--cream);color:var(--ink);border:2px solid var(--red)}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .row2 .btn{margin-top:0}
-  .cardv{padding:16px 14px 0}
-  canvas{width:100%;display:block;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.18);touch-action:none;background:#FBF4EA}
+  .cardv{padding:14px 14px 0}
+  canvas{width:100%;display:block;border-radius:6px;box-shadow:0 10px 30px rgba(0,0,0,.18);touch-action:none;background:#FBF4EA}
   .zoom{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--sub);margin:14px 4px 4px}
   .zoom input{flex:1;accent-color:var(--red)}
   .note{font-size:12px;color:var(--sub);text-align:center;line-height:1.8;margin-top:16px}
@@ -65,7 +75,7 @@
   #toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:rgba(20,20,20,.88);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:99;max-width:88vw;text-align:center}
   #toast.show{opacity:1}
   .ov{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.82);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:12px}
-  .ov img{max-width:100%;max-height:72vh;border-radius:12px}
+  .ov img{max-width:100%;max-height:72vh;border-radius:8px}
   .ov .t{color:#fff;font-weight:800;font-size:15px;text-align:center}
   .ov .row2{width:100%;max-width:360px}
   .ov .btn{margin:0}
@@ -73,21 +83,24 @@
 </head>
 <body>
 <div class="wrap">
-  <div id="v-loading"><div class="spin"></div><p class="hint" style="text-align:center">讀取中…</p></div>
+  <div id="v-loading"><div class="spin"></div><p style="text-align:center;font-size:13px;color:#6E625C">讀取中…</p></div>
 
   <!-- 第 1 步：填資料 -->
   <div id="v-form" class="hidden">
     <div class="hero"><img src="../richmenu/guardian-promo.jpg?v=3" alt="全民醫護證"></div>
-    <div class="sheet">
-      <div class="intro"><span class="step">STEP 1 / 2</span><h1>領取你的全民醫護證</h1>
-        <p>不用證照，只要一顆願意幫忙的心。<br>填好三個步驟，馬上拿到屬於你的守護證。</p></div>
-      <div class="sec"><div class="sh"><i>1</i><b>你的名字</b><small>會印在證件上</small></div>
-        <input class="txt" id="f-name" maxlength="8" placeholder="請輸入姓名" autocomplete="off"></div>
-      <div class="sec"><div class="sh"><i>2</i><b>你的身分</b><small>沒有證照選第一個</small></div>
+    <div class="sheet"><div class="frame">
+      <div class="ttl"><b>我是守護員</b></div>
+      <div class="en">I AM A GUARDIAN</div>
+      <div class="lead">不用證照，只要一顆願意幫忙的心。<br>填好下面三格，領取你的全民醫護證。</div>
+      <div class="box"><div class="bh"><b>姓名</b><em>NAME</em><small>會印在證件上</small></div>
+        <input class="txt" id="f-name" maxlength="8" placeholder="請輸入你的名字" autocomplete="off"></div>
+      <div class="box"><div class="bh"><b>身分</b><em>POSITION</em><small>沒有證照選第一個</small></div>
         <div class="roles" id="f-pos"></div></div>
-      <div class="sec"><div class="sh"><i>3</i><b>我會的守護技能</b><small>可複選</small></div>
+      <div class="box"><div class="bh"><b>我會的守護技能</b><em>SKILLS</em><small>可複選</small></div>
         <div class="skills" id="f-skills"></div></div>
-    </div>
+      <div class="pledge">我願意在需要的時候伸出手——看見有人不舒服，<br>我會停下來、陪伴他、幫他求救。</div>
+      <svg class="ecg" viewBox="0 0 300 26" preserveAspectRatio="none"><polyline points="0,13 95,13 103,4 110,22 117,2 124,13 175,13 183,4 190,22 197,2 204,13 300,13" fill="none" stroke="#E2231A" stroke-width="2"/></svg>
+    </div></div>
     <div class="cta"><button class="btn main" id="f-next">產生我的醫護證 →</button></div>
   </div>
 
