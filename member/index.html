@@ -2625,6 +2625,7 @@
       <button class="sbtn" id="meal-back">← 回出勤／住宿表</button>
       ${(() => { const n = selfPending(eid); return n ? `<button class="sbtn" id="meal-okself" style="background:#7c3aed;color:#fff;margin-left:6px">✓ 確認團員登記（${n} 格）</button>` : ''; })()}
       <h3 style="margin-top:10px;">🍱 用餐統計</h3>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0"><button class="sbtn" id="meal-test" style="background:#fef3c7;color:#92400e;font-size:12px;padding:6px 10px">🧪 有排班的人隨機填用餐（測試）</button><button class="sbtn" id="meal-clear" style="background:#f1f5f9;color:#475569;font-size:12px;padding:6px 10px">🗑 清除全部用餐</button></div>
       <div style="font-size:13px;color:var(--sub);line-height:1.7;">${esc(e.title || '')}　團員在會員中心「我的排班」自己登記中餐／晚餐（紫框「自」＝還沒確認）。點格子可以改；灰底＝那天沒出勤也沒住宿。點日期看當天用餐名單。</div>
       <div class="at-wrap"><table class="at" style="width:${84 + days.length * 84}px"><colgroup><col style="width:84px">${days.map(() => '<col style="width:42px"><col style="width:42px">').join('')}</colgroup><thead>
         <tr><th class="nm" rowspan="2">姓名</th>${days.map(d => `<th colspan="2" class="dl" data-mday="${d}" style="cursor:pointer">${dLabel(d)}${(info[d] || {}).tag ? `<br><span style="font-size:10px;color:#1d4ed8">${esc(info[d].tag)}</span>` : ''}</th>`).join('')}</tr>
@@ -2638,6 +2639,18 @@
     const nw = document.querySelector('.at-wrap'); if (keep && nw) { nw.scrollLeft = keep[0]; nw.scrollTop = keep[1]; } $('sheet').scrollTop = keepS;
     $('meal-back').onclick = () => { mealOpen = false; renderAtt(eid); };
     if ($('meal-okself')) $('meal-okself').onclick = () => confirmSelf(eid);
+    const saveMeal = async (meal, msg) => { evSched[eid] = { ...(evSched[eid] || {}), meal }; try { await saveDraw(eid, { ...(evDraw[eid] || {}) }, { ...(evDrawBy[eid] || {}) }, { ...(evOver[eid] || {}) }); toast(msg); } catch (err) { toast('❌ 儲存失敗'); } renderMeal(eid); };
+    $('meal-test').onclick = async () => {
+      if (!(await dialog({ title: '隨機填用餐？', msg: '有出勤或住宿的人，每天的中餐、晚餐隨機填（葷約 6 成、素約 3 成、自行處理約 1 成）。已經填過的不會改。', okText: '填入' }))) return;
+      const meal = JSON.parse(JSON.stringify((evSched[eid] || {}).meal || {})), pick = () => { const x = Math.random(); return x < .6 ? '葷' : x < .9 ? '素' : '自'; }; let n = 0;
+      list.forEach(p => days.forEach(d => { if (!onDuty(p, d)) return; const m = gm(p.key, d); meal[p.key] = meal[p.key] || {}; meal[p.key][d] = meal[p.key][d] || {};
+        ['l', 'n'].forEach(f => { if (!m[f]) { meal[p.key][d][f] = pick(); n++; } }); }));
+      saveMeal(meal, `✅ 已填 ${n} 格`);
+    };
+    $('meal-clear').onclick = async () => {
+      if (!(await dialog({ title: '清除全部用餐？', msg: '管理員填的用餐會全部清掉（團員自己登記的會恢復成紫框）。', okText: '清除', danger: true }))) return;
+      saveMeal({}, '已清除');
+    };
     let pending = null;
     const saveQuiet = async () => { try { await saveDraw(eid, { ...(evDraw[eid] || {}) }, { ...(evDrawBy[eid] || {}) }, { ...(evOver[eid] || {}) }); } catch (err) { console.error(err); toast('❌ 儲存失敗'); } };
     const pmap = Object.fromEntries(list.map(p => [p.key, p]));
