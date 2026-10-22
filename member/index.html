@@ -1560,12 +1560,12 @@
     const e = (mySchedData || []).find(x => x.id === eid); if (!e) return; const x0 = e.days.find(y => y.d === d), pl = (e.plan || []).find(y => y.d === d);
     const x = x0 || { d, tag: '', place: '', team: '', teams: [], info: {} };
     const dd = new Date(d + 'T12:00:00'), NC = Math.max(5, ...x.teams.map(t => t.m.length), 0), I = x.info || {};
-    const tg = (on, lock, a, t) => `<button data-pa="${a}" ${lock ? 'data-lock="1"' : ''} class="pl-b ${on ? 'on' : ''} ${lock ? 'lk' : ''}">${t}</button>`;
+    const tg = (on, lock, a, t) => `<button data-pa="${a}" ${lock ? 'data-lock="1"' : ''} class="pl-b ${on ? 'on' : ''} ${lock ? 'lk' : ''}">${t}${lock && on ? '<i class="ck">已確認</i>' : ''}</button>`;
     const reg = !pl ? '' : `<div style="margin:10px 12px 4px;border:1.5px solid #f3c7cc;border-radius:14px;padding:10px 12px;background:#fffafa">
         <div style="font-weight:900;font-size:14px;margin-bottom:8px">🙋 我這天的住宿／中巴 <small style="font-weight:600;color:#9a8f8b;font-size:11px">（自己登記，管理員會看到）</small></div>
         <div class="pl-r"><span>🛏 今晚住宿</span>${tg(!!pl.s, pl.adminS, 's:' + e.g, '住')}${tg(!pl.s, pl.adminS, 's:x', '不住')}</div>
         <div class="pl-r"><span>🚌 坐中巴</span>${[['o', '出門'], ['y', '白天'], ['h', '回家']].map(([f, t]) => tg(pl[f] === '9', pl.adminCar[f], f + ':' + (pl[f] === '9' ? 'x' : '9'), (pl[f] === '9' ? '✓ ' : '') + t)).join('')}</div>
-        <div style="font-size:10.5px;color:#9a8f8b;margin-top:4px">例：前一天提早到→點「住」；最後一天退勤→「不住」、回家不坐中巴。${pl.adminS || Object.values(pl.adminCar).some(Boolean) ? '右上角有綠色 ✔ 的是管理員已確認，要改請洽管理員。' : ''}</div></div>`;
+        <div style="font-size:10.5px;color:#9a8f8b;margin-top:4px">例：前一天提早到→點「住」；最後一天退勤→「不住」、回家不坐中巴。${pl.adminS || Object.values(pl.adminCar).some(Boolean) ? '標「✔已確認」的是管理員確認過的，要改請洽管理員。' : ''}</div></div>`;
     let first = true;
     const rows = x.teams.map(t => { const back = t.l.startsWith('轎後'), cls = back && first ? 'b' : ''; if (back) first = false;
       return `<tr class="${cls} ${t.l === x.team ? 'mine' : ''}"><th><span>${esc(t.l.slice(0, 2))}</span>${esc(t.l.slice(2))}</th>${Array.from({ length: NC }, (_, j) => { const k = t.m[j];
@@ -1585,7 +1585,7 @@
       ${x.teams.length ? `<table class="md-t">${rows}</table>` : '<div style="padding:12px 14px;font-size:13px;color:#6b7280">這天你沒有排班。</div>'}
       ${reg}
       <style>.pl-r{display:flex;align-items:center;gap:6px;margin:6px 0;flex-wrap:wrap}.pl-r span{width:78px;font-size:13px;font-weight:800;color:#374151}
-        .pl-b{border:1.5px solid #e5ddd9;background:#fff;border-radius:10px;padding:6px 12px;font:inherit;font-size:13px;font-weight:800;color:#6b7280;cursor:pointer}.pl-b.on{background:#c2414f;border-color:#c2414f;color:#fff}.pl-b.lk{position:relative;cursor:default}.pl-b.lk::after{content:'✔';position:absolute;top:-6px;right:-6px;width:16px;height:16px;border-radius:50%;background:#16a34a;color:#fff;font-size:10px;line-height:16px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.25)}</style>
+        .pl-b{border:1.5px solid #e5ddd9;background:#fff;border-radius:10px;padding:6px 12px;font:inherit;font-size:13px;font-weight:800;color:#6b7280;cursor:pointer}.pl-b.on{background:#c2414f;border-color:#c2414f;color:#fff}.pl-b.lk{cursor:default}.pl-b .ck{font-style:normal;display:inline-block;margin-left:5px;padding:1px 5px;border-radius:6px;background:rgba(255,255,255,.95);color:#15803d;font-size:9.5px;font-weight:900;vertical-align:1px}.pl-b .ck::before{content:'✔ '}</style>
       ${duty.length ? `<div style="padding:8px 12px;font-size:11.5px;line-height:1.7;color:#475569">${duty.join('<br>')}</div>` : ''}
       <div style="padding:8px 12px 12px;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:10.5px;color:#6b7280">${Object.entries(CAT_TXT).map(([c, t]) => `<span style="display:inline-flex;align-items:center;gap:4px"><i style="width:12px;height:12px;border-radius:3px;background:${CAT_BG[c]};border:1px solid rgba(0,0,0,.08)"></i>${t}</span>`).join('')}</div></div>`;
     document.body.appendChild(ov); if (keepScroll) ov.querySelector('div').scrollTop = keepScroll;
