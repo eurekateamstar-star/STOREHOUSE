@@ -716,28 +716,31 @@ async function remindRoute(req, env, json) {
 }
 // 管理員催團員登記：LINE 推播提醒（只有會員中心管理員可以用）
 function noticeFlex(body, ttl, msg, btn, link) {
-    const kind = String(body.kind || '通知').slice(0, 10), sub = String(body.sub || '').slice(0, 60);
-    const rows = (Array.isArray(body.rows) ? body.rows : []).slice(0, 5).map(x => [String(x[0] || '').slice(0, 8), String(x[1] || '').slice(0, 80)]).filter(x => x[0] && x[1]);
-    const BRAND = '#B4323F', INK = '#1F2430', SUB = '#6B7280';
-    return { type: 'flex', altText: `【白沙屯醫護團】${ttl}`, contents: { type: 'bubble', size: 'mega',
-      body: { type: 'box', layout: 'vertical', paddingAll: '0px', contents: [
-        { type: 'box', layout: 'vertical', height: '5px', backgroundColor: BRAND, contents: [] },
-        { type: 'box', layout: 'vertical', paddingAll: '20px', paddingBottom: '8px', contents: [
-          { type: 'box', layout: 'horizontal', alignItems: 'center', contents: [
-            { type: 'text', text: '白沙屯醫護團', size: 'xs', color: SUB, weight: 'bold', flex: 1 },
-            { type: 'box', layout: 'vertical', flex: 0, cornerRadius: '4px', backgroundColor: '#FBEAEC', paddingStart: '8px', paddingEnd: '8px', paddingTop: '2px', paddingBottom: '2px',
-              contents: [{ type: 'text', text: kind, size: 'xxs', color: BRAND, weight: 'bold' }] }] },
-          { type: 'text', text: ttl, size: 'lg', weight: 'bold', color: INK, wrap: true, margin: 'md' },
-          ...(sub ? [{ type: 'text', text: sub, size: 'xs', color: SUB, wrap: true, margin: 'xs' }] : []),
-          { type: 'separator', margin: 'lg', color: '#E5E7EB' },
-          ...(rows.length ? [{ type: 'box', layout: 'vertical', margin: 'lg', spacing: 'sm', contents: rows.map(([k, v]) => ({ type: 'box', layout: 'horizontal', contents: [
-            { type: 'text', text: k, size: 'sm', color: SUB, flex: 2 }, { type: 'text', text: v, size: 'sm', color: INK, flex: 5, wrap: true }] })) }] : []),
-          ...(msg ? [{ type: 'text', text: msg, size: 'sm', color: '#374151', wrap: true, margin: 'lg', lineSpacing: '5px' }] : []),
-        ] },
-      ] },
-      footer: { type: 'box', layout: 'vertical', paddingAll: '20px', paddingTop: '12px', spacing: 'md', contents: [
-        { type: 'button', style: 'primary', color: BRAND, height: 'sm', action: { type: 'uri', label: String(btn || '前往登記').slice(0, 20), uri: link } },
-        { type: 'text', text: '此訊息由白沙屯醫護團管理員發送', size: 'xxs', color: '#9CA3AF', align: 'center' }] } } };
+  // 配色跟衛教小卡一致：漸層底＋黃色小標＋白色資訊格
+  const kind = String(body.kind || '通知').slice(0, 10), sub = String(body.sub || '').slice(0, 60);
+  const rows = (Array.isArray(body.rows) ? body.rows : []).slice(0, 4).map(x => [String(x[0] || '').slice(0, 8), String(x[1] || '').slice(0, 60)]).filter(x => x[0] && x[1]);
+  const [c1, c2] = ({ '用餐登記': ['#F97316', '#DC2626'], '排班分享': ['#14B8A6', '#0F766E'] })[kind] || ['#E0566A', '#9F1D2B'];
+  const tile = ([k, v], wide) => ({ type: 'box', layout: 'vertical', flex: 1, backgroundColor: '#FFFFFF', cornerRadius: '12px', paddingAll: '10px', paddingTop: '12px', paddingBottom: '12px', contents: [
+    { type: 'text', text: v, size: wide ? 'md' : 'lg', weight: 'bold', color: c2, align: 'center', wrap: true },
+    { type: 'text', text: k, size: 'xxs', color: '#6B5E58', align: 'center', margin: 'xs' }] });
+  const tiles = [], short = rows.filter(r => r[1].length <= 10), long = rows.filter(r => r[1].length > 10);
+  for (let k = 0; k < short.length; k += 2) tiles.push({ type: 'box', layout: 'horizontal', spacing: 'md', margin: 'md', contents: short.slice(k, k + 2).map(r => tile(r)) });
+  long.forEach(r => tiles.push({ type: 'box', layout: 'horizontal', margin: 'md', contents: [tile(r, true)] }));
+  return { type: 'flex', altText: `【白沙屯醫護團】${ttl}`, contents: { type: 'bubble', size: 'mega',
+    body: { type: 'box', layout: 'vertical', paddingAll: '18px', background: { type: 'linearGradient', angle: '150deg', startColor: c1, endColor: c2 }, contents: [
+      { type: 'box', layout: 'horizontal', contents: [
+        { type: 'box', layout: 'vertical', flex: 0, backgroundColor: '#FFE14D', cornerRadius: '20px', paddingStart: '10px', paddingEnd: '10px', paddingTop: '3px', paddingBottom: '3px',
+          contents: [{ type: 'text', text: kind, size: 'xs', weight: 'bold', color: c2 }] },
+        { type: 'filler' }] },
+      { type: 'text', text: ttl, size: 'xxl', weight: 'bold', color: '#FFFFFF', wrap: true, margin: 'md' },
+      ...(sub ? [{ type: 'text', text: sub, size: 'xs', color: '#FFFFFFE6', wrap: true, margin: 'xs', weight: 'bold' }] : []),
+      ...tiles,
+      ...(msg ? [{ type: 'box', layout: 'vertical', margin: 'md', backgroundColor: '#FFFFFFF2', cornerRadius: '12px', paddingAll: '12px',
+        contents: [{ type: 'text', text: msg, size: 'sm', color: '#3F3633', wrap: true, lineSpacing: '4px' }] }] : []),
+      { type: 'box', layout: 'vertical', margin: 'lg', backgroundColor: '#FFFFFF', cornerRadius: '24px', paddingAll: '11px', action: { type: 'uri', label: String(btn || '前往登記').slice(0, 20), uri: link },
+        contents: [{ type: 'text', text: String(btn || '前往登記').slice(0, 20) + '  ›', size: 'md', weight: 'bold', color: c2, align: 'center' }] },
+      { type: 'text', text: '白沙屯拱天宮醫護團', size: 'xxs', color: '#FFFFFFCC', align: 'center', margin: 'md', weight: 'bold' },
+    ] } } };
 }
 async function nudgeRoute(req, env, json) {
   try {
