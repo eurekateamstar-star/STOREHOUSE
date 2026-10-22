@@ -557,9 +557,9 @@ async function journeyRoute(req, env, json) {
 }
 const SHARE_LIFF = 'https://liff.line.me/2011820105-x1KU6xLW', OA_URL = 'https://line.me/R/ti/p/@393geitc';
 // 內建衛教小卡（圖在 /richmenu/card-*.jpg，由 scratchpad edu_card.py 產生）
-const EDU_H = { heat: 1849, blister: 1509, cramp: 1350, sunburn: 1350, sprain: 1390, help: 1350 };
+const EDU_H = { heat: 1311, blister: 1053, cramp: 915, sunburn: 867, sprain: 919, help: 819 };
 const EDU_CARDS = Object.fromEntries(EDU.map(e => ['edu-' + e.img, { id: 'edu-' + e.img, builtin: true, w: 1080, h: EDU_H[e.img] || 1350,
-  alt: '衛教小卡：' + e.title, imgUrl: `${SITE}/richmenu/card-${e.img}.jpg?v=1` }]));
+  alt: '衛教小卡：' + e.title, imgUrl: `${SITE}/richmenu/card-${e.img}.jpg?v=2` }]));
 function shareFlex(c, origin) {
   const ratio = Math.min(3, Math.max(1 / 3, (c.w || 1) / (c.h || 1))), W = 1000, H = Math.round(W / ratio);
   const body = [], heroUrl = c.imgUrl || `${origin}/c/${c.id}.jpg`;
