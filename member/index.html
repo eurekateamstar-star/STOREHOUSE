@@ -2413,7 +2413,7 @@
   }
   // ===================== 出勤／住宿表（每人每天）=====================
   // 出勤代號：2 輪班（排進轎前／轎後自動帶入）、1 指揮車、3 指揮官、4 機車機動組、5 媽祖車、6 物資車、D 醫師、a 復健組、b 教官醫師；住宿：7 男、8 女
-  const W_CODES = [['2', '在隊伍中輪班'], ['1', '指揮車'], ['3', '指揮官'], ['4', '機車機動組'], ['5', '媽祖車駕駛'], ['6', '物資車駕駛'], ['D', '醫師'], ['a', '其他'], ['b', '教官團']];
+  const W_CODES = [['2', '隊伍輪班'], ['1', '指揮車'], ['3', '指揮官'], ['4', '機車機動組'], ['5', '媽祖車駕駛'], ['6', '物資車駕駛'], ['D', '醫師'], ['a', '其他'], ['b', '教官團']];
   const W_SHORT = { '2': '輪班', '1': '指揮車', '3': '指揮官', '4': '機車', '5': '媽祖車', '6': '物資車', D: '醫師', a: '其他', b: '教官團' };
   const wTxt = c => W_SHORT[c] || c;
   const S_CODES = [['7', '住宿(男)'], ['8', '住宿(女)']];
@@ -2467,8 +2467,7 @@
         ${(() => { const n = selfPending(eid); return n ? `<button class="at-b" id="at-okself" style="background:#7c3aed;color:#fff">✓ 確認團員登記（${n} 格）</button>` : ''; })()}
         <span style="font-size:12px;color:#7c3aed;font-weight:700"><span style="display:inline-block;width:12px;height:12px;box-shadow:inset 0 0 0 1px #a855f7;border-radius:3px;vertical-align:-1px"></span> 紫框「自」＝團員自己登記、還沒確認</span>
         <style>.sf{box-shadow:inset 0 0 0 1px #a855f7!important;position:relative}.sf::after{content:'自';position:absolute;right:1px;top:0;font-size:7px;line-height:1;color:#7c3aed;font-weight:900}</style>
-        <button class="at-b" id="at-car" style="background:#0f766e;color:#fff">🚐 座車統計</button>
-        <button class="at-b" id="at-meal" style="background:#ca8a04;color:#fff">🍱 用餐統計</button></div>
+</div>
       <div class="at-wrap"><table class="at" style="width:${84 + days.length * 86}px"><colgroup><col style="width:84px">${days.map(() => '<col style="width:48px"><col style="width:38px">').join('')}</colgroup><thead>
         <tr><th class="nm" rowspan="2">姓名</th>${days.map(d => `<th colspan="2" data-place="${d}" style="cursor:pointer">${dLabel(d)}${(info[d] || {}).tag || (info[d] || {}).place ? `<br><span style="font-size:10px"><span style="color:#1d4ed8">${esc((info[d] || {}).tag || '')}</span> <span style="color:#9a3412">${esc((info[d] || {}).place || '')}</span></span>` : ''}</th>`).join('')}</tr>
         <tr>${days.map(() => '<th>出勤</th><th>住宿<br>男/女</th>').join('')}</tr></thead><tbody>
@@ -2491,8 +2490,6 @@
     const save = async (patch, msg) => { evSched[eid] = { ...(evSched[eid] || {}), ...patch }; try { await saveDraw(eid, { ...(evDraw[eid] || {}) }, { ...(evDrawBy[eid] || {}) }, { ...(evOver[eid] || {}) }); if (msg) toast(msg); } catch (err) { console.error(err); toast('❌ 儲存失敗'); } renderAtt(eid); };
     $('at-back').onclick = () => { attOpen = false; renderSched(eid); };
     if ($('at-okself')) $('at-okself').onclick = () => confirmSelf(eid);
-    $('at-meal').onclick = () => { mealOpen = true; renderMeal(eid); $('sheet').scrollTop = 0; };
-    $('at-car').onclick = () => { carOpen = true; renderCar(eid); $('sheet').scrollTop = 0; };
     const nw = document.querySelector('.at-wrap'); if (keep && nw) { nw.scrollLeft = keep[0]; nw.scrollTop = keep[1]; } $('sheet').scrollTop = keepS;
     let pending = null;
     const putAtt = (k, f, d, v) => { const att = JSON.parse(JSON.stringify((evSched[eid] || {}).att || {})); att[k] = att[k] || {}; att[k][f] = att[k][f] || {};
@@ -2639,7 +2636,7 @@
         .eq-t{font-weight:900;font-size:17px;margin-bottom:10px}.eq-btn{display:flex;gap:8px;margin-top:6px}.eq-btn>*{flex:1;text-align:center;border:none;border-radius:12px;padding:11px;font:inherit;font-size:15px;font-weight:900;cursor:pointer}#eq-no{background:#f1f5f9;color:#334155}
         .cp-g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.cp-g button{border:1.5px solid rgba(0,0,0,.06);border-radius:12px;padding:12px 4px;font:inherit;font-size:14px;cursor:pointer;color:#1f2430}.cp-g button b{display:block;font-size:16px}.cp-g button.on{outline:3px solid var(--primary)}
       </style>
-      <button class="sbtn" id="meal-back">← 回出勤／住宿表</button>
+      <button class="sbtn" id="meal-back">← 回排班表</button>
       ${(() => { const n = selfPending(eid); return n ? `<button class="sbtn" id="meal-okself" style="background:#7c3aed;color:#fff;margin-left:6px">✓ 確認團員登記（${n} 格）</button>` : ''; })()}
       <h3 style="margin-top:10px;">🍱 用餐統計</h3>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0"><button class="sbtn" id="meal-test" style="background:#fef3c7;color:#92400e;font-size:12px;padding:6px 10px">🧪 有排班的人隨機填用餐（測試）</button><button class="sbtn" id="meal-clear" style="background:#f1f5f9;color:#475569;font-size:12px;padding:6px 10px">🗑 清除全部用餐</button></div>
@@ -2654,7 +2651,7 @@
         <tr class="sum"><th class="nm" style="color:#9a8f8b">未登記</th>${days.map(d => `<td class="dl" style="color:#9a8f8b">${list.filter(p => onDuty(p, d) && !gm(p.key, d).l).length || ''}</td><td style="color:#9a8f8b">${list.filter(p => onDuty(p, d) && !gm(p.key, d).n).length || ''}</td>`).join('')}</tr>
       </tbody></table></div>`;
     const nw = document.querySelector('.at-wrap'); if (keep && nw) { nw.scrollLeft = keep[0]; nw.scrollTop = keep[1]; } $('sheet').scrollTop = keepS;
-    $('meal-back').onclick = () => { mealOpen = false; renderAtt(eid); };
+    $('meal-back').onclick = () => { mealOpen = false; attOpen = false; renderSched(eid); };
     if ($('meal-okself')) $('meal-okself').onclick = () => confirmSelf(eid);
     const saveMeal = async (meal, msg) => { evSched[eid] = { ...(evSched[eid] || {}), meal }; try { await saveDraw(eid, { ...(evDraw[eid] || {}) }, { ...(evDrawBy[eid] || {}) }, { ...(evOver[eid] || {}) }); toast(msg); } catch (err) { toast('❌ 儲存失敗'); } renderMeal(eid); };
     $('meal-test').onclick = async () => {
@@ -2744,7 +2741,7 @@
         .cp-g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.cp-g button{border:1.5px solid rgba(0,0,0,.06);border-radius:12px;padding:12px 4px;font:inherit;font-size:14px;cursor:pointer;color:#1f2430}.cp-g button b{display:block;font-size:16px}.cp-g button.on{outline:3px solid var(--primary)}
       </style>
       <style>.sf{box-shadow:inset 0 0 0 1px #a855f7!important;position:relative}.sf::after{content:'自';position:absolute;right:1px;top:0;font-size:7px;line-height:1;color:#7c3aed;font-weight:900}</style>
-      <button class="sbtn" id="car-back">← 回出勤／住宿表</button>
+      <button class="sbtn" id="car-back">← 回排班表</button>
       ${(() => { const n = selfPending(eid); return n ? `<button class="sbtn" id="car-okself" style="background:#7c3aed;color:#fff;margin-left:6px">✓ 確認團員登記（${n} 格）</button>` : ''; })()}
       <h3 style="margin-top:10px;">🚐 座車統計</h3>
       <div style="font-size:13px;color:var(--sub);line-height:1.7;">${esc(e.title || '')}　出門＝從住宿出發、白天＝跟隊伍移動、回家＝回住宿。<br>
@@ -2758,7 +2755,7 @@
       </tbody></table></div>
       <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button class="sbtn" id="car-xlsx" style="background:#1f2430;color:#fff;">⬇ 下載出勤＋座車統計 Excel</button></div>`;
     const nw = document.querySelector('.at-wrap'); if (keep && nw) { nw.scrollLeft = keep[0]; nw.scrollTop = keep[1]; } $('sheet').scrollTop = keepS;
-    $('car-back').onclick = () => { carOpen = false; renderAtt(eid); };
+    $('car-back').onclick = () => { carOpen = false; attOpen = false; renderSched(eid); };
     if ($('car-okself')) $('car-okself').onclick = () => confirmSelf(eid);
     $('car-xlsx').onclick = () => exportAttXlsx(eid);
     // 點日期：當天出勤的人＋各時段坐什麼車
