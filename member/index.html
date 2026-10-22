@@ -1551,7 +1551,7 @@
   }
   function msFlash(t, bad) {
     let el = document.getElementById('ms-flash');
-    if (!el) { el = document.createElement('div'); el.id = 'ms-flash'; el.style.cssText = 'position:fixed;left:50%;top:18%;transform:translateX(-50%);z-index:99999;padding:10px 18px;border-radius:999px;font-weight:900;font-size:15px;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.25);transition:opacity .3s;pointer-events:none'; document.body.appendChild(el); }
+    if (!el) { el = document.createElement('div'); el.id = 'ms-flash'; el.style.cssText = 'position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:99999;padding:10px 18px;border-radius:999px;font-weight:900;font-size:15px;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.25);transition:opacity .3s;pointer-events:none'; document.body.appendChild(el); }
     el.textContent = t; el.style.background = bad ? '#dc2626' : '#16a34a'; el.style.opacity = 1; clearTimeout(el._t); el._t = setTimeout(() => el.style.opacity = 0, 1400);
   }
   function showMyDay(eid, d, keepScroll) {
