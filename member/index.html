@@ -614,7 +614,7 @@
   const pendingShare = (() => { try { const q = new URLSearchParams(location.search); let v = q.get('share');
     if (!v && q.get('liff.state')) v = new URLSearchParams(q.get('liff.state').replace(/^[^?]*\?/, '')).get('share');
     return /^[A-Za-z0-9_-]{6,40}$/.test(v || '') ? v : ''; } catch (e) { return ''; } })();
-  const GUARDIAN_URL = 'https://tsushin-buishatun.pages.dev/guardian/';   // 全民醫護證獨立頁（新 LIFF 建好後改成 liff.line.me 網址）
+  const GUARDIAN_URL = 'https://liff.line.me/2011820105-k0FCAoxQ';   // 全民醫護證 LIFF
   const pendingCard = (() => { try { const q = new URLSearchParams(location.search); return q.get('card') === '1' || /card=1/.test(q.get('liff.state') || ''); } catch (e) { return false; } })();   // 會員中心專用 LIFF（Endpoint: /STOREHOUSE/member/）
   const CERTS = ['EMT-1', 'EMT-2', 'EMT-P', '護理師', '醫師', '無證照'];
   const ROSTER = 'member_roster';            // 團員名冊（舊資料匯入）；文件 ID = SHA-256(身分證|生日)

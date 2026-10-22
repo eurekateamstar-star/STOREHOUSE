@@ -566,7 +566,7 @@ async function journeyRoute(req, env, json) {
     return json({ error: 'unknown action' }, 400);
   } catch (e) { return json({ error: String((e && e.message) || e) }, e && e.code || 500); }
 }
-const GUARDIAN_URL = 'https://tsushin-buishatun.pages.dev/guardian/';   // 全民醫護證（新 LIFF 建好後改成 liff.line.me 網址）
+const GUARDIAN_URL = 'https://liff.line.me/2011820105-k0FCAoxQ';   // 全民醫護證 LIFF
 const SHARE_LIFF = 'https://liff.line.me/2011820105-x1KU6xLW', OA_URL = 'https://line.me/R/ti/p/@393geitc';
 // 內建衛教小卡（圖在 /richmenu/card-*.jpg，由 scratchpad edu_card.py 產生）
 const EDU_H = {};   // 衛教小卡都是 1080×1080 正方形
