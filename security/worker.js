@@ -41,7 +41,7 @@ export default {
       if (!/^[A-Za-z0-9_-]{6,40}$/.test(id)) return json({ error: 'bad id' }, 400);
       try { let card = EDU_CARDS[id];
         if (!card) { const d = await fsGet(await saToken(env), `share/${id}`); if (!d) return json({ error: '這張卡片已經刪除了' }, 404); card = { id, ...fobj(d.fields) }; }
-        return new Response(JSON.stringify({ ok: true, card: { ...card, flex: id === 'guardian' ? guardianFlex() : shareFlex(card, new URL(req.url).origin) } }), { headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=30' } }); }
+        return new Response(JSON.stringify({ ok: true, card: { ...card, flex: cardFlex(card, new URL(req.url).origin) } }), { headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=30' } }); }
       catch (e) { return json({ error: 'failed' }, 500); }
     }
     if (new URL(req.url).pathname === '/validate' && req.method === 'GET') {   // 檢查每個自動回覆的格式（LINE 官方驗證）
@@ -54,6 +54,9 @@ export default {
       { const r = await fetch('https://api.line.me/v2/bot/message/validate/reply', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + env.LINE_BOT_TOKEN },
           body: JSON.stringify({ messages: [shareFlex({ id: 'sample000', title: '標題', text: '說明', w: 1080, h: 1350 }, new URL(req.url).origin), shareFlex(EDU_CARDS['edu-heat'], '')] }) });
         out['分享卡片'] = r.ok ? 'ok' : await r.text(); }
+      { const r = await fetch('https://api.line.me/v2/bot/message/validate/reply', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + env.LINE_BOT_TOKEN },
+          body: JSON.stringify({ messages: [eduAllFlex(new URL(req.url).origin)] }) });
+        out['衛教一排'] = r.ok ? 'ok' : await r.text(); }
       { const r = await fetch('https://api.line.me/v2/bot/message/validate/reply', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + env.LINE_BOT_TOKEN },
           body: JSON.stringify({ messages: [noticeFlex({ kind: '用餐登記', sub: '116年白沙屯往北港進香', rows: [['日期', '10/25(日)'], ['項目', '中餐・晚餐']] }, '請登記用餐', '說明文字', '前往登記', 'https://liff.line.me/x')] }) });
         out['通知卡片'] = r.ok ? 'ok' : await r.text(); }
@@ -309,7 +312,7 @@ const eduCard = ({ img, secs, warn }) => ({
     ] }] : []),
   ] },
   footer: { type: 'box', layout: 'vertical', paddingAll: '12px', paddingTop: '0px', contents: [
-    { type: 'button', style: 'secondary', height: 'sm', action: { type: 'uri', label: '➦ 分享這張衛教小卡', uri: `${SHARE_LIFF}?share=edu-${img}` } }] },
+    { type: 'button', style: 'secondary', height: 'sm', action: { type: 'uri', label: '➦ 一次分享全部衛教小卡', uri: `${SHARE_LIFF}?share=edu-all` } }] },
 });
 const EDU = [
   { emoji: '🥵', tag: 'HEAT ILLNESS', img: 'heat', title: '中暑・熱衰竭', sub: '白天走在大太陽下最常見', c1: '#F97316', c2: '#DC2626',
@@ -574,6 +577,8 @@ const SHARE_LIFF = 'https://liff.line.me/2011820105-Is9eno4N', OA_URL = 'https:/
 const EDU_H = {};   // 衛教小卡都是 1080×1080 正方形
 const EDU_CARDS = Object.fromEntries(EDU.map(e => ['edu-' + e.img, { id: 'edu-' + e.img, builtin: true, w: 1080, h: EDU_H[e.img] || 1080,
   alt: '衛教小卡：' + e.title, imgUrl: `${SITE}/richmenu/card-${e.img}.jpg?v=3` }]));
+EDU_CARDS['edu-all'] = { id: 'edu-all', builtin: true, w: 1080, h: 1080, alt: '衛教小卡（6 張，左右滑動）', imgUrl: `${SITE}/richmenu/card-heat.jpg?v=3`,
+  title: '衛教小卡・一次分享 6 張', text: '中暑、水泡、抽筋、曬傷、扭傷、求助，收到的人可以左右滑動看完。' };
 EDU_CARDS.guardian = { id: 'guardian', builtin: true, w: 1024, h: 756, alt: '全民醫護證｜不用證照，也能守護身邊的人', imgUrl: `${SITE}/richmenu/guardian-promo.jpg?v=3`,
   title: '領一張你的全民醫護證', text: '不用證照，也能守護身邊的人。放上照片、勾選你會的守護技能，做一張屬於你的醫護證！', btn: '🪪 領取我的全民醫護證', url: GUARDIAN_URL };
 function shareFlex(c, origin) {
@@ -614,6 +619,12 @@ async function guardianNoRoute(req, env, json) {
     return json({ ok: true, no, at });
   } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
 }
+// 6 張衛教小卡排成一排（carousel），一次分享
+function eduAllFlex(origin) {
+  const bubbles = EDU.map(e => shareFlex({ ...EDU_CARDS['edu-' + e.img], id: 'edu-all' }, origin).contents);
+  return { type: 'flex', altText: '【白沙屯醫護團】衛教小卡 6 張（左右滑動看更多）', contents: { type: 'carousel', contents: bubbles } };
+}
+const cardFlex = (c, origin) => c.id === 'guardian' ? guardianFlex() : c.id === 'edu-all' ? eduAllFlex(origin) : shareFlex(c, origin);
 // 全民醫護證邀請卡（跟證件同風格：米白底、紅框、紅按鈕）
 function guardianFlex() {
   const RED = '#D7262B', INK = '#1F1A18', SUB = '#6E625C';
@@ -645,7 +656,7 @@ async function shareCardRoute(req, env, json) {
     const patch = (path, fields) => fetch(`${FS}/${path}?${Object.keys(fields).map(k => 'updateMask.fieldPaths=' + k).join('&')}`, { method: 'PATCH', headers: H, body: JSON.stringify({ fields: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, tv(v)])) }) });
     const clean = b => ({ title: String(b.title || '').slice(0, 60), text: String(b.text || '').slice(0, 300), btn: String(b.btn || '').slice(0, 30),
       url: /^https:\/\/[^\s]{4,400}$/.test(b.url || '') ? b.url : 'https://line.me/R/ti/p/@393geitc' });
-    if (action === 'list') return json({ ok: true, cards: [...(await fsList(tok, 'share')).sort((x, y) => (y.at ?? 0) - (x.at ?? 0)), ...Object.values(EDU_CARDS)].map(c => ({ ...c, flex: c.id === 'guardian' ? guardianFlex() : shareFlex(c, new URL(req.url).origin) })) });
+    if (action === 'list') return json({ ok: true, cards: [...(await fsList(tok, 'share')).sort((x, y) => (y.at ?? 0) - (x.at ?? 0)), ...Object.values(EDU_CARDS)].map(c => ({ ...c, flex: cardFlex(c, new URL(req.url).origin) })) });
     if (action === 'add') {
       const data = String(body.data || '');
       if (!/^[A-Za-z0-9+/=]+$/.test(data) || data.length > 1000000) return json({ error: '圖片太大或格式不對' }, 400);
