@@ -3435,7 +3435,7 @@
   $('btn-journey').onclick = () => openJourney();
 
   // ===== 分享圖文卡片：管理員上傳，任何人按「分享給親友」用 shareTargetPicker 轉傳 =====
-  const shareLink = id => `https://liff.line.me/${LIFF_ID}?share=${id}`;
+  const shareLink = id => `https://liff.line.me/2011820105-Is9eno4N?share=${id}`;   // 分享專用 LIFF
   async function doShare(c) {
     if (!liff.isApiAvailable || !liff.isApiAvailable('shareTargetPicker')) { dialog({ title: '這裡不能分享', msg: '請在 LINE 裡打開這個連結，再按「分享給親友」。', okText: '知道了' }); return false; }
     try { const res = await liff.shareTargetPicker([c.flex], { isMultiple: true }); if (res) toast('✅ 已分享'); return !!res; }
