@@ -447,7 +447,14 @@
         .ov-tier-row .ov-box-title span:first-child,.ov-tier-wrap .ov-box-title span:first-child{min-width:0;word-break:break-all;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;height:2.7em;}
         .ov-tier-row .ov-box,.ov-tier-wrap .ov-box{min-height:86px;}
         .ov-tier-row .ov-box-count,.ov-tier-wrap .ov-box-count{font-size:10px;}
-        .ov-tier-row .ov-item,.ov-tier-wrap .ov-item{font-size:11px;padding-left:6px;word-break:break-all;}
+        .ov-tier-row .ov-item,.ov-tier-wrap .ov-item{font-size:11px;padding:4px 0 4px 6px;word-break:break-all;}
+        .ov-tier-row,.ov-tier-wrap{align-items:start;}
+        .ov-item{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;column-gap:4px;line-height:1.35;}
+        .ov-item .ov-n{flex:1 1 auto;min-width:0;}
+        .ov-item .ov-q{flex:none;margin-left:auto;font-weight:800;white-space:nowrap;color:#c2410c;font-size:.95em;}
+        .ov-item.checked-out .ov-q{color:#dc2626;}
+        .ov-item .ov-b{flex:1 0 100%;font-size:.85em;font-weight:650;opacity:.9;}
+        .ov-tier-title,.ov-page-title{scroll-margin-top:90px;}
         .ov-tier-row .tier-chip,.ov-tier-wrap .tier-chip{font-size:10px;padding:4px 6px;}
         /* ===== 總覽：細項收合 ===== */
         .ov-toolbar{display:flex;justify-content:flex-end;margin:0 0 -4px;}
@@ -4412,10 +4419,10 @@
                             const checkedOut = Number(it.checkedOutCount) || 0;
                             const totalUnits = Array.isArray(it.units) && it.units.length ? it.units.length : (Number(it.qty) || 0) + checkedOut;
                             if (checkedOut > 0) {
-                                const borrowerText = it.borrower ? ` (已出庫${checkedOut}件 → ${it.borrower})` : ` (已出庫${checkedOut}件)`;
-                                html += `<div class="ov-item checked-out">• ${escapeHtml(it.name)} ${it.qty||0}/${totalUnits} <span style="font-size:11px; font-weight:650;">${escapeHtml(borrowerText)}</span></div>`;
+                                const borrowerText = it.borrower ? `出庫 ${checkedOut} → ${it.borrower}` : `已出庫 ${checkedOut}`;
+                                html += `<div class="ov-item checked-out"><span class="ov-n">${escapeHtml(it.name)}</span><span class="ov-q">${it.qty||0}/${totalUnits} ${escapeHtml(UNIT(it))}</span><span class="ov-b">${escapeHtml(borrowerText)}</span></div>`;
                             } else {
-                                html += `<div class="ov-item">• ${escapeHtml(it.name)} x${it.qty||1}</div>`;
+                                html += `<div class="ov-item"><span class="ov-n">${escapeHtml(it.name)}</span><span class="ov-q">${it.qty||1} ${escapeHtml(UNIT(it))}</span></div>`;
                             }
                         });
                         html += `</div>`;
