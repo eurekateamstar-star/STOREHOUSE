@@ -301,7 +301,7 @@ const eduSec = (_icon, title, color, items) => ({
 });
 const eduCard = ({ img, secs, warn }) => ({
   type: 'bubble', size: 'mega',
-  hero: { type: 'image', url: `${SITE}/richmenu/edu-${img}.jpg?v=1`, size: 'full', aspectRatio: '15:7', aspectMode: 'cover' },
+  hero: { type: 'image', url: `${SITE}/richmenu/edu-${img}.jpg?v=2`, size: 'full', aspectRatio: '15:7', aspectMode: 'cover' },
   body: { type: 'box', layout: 'vertical', paddingAll: '18px', paddingTop: '4px', contents: [
     ...secs.map(x => eduSec(...x)),
     ...(warn ? [{ type: 'box', layout: 'horizontal', margin: 'xl', cornerRadius: '8px', backgroundColor: '#FEF2F2', contents: [
@@ -341,7 +341,7 @@ const EDU = [
       ['✅', '扭傷', '#15803D', ['先休息，不要再走', '冰敷 15～20 分鐘，用彈性繃帶包紮', '坐下或躺下時把腳抬高']],
       ['✅', '擦傷', '#15803D', ['用乾淨的水把沙子、髒東西沖掉', '用乾淨紗布或 OK 繃蓋住']],
     ], warn: '腳不能踩地、明顯變形或傷口很深流血不止，請找醫護團或撥 119' },
-  { emoji: '🚑', tag: 'NEED HELP', img: 'help', title: '需要幫忙時', sub: '白沙屯拱天宮醫護團隨香服務', c1: '#D65A68', c2: '#B4232F',
+  { emoji: '🚑', tag: 'NEED HELP', img: 'help', title: '需要幫忙時', sub: '白沙屯拱天宮醫護團進香服務', c1: '#D65A68', c2: '#B4232F',
     secs: [
       ['📍', '找醫護團', '#B4232F', ['找穿醫護團背心的志工', '隊伍前後都有救護人員跟著', '覺得不舒服就說，不要硬撐']],
       ['☎️', '緊急狀況', '#B4232F', ['昏倒、胸痛、呼吸困難、叫不醒', '立刻撥 119，並告訴對方在哪個路口或明顯地標']],
@@ -576,8 +576,8 @@ const SHARE_LIFF = 'https://liff.line.me/2011820105-Is9eno4N', OA_URL = 'https:/
 // 內建衛教小卡（圖在 /richmenu/card-*.jpg，由 scratchpad edu_card.py 產生）
 const EDU_H = {};   // 衛教小卡都是 1080×1080 正方形
 const EDU_CARDS = Object.fromEntries(EDU.map(e => ['edu-' + e.img, { id: 'edu-' + e.img, builtin: true, w: 1080, h: EDU_H[e.img] || 1080,
-  alt: '衛教小卡：' + e.title, imgUrl: `${SITE}/richmenu/card-${e.img}.jpg?v=3` }]));
-EDU_CARDS['edu-all'] = { id: 'edu-all', builtin: true, w: 1080, h: 1080, alt: '衛教小卡（6 張，左右滑動）', imgUrl: `${SITE}/richmenu/card-heat.jpg?v=3`,
+  alt: '衛教小卡：' + e.title, imgUrl: `${SITE}/richmenu/card-${e.img}.jpg?v=4` }]));
+EDU_CARDS['edu-all'] = { id: 'edu-all', builtin: true, w: 1080, h: 1080, alt: '衛教小卡（6 張，左右滑動）', imgUrl: `${SITE}/richmenu/card-heat.jpg?v=4`,
   title: '衛教小卡・一次分享 6 張', text: '中暑、水泡、抽筋、曬傷、扭傷、求助，收到的人可以左右滑動看完。' };
 EDU_CARDS.guardian = { id: 'guardian', builtin: true, w: 1024, h: 756, alt: '全民醫護證｜不用證照，也能守護身邊的人', imgUrl: `${SITE}/richmenu/guardian-promo.jpg?v=3`,
   title: '領一張你的全民醫護證', text: '不用證照，也能守護身邊的人。放上照片、勾選你會的守護技能，做一張屬於你的醫護證！', btn: '🪪 領取我的全民醫護證', url: GUARDIAN_URL };
