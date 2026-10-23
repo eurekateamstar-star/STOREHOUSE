@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>分享給親友｜白沙屯拱天宮醫護團</title>
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  :root{--red:#D7262B;--ink:#211816;--sub:#7B6F6A;--bg:#F6F1EC}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"PingFang TC","Noto Sans TC","Noto Sans CJK TC","Microsoft JhengHei",sans-serif}
+  .wrap{max-width:440px;margin:0 auto;padding:20px 18px 40px}
+  .head{text-align:center;margin:4px 0 16px}
+  .head .t{font-size:20px;font-weight:900}
+  .head .s{font-size:13px;color:var(--sub);margin-top:4px}
+  .card{background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 10px 30px rgba(60,30,20,.12)}
+  .card img{display:block;width:100%}
+  .card .txt{padding:14px 16px 16px}
+  .card .txt b{display:block;font-size:17px}
+  .card .txt p{margin:6px 0 0;font-size:13.5px;color:#4a403c;line-height:1.65;white-space:pre-wrap}
+  .btn{display:block;width:100%;font:inherit;font-size:17px;font-weight:900;border:0;border-radius:14px;padding:15px;cursor:pointer;text-align:center;margin-top:12px}
+  .btn.line{background:#06C755;color:#fff;box-shadow:0 5px 0 #048a3b;margin-top:18px}
+  .btn.line:disabled{opacity:.5}
+  .btn.ghost{background:#fff;color:#4a403c;border:2px solid #E7DED6}
+  .msg{text-align:center;font-size:13.5px;color:var(--sub);margin-top:14px;min-height:20px}
+  .msg.ok{color:#047a35;font-weight:800}
+  .spin{width:32px;height:32px;border:4px solid #eadbd5;border-top-color:var(--red);border-radius:50%;animation:sp 1s linear infinite;margin:80px auto 12px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .copy{text-align:center;font-size:12px;letter-spacing:2px;color:#A39690;margin-top:30px}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head"><div class="t">➦ 分享給親友</div><div class="s">選擇好友或群組，可以一次選很多個</div></div>
+  <div id="loading"><div class="spin"></div></div>
+  <div id="card" class="card hidden"></div>
+  <button class="btn line hidden" id="go">➦ 選擇好友或群組</button>
+  <button class="btn ghost hidden" id="close">關閉</button>
+  <div class="msg" id="msg"></div>
+  <div class="copy">© 2026 白沙屯慈昕醫護文化協會 版權所有</div>
+</div>
+<script>
+(function () {
+  const LIFF_ID = '';   // ← 分享專用 LIFF ID
+  const AUTH_URL = 'https://bst-auth.eurekateamstar.workers.dev';
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+  const msg = (t, ok) => { $('msg').textContent = t; $('msg').className = 'msg' + (ok ? ' ok' : ''); };
+  const idOf = () => { try { const q = new URLSearchParams(location.search); let v = q.get('share');
+    if (!v && q.get('liff.state')) v = new URLSearchParams(q.get('liff.state').replace(/^[^?]*\?/, '')).get('share');
+    return /^[A-Za-z0-9_-]{6,40}$/.test(v || '') ? v : ''; } catch (e) { return ''; } };
+  let card = null;
+  async function share() {
+    if (!window.liff || !LIFF_ID || !liff.isApiAvailable('shareTargetPicker')) { msg('請在 LINE 裡打開這個連結才能分享'); return; }
+    try { const r = await liff.shareTargetPicker([card.flex], { isMultiple: true });
+      if (r) msg('✅ 分享完成，可以關閉了', true); else msg('已取消，可以再按一次'); }
+    catch (e) { msg('分享失敗：' + (e.message || e)); }
+  }
+  $('go').onclick = share;
+  $('close').onclick = () => { try { liff.closeWindow(); } catch (e) {} };
+  (async function start() {
+    const id = idOf();
+    try {
+      if (window.liff && LIFF_ID) {
+        await Promise.race([liff.init({ liffId: LIFF_ID }), new Promise((_, r) => setTimeout(() => r(new Error('逾時')), 9000))]);
+        if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
+      }
+    } catch (e) {}
+    $('loading').classList.add('hidden');
+    if (!id) { msg('連結不完整，找不到要分享的卡片'); return; }
+    try {
+      const r = await fetch(AUTH_URL + '/share-get?id=' + encodeURIComponent(id)), j = await r.json();
+      if (!j.ok) throw new Error(j.error || '讀不到卡片');
+      card = j.card;
+      const img = card.imgUrl || (AUTH_URL + '/c/' + card.id + '.jpg');
+      $('card').innerHTML = `<img src="${esc(img)}" alt="">` + (card.title || card.text ? `<div class="txt">${card.title ? `<b>${esc(card.title)}</b>` : ''}${card.text ? `<p>${esc(card.text)}</p>` : ''}</div>` : '');
+      ['card', 'go', 'close'].forEach(k => $(k).classList.remove('hidden'));
+      share();
+    } catch (e) { msg('❌ ' + (e.message || e)); }
+  })();
+})();
+</script>
+</body>
+</html>
