@@ -30,12 +30,16 @@
   .hidden{display:none!important}
   #done{position:fixed;inset:0;z-index:50;background:linear-gradient(160deg,#FFF7EF,#FCE9E2);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center;animation:fd .25s ease}
   @keyframes fd{from{opacity:0}to{opacity:1}}
-  .ok{width:78px;height:78px;border-radius:50%;background:#06C755;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px rgba(6,199,85,.35);animation:pop .45s cubic-bezier(.2,1.6,.4,1)}
-  @keyframes pop{from{transform:scale(.3)}to{transform:scale(1)}}
-  .ok svg{width:42px;height:42px}
+  #done .hero{position:relative;height:min(46vh,300px);aspect-ratio:205/420;animation:pop .5s cubic-bezier(.2,1.5,.4,1)}
+  #done .hero img{height:100%;width:auto;display:block;filter:drop-shadow(0 8px 12px rgba(120,50,20,.18))}
+  #done .bub{position:absolute;right:100%;top:6%;margin-right:-8px;white-space:nowrap;background:#fff;border:2.5px solid #D7262B;color:#D7262B;font-weight:900;font-size:15px;line-height:1.35;padding:7px 12px;border-radius:14px;box-shadow:0 4px 0 rgba(215,38,43,.18);animation:pop .4s .35s both cubic-bezier(.2,1.6,.4,1)}
+  #done .bub::after{content:"";position:absolute;right:-9px;top:16px;border:8px solid transparent;border-left-color:#D7262B;border-right:0}
+  .ok{position:absolute;right:-14px;bottom:8%;width:46px;height:46px;border:3px solid #fff;border-radius:50%;background:#06C755;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 14px rgba(6,199,85,.35);animation:pop .45s .5s both cubic-bezier(.2,1.6,.4,1)}
+  @keyframes pop{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
+  .ok svg{width:26px;height:26px}
   .ok path{stroke-dasharray:40;stroke-dashoffset:40;animation:dr .4s .25s ease forwards}
   @keyframes dr{to{stroke-dashoffset:0}}
-  #done h2{margin:14px 0 4px;font-size:21px}
+  #done h2{margin:10px 0 4px;font-size:21px}
   #done p{margin:0;font-size:13.5px;color:#6E625C;line-height:1.6}
   #done .acts{display:flex;gap:8px;margin-top:16px;width:100%;max-width:380px}
   #done .acts a,#done .acts button{flex:1;font:inherit;font-size:14px;font-weight:900;border-radius:12px;padding:11px 6px;text-decoration:none;border:2px solid #D7262B;background:#fff;color:#D7262B;cursor:pointer}
@@ -55,8 +59,8 @@
   <div class="msg" id="msg"></div>
   <div id="done" class="hidden">
     <div class="hearts" id="hearts"></div>
-    <div class="ok"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-    <h2>分享成功，謝謝你！</h2>
+    <div class="hero"><div class="bub">讚啦！<br>謝謝你 👍</div><img src="mascot.png?v=1" alt=""><div class="ok"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+    <h2>分享成功！</h2>
     <p id="done-sub">你剛剛把守護的知識傳了出去 ❤️<br>多一個人知道，就多一分平安。</p>
     <div class="acts"><a class="pri" href="https://liff.line.me/2011820105-k0FCAoxQ">🪪 領全民醫護證</a><button id="done-x">回到聊天</button></div>
     <div class="cd" id="cd"></div>
