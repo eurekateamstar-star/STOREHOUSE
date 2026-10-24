@@ -596,8 +596,10 @@
         .lk-body{display:none;padding:2px 12px 8px;flex-wrap:wrap;}
         .lk-sec.open .lk-body{display:flex;}
         .lk-sec.open{border-color:#f0c4c4;}
-        #expiry-bar{all:unset;box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;gap:2px 10px;width:100%;margin:0 0 14px;padding:12px 16px;border-radius:16px;background:#fff1f0;border:1.5px solid #ffb3ad;color:#b42318;cursor:pointer;}
-        #expiry-bar b{font-size:14px;}#expiry-bar span{font-size:13px;font-weight:700;}#expiry-bar i{font-style:normal;margin-left:auto;font-weight:800;font-size:13px;}
+        .mh-right{display:flex;align-items:center;gap:8px;align-self:flex-start;}
+        #expiry-bar{all:unset;box-sizing:border-box;position:relative;display:inline-flex;align-items:center;gap:5px;padding:8px 12px;border-radius:999px;background:#fff1f0;border:1.5px solid #ffb3ad;color:#b42318;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;}
+        #expiry-bar b{background:#dc2626;color:#fff;border-radius:999px;min-width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;padding:0 5px;}
+        #expiry-bar em{position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:#dc2626;border:2px solid #fff;}
         .exp-ov{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;}
         .exp-card{background:#fff;width:100%;max-width:520px;max-height:80vh;overflow:auto;border-radius:20px 20px 0 0;padding:14px 14px calc(18px + env(safe-area-inset-bottom));}
         .exp-h{display:flex;align-items:center;justify-content:space-between;font-size:17px;font-weight:900;color:#b42318;margin:4px 4px 10px;}
@@ -1475,8 +1477,11 @@
         const ex = list.filter(x => x.info.status === 'expired').length, wa = list.length - ex;
         let el = document.getElementById('expiry-bar');
         if (!el) { el = document.createElement('button'); el.id = 'expiry-bar'; el.type = 'button'; el.onclick = openExpiryList;
-            const mv = document.getElementById('main-menu-view'); (mv || document.body).insertBefore(el, mv ? mv.children[1] || null : null); }
-        el.innerHTML = `<b>⏳ 耗材效期提醒</b><span>${[ex ? `${ex} 項已過期` : '', wa ? `${wa} 項 ${EXPIRY_WARNING_DAYS} 天內到期` : ''].filter(Boolean).join('・')}</span><i>查看 ›</i>`;
+            const hd = document.querySelector('#main-menu-view .menu-header'), lo = document.getElementById('btn-logout');
+            if (hd) { let wrap = hd.querySelector('.mh-right'); if (!wrap) { wrap = document.createElement('div'); wrap.className = 'mh-right'; hd.appendChild(wrap); if (lo) wrap.appendChild(lo); } wrap.insertBefore(el, wrap.firstChild); }
+            else document.body.appendChild(el); }
+        el.title = [ex ? `${ex} 項已過期` : '', wa ? `${wa} 項 ${EXPIRY_WARNING_DAYS} 天內到期` : ''].filter(Boolean).join('・');
+        el.innerHTML = `⏳ 效期<b>${list.length}</b>${ex ? '<em></em>' : ''}`;
     }
     window.openExpiryList = function () {
         const list = expiringList();
