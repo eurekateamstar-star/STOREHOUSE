@@ -3182,8 +3182,13 @@
       const statusOrder = { 'pending': 1, 'approved': 2, 'rejected': 3, 'banned': 4 };
       return list.sort((a, b) => (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99));
     }
+    // 開發者帳號（會員中心 meta/developer）：不顯示管理員身分、不能被停權／踢出／改權限
+    let DEV_UID = '';
+    const isDevU = u => !!u && !!DEV_UID && u.id === DEV_UID;
+    const devLocked = u => isDevU(u) && !(currentUserProfile && u.id === currentUserProfile.userId);
     function startAdminUsersLive() {
       if (adminUsersUnsub) return adminUsersReady;
+      if (!DEV_UID) getDoc(doc(db, "meta", "developer")).then(s => { DEV_UID = s.exists() ? (s.data().uid || '') : ''; if (adminUsersCache) renderAdminUsers(adminUsersCache); }).catch(() => {});
       adminUsersReady = new Promise(r => { adminUsersReadyResolve = r; });
       let firstSnap = true;
       adminUsersUnsub = onSnapshot(collection(db, "users"), (snapshot) => {
@@ -3289,7 +3294,7 @@
       else if (u.status === 'banned') statusTag = '<span class="user-row-status status-banned">🚫 已停權</span>';
       else statusTag = '<span class="user-row-status status-pending">⏳ 待審核</span>';
 
-      const roleTag = u.role === 'admin' ? '<span class="role-badge">⭐ 管理員</span>' : '';
+      const roleTag = u.role === 'admin' && !isDevU(u) ? '<span class="role-badge">⭐ 管理員</span>' : '';
       const catTag = auCat(u) ? `<span class="u-cat-tag">🏷️ ${esc(auCat(u))}</span>` : '';
       const whTag = u.warehouseRemoved ? '<span class="u-wh-tag">⛔ 已移出倉庫</span>' : '';
 
@@ -3326,8 +3331,9 @@
       actionBtns += `<button class="u-btn ub-edit" onclick="window.openUserEdit('${u.id}')">✏️ 編輯資料</button>`;
       if (!(currentUserProfile && u.id === currentUserProfile.userId)) actionBtns += `<button class="u-btn ub-kick" onclick="window.kickUser('${u.id}')">🗑️ 踢出</button>`;
 
+      if (devLocked(u)) actionBtns = `<button class="u-btn ub-cat" onclick="window.openUserCategory('${u.id}')">🏷️ 分類</button>`;
       let roleBtns = '';
-      if (u.status === 'approved') {
+      if (u.status === 'approved' && !devLocked(u)) {
         roleBtns = u.role === 'admin'
           ? `<button class="u-btn ub-user" onclick="window.updateUserRole('${u.id}', 'user')">降為一般人員</button>`
           : `<button class="u-btn ub-admin" onclick="window.updateUserRole('${u.id}', 'admin')">設為管理員</button>`;
@@ -3365,7 +3371,7 @@
     };
     function adminUserTileHtml(u, ring) {
       const initial = esc(String(u.realName || u.lineDisplayName || '?').trim().charAt(0) || '?');
-      const badge = (u.role === 'admin' && u.status === 'approved') ? '⭐' : (u.status === 'approved' || u.status === 'rejected' || u.status === 'banned' ? '' : '⏳');
+      const badge = (u.role === 'admin' && !isDevU(u) && u.status === 'approved') ? '⭐' : (u.status === 'approved' || u.status === 'rejected' || u.status === 'banned' ? '' : '⏳');
       return `<div class="u-tile" onclick="window.openUserSheet('${u.id}')">
         <div class="u-avatar" style="--ring:${ring};"><span>${initial}</span>${u.pictureUrl ? `<img src="${esc(u.pictureUrl)}/large" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}<span class="u-tile-ring"></span>${badge ? `<span class="u-tile-badge">${badge}</span>` : ''}</div>
         <div class="u-tile-name">${esc(u.realName || '(未命名)')}</div>
@@ -3415,8 +3421,8 @@
       const list = users.filter(matches).sort(byCatName);
 
       const pend = list.filter(u => u.status !== 'approved' && u.status !== 'rejected' && u.status !== 'banned');
-      const admins = list.filter(u => u.status === 'approved' && u.role === 'admin');
-      const members = list.filter(u => u.status === 'approved' && u.role !== 'admin');
+      const admins = list.filter(u => u.status === 'approved' && u.role === 'admin' && !isDevU(u));
+      const members = list.filter(u => u.status === 'approved' && (u.role !== 'admin' || isDevU(u)));
       const rejected = list.filter(u => u.status === 'rejected');
       const banned = list.filter(u => u.status === 'banned');
 
@@ -3553,6 +3559,7 @@
     };
 
     window.updateUserStatus = async function(userId, newStatus) {
+      if (devLocked((adminUsersCache || []).find(x => x.id === userId))) return;
       // 不能對自己退回 / 停權，避免把自己鎖在外面
       if (currentUserProfile && userId === currentUserProfile.userId && newStatus !== 'approved') {
         window.showNotice('error', '無法操作', '不能退回或停權自己的帳號。');
@@ -3588,6 +3595,7 @@
 
     // ★ 完全踢出：刪除人員資料，從名單消失；對方再打開要重新填資料、重新審核（倉庫也一樣）
     window.kickUser = async function(userId) {
+      if (devLocked((adminUsersCache || []).find(x => x.id === userId))) return;
       if (currentUserProfile && userId === currentUserProfile.userId) { window.showNotice('error', '無法操作', '不能踢出自己的帳號。'); return; }
       const u = adminUsersMap[userId] || {};
       if (!(await window.showConfirm('完全踢出？', `確定把「${u.realName || ''}」完全踢出？\n會從名單消失（白沙屯與倉庫都會），對方立刻被登出；要再加入必須重新填資料、等待審核。已填寫的救護紀錄會保留。`))) return;
@@ -3603,6 +3611,7 @@
     };
 
     window.updateUserRole = async function(userId, newRole) {
+      if (devLocked((adminUsersCache || []).find(x => x.id === userId))) return;
       if(!(await window.showConfirm("確認修改身分？", newRole === 'admin' ? "設定為管理員將能進入主控台與更改他人權限，確定嗎？" : "將此人員降為一般人員，確定嗎？"))) return;
       try {
         document.getElementById('loading').style.display = 'flex';
@@ -3619,6 +3628,7 @@
     // ★ 管理員編輯人員姓名 / 身分證字號
     let editingUserId = null;
     window.openUserEdit = function(userId) {
+      if (devLocked((adminUsersCache || []).find(x => x.id === userId))) return;
       const u = adminUsersMap[userId];
       if (!u) return;
       editingUserId = userId;

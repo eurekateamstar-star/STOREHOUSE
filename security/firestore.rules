@@ -18,6 +18,9 @@ service cloud.firestore {
     function whAdmin() { return inWarehouse() && (myData().get('role', '') == 'admin' || myData().get('adminWarehouse', false) == true); }
     function recAdmin() { return isSuper() || (approved() && myData().get('adminRecord', false) == true); }
     function anyAdmin() { return isAdmin() || whAdmin() || recAdmin(); }
+    // 開發者帳號：meta/developer.uid（只能設定一次）；其他管理員不能刪除、停權、改權限
+    function devPath() { return /databases/$(database)/documents/meta/developer; }
+    function devLocked(id) { return me() != id && exists(devPath()) && get(devPath()).data.get('uid', '') == id; }
     function cleanName(s) { return s.replace(' ', '').replace('　', ''); }
 
     // 本人用「姓名＋身分證＋生日」對上管理員匯入的名冊，才可自動開通
@@ -68,10 +71,12 @@ service cloud.firestore {
       allow get: if signedIn() && (me() == userId || anyAdmin() || whHelper());
       allow list: if anyAdmin();
       allow create: if isAdmin() || (signedIn() && me() == userId && selfCreateOk());
-      allow update: if isAdmin() || (signedIn() && me() == userId && selfUpdateOk())
+      allow update: if (isAdmin() && (!devLocked(userId)
+                          || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['category', 'warehouseCategory'])))
+        || (signedIn() && me() == userId && selfUpdateOk())
         // 倉庫管理員可以設定／取消進出庫小幫手
-        || (whAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['warehouseHelper']));
-      allow delete: if isAdmin();
+        || (whAdmin() && !devLocked(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['warehouseHelper']));
+      allow delete: if isAdmin() && !devLocked(userId);
     }
 
     // ===== 團員名冊 =====
@@ -158,6 +163,8 @@ service cloud.firestore {
       allow update: if whHelper() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['items']); }
     match /warehouse_pages/{id} { allow read: if inWarehouse(); allow write: if whAdmin(); }
     match /warehouse_logs/{id}  { allow read: if inWarehouse(); allow write: if whAdmin(); allow create: if whHelper(); }
+    match /meta/developer       { allow get: if signedIn();
+                                  allow create: if isSuper() && request.resource.data.uid == me() && request.resource.data.keys().hasOnly(['uid', 'at']); }
     match /settings/{id}        { allow read: if inWarehouse(); allow write: if whAdmin(); }
 
     // 其他沒列出的集合一律拒絕

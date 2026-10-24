@@ -2040,8 +2040,12 @@
 
     // ===== 使用者管理（僅管理員） =====
     let usersCache = [], usersUnsub = null, usersFirstLoad = true;
+    // 開發者帳號（會員中心 meta/developer）：不顯示管理員身分、不能被移出／踢出／改權限
+    let DEV_UID = '';
+    const isDevU = u => !!u && !!DEV_UID && u.id === DEV_UID;
     function startUsersWatch() {
         if (usersUnsub) return;
+        if (!DEV_UID) getDoc(doc(db, "meta", "developer")).then(s => { DEV_UID = s.exists() ? (s.data().uid || '') : ''; if (_el('users-view').style.display === 'block') renderUsersView(); }).catch(() => {});
         usersFirstLoad = true;
         usersUnsub = onSnapshot(collection(db, "users"), (snap) => {
             const prevPending = new Set(usersCache.filter(u => uStatus(u) === 'pending').map(u => u.id));
@@ -2171,7 +2175,7 @@
     };
     function userTileHtml(u, ring) {
         const initial = escapeHtml(String(u.account || u.displayName || '?').trim().charAt(0) || '?');
-        const badge = u.role === 'admin' && uStatus(u) === 'approved' ? '👑' : (uStatus(u) === 'pending' ? '⏳' : '');
+        const badge = u.role === 'admin' && !isDevU(u) && uStatus(u) === 'approved' ? '👑' : (uStatus(u) === 'pending' ? '⏳' : '');
         return `<div class="u-tile" onclick="openUserSheet('${u.id}')">
             <div class="u-tile-pic" style="--ring:${ring};">${initial}${u.pictureUrl ? `<img src="${escapeHtml(u.pictureUrl)}" alt="" loading="lazy" onerror="this.remove()">` : ''}<span class="u-tile-ring"></span>${badge ? `<span class="u-tile-badge">${badge}</span>` : ''}</div>
             <div class="u-tile-name">${escapeHtml(u.account || '(未命名)')}</div>
@@ -2205,8 +2209,8 @@
         const sorted = usersCache.filter(userMatches).sort((a, b) => (a.category || '￿').localeCompare(b.category || '￿', 'zh-Hant') || (a.account || '').localeCompare(b.account || '', 'zh-Hant'));
         const newest = [...sorted].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         const pend = newest.filter(u => uStatus(u) === 'pending' && !u.removed);
-        const admins = sorted.filter(u => uStatus(u) === 'approved' && u.role === 'admin' && !u.removed);
-        const members = sorted.filter(u => uStatus(u) === 'approved' && u.role !== 'admin' && !u.removed);
+        const admins = sorted.filter(u => uStatus(u) === 'approved' && u.role === 'admin' && !isDevU(u) && !u.removed);
+        const members = sorted.filter(u => uStatus(u) === 'approved' && (u.role !== 'admin' || isDevU(u)) && !u.removed);
         const removed = sorted.filter(u => u.removed);
         const blocked = sorted.filter(u => !u.removed && (uStatus(u) === 'rejected' || uStatus(u) === 'banned'));
 
@@ -2237,7 +2241,7 @@
         html += section('👑 管理員', '#0a84ff', admins, u => card(u,
             btn('持有', `openPersonViewById('${u.id}')`) + btn('分類', `openUserCategory('${u.id}')`) + btn('改名', `editUserAccount('${u.id}')`)
             + (u.id !== me ? btn('取消管理員', `setUserRole('${u.id}','user')`) + btn('移出倉庫', `removeFromWarehouse('${u.id}')`, 'danger') + btn('踢出', `kickUser('${u.id}')`, 'danger') : '')));
-        html += section('👤 一般成員', '#8e8e93', members, u => card(u,
+        html += section('👤 一般成員', '#8e8e93', members, u => isDevU(u) ? card(u, btn('持有', `openPersonViewById('${u.id}')`) + btn('分類', `openUserCategory('${u.id}')`)) : card(u,
             btn('持有', `openPersonViewById('${u.id}')`) + btn('分類', `openUserCategory('${u.id}')`) + btn('設為管理員', `setUserRole('${u.id}','admin')`)
             + btn(u.helper ? '取消小幫手' : '設為小幫手', `setUserHelper('${u.id}',${!u.helper})`)
             + btn('改名', `editUserAccount('${u.id}')`) + btn('移出倉庫', `removeFromWarehouse('${u.id}')`, 'danger') + btn('踢出', `kickUser('${u.id}')`, 'danger')));
@@ -2264,6 +2268,7 @@
         patchUser(id, { status: 'rejected', rejectReason: reason }, '已退回');
     };
     window.suspendUser = async id => {
+        if (isDevU(findUser(id)) && id !== (currentUser && currentUser.userId)) return showToast('🔒 這個帳號受保護，不能變更', 'error', 1200);
         if (id === currentUser.userId) return showToast('不能停權自己', 'error', 1000);
         const u = findUser(id) || {};
         if (!(await showConfirmDialog(`確定停權「${u.account || ''}」？\n對方會立刻被登出（白沙屯救護紀錄表也一併停權）。`, '停權'))) return;
@@ -2307,6 +2312,7 @@
         if (after) after();
     };
     window.setUserRole = async (id, role) => {
+        if (isDevU(findUser(id)) && id !== (currentUser && currentUser.userId)) return showToast('🔒 這個帳號受保護，不能變更', 'error', 1200);
         if (id === currentUser.userId) return showToast('不能變更自己的權限', 'error', 1000);
         const u = findUser(id) || {};
         const label = role === 'admin' ? '設為管理員' : '取消管理員';
@@ -2322,6 +2328,7 @@
 
     // 移出倉庫：只影響倉庫，白沙屯救護紀錄表不受影響；可隨時恢復
     window.removeFromWarehouse = async id => {
+        if (isDevU(findUser(id)) && id !== (currentUser && currentUser.userId)) return showToast('🔒 這個帳號受保護，不能變更', 'error', 1200);
         if (id === currentUser.userId) return showToast('不能移出自己', 'error', 1000);
         const u = findUser(id) || {};
         let held = 0;
@@ -2332,6 +2339,7 @@
     };
     // 完全踢出：刪除會員資料，從名單消失；對方再打開要重新填資料、重新審核（白沙屯也一樣）
     window.kickUser = async id => {
+        if (isDevU(findUser(id)) && id !== (currentUser && currentUser.userId)) return showToast('🔒 這個帳號受保護，不能變更', 'error', 1200);
         if (!isAdmin()) return;
         if (id === currentUser.userId) return showToast('不能踢出自己', 'error', 1000);
         const u = findUser(id) || {};
@@ -4487,7 +4495,7 @@
         }
         if (scannerMode === 'helper') {
             closeScanner();
-            if (user.role === 'admin') { scanErrorFeedback('👑', `${user.account}\n已經是管理員`); showToast(`「${user.account}」已經是管理員，不需要設小幫手`, 'info', 1600); return; }
+            if (user.role === 'admin') { if (isDevU(user)) { showToast('這個帳號不需要設小幫手', 'info', 1400); return; } scanErrorFeedback('👑', `${user.account}\n已經是管理員`); showToast(`「${user.account}」已經是管理員，不需要設小幫手`, 'info', 1600); return; }
             scanSuccessFeedback('🧰', user.account);
             setTimeout(() => setUserHelper(user.id, !user.helper, () => { const ov = _el('helper-ov'); if (ov) ov.remove(); openHelperAdmin(); }), 300);
             return;

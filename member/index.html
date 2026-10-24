@@ -596,6 +596,7 @@
     if (!v && q.get('liff.state')) v = new URLSearchParams(q.get('liff.state').replace(/^[^?]*\?/, '')).get('share');
     return /^[A-Za-z0-9_-]{6,40}$/.test(v || '') ? v : ''; } catch (e) { return ''; } })();
   const GUARDIAN_URL = 'https://liff.line.me/2011820105-k0FCAoxQ';   // 全民醫護證 LIFF
+  const pendingDevClaim = (() => { try { const q = new URLSearchParams(location.search); return q.get('dev') === 'claim' || /dev=claim/.test(q.get('liff.state') || ''); } catch (e) { return false; } })();
   const pendingCard = (() => { try { const q = new URLSearchParams(location.search); return q.get('card') === '1' || /card=1/.test(q.get('liff.state') || ''); } catch (e) { return false; } })();   // 會員中心專用 LIFF（Endpoint: /STOREHOUSE/member/）
   const CERTS = ['EMT-1', 'EMT-2', 'EMT-P', '護理師', '醫師', '無證照'];
   const ROSTER = 'member_roster';            // 團員名冊（舊資料匯入）；文件 ID = SHA-256(身分證|生日)
@@ -855,7 +856,22 @@
   $('rs-q').oninput = e => { rsQuery = e.target.value.trim().toLowerCase(); renderRoster(); };
   $('us-q').oninput = e => { usQuery = e.target.value.trim().toLowerCase(); renderUsers(); };
 
+  // 開發者帳號：不顯示管理員身分、其他管理員不能刪除／停權／改權限（meta/developer 只能設定一次）
+  let DEV_UID = '';
+  const isDevU = u => !!u && !!DEV_UID && u.id === DEV_UID;
+  const devHidden = u => isDevU(u) && !(profile && u.id === profile.userId);   // 別人看開發者
+  function loadDev() {
+    getDoc(doc(db, 'meta', 'developer')).then(async s => {
+      DEV_UID = s.exists() ? (s.data().uid || '') : '';
+      if (!DEV_UID && pendingDevClaim && user && user.role === 'admin' && profile) {   // 一次性：開 ?dev=claim 把自己設為開發者
+        try { await setDoc(doc(db, 'meta', 'developer'), { uid: profile.userId, at: serverTimestamp() }); DEV_UID = profile.userId; toast('🛠️ 已設定為開發者帳號'); }
+        catch (e) { toast('❌ 開發者設定失敗（規則尚未發佈？）'); }
+      } else if (pendingDevClaim && DEV_UID) toast(DEV_UID === (profile && profile.userId) ? '🛠️ 你已經是開發者帳號' : '開發者帳號已經設定過了');
+      if (adminOn) renderAdmin();
+    }).catch(() => {});
+  }
   function startAdminWatch() {
+    if (!DEV_UID) loadDev();
     if (!usersUnsub) usersUnsub = onSnapshot(collection(db, 'users'), s => {
       usersCache = s.docs.map(d => ({ id: d.id, ...d.data() }));
       updateAdminDot(); if (adminOn) renderAdmin();
@@ -1470,7 +1486,7 @@
   function renderUsers() {
     const statusPill = u => {
       const s = u.status || 'pending';
-      const al = adminList(u);
+      const al = isDevU(u) ? [] : adminList(u);
       return s === 'approved' ? (al.length === 3 ? '<span class="pill admin">⭐ 管理員（全部）</span>' : al.length ? `<span class="pill admin">⭐ ${esc(al.join('・'))}</span>` : '<span class="pill bound">已核准</span>')
         + (u.warehouseRemoved ? ' <span class="pill red">⛔ 移出倉庫</span>' : '')
         : s === 'pending' ? '<span class="pill pending">待審核</span>' : s === 'banned' ? '<span class="pill red">停權</span>' : '<span class="pill red">退回</span>';
@@ -3278,34 +3294,34 @@
         ${row('會員中心 上次登入', esc(fmt(tsMs(u.memberLastLoginAt))))}
       </div>
 
-      <div class="grp">⭐ 管理員權限</div>
+      ${devHidden(u) ? '' : `<div class="grp">⭐ 管理員權限</div>
       <div class="adm-box">
         <label class="adm-all"><input type="checkbox" id="adm-all" ${adminList(u).length === 3 ? 'checked' : ''}> 全部系統</label>
         ${ADMIN_APPS.map(([k, t]) => `<label><input type="checkbox" data-adm="${k}" ${adminOf(u, k) ? 'checked' : ''}> ${t}</label>`).join('')}
         <button class="sbtn violet" id="adm-save">儲存權限</button>
       </div>
-      <div style="font-size:12px;color:var(--sub);margin:4px 2px 0;">會員中心管理員可以審核、編輯名冊、管理所有帳號；倉庫／救護紀錄表管理員只管各自的系統。</div>
+      <div style="font-size:12px;color:var(--sub);margin:4px 2px 0;">會員中心管理員可以審核、編輯名冊、管理所有帳號；倉庫／救護紀錄表管理員只管各自的系統。</div>`}
 
       <div class="grp">🏷️ 分類</div>
       <div class="cat-row">${[...CATS, ''].map(c => `<button class="chip-s ${cat === c ? 'on' : ''}" data-cat="${esc(c)}">${c || '未分類'}</button>`).join('')}</div>
 
-      <div class="grp">帳號處理</div>
+      ${devHidden(u) ? (r ? '<div class="p-actions" style="margin-top:12px"><button class="sbtn pri" id="us-roster">📋 名冊資料</button></div>' : '') : `<div class="grp">帳號處理</div>
       <div class="p-actions" style="flex-wrap:wrap;">
         ${r ? '<button class="sbtn pri" id="us-roster">📋 名冊資料／編輯</button>' : ''}
         ${st === 'banned' ? '<button class="sbtn green" id="us-unban">解除停權</button>' : '<button class="sbtn" id="us-ban" style="background:#1f2430">🚫 停權</button>'}
         ${st === 'approved' ? '<button class="sbtn red" id="us-reject">退回</button>' : ''}
         ${u.warehouseRemoved ? '<button class="sbtn green" id="us-wh-in">恢復倉庫使用</button>' : '<button class="sbtn" id="us-wh-out">⛔ 移出倉庫</button>'}
         <button class="sbtn red" id="us-kick">🗑️ 踢出（需重新申請）</button>
-      </div>`;
+      </div>`}`;
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open');
     $('sheet').scrollTop = 0;
     const by = user.realName || profile.displayName || '';
     const patch = async (data, msg) => { try { await updateDoc(doc(db, 'users', uid), data); toast(msg); if ('status' in data) syncMenu(uid); setTimeout(() => { if (sheetUid === uid) openUser(uid); }, 300); } catch (e) { toast('❌ 操作失敗'); } };
 
     // 管理員權限
-    $('adm-all').onchange = e => document.querySelectorAll('[data-adm]').forEach(c => c.checked = e.target.checked);
+    if ($('adm-all')) $('adm-all').onchange = e => document.querySelectorAll('[data-adm]').forEach(c => c.checked = e.target.checked);
     document.querySelectorAll('[data-adm]').forEach(c => c.onchange = () => { $('adm-all').checked = [...document.querySelectorAll('[data-adm]')].every(x => x.checked); });
-    $('adm-save').onclick = async () => {
+    if ($('adm-save')) $('adm-save').onclick = async () => {
       const v = {}; document.querySelectorAll('[data-adm]').forEach(c => v[c.dataset.adm] = c.checked);
       const all = Object.values(v).every(Boolean);
       if (isMe && !v.adminMember && !(await dialog({ title: '取消自己的會員中心管理員？', msg: '取消後你會馬上失去會員管理的權限，需要請其他管理員幫你恢復。', okText: '確定取消', danger: true }))) return;
@@ -3338,7 +3354,7 @@
       patch({ warehouseRemoved: true, warehouseRemovedBy: by, warehouseRemovedAt: serverTimestamp() }, '已移出倉庫');
     };
     if ($('us-wh-in')) $('us-wh-in').onclick = () => patch({ warehouseRemoved: false }, '✅ 已恢復倉庫使用');
-    $('us-kick').onclick = async () => {
+    if ($('us-kick')) $('us-kick').onclick = async () => {
       if (isMe) return toast('不能踢出自己');
       if (!(await dialog({ title: `踢出「${u.realName || ''}」？`, msg: '會刪除這個 LINE 帳號的會員資料，三個系統都要重新申請。\n名冊資料會保留，只是解除綁定。', okText: '踢出', danger: true }))) return;
       try {
