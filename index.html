@@ -1724,6 +1724,9 @@
     let appEntered = false, ownUnsub = null;
     const _el = id => document.getElementById(id);
     const isAdmin = () => !!(currentUser && currentUser.role === 'admin' && currentUser.status === 'approved' && !currentUser.removed);
+    // 進出庫小幫手：可以掃 QR 進貨／出貨，但不能編輯貨架、箱子、物品
+    const isHelper = () => !!(currentUser && currentUser.helper && currentUser.status === 'approved' && !currentUser.removed);
+    const canScan = () => isAdmin() || isHelper();
     const opInfo = () => ({ operator: currentUser ? currentUser.account : '', operatorId: currentUser ? currentUser.userId : '' });
     const inLine = () => { try { return !!(window.liff && liff.isInClient && liff.isInClient()); } catch (e) { return false; } };
     const uStatus = u => u.status || 'pending';
@@ -1741,6 +1744,7 @@
             lastActionAt: tsMs(d.warehouseLastActionAt),
             lastAction: d.warehouseLastAction || '',
             removed: !!d.warehouseRemoved,          // 已被移出倉庫（不影響白沙屯）
+            helper: d.warehouseHelper === true,     // 進出庫小幫手
             category: ('category' in d) ? (d.category || '') : (d.warehouseCategory || '') };   // 成員分類（與白沙屯共用 category）
     }
 
@@ -1937,6 +1941,7 @@
             currentUser.status = u.status || 'pending';
             currentUser.rejectReason = u.rejectReason || '';
             currentUser.removed = u.removed;
+            currentUser.helper = u.helper;
             if (appEntered) {
                 if (currentUser.status !== 'approved' || currentUser.removed) { location.reload(); return; }
                 updateMenuUser(); applyRoleUI();
@@ -1956,7 +1961,7 @@
 
     function updateMenuUser() {
         const mu = _el('menu-user'), lb = _el('btn-logout');
-        if (mu) mu.innerText = currentUser ? `👤 ${currentUser.account}${isAdmin() ? ' · 管理員' : ''}` : '';
+        if (mu) mu.innerText = currentUser ? `👤 ${currentUser.account}${isAdmin() ? ' · 管理員' : isHelper() ? ' · 進出庫小幫手' : ''}` : '';
         if (lb) { lb.innerText = '登出'; lb.style.display = inLine() ? 'none' : ''; }
         const eb = _el('expiry-bar'); if (eb && !isAdmin()) eb.remove();
         if (isAdmin()) setTimeout(checkExpiringConsumables, 300);
@@ -2183,7 +2188,7 @@
             <div class="log-card" style="display:flex; align-items:flex-start; gap:12px;">
                 <img src="${escapeHtml(u.pictureUrl || '')}" onerror="this.style.visibility='hidden'" style="width:44px; height:44px; border-radius:50%; object-fit:cover; background:#2c2c2e; flex-shrink:0;">
                 <div style="flex:1; min-width:0;">
-                    <div style="font-weight:700; font-size:14px;">${escapeHtml(u.account || '(未命名)')}${u.id === me ? ' <span style="font-size:10px; color:#0a84ff;">（你）</span>' : ''}${u.category ? ` <span style="font-size:10px; color:#bf5af2; font-weight:600;">🏷️ ${escapeHtml(u.category)}</span>` : ''}</div>
+                    <div style="font-weight:700; font-size:14px;">${escapeHtml(u.account || '(未命名)')}${u.id === me ? ' <span style="font-size:10px; color:#0a84ff;">（你）</span>' : ''}${u.helper && u.role !== 'admin' ? ' <span style="font-size:10px; color:#ea580c; font-weight:800;">🧰 小幫手</span>' : ''}${u.category ? ` <span style="font-size:10px; color:#bf5af2; font-weight:600;">🏷️ ${escapeHtml(u.category)}</span>` : ''}</div>
                     <div style="font-size:11px; color:#8e8e93; margin-top:2px;">LINE：${escapeHtml(u.displayName || '—')}${u.createdAt ? ' · ' + fmtUserTime(u.createdAt) : ''}</div>
                     <div style="font-size:11px; color:#ff6b81; margin-top:2px;">🏥 ${bstLoginText(u)}</div>
                     <div style="font-size:11px; color:#ff9f0a; margin-top:2px;">🕒 ${loginText(u)}</div>
@@ -2207,6 +2212,7 @@
             + (u.id !== me ? btn('取消管理員', `setUserRole('${u.id}','user')`) + btn('移出倉庫', `removeFromWarehouse('${u.id}')`, 'danger') + btn('踢出', `kickUser('${u.id}')`, 'danger') : '')));
         html += section('👤 一般成員', '#8e8e93', members, u => card(u,
             btn('持有', `openPersonViewById('${u.id}')`) + btn('分類', `openUserCategory('${u.id}')`) + btn('設為管理員', `setUserRole('${u.id}','admin')`)
+            + btn(u.helper ? '取消小幫手' : '設為小幫手', `setUserHelper('${u.id}',${!u.helper})`)
             + btn('改名', `editUserAccount('${u.id}')`) + btn('移出倉庫', `removeFromWarehouse('${u.id}')`, 'danger') + btn('踢出', `kickUser('${u.id}')`, 'danger')));
         html += section('⛔ 已移出倉庫', '#ff453a', removed, u => card(u, btn('恢復進入倉庫', `restoreToWarehouse('${u.id}')`, 'success') + btn('踢出', `kickUser('${u.id}')`, 'danger')));
         html += section('🚫 已退回／停權（兩邊）', '#ff453a', blocked, u => card(u,
@@ -2236,6 +2242,11 @@
         if (!(await showConfirmDialog(`確定停權「${u.account || ''}」？\n對方會立刻被登出（白沙屯救護紀錄表也一併停權）。`, '停權'))) return;
         const reason = (await showPromptDialog('停權原因（可留空，直接按確定）', '', '停權原因')) || '';
         patchUser(id, { status: 'banned', rejectReason: reason }, '已停權');
+    };
+    window.setUserHelper = async (id, on) => {
+        const u = findUser(id) || {};
+        if (!(await showConfirmDialog(on ? `把「${u.account || ''}」設為【進出庫小幫手】？\n\n可以：掃 QR 進貨、出貨、掃成員 QR\n不行：編輯貨架、箱子、物品、庫存數字` : `取消「${u.account || ''}」的進出庫小幫手？`, on ? '設為小幫手' : '取消小幫手'))) return;
+        patchUser(id, { warehouseHelper: !!on }, on ? '🧰 已設為進出庫小幫手' : '已取消小幫手');
     };
     window.setUserRole = async (id, role) => {
         if (id === currentUser.userId) return showToast('不能變更自己的權限', 'error', 1000);
@@ -2444,7 +2455,7 @@
     let borrowerModalOnConfirm = null; 
 
     window.openBorrowerModal = function(onConfirm) {
-        if (!isAdmin()) return showToast('🔒 只有管理員可以出貨', 'error', 1200);
+        if (!canScan()) return showToast('🔒 只有管理員或進出庫小幫手可以出貨', 'error', 1200);
         isBorrowerEditMode = false;
         selectedGroupIndex = null;
         currentBorrowTarget = '';
@@ -3117,7 +3128,7 @@
     };
 
     window.openScanner = function(mode) {
-        if (mode !== 'locate' && !isAdmin()) return showToast('🔒 只有管理員可以進出貨', 'error', 1200);
+        if (mode !== 'locate' && !canScan()) return showToast('🔒 只有管理員或進出庫小幫手可以進出貨', 'error', 1200);
         scannerMode = mode;
         lastScannedCode = null;
         lastScannedAt = 0;
@@ -4402,7 +4413,7 @@
 
     async function handleUserQr(text) {
         const uid = text.slice(5);
-        if (!isAdmin()) { showToast('🔒 只有管理員可以掃描成員 QR', 'error', 1200); return; }
+        if (!canScan()) { showToast('🔒 只有管理員或進出庫小幫手可以掃描成員 QR', 'error', 1200); return; }
         let user = usersCache.find(u => u.id === uid);
         if (!user) {
             try { const s = await getDoc(doc(db, "users", uid)); if (s.exists()) user = normUser(s.id, s.data()); } catch (e) {}

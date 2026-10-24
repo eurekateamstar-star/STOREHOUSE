@@ -14,6 +14,7 @@ service cloud.firestore {
     function isSuper() { return approved() && myData().get('role', '') == 'admin'; }
     function isAdmin() { return isSuper() || (approved() && myData().get('adminMember', false) == true); }      // 會員中心
     function inWarehouse() { return approved() && myData().get('warehouseRemoved', false) != true; }
+    function whHelper() { return inWarehouse() && myData().get('warehouseHelper', false) == true; }   // 進出庫小幫手
     function whAdmin() { return inWarehouse() && (myData().get('role', '') == 'admin' || myData().get('adminWarehouse', false) == true); }
     function recAdmin() { return isSuper() || (approved() && myData().get('adminRecord', false) == true); }
     function anyAdmin() { return isAdmin() || whAdmin() || recAdmin(); }
@@ -32,7 +33,7 @@ service cloud.firestore {
 
     // 本人不能自己改的欄位（權限、審核、移出倉庫）
     function lockedKeys() {
-      return ['role', 'adminMember', 'adminWarehouse', 'adminRecord', 'status', 'verifiedBy', 'rosterId', 'approvedAt', 'approvedBy', 'rejectReason',
+      return ['role', 'adminMember', 'adminWarehouse', 'adminRecord', 'warehouseHelper', 'status', 'verifiedBy', 'rosterId', 'approvedAt', 'approvedBy', 'rejectReason',
               'warehouseRemoved', 'warehouseRemovedBy', 'warehouseRemovedAt', 'lineUserId'];
     }
 
@@ -40,7 +41,7 @@ service cloud.firestore {
       let d = request.resource.data;
       let o = resource.data;
       let changed = d.diff(o).affectedKeys();
-      let hard = ['role', 'adminMember', 'adminWarehouse', 'adminRecord', 'approvedBy', 'warehouseRemoved', 'warehouseRemovedBy', 'warehouseRemovedAt', 'lineUserId'];
+      let hard = ['role', 'adminMember', 'adminWarehouse', 'adminRecord', 'warehouseHelper', 'approvedBy', 'warehouseRemoved', 'warehouseRemovedBy', 'warehouseRemovedAt', 'lineUserId'];
       return
         // 一般更新：頭貼、登入時間、姓名、證照…
         !changed.hasAny(lockedKeys())
@@ -58,16 +59,18 @@ service cloud.firestore {
     function selfCreateOk() {
       let d = request.resource.data;
       return d.get('role', 'user') == 'user'
-        && !d.keys().hasAny(['approvedBy', 'warehouseRemoved', 'adminMember', 'adminWarehouse', 'adminRecord'])
+        && !d.keys().hasAny(['approvedBy', 'warehouseRemoved', 'adminMember', 'adminWarehouse', 'adminRecord', 'warehouseHelper'])
         && (d.get('status', 'pending') == 'pending' || (d.get('status', '') == 'approved' && rosterMatches(d)));
     }
 
     // ===== 會員帳號（三個系統共用）=====
     match /users/{userId} {
-      allow get: if signedIn() && (me() == userId || anyAdmin());
+      allow get: if signedIn() && (me() == userId || anyAdmin() || whHelper());
       allow list: if anyAdmin();
       allow create: if isAdmin() || (signedIn() && me() == userId && selfCreateOk());
-      allow update: if isAdmin() || (signedIn() && me() == userId && selfUpdateOk());
+      allow update: if isAdmin() || (signedIn() && me() == userId && selfUpdateOk())
+        // 倉庫管理員可以設定／取消進出庫小幫手
+        || (whAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['warehouseHelper']));
       allow delete: if isAdmin();
     }
 
@@ -150,9 +153,11 @@ service cloud.firestore {
     }
 
     // ===== 倉庫 =====
-    match /warehouse_boxes/{id} { allow read: if inWarehouse(); allow write: if whAdmin(); }
+    match /warehouse_boxes/{id} { allow read: if inWarehouse(); allow write: if whAdmin();
+      // 小幫手：只能改箱內物品（進出庫數量），不能改箱名、位置、層別，也不能新增／刪除箱子
+      allow update: if whHelper() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['items']); }
     match /warehouse_pages/{id} { allow read: if inWarehouse(); allow write: if whAdmin(); }
-    match /warehouse_logs/{id}  { allow read: if inWarehouse(); allow write: if whAdmin(); }
+    match /warehouse_logs/{id}  { allow read: if inWarehouse(); allow write: if whAdmin(); allow create: if whHelper(); }
     match /settings/{id}        { allow read: if inWarehouse(); allow write: if whAdmin(); }
 
     // 其他沒列出的集合一律拒絕
