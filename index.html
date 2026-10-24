@@ -3515,7 +3515,7 @@
                     }
                     updateItemStatusBanner(it);
                     document.getElementById('view-item-qty').innerText = it.itemType === 'consumable'
-                        ? `目前庫存數量: ${it.qty || 0} ${UNIT(it)}`
+                        ? stockText(it)
                         : `目前庫存數量: ${it.qty || 0} / ${it.units.length} ${UNIT(it)}`;
                 }
             }
@@ -3524,6 +3524,10 @@
     }
 
     const UNIT = it => (it && String(it.unit || '').trim()) || '個';
+    const heldOf = it => Object.values((it && it.holdings) || {}).reduce((a, v) => a + (Number(v) || 0), 0);
+    // 「目前庫存數量」文字：耗材有人帶出去時顯示 在庫/總數
+    const stockText = it => { const q = Number(it.qty) || 0, h = it.itemType === 'consumable' ? heldOf(it) : 0;
+        return h > 0 ? `目前庫存數量: ${q} / ${q + h} ${UNIT(it)}（在外 ${h}）` : `目前庫存數量: ${q} ${UNIT(it)}`; };
     // 需要幾張 QR 標籤：耗材 1 張；耐久品每一件 1 張
     const qrCount = it => it.itemType === 'consumable' ? 1 : (Array.isArray(it.units) && it.units.length ? it.units.length : (Number(it.qty) || 0) + (Number(it.checkedOutCount) || 0));
     window.UNIT = UNIT;
@@ -3539,7 +3543,7 @@
                 statusBanner.style.background = 'rgba(255, 149, 0, 0.15)';
                 statusBanner.style.borderColor = 'rgba(255, 149, 0, 0.3)';
                 statusBanner.style.color = '#ff9500';
-                statusBanner.innerText = `📦 倉庫庫存 ${qty} ${UNIT(it)}，另有 ${totalHeld} ${UNIT(it)}在外：${holdingsText}`;
+                statusBanner.innerText = `📦 在庫 ${qty} / 共 ${qty + totalHeld} ${UNIT(it)}\n在外 ${totalHeld} ${UNIT(it)}：${Object.entries(holdings).map(([t, q]) => `${t}（${q}）`).join('、')}`;
             } else if (qty <= 0) {
                 statusBanner.style.background = 'rgba(255, 59, 48, 0.15)';
                 statusBanner.style.borderColor = 'rgba(255, 59, 48, 0.3)';
@@ -4608,7 +4612,7 @@
                                 const borrowerText = it.borrower ? `出庫 ${checkedOut} → ${it.borrower}` : `已出庫 ${checkedOut}`;
                                 html += `<div class="ov-item checked-out"><span class="ov-n">${escapeHtml(it.name)}</span><span class="ov-q">${it.qty||0}/${totalUnits} ${escapeHtml(UNIT(it))}</span><span class="ov-b">${escapeHtml(borrowerText)}</span><span class="ov-tag">🏷️ ${qrCount(it)} 張</span></div>`;
                             } else {
-                                html += `<div class="ov-item"><span class="ov-n">${escapeHtml(it.name)}</span><span class="ov-q">${it.qty||1} ${escapeHtml(UNIT(it))}</span><span class="ov-tag">🏷️ ${qrCount(it)} 張${it.itemType === 'consumable' ? '・耗材' : ''}</span></div>`;
+                                html += `<div class="ov-item"><span class="ov-n">${escapeHtml(it.name)}</span><span class="ov-q">${it.itemType === 'consumable' && heldOf(it) > 0 ? `${it.qty||0}/${(Number(it.qty)||0) + heldOf(it)}` : (it.qty||1)} ${escapeHtml(UNIT(it))}</span>${it.itemType === 'consumable' && heldOf(it) > 0 ? `<span class="ov-b" style="color:#c2410c">在外 ${heldOf(it)}</span>` : ''}<span class="ov-tag">🏷️ ${qrCount(it)} 張${it.itemType === 'consumable' ? '・耗材' : ''}</span></div>`;
                             }
                         });
                         html += `</div>`;
@@ -4839,11 +4843,13 @@
             b.items.forEach((it, idx) => {
                 ensureUnits(it);
                 const card = document.createElement('div');
-                const isQtyZero = (Number(it.qty) || 0) === 0;
+                const isQtyZero = (Number(it.qty) || 0) === 0 && !(it.itemType === 'consumable' && heldOf(it) > 0);
                 const isConsumable = it.itemType === 'consumable';
                 const totalUnits = isConsumable ? (Number(it.qty) || 0) : it.units.length;
                 const checkedOutNow = isConsumable ? 0 : (Number(it.checkedOutCount) || 0);
-                const qtyLabel = checkedOutNow > 0 ? `${it.qty}/${totalUnits} ${UNIT(it)}` : `${it.qty} ${UNIT(it)}`;
+                const heldNow = isConsumable ? heldOf(it) : 0;
+                const qtyLabel = checkedOutNow > 0 ? `${it.qty}/${totalUnits} ${UNIT(it)}`
+                    : heldNow > 0 ? `${it.qty}/${(Number(it.qty) || 0) + heldNow} ${UNIT(it)}<div style="font-size:10px;color:#c2410c;font-weight:700;">在外 ${heldNow}</div>` : `${it.qty} ${UNIT(it)}`;
                 const expiryInfo = isConsumable ? getExpiryInfo(it) : null;
                 const expiryBadge = expiryInfo && expiryInfo.status !== 'ok'
                     ? ` <span style="font-size:9px; color:${expiryInfo.color}; font-weight:700;">${expiryInfo.status === 'expired' ? '❌已過期' : '⏳快到期'}</span>`
@@ -5055,7 +5061,7 @@
 
             document.getElementById('view-item-name').innerText = it.name || '未命名';
             document.getElementById('view-item-qty').innerText = isConsumable
-                ? `目前庫存數量: ${it.qty || 0} ${UNIT(it)}`
+                ? stockText(it)
                 : `目前庫存數量: ${it.qty || 0} / ${it.units.length} ${UNIT(it)}`;
             document.getElementById('view-item-img').src = it.imageUrl || 'https://via.placeholder.com/70?text=No+Img';
 
@@ -5380,7 +5386,7 @@
         await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
         updateItemStatusBanner(it);
         renderConsumablePanel(it, b.id, editingItemIndex);
-        document.getElementById('view-item-qty').innerText = `目前庫存數量: ${it.qty || 0} ${UNIT(it)}`;
+        document.getElementById('view-item-qty').innerText = stockText(it);
 
         try {
             const nowDate = new Date();
@@ -5447,7 +5453,7 @@
         await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
 
         updateItemStatusBanner(it);
-        document.getElementById('view-item-qty').innerText = `目前庫存數量: ${it.qty || 0} ${UNIT(it)}`;
+        document.getElementById('view-item-qty').innerText = stockText(it);
 
         try {
             const nowDate = new Date();
