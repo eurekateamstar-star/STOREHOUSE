@@ -348,6 +348,13 @@
         .items-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; overflow-x: hidden !important; }
         .items-grid > .grid-item-card { min-width: 0; justify-content: flex-start; }
         .grid-item-name span { white-space: nowrap; display: inline-block; }
+        #no-photo-hint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;background:rgba(255,255,255,.95);border:2px dashed #e0a8a8;border-radius:22px;padding:26px 30px;text-align:center;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.12);width:min(78%,320px);}
+        #no-photo-hint .np-ic{font-size:44px;line-height:1;}
+        #no-photo-hint .np-t{font-size:16px;font-weight:800;color:#1f2430;margin-top:10px;}
+        #no-photo-hint .np-s{display:inline-block;margin-top:12px;background:#d7262b;color:#fff;font-weight:800;font-size:14px;border-radius:12px;padding:9px 16px;}
+        #no-photo-hint.np-ro{cursor:default;}
+        #no-photo-hint.np-ro .np-s{background:#eee;color:#888;}
+        #no-photo-hint.hidden{display:none;}
         .grid-item-qty { font-size: 11px; color: #ff9500; font-weight: 600; }
         .grid-item-del {
             position: absolute; top: 6px; right: 6px; background: rgba(255, 59, 48, 0.9); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 11px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 5;
@@ -927,6 +934,11 @@
                     <div style="font-size: 13px; color: #8e8e93;">底圖載入中…</div>
                 </div>
                 <div id="mode-hint" class="mode-hint">提示</div>
+                <div id="no-photo-hint" class="hidden" onclick="noPhotoUpload()">
+                    <div class="np-ic">📷</div>
+                    <div class="np-t" id="no-photo-title">這一排還沒有照片</div>
+                    <div class="np-s" id="no-photo-sub">點這裡上傳照片</div>
+                </div>
             </div>
 
             <!-- ➕ 懸浮新增按鈕 (FAB) -->
@@ -1558,7 +1570,23 @@
     }
     
     function setBlur(id, url) { const el = document.getElementById(id); if (!el) return; el.style.backgroundImage = url ? `url("${url}")` : ''; el.classList.toggle('on', !!url); }
+    function updateNoPhotoHint() {
+        const el = document.getElementById('no-photo-hint'); if (!el) return;
+        const p = pages[currentPageIndex];
+        const show = !isPanoActive && !isOverviewActive && p && !p.imageUrl;
+        el.classList.toggle('hidden', !show);
+        if (!show) return;
+        const can = isAdmin();
+        el.classList.toggle('np-ro', !can);
+        document.getElementById('no-photo-title').textContent = `「${p.name}」還沒有照片`;
+        document.getElementById('no-photo-sub').textContent = can ? '點這裡上傳這一排的照片' : '請管理員上傳照片';
+    }
+    window.noPhotoUpload = function () {
+        if (!isAdmin()) return showToast('只有管理員可以上傳照片', 'error', 1200);
+        document.getElementById('bg-upload').click();
+    };
     function setBackgroundImage(url) {
+        setTimeout(updateNoPhotoHint, 0);
         setBlur('map-blur', url);
         const imgEl = document.getElementById('warehouse-img');
         const overlay = document.getElementById('map-loading-overlay');
@@ -3606,6 +3634,7 @@
         fitCanvas();
         renderPageNav();
         renderBoxes();
+        updateNoPhotoHint();
     }
 
     function renderPageNav() {
@@ -3659,6 +3688,7 @@
     }
     function setPanoUI(active) {
         isPanoActive = active;
+        setTimeout(() => { try { updateNoPhotoHint(); } catch (e) {} }, 0);
         document.getElementById('panorama-view').style.display = active ? 'block' : 'none';
         document.getElementById('page-nav').style.display = active ? 'none' : 'flex';
         document.getElementById('side-arrows').style.display = active ? 'none' : 'block';
@@ -4402,6 +4432,7 @@
     
     function setOverviewMode(active) {
         isOverviewActive = active;
+        setTimeout(() => { try { updateNoPhotoHint(); } catch (e) {} }, 0);
         const mapContainerEl = document.getElementById('map-container');
         if (mapContainerEl) mapContainerEl.style.display = active ? 'none' : 'block';
         const pageNavEl = document.getElementById('page-nav');
@@ -5123,6 +5154,7 @@
             fitCanvas();
             renderBoxes();
             showToast('✅ 底圖上傳完成！', 'success', 900);
+            updateNoPhotoHint();
         } catch (err) {
             showToast('❌ 底圖上傳失敗', 'error', 900);
         } finally {
