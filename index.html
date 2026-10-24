@@ -1735,7 +1735,7 @@
     // 進出庫小幫手：可以掃 QR 進貨／出貨，但不能編輯貨架、箱子、物品
     const isHelper = () => !!(currentUser && currentUser.helper && currentUser.status === 'approved' && !currentUser.removed);
     const canScan = () => isAdmin() || isHelper();
-    const opInfo = () => ({ operator: currentUser ? currentUser.account : '', operatorId: currentUser ? currentUser.userId : '' });
+    const opInfo = () => ({ operator: currentUser ? currentUser.account : '', operatorId: currentUser ? currentUser.userId : '', operatorRole: (!isAdmin() && isHelper()) ? 'helper' : 'admin' });
     const inLine = () => { try { return !!(window.liff && liff.isInClient && liff.isInClient()); } catch (e) { return false; } };
     const uStatus = u => u.status || 'pending';
     const tsMs = t => (t && typeof t.toMillis === 'function') ? t.toMillis() : (Number(t) || 0);
@@ -3454,7 +3454,7 @@
                             unit.status = 'out';
                             unit.borrower = currentBorrowTarget;
                             unit.outAt = Date.now();
-                            unit.outBy = (currentUser && currentUser.account) || '';
+                            unit.outBy = (currentUser && currentUser.account) || ''; unit.outByHelper = !isAdmin() && isHelper();
                             actionType = '出庫';
                             recordTarget = currentBorrowTarget;
                             scanSuccessFeedback('📤', `已出庫\n${item.name} (${unitLabel})\n→ ${currentBorrowTarget}`);
@@ -3470,7 +3470,7 @@
                             }
                             unit.borrower = currentBorrowTarget;
                             unit.outAt = Date.now();
-                            unit.outBy = (currentUser && currentUser.account) || '';
+                            unit.outBy = (currentUser && currentUser.account) || ''; unit.outByHelper = !isAdmin() && isHelper();
                             actionType = '轉交';
                             recordTarget = `${fromWhom} → ${currentBorrowTarget}`;
                             scanSuccessFeedback('🔄', `已轉交\n${item.name} (${unitLabel})\n${fromWhom} → ${currentBorrowTarget}`);
@@ -3495,7 +3495,7 @@
                         unit.status = 'in';
                         unit.borrower = '';
                         unit.outAt = null;
-                        unit.outBy = '';
+                        unit.outBy = ''; unit.outByHelper = false;
                         actionType = '進貨';
                         recordTarget = `還回 (原借用: ${oldBorrower})`;
                         scanSuccessFeedback('📥', `已入庫\n${item.name} (${unitLabel})\n→ 回到「${box.name}」`);
@@ -4551,7 +4551,7 @@
                 ensureUnits(it);
                 it.units.forEach((u, ui) => {
                     if (u.status === 'out' && targetName(u.borrower) === account) {
-                        rows.push({ name: it.name, qty: 1, box: b.name, label: `第 ${ui + 1}/${it.units.length} 件`, qr: `ITEM_${b.id}_${idx}_${u.uid}`, since: u.outAt || 0, by: u.outBy || '' });
+                        rows.push({ name: it.name, qty: 1, box: b.name, label: `第 ${ui + 1}/${it.units.length} 件`, qr: `ITEM_${b.id}_${idx}_${u.uid}`, since: u.outAt || 0, by: u.outBy || '', byHelper: !!u.outByHelper });
                     }
                 });
             }
@@ -4582,7 +4582,7 @@
                 <div style="font-weight:700; font-size:14px;">${escapeHtml(r.name)}${r.consumable ? ' <span style="font-size:10px; color:#0a84ff;">📦耗材</span> <span style="color:#ff453a;">x' + r.qty + '</span>' : ''}</div>
                 ${r.label ? `<div style="font-size:12px; color:#ff9500; margin-top:2px;">🔖 ${escapeHtml(r.label)}</div>` : ''}
                 <div style="font-size:12px; color:#8e8e93; margin-top:2px;">原位置：📦 ${escapeHtml(r.box)}</div>
-                ${(r.since || r.by) ? `<div style="font-size:11px; color:#ff9f0a; margin-top:2px;">${r.since ? '領用於 ' + fmtUserTime(r.since) : ''}${r.by ? ' · 發出管理員：' + escapeHtml(r.by) : ''}</div>` : ''}`;
+                ${(r.since || r.by) ? `<div style="font-size:11px; color:#ff9f0a; margin-top:2px;">${r.since ? '領用於 ' + fmtUserTime(r.since) : ''}${r.by ? ` · 發出${r.byHelper ? '小幫手' : '管理員'}：` + escapeHtml(r.by) : ''}</div>` : ''}`;
             card.appendChild(info);
             el.appendChild(card);
         });
@@ -4615,7 +4615,7 @@
         let role = '經手';
         if (l.type === '出庫' || l.type === '轉交') role = '發出';
         else if (l.type === '進貨') role = String(l.target || '').startsWith('還回') ? '收回' : '入庫';
-        return `${role}管理員：${l.operator}`;
+        return `${role}${l.operatorRole === 'helper' ? '小幫手' : '管理員'}：${l.operator}`;
     }
     // QR 放大
     window.showQrZoom = function (text, title, sub) {
