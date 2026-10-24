@@ -355,7 +355,7 @@
         #no-photo-hint.np-ro{cursor:default;}
         #no-photo-hint.np-ro .np-s{background:#eee;color:#888;}
         #no-photo-hint.hidden{display:none;}
-        .pano-zone-img{position:absolute;background-size:cover;background-position:center;pointer-events:none;z-index:0;}
+        .pano-zone-img{position:absolute;background-size:contain;background-repeat:no-repeat;background-position:center;pointer-events:none;z-index:0;}
         .pano-poly-label .pano-cam-btn{left:auto;right:-22px;}
         .grid-item-qty { font-size: 11px; color: #ff9500; font-weight: 600; }
         .grid-item-del {
@@ -3791,7 +3791,6 @@
                 if (ph) {   // 框內照片：貼齊框的範圍，用框的形狀裁切
                     const xs = pts.map(q => q[0]), ys = pts.map(q => q[1]), x0 = Math.min(...xs), y0 = Math.min(...ys), w = Math.max(...xs) - x0 || 1, h = Math.max(...ys) - y0 || 1;
                     Object.assign(ph.style, { left: x0 + '%', top: y0 + '%', width: w + '%', height: h + '%' });
-                    ph.style.clipPath = `polygon(${pts.map(q => `${(q[0] - x0) / w * 100}% ${(q[1] - y0) / h * 100}%`).join(',')})`;
                 }
                 handles.forEach((h, k) => { h.style.left = pts[k][0] + '%'; h.style.top = pts[k][1] + '%'; });
                 mids.forEach((m, k) => { const a = pts[k], b = pts[(k + 1) % pts.length]; m.style.left = (a[0] + b[0]) / 2 + '%'; m.style.top = (a[1] + b[1]) / 2 + '%'; });
