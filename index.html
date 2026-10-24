@@ -596,6 +596,17 @@
         .lk-body{display:none;padding:2px 12px 8px;flex-wrap:wrap;}
         .lk-sec.open .lk-body{display:flex;}
         .lk-sec.open{border-color:#f0c4c4;}
+        #expiry-bar{all:unset;box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;gap:2px 10px;width:100%;margin:0 0 14px;padding:12px 16px;border-radius:16px;background:#fff1f0;border:1.5px solid #ffb3ad;color:#b42318;cursor:pointer;}
+        #expiry-bar b{font-size:14px;}#expiry-bar span{font-size:13px;font-weight:700;}#expiry-bar i{font-style:normal;margin-left:auto;font-weight:800;font-size:13px;}
+        .exp-ov{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;}
+        .exp-card{background:#fff;width:100%;max-width:520px;max-height:80vh;overflow:auto;border-radius:20px 20px 0 0;padding:14px 14px calc(18px + env(safe-area-inset-bottom));}
+        .exp-h{display:flex;align-items:center;justify-content:space-between;font-size:17px;font-weight:900;color:#b42318;margin:4px 4px 10px;}
+        .exp-x{all:unset;cursor:pointer;font-size:18px;color:#888;padding:4px 8px;}
+        .exp-row{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;width:100%;padding:11px 10px;border-radius:12px;border:1px solid #f0e6e3;margin-bottom:8px;cursor:pointer;}
+        .exp-row:active{background:#fff5f4;}
+        .exp-st{flex:none;font-size:11px;font-weight:900;border-radius:8px;padding:4px 7px;color:#fff;background:#f59e0b;}.exp-st.expired{background:#dc2626;}
+        .exp-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}.exp-main b{font-size:15px;color:#1f2430;}.exp-main small{font-size:12px;color:#6b625e;}
+        .exp-row i{font-style:normal;color:#c2410c;font-weight:900;}
         .lk-switch{display:flex;gap:6px;margin-bottom:10px;background:#f1ece9;border-radius:12px;padding:4px;}
         .lk-switch button{all:unset;flex:1;text-align:center;padding:8px 4px;border-radius:9px;font-size:13px;font-weight:800;color:#6b625e;cursor:pointer;}
         .lk-switch button.on{background:#fff;color:#c2410c;box-shadow:0 1px 4px rgba(0,0,0,.08);}
@@ -1447,23 +1458,42 @@
         return { daysLeft, status, color, label, dateStr: it.expiryDate };
     }
 
-    function checkExpiringConsumables() {
-        if (!boxesCache) return;
-        let expiredCount = 0, warningCount = 0;
-        boxesCache.forEach(b => (b.items || []).forEach(it => {
+    // 效期提醒：只有管理員看得到；列出每一項在哪一排、哪一層、哪一箱，點了直接開到那個物品
+    function expiringList() {
+        const out = [];
+        (boxesCache || []).forEach(b => (b.items || []).forEach((it, idx) => {
             if (it.itemType !== 'consumable') return;
-            const info = getExpiryInfo(it);
-            if (!info) return;
-            if (info.status === 'expired') expiredCount++;
-            else if (info.status === 'warning') warningCount++;
+            const info = getExpiryInfo(it); if (!info || info.status === 'ok') return;
+            const pg = (pages || []).find(p => p.id === b.pageId);
+            out.push({ b, it, idx, info, where: `${pg ? pg.name : '未知位置'}${b.tier ? '・' + tierLabel(Number(b.tier)) : ''}・📦 ${b.name}` });
         }));
-        if (expiredCount > 0 || warningCount > 0) {
-            const parts = [];
-            if (expiredCount > 0) parts.push(`${expiredCount} 項已過期`);
-            if (warningCount > 0) parts.push(`${warningCount} 項即將到期 (${EXPIRY_WARNING_DAYS}天內)`);
-            showToast(`⏳ 耗材效期提醒\n${parts.join('，')}\n請至物品詳情查看`, 'error', 2600);
-        }
+        return out.sort((x, y) => x.info.daysLeft - y.info.daysLeft);
     }
+    function checkExpiringConsumables() {
+        if (!boxesCache || !isAdmin()) return;
+        const list = expiringList(); if (!list.length) return;
+        const ex = list.filter(x => x.info.status === 'expired').length, wa = list.length - ex;
+        let el = document.getElementById('expiry-bar');
+        if (!el) { el = document.createElement('button'); el.id = 'expiry-bar'; el.type = 'button'; el.onclick = openExpiryList;
+            const mv = document.getElementById('main-menu-view'); (mv || document.body).insertBefore(el, mv ? mv.children[1] || null : null); }
+        el.innerHTML = `<b>⏳ 耗材效期提醒</b><span>${[ex ? `${ex} 項已過期` : '', wa ? `${wa} 項 ${EXPIRY_WARNING_DAYS} 天內到期` : ''].filter(Boolean).join('・')}</span><i>查看 ›</i>`;
+    }
+    window.openExpiryList = function () {
+        const list = expiringList();
+        const ov = document.createElement('div'); ov.className = 'exp-ov';
+        ov.innerHTML = `<div class="exp-card"><div class="exp-h">⏳ 耗材效期提醒<button type="button" class="exp-x">✕</button></div>
+          ${list.length ? list.map((x, k) => `<button type="button" class="exp-row" data-k="${k}">
+            <span class="exp-st ${x.info.status}">${x.info.status === 'expired' ? '已過期' : '快到期'}</span>
+            <span class="exp-main"><b>${escapeHtml(x.it.name)}</b><small>${escapeHtml(x.where)}</small><small>${x.info.dateStr.replace(/-/g, '/')}・${x.info.label}</small></span><i>›</i></button>`).join('')
+            : '<div style="padding:20px;text-align:center;color:#8e8e93">目前沒有過期或快到期的耗材</div>'}</div>`;
+        document.body.appendChild(ov);
+        ov.onclick = e => { if (e.target === ov || e.target.closest('.exp-x')) ov.remove(); };
+        ov.querySelectorAll('.exp-row').forEach(r => r.onclick = async () => {
+            const x = list[+r.dataset.k]; ov.remove();
+            await goToBoxFromLookup(x.b.id);
+            setTimeout(() => { try { openEditItemModal(x.idx); } catch (e) {} }, 350);
+        });
+    };
 
     function showPromptDialog(message, defaultValue = '', title = '請輸入') {
         return new Promise((resolve) => {
@@ -1912,6 +1942,8 @@
         const mu = _el('menu-user'), lb = _el('btn-logout');
         if (mu) mu.innerText = currentUser ? `👤 ${currentUser.account}${isAdmin() ? ' · 管理員' : ''}` : '';
         if (lb) { lb.innerText = '登出'; lb.style.display = inLine() ? 'none' : ''; }
+        const eb = _el('expiry-bar'); if (eb && !isAdmin()) eb.remove();
+        if (isAdmin()) setTimeout(checkExpiringConsumables, 300);
     }
 
     // 權限被取消時：立刻關掉管理員專屬的畫面、掃描器與視窗，退回主選單
