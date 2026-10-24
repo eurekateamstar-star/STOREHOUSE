@@ -1151,6 +1151,10 @@
                     <button type="button" class="apple-btn secondary" id="edit-type-durable" style="flex:1; padding:9px 6px; font-size:12px; line-height:1.4;" onclick="switchEditingItemType('durable')">🔁 耐久品<br><span style="font-size:10px;">每件一個 QR</span></button>
                     <button type="button" class="apple-btn secondary" id="edit-type-consumable" style="flex:1; padding:9px 6px; font-size:12px; line-height:1.4;" onclick="switchEditingItemType('consumable')">📦 耗材<br><span style="font-size:10px;">整種一個 QR</span></button>
                 </div>
+                <label id="must-return-row" style="display:none; align-items:center; gap:10px; margin-bottom:10px; padding:10px 12px; border-radius:12px; background:#fff7ed; border:1px solid #fed7aa; font-size:13px; color:#7c2d12; cursor:pointer;">
+                    <input type="checkbox" id="edit-must-return" style="width:20px; height:20px; accent-color:#ea580c;" onchange="saveMustReturn(this.checked)">
+                    <span><b>🔁 一定要歸還</b>（衣服、帽子、包包…）<br><span style="font-size:11px; color:#9a3412;">勾選後，沒回來的不會記成消耗，會一直掛在領用人名下</span></span>
+                </label>
             </div>
 
             <div style="font-size: 12px; color: #8e8e93; text-align: center; margin-bottom: 15px;" id="edit-mode-hint">
@@ -3295,7 +3299,9 @@
 
                         const heldQty = sourceTarget ? (holdings[sourceTarget] || 0) : 0;
                         const promptMsg = sourceTarget
-                            ? `「${sourceTarget}」原本帶出 ${heldQty} ${UNIT(item)}，這次實際回來了多少${UNIT(item)}？\n（沒回來的會自動記為消耗，這個去處會歸零結清）`
+                            ? (item.mustReturn
+                                ? `「${sourceTarget}」原本帶出 ${heldQty} ${UNIT(item)}，這次回來了多少${UNIT(item)}？\n（這項要歸還：沒回來的會繼續記在「${sourceTarget}」名下）`
+                                : `「${sourceTarget}」原本帶出 ${heldQty} ${UNIT(item)}，這次實際回來了多少${UNIT(item)}？\n（沒回來的會自動記為消耗，這個去處會歸零結清）`)
                             : `這次「${item.name}」回來／補貨了多少個？`;
                         const raw = await showPromptDialog(promptMsg, sourceTarget ? String(heldQty) : '1', '📥 掃描入庫數量');
                         if (!raw) return;
@@ -3308,15 +3314,20 @@
 
                         if (sourceTarget) {
                             returned = Math.min(n, heldQty);
-                            consumedQty = Math.max(0, heldQty - returned);
-                            delete item.holdings[sourceTarget]; 
+                            if (item.mustReturn) {   // 要歸還的東西：沒回來的繼續掛在對方名下，不記消耗
+                                const left = heldQty - returned;
+                                if (left > 0) item.holdings[sourceTarget] = left; else delete item.holdings[sourceTarget];
+                            } else {
+                                consumedQty = Math.max(0, heldQty - returned);
+                                delete item.holdings[sourceTarget];
+                            }
                             item.qty = currentQty + returned;
                         } else {
                             item.qty = currentQty + n;
                         }
 
                         const feedbackLines = sourceTarget
-                            ? `${item.name}\n回庫存：${returned} ${UNIT(item)}${consumedQty > 0 ? `\n消耗：${consumedQty} ${UNIT(item)}` : ''}\n（${sourceTarget} 已結清歸零）`
+                            ? `${item.name}\n回庫存：${returned} ${UNIT(item)}${consumedQty > 0 ? `\n消耗：${consumedQty} ${UNIT(item)}` : ''}\n${(item.holdings || {})[sourceTarget] ? `（${sourceTarget} 還有 ${item.holdings[sourceTarget]} ${UNIT(item)}未還）` : `（${sourceTarget} 已結清歸零）`}`
                             : `${item.name}\n目前：${item.qty} ${UNIT(item)}`;
                         scanSuccessFeedback('📥', `已入庫\n${feedbackLines}`);
                         showToast(`✅ 入庫完成\n${item.name}\n回庫存：${returned} 個${consumedQty > 0 ? `\n消耗：${consumedQty} 個（${sourceTarget}）` : ''}\n倉庫現有：${item.qty} 個`, 'success', 1600);
@@ -4860,7 +4871,7 @@
                 card.innerHTML = `
                     ${isContentEditActive ? `<button class="grid-item-del" onclick="event.stopPropagation(); deleteItem(${idx})">✕</button>` : ''}
                     <img src="${it.imageUrl || 'https://via.placeholder.com/100?text=No+Img'}" alt="" style="${isQtyZero ? 'opacity: 0.3;' : ''}">
-                    <div class="grid-item-name">${escapeHtml(it.name)}${isConsumable ? ' <span style="font-size:9px; color:#0a84ff;">📦耗材</span>' : ''}${expiryBadge}</div>
+                    <div class="grid-item-name">${escapeHtml(it.name)}${isConsumable ? (it.mustReturn ? ' <span style="font-size:9px; color:#ea580c;">🔁要歸還</span>' : ' <span style="font-size:9px; color:#0a84ff;">📦耗材</span>') : ''}${expiryBadge}</div>
                     ${it.stockCode ? `<div style="font-size:9px; color:#8e8e93; margin-bottom:2px;">${escapeHtml(it.stockCode)}</div>` : ''}
                     <div class="grid-item-qty" style="${isQtyZero ? 'color: #ff3b30;' : ''}">${isQtyZero ? '已清空' : qtyLabel}</div>
                 `;
@@ -4969,6 +4980,12 @@
         renderBoxModal(b);
     };
 
+    window.saveMustReturn = async function (on) {
+        const b = boxesCache.find(x => x.id === currentBoxId); if (!b || editingItemIndex === null) return;
+        const it = b.items[editingItemIndex]; if (on) it.mustReturn = true; else delete it.mustReturn;
+        try { await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items }); showToast(on ? '✅ 已設為「一定要歸還」' : '已取消「一定要歸還」', 'success', 900); renderBoxModal(b); }
+        catch (e) { showToast('❌ 儲存失敗', 'error', 900); }
+    };
     function paintEditTypeButtons(it) {
         const con = it.itemType === 'consumable';
         [['edit-type-durable', !con], ['edit-type-consumable', con]].forEach(([id, on]) => {
@@ -5048,6 +5065,8 @@
             document.getElementById('edit-item-qty-input').value = it.qty || 0;
             document.getElementById('edit-item-unit').value = it.unit || '';
             paintEditTypeButtons(it);
+            { const row = document.getElementById('must-return-row'); if (row) row.style.display = it.itemType === 'consumable' ? 'flex' : 'none';
+              const cb = document.getElementById('edit-must-return'); if (cb) cb.checked = !!it.mustReturn; }
             document.getElementById('edit-item-preview-img').src = it.imageUrl || 'https://via.placeholder.com/60?text=No+Img';
             document.getElementById('edit-item-img-input').value = '';
 
