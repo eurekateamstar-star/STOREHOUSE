@@ -1603,11 +1603,14 @@
         return letters;
     }
 
+    const consQr = (boxId, idx, it) => `ITEM_${boxId}_${idx}` + (it && it.cid ? `__${it.cid}` : '');
     async function generateStockCode(box, itemIndex) {
         const pageNum = getPageNumber(box.pageId);
         const boxNum = await getOrAssignBoxNumber(box);
         const boxLetter = numberToLetters(boxNum);
-        const itemNum = itemIndex + 1;
+        // 取這箱目前最大的流水號 +1，刪過物品也不會跟別人撞號
+        const used = (box.items || []).map(x => parseInt(String(x.stockCode || '').slice(-4), 10)).filter(n => n > 0);
+        const itemNum = Math.max(itemIndex + 1, used.length ? Math.max(...used) + 1 : 1);
         return `${pageNum}${boxLetter}${String(itemNum).padStart(4, '0')}`;
     }
 
@@ -3218,9 +3221,14 @@
 
             let box = boxesCache.find(b => b.id === parts[1]);
             let item = (box && box.items) ? box.items[itemIndex] : null;
+            const consId = parts[3] === '' ? parts[4] : '';
+            if (consId && !(item && item.cid === consId)) {   // 耗材：用固定身分碼找，位置變了也找得到
+                item = null;
+                for (const bx of boxesCache) { const i = (bx.items || []).findIndex(x => x.cid === consId); if (i >= 0) { box = bx; item = bx.items[i]; itemIndex = i; break; } }
+            }
             if (item) ensureUnits(item);
 
-            if (unitUid && (!item || !item.units.find(u => u.uid === unitUid))) {
+            if (unitUid && !consId && (!item || !item.units.find(u => u.uid === unitUid))) {
                 outerSearch:
                 for (const bx of boxesCache) {
                     const items = bx.items || [];
@@ -4456,7 +4464,7 @@
             if (it.itemType === 'consumable') {
                 Object.entries(it.holdings || {}).forEach(([t, q]) => {
                     if ((Number(q) || 0) > 0 && targetName(t) === account) {
-                        rows.push({ name: it.name, qty: Number(q), box: b.name, consumable: true, label: '', qr: `ITEM_${b.id}_${idx}`, since: 0, by: '' });
+                        rows.push({ name: it.name, qty: Number(q), box: b.name, consumable: true, label: '', qr: consQr(b.id, idx, it), since: 0, by: '' });
                     }
                 });
             } else {
@@ -4876,7 +4884,7 @@
                     <div class="grid-item-name">${escapeHtml(it.name)}${isConsumable ? (it.mustReturn ? '' : ' <span style="font-size:9px; color:#0a84ff;">📦耗材</span>') : ''}${expiryBadge}</div>
                     ${it.stockCode ? `<div style="font-size:9px; color:#8e8e93; margin-bottom:2px;">${escapeHtml(it.stockCode)}</div>` : ''}
                     <div class="grid-item-qty" style="${isQtyZero ? 'color: #ff3b30;' : ''}">${isQtyZero ? '已清空' : qtyLabel}</div>
-                    ${isContentEditActive ? (() => { const n = isConsumable ? 1 : it.units.length, d = isConsumable ? (it.labelAt ? 1 : 0) : it.units.filter(u => u.labelAt).length;
+                    ${isContentEditActive ? (() => { const n = isConsumable ? 1 : it.units.length, d = isConsumable ? (it.labelAt && it.cid ? 1 : 0) : it.units.filter(u => u.labelAt).length;
                         return n ? `<div class="lbl-pill ${d >= n ? 'ok' : ''}">${d >= n ? '🏷️ 已下載' : d ? `🏷️ ${d}/${n}` : '🏷️ 未下載'}</div>` : ''; })() : ''}
                 `;
                 card.onclick = () => openEditItemModal(idx);
@@ -4954,7 +4962,7 @@
 
             if (newItemType === 'consumable') {
                 const expiryDate = document.getElementById('new-item-expiry').value || null;
-                b.items.push({ name, qty: Number(qty), imageUrl, stockCode, itemType: 'consumable', expiryDate, ...(unit && unit !== '個' ? { unit } : {}) });
+                b.items.push({ name, qty: Number(qty), imageUrl, stockCode, cid: makeUid(), itemType: 'consumable', expiryDate, ...(unit && unit !== '個' ? { unit } : {}) });
             } else {
                 const units = [];
                 for (let i = 0; i < Number(qty); i++) units.push({ uid: makeUid(), status: 'in', borrower: '' });
@@ -5010,7 +5018,7 @@
             if (!(await showConfirmDialog(msg, '改成耗材'))) return;
             const holdings = {};
             out.forEach(u => { const k = u.borrower || '不詳'; holdings[k] = (holdings[k] || 0) + 1; });
-            it.itemType = 'consumable'; it.qty = inN;
+            it.itemType = 'consumable'; it.qty = inN; if (!it.cid) it.cid = makeUid(); delete it.labelAt;
             if (Object.keys(holdings).length) it.holdings = holdings; else delete it.holdings;
             delete it.units; delete it.checkedOutCount; delete it.borrower;
         } else {
@@ -5040,6 +5048,7 @@
         if (!it.stockCode) {
             it.stockCode = await generateStockCode(b, idx);
         }
+        if (isConsumable && !it.cid) { it.cid = makeUid(); delete it.labelAt; }   // 耗材的固定身分碼（QR 用，刪掉別的物品也不會跑掉）
         await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
         document.getElementById('item-stock-code-text').innerText = `貨號: ${it.stockCode}`;
 
@@ -5348,9 +5357,9 @@
         const qrEl = document.getElementById('consumable-qr-container');
         qrEl.innerHTML = '';
         qrEl.style.cursor = 'pointer';
-        qrEl.onclick = () => showQrZoom(`ITEM_${boxId}_${idx}`, it.name, '耗材 QR：掃描後輸入數量出貨／入庫');
+        qrEl.onclick = () => showQrZoom(consQr(boxId, idx, it), it.name, '耗材 QR：掃描後輸入數量出貨／入庫');
         new QRCode(qrEl, {
-            text: `ITEM_${boxId}_${idx}`, width: 130, height: 130,
+            text: consQr(boxId, idx, it), width: 130, height: 130,
             colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H
         });
 
@@ -5517,7 +5526,7 @@
         const b = boxesCache.find(x => x.id === currentBoxId);
         if (!b || editingItemIndex === null) return;
         const it = b.items[editingItemIndex];
-        const itemQrText = `ITEM_${b.id}_${editingItemIndex}`;
+        const itemQrText = consQr(b.id, editingItemIndex, it);
         const stockCode = it.stockCode || '未編號';
 
         const tempDiv = document.createElement('div');
