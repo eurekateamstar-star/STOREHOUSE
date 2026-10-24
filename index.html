@@ -2948,17 +2948,17 @@
 
     let lookupOpen = null;   // 目前展開的分類
     let lookupMode = 'cat'; try { lookupMode = localStorage.getItem('lk_mode') || 'cat'; } catch (e) {}
-    const ITEM_CAT_ORDER = ['傷口照護', '檢測儀器', '急救呼吸', '輸液注射', '防護用品', '藥品噴劑', '冰敷保暖', '通訊器材', '照明指揮', '教學器材', '後勤用品', '其他'];
-    const ITEM_CAT_ICON = { '傷口照護': '🩹', '檢測儀器': '🩺', '急救呼吸': '🫁', '輸液注射': '💧', '防護用品': '🧤', '藥品噴劑': '💊', '冰敷保暖': '🧊', '通訊器材': '📻', '照明指揮': '🔦', '教學器材': '🧑‍🏫', '後勤用品': '🧰', '其他': '📦', '分類中…': '⏳' };
+    const ITEM_CAT_ORDER = ['傷口照護', '檢測儀器', '急救呼吸', '輸液注射', '防護用品', '藥品噴劑', '冰敷保暖', '通訊器材', '照明指揮', '教學器材', '服裝配件', '急救包袋', '後勤用品', '其他'];
+    const ITEM_CAT_ICON = { '傷口照護': '🩹', '檢測儀器': '🩺', '急救呼吸': '🫁', '輸液注射': '💧', '防護用品': '🧤', '藥品噴劑': '💊', '冰敷保暖': '🧊', '通訊器材': '📻', '照明指揮': '🔦', '教學器材': '🧑‍🏫', '服裝配件': '👕', '急救包袋': '🎒', '後勤用品': '🧰', '其他': '📦', '分類中…': '⏳' };
     let itemCatMap = null, itemCatLoading = false;
-    try { itemCatMap = JSON.parse(localStorage.getItem('item_cat_map') || 'null'); } catch (e) {}
+    try { itemCatMap = JSON.parse(localStorage.getItem('item_cat_map2') || 'null'); } catch (e) {}
     async function loadItemCats(names) {
         if (itemCatLoading || !auth.currentUser) return; itemCatLoading = true;
         try {
             const idToken = await auth.currentUser.getIdToken();
             const r = await fetch(AUTH_URL + '/item-cats', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, names }) });
             const j = await r.json();
-            if (j.ok) { itemCatMap = j.map || {}; try { localStorage.setItem('item_cat_map', JSON.stringify(itemCatMap)); } catch (e) {}
+            if (j.ok) { itemCatMap = j.map || {}; try { localStorage.setItem('item_cat_map2', JSON.stringify(itemCatMap)); } catch (e) {}
                 if (names.every(n => itemCatMap[n])) renderLookupItemChips(); else { renderLookupItemChips(); } }
         } catch (e) {}
         setTimeout(() => { itemCatLoading = false; }, 15000);

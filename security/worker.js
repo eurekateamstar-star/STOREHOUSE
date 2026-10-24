@@ -597,7 +597,15 @@ function shareFlex(c, origin) {
     body: { type: 'box', layout: 'vertical', paddingAll: '13px', backgroundColor: '#1e3a5f', contents: body } } };
 }
 // ===== 倉庫：用 AI 把物品名稱分成品項類別（結果存在 settings/item_cats，同名只分一次）=====
-const ITEM_CATS = ['傷口照護', '檢測儀器', '急救呼吸', '輸液注射', '防護用品', '藥品噴劑', '冰敷保暖', '通訊器材', '照明指揮', '教學器材', '後勤用品', '其他'];
+const ITEM_CATS = ['傷口照護', '檢測儀器', '急救呼吸', '輸液注射', '防護用品', '藥品噴劑', '冰敷保暖', '通訊器材', '照明指揮', '教學器材', '服裝配件', '急救包袋', '後勤用品', '其他'];
+const CAT_VER = 2;
+// 明確規則先分（比 AI 準）：衣服帽子褲子 → 服裝配件；各種急救包/腰包/背包 → 急救包袋
+function ruleCat(n) {
+  if (/夾鏈袋|垃圾袋|冰敷袋/.test(n)) return '';
+  if (/上衣|衣服|外套|雨衣|褲|帽|背心|毛巾|頭巾|袖套|手套套|臂章|鞋|襪|圍巾|T恤|POLO|polo/.test(n) && !/背心式/.test(n)) return '服裝配件';
+  if (/(急救|救護|醫療).*包|包.*(急救|救護)|腰包|背包|擔架包|側背包|醫藥包/.test(n)) return '急救包袋';
+  return '';
+}
 async function itemCatsRoute(req, env, json) {
   try {
     const { idToken, names } = await req.json();
@@ -605,14 +613,20 @@ async function itemCatsRoute(req, env, json) {
     const me = await fsUser(idToken, uidOfToken(idToken));
     if (!me || me.status !== 'approved') return json({ error: 'not allowed' }, 403);
     const tok = await saToken(env);
-    const cur = await fsGet(tok, 'settings/item_cats'), map = cur ? (fobj(cur.fields).map || {}) : {};
+    const cur = await fsGet(tok, 'settings/item_cats'), curObj = cur ? fobj(cur.fields) : {}, map = curObj.map || {};
+    let dirty = false;
+    if (curObj.ver !== CAT_VER) {   // 類別改版：舊的「後勤用品／其他」重新分
+      Object.keys(map).forEach(k => { if (map[k] === '後勤用品' || map[k] === '其他' || !ITEM_CATS.includes(map[k])) delete map[k]; }); dirty = true;
+    }
+    (names || []).forEach(n => { n = String(n || '').trim().slice(0, 40); const c = n && ruleCat(n); if (c && map[n] !== c) { map[n] = c; dirty = true; } });
     const todo = [...new Set((names || []).map(n => String(n || '').trim().slice(0, 40)).filter(n => n && !map[n]))].slice(0, 150);
-    if (todo.length && env.AI) {
+    if (todo.length && env.AI) { dirty = true;
       const sys = '你是醫護團倉庫的物品分類助手。請把每個物品名稱歸到最適合的一個類別，類別只能用下列其中之一：' + ITEM_CATS.join('、') + '。\n'
         + '參考：紗布、彈繃、棉枝、敷料、OK繃、碘酒、酒精棉片＝傷口照護；血壓計、血氧機、血糖機、試紙、耳溫槍、瞳孔筆、聽診器＝檢測儀器；'
         + 'AED、OPA、NPA、I Gel、AMBU、氧氣、止血帶、頸圈＝急救呼吸；生理食鹽水 N/S、點滴、注射液、針具＝輸液注射；手套、口罩、隔離衣、垃圾袋＝防護用品；'
         + '軟膏、噴劑、凡士林、藥品＝藥品噴劑；冰敷袋、爆冰包、保暖鋁箔紙、暖暖包＝冰敷保暖；無線電、天線、麥克風、耳麥、充電座＝通訊器材；'
-        + '頭燈、肩燈、指揮棒、手電筒、口哨＝照明指揮；安妮、哈姆立克、教學假人＝教學器材；帳篷、桌椅、剪刀、膠帶、夾鏈袋、背包、背心＝後勤用品。\n'
+        + '頭燈、肩燈、指揮棒、手電筒、口哨＝照明指揮；安妮、哈姆立克、教學假人＝教學器材；上衣、背心、帽子、褲子、毛巾、雨衣＝服裝配件；'
+        + '急救包、急救背包、腰包、救護包、擔架包＝急救包袋；帳篷、桌椅、剪刀、膠帶、夾鏈袋、推車、收納箱＝後勤用品。\n'
         + '回傳 JSON：{"items":[{"name":"原名稱","cat":"類別"}]}，名稱要跟輸入完全一樣。';
       for (let i = 0; i < todo.length; i += 50) {
         const part = todo.slice(i, i + 50);
@@ -624,9 +638,9 @@ async function itemCatsRoute(req, env, json) {
           (data.items || []).forEach(x => { const n = String(x.name || '').trim(); if (part.includes(n)) map[n] = ITEM_CATS.includes(x.cat) ? x.cat : '其他'; });
         } catch (e) {}
       }
-      await fetch(`${FS}/settings/item_cats?updateMask.fieldPaths=map`, { method: 'PATCH', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fields: { map: { mapValue: { fields: Object.fromEntries(Object.entries(map).map(([k, v]) => [k, { stringValue: v }])) } } } }) });
     }
+    if (dirty) await fetch(`${FS}/settings/item_cats?updateMask.fieldPaths=map&updateMask.fieldPaths=ver`, { method: 'PATCH', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: { ver: { integerValue: String(CAT_VER) }, map: { mapValue: { fields: Object.fromEntries(Object.entries(map).map(([k, v]) => [k, { stringValue: v }])) } } } }) });
     return json({ ok: true, cats: ITEM_CATS, map });
   } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
 }
