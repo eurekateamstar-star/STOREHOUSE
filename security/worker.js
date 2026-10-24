@@ -82,6 +82,7 @@ export default {
     if (path === '/journey') return journeyRoute(req, env, json);
     if (path === '/sharecard') return shareCardRoute(req, env, json);
     if (path === '/guardian-no') return guardianNoRoute(req, env, json);
+    if (path === '/item-cats') return itemCatsRoute(req, env, json);
 
     try {
       const { accessToken } = await req.json();
@@ -593,6 +594,40 @@ function shareFlex(c, origin) {
   return { type: 'flex', altText: c.alt || c.title || '白沙屯醫護團', contents: { type: 'bubble', size: 'mega',
     hero: { type: 'image', url: heroUrl, size: 'full', aspectMode: 'cover', aspectRatio: `${W}:${H}` },
     body: { type: 'box', layout: 'vertical', paddingAll: '13px', backgroundColor: '#1e3a5f', contents: body } } };
+}
+// ===== 倉庫：用 AI 把物品名稱分成品項類別（結果存在 settings/item_cats，同名只分一次）=====
+const ITEM_CATS = ['傷口照護', '檢測儀器', '急救呼吸', '輸液注射', '防護用品', '藥品噴劑', '冰敷保暖', '通訊器材', '照明指揮', '教學器材', '後勤用品', '其他'];
+async function itemCatsRoute(req, env, json) {
+  try {
+    const { idToken, names } = await req.json();
+    if (!idToken) return json({ error: 'missing' }, 400);
+    const me = await fsUser(idToken, uidOfToken(idToken));
+    if (!me || me.status !== 'approved') return json({ error: 'not allowed' }, 403);
+    const tok = await saToken(env);
+    const cur = await fsGet(tok, 'settings/item_cats'), map = cur ? (fobj(cur.fields).map || {}) : {};
+    const todo = [...new Set((names || []).map(n => String(n || '').trim().slice(0, 40)).filter(n => n && !map[n]))].slice(0, 150);
+    if (todo.length && env.AI) {
+      const sys = '你是醫護團倉庫的物品分類助手。請把每個物品名稱歸到最適合的一個類別，類別只能用下列其中之一：' + ITEM_CATS.join('、') + '。\n'
+        + '參考：紗布、彈繃、棉枝、敷料、OK繃、碘酒、酒精棉片＝傷口照護；血壓計、血氧機、血糖機、試紙、耳溫槍、瞳孔筆、聽診器＝檢測儀器；'
+        + 'AED、OPA、NPA、I Gel、AMBU、氧氣、止血帶、頸圈＝急救呼吸；生理食鹽水 N/S、點滴、注射液、針具＝輸液注射；手套、口罩、隔離衣、垃圾袋＝防護用品；'
+        + '軟膏、噴劑、凡士林、藥品＝藥品噴劑；冰敷袋、爆冰包、保暖鋁箔紙、暖暖包＝冰敷保暖；無線電、天線、麥克風、耳麥、充電座＝通訊器材；'
+        + '頭燈、肩燈、指揮棒、手電筒、口哨＝照明指揮；安妮、哈姆立克、教學假人＝教學器材；帳篷、桌椅、剪刀、膠帶、夾鏈袋、背包、背心＝後勤用品。\n'
+        + '回傳 JSON：{"items":[{"name":"原名稱","cat":"類別"}]}，名稱要跟輸入完全一樣。';
+      for (let i = 0; i < todo.length; i += 50) {
+        const part = todo.slice(i, i + 50);
+        try {
+          const out = await env.AI.run(AI_MODEL, { messages: [{ role: 'system', content: sys }, { role: 'user', content: part.join('\n') }],
+            response_format: { type: 'json_schema', json_schema: { type: 'object', properties: { items: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, cat: { type: 'string' } }, required: ['name', 'cat'] } } }, required: ['items'] } },
+            max_tokens: 2500, temperature: 0 });
+          let data = out && out.response; if (typeof data === 'string') { const m = data.match(/\{[\s\S]*\}/); data = m ? JSON.parse(m[0]) : {}; }
+          (data.items || []).forEach(x => { const n = String(x.name || '').trim(); if (part.includes(n)) map[n] = ITEM_CATS.includes(x.cat) ? x.cat : '其他'; });
+        } catch (e) {}
+      }
+      await fetch(`${FS}/settings/item_cats?updateMask.fieldPaths=map`, { method: 'PATCH', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: { map: { mapValue: { fields: Object.fromEntries(Object.entries(map).map(([k, v]) => [k, { stringValue: v }])) } } } }) });
+    }
+    return json({ ok: true, cats: ITEM_CATS, map });
+  } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
 }
 // ===== 全民醫護證：守護編號（同一個 LINE 帳號永遠拿到同一號，流水號）=====
 async function guardianNoRoute(req, env, json) {

@@ -596,6 +596,9 @@
         .lk-body{display:none;padding:2px 12px 8px;flex-wrap:wrap;}
         .lk-sec.open .lk-body{display:flex;}
         .lk-sec.open{border-color:#f0c4c4;}
+        .lk-switch{display:flex;gap:6px;margin-bottom:10px;background:#f1ece9;border-radius:12px;padding:4px;}
+        .lk-switch button{all:unset;flex:1;text-align:center;padding:8px 4px;border-radius:9px;font-size:13px;font-weight:800;color:#6b625e;cursor:pointer;}
+        .lk-switch button.on{background:#fff;color:#c2410c;box-shadow:0 1px 4px rgba(0,0,0,.08);}
         .ov-tier-title{color:#c2410c;} .ov-tier-title span:last-child,.lookup-section-title{color:var(--sub) !important;}
         .u-view-toggle{background:#ece7e4;} .u-view-toggle button{color:#4b5563;} .u-view-toggle button.on{background:#fff;color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.08);}
         .cert-btn.on{background:var(--primary) !important;border-color:var(--primary) !important;}
@@ -2824,7 +2827,23 @@
         document.getElementById('main-menu-view').style.display = 'flex';
     };
 
-    let lookupOpen = null;   // 目前展開的分類（排）
+    let lookupOpen = null;   // 目前展開的分類
+    let lookupMode = 'cat'; try { lookupMode = localStorage.getItem('lk_mode') || 'cat'; } catch (e) {}
+    const ITEM_CAT_ORDER = ['傷口照護', '檢測儀器', '急救呼吸', '輸液注射', '防護用品', '藥品噴劑', '冰敷保暖', '通訊器材', '照明指揮', '教學器材', '後勤用品', '其他'];
+    const ITEM_CAT_ICON = { '傷口照護': '🩹', '檢測儀器': '🩺', '急救呼吸': '🫁', '輸液注射': '💧', '防護用品': '🧤', '藥品噴劑': '💊', '冰敷保暖': '🧊', '通訊器材': '📻', '照明指揮': '🔦', '教學器材': '🧑‍🏫', '後勤用品': '🧰', '其他': '📦', '分類中…': '⏳' };
+    let itemCatMap = null, itemCatLoading = false;
+    try { itemCatMap = JSON.parse(localStorage.getItem('item_cat_map') || 'null'); } catch (e) {}
+    async function loadItemCats(names) {
+        if (itemCatLoading || !auth.currentUser) return; itemCatLoading = true;
+        try {
+            const idToken = await auth.currentUser.getIdToken();
+            const r = await fetch(AUTH_URL + '/item-cats', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, names }) });
+            const j = await r.json();
+            if (j.ok) { itemCatMap = j.map || {}; try { localStorage.setItem('item_cat_map', JSON.stringify(itemCatMap)); } catch (e) {}
+                if (names.every(n => itemCatMap[n])) renderLookupItemChips(); else { renderLookupItemChips(); } }
+        } catch (e) {}
+        setTimeout(() => { itemCatLoading = false; }, 15000);
+    }
     function renderLookupItemChips() {
         const el = document.getElementById('lookup-item-chips');
         if (!el) return;
@@ -2837,13 +2856,27 @@
             boxes.forEach(b => (b.items || []).forEach(it => { if (it.name && !seen.has(it.name)) { seen.add(it.name); names.push(it.name); } }));
             if (names.length) groups.push({ key, title, names: names.sort((a, b) => a.localeCompare(b, 'zh-Hant')) });
         };
-        (pages || []).forEach(p => addGroup(p.id, p.name, boxesCache.filter(b => b.pageId === p.id)));
-        addGroup('_other', '其他', boxesCache.filter(b => !(pages || []).some(p => p.id === b.pageId)));
-        if (!groups.length) { el.innerHTML = `<div style="color:#8e8e93; font-size:12px;">尚無任何物品資料</div>`; return; }
+        const allNames = [...new Set(boxesCache.flatMap(b => (b.items || []).map(it => it.name).filter(Boolean)))];
+        if (lookupMode === 'cat') {
+            if (!itemCatMap || allNames.some(n => !itemCatMap[n])) loadItemCats(allNames);
+            const map = itemCatMap || {}, by = {};
+            allNames.forEach(n => { const c = map[n] || '分類中…'; (by[c] = by[c] || []).push(n); });
+            const order = [...ITEM_CAT_ORDER, '分類中…'];
+            Object.keys(by).sort((a, b) => { const ia = order.indexOf(a), ib = order.indexOf(b); return (ia < 0 ? 98 : ia) - (ib < 0 ? 98 : ib); })
+                .forEach(c => groups.push({ key: 'c_' + c, title: (ITEM_CAT_ICON[c] || '📦') + ' ' + c, names: by[c].sort((a, b) => a.localeCompare(b, 'zh-Hant')) }));
+        } else {
+            (pages || []).forEach(p => addGroup(p.id, '📍 ' + p.name, boxesCache.filter(b => b.pageId === p.id)));
+            addGroup('_other', '📍 其他', boxesCache.filter(b => !(pages || []).some(p => p.id === b.pageId)));
+        }
+        const sw = document.createElement('div'); sw.className = 'lk-switch';
+        sw.innerHTML = `<button type="button" data-m="cat" class="${lookupMode === 'cat' ? 'on' : ''}">✨ 依品項（AI 分類）</button><button type="button" data-m="loc" class="${lookupMode === 'loc' ? 'on' : ''}">📍 依位置</button>`;
+        sw.querySelectorAll('button').forEach(b => b.onclick = () => { lookupMode = b.dataset.m; lookupOpen = null; try { localStorage.setItem('lk_mode', lookupMode); } catch (e) {} renderLookupItemChips(); });
+        el.appendChild(sw);
+        if (!groups.length) { el.insertAdjacentHTML('beforeend', `<div style="color:#8e8e93; font-size:12px;">尚無任何物品資料</div>`); return; }
         groups.forEach(g => {
             const sec = document.createElement('div'); sec.className = 'lk-sec' + (lookupOpen === g.key ? ' open' : '');
             const head = document.createElement('button'); head.type = 'button'; head.className = 'lk-head';
-            head.innerHTML = `<span>📍 ${escapeHtml(g.title)}</span><span class="lk-n">${g.names.length} 種 <i>▾</i></span>`;
+            head.innerHTML = `<span>${escapeHtml(g.title)}</span><span class="lk-n">${g.names.length} 種 <i>▾</i></span>`;
             head.onclick = () => { lookupOpen = lookupOpen === g.key ? null : g.key; document.querySelectorAll('#lookup-item-chips .lk-sec').forEach(x => x.classList.remove('open')); if (lookupOpen) sec.classList.add('open'); };
             const body = document.createElement('div'); body.className = 'lk-body';
             g.names.forEach(name => {
