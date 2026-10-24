@@ -588,6 +588,14 @@
         /* 標籤、切換鈕 */
         .lookup-chip,.tier-chip,.ov-fold-all,.ov-fold{background:#fff !important;border:1px solid #ebe6e3 !important;color:#4b5563 !important;}
         .lookup-chip.active-chip,.tier-chip.on{background:var(--primary) !important;border-color:var(--primary) !important;color:#fff !important;}
+        .lk-sec{background:#fff;border:1px solid #ece6e2;border-radius:14px;margin-bottom:8px;overflow:hidden;}
+        .lk-head{all:unset;box-sizing:border-box;display:flex;width:100%;align-items:center;justify-content:space-between;padding:12px 14px;font-size:14.5px;font-weight:800;color:#1f2430;cursor:pointer;}
+        .lk-n{font-size:12px;font-weight:600;color:#8e8e93;}
+        .lk-n i{font-style:normal;display:inline-block;transition:transform .2s;margin-left:4px;}
+        .lk-sec.open .lk-n i{transform:rotate(180deg);}
+        .lk-body{display:none;padding:2px 12px 8px;flex-wrap:wrap;}
+        .lk-sec.open .lk-body{display:flex;}
+        .lk-sec.open{border-color:#f0c4c4;}
         .ov-tier-title{color:#c2410c;} .ov-tier-title span:last-child,.lookup-section-title{color:var(--sub) !important;}
         .u-view-toggle{background:#ece7e4;} .u-view-toggle button{color:#4b5563;} .u-view-toggle button.on{background:#fff;color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.08);}
         .cert-btn.on{background:var(--primary) !important;border-color:var(--primary) !important;}
@@ -2816,32 +2824,43 @@
         document.getElementById('main-menu-view').style.display = 'flex';
     };
 
+    let lookupOpen = null;   // 目前展開的分類（排）
     function renderLookupItemChips() {
         const el = document.getElementById('lookup-item-chips');
         if (!el) return;
         el.innerHTML = '';
         if (!boxesCache) return;
-
-        const namesSet = new Set();
-        boxesCache.forEach(b => (b.items || []).forEach(it => { if (it.name) namesSet.add(it.name); }));
-        const names = Array.from(namesSet).sort((a, b) => a.localeCompare(b, 'zh-Hant'));
-
-        if (names.length === 0) {
-            el.innerHTML = `<div style="color:#8e8e93; font-size:12px;">尚無任何物品資料</div>`;
-            return;
-        }
-        names.forEach(name => {
-            const btn = document.createElement('button');
-            btn.className = 'apple-btn secondary lookup-chip';
-            btn.style.cssText = 'padding:8px 12px; font-size:12px; margin:0 6px 6px 0;';
-            btn.innerText = name;
-            btn.onclick = () => {
-                document.getElementById('lookup-search-input').value = name;
-                document.querySelectorAll('#lookup-item-chips .lookup-chip').forEach(b => b.classList.remove('active-chip'));
-                btn.classList.add('active-chip');
-                onLookupSearchInput();
-            };
-            el.appendChild(btn);
+        // 依「排」分類（同名物品放在第一次出現的排）
+        const groups = [], seen = new Set();
+        const addGroup = (key, title, boxes) => {
+            const names = [];
+            boxes.forEach(b => (b.items || []).forEach(it => { if (it.name && !seen.has(it.name)) { seen.add(it.name); names.push(it.name); } }));
+            if (names.length) groups.push({ key, title, names: names.sort((a, b) => a.localeCompare(b, 'zh-Hant')) });
+        };
+        (pages || []).forEach(p => addGroup(p.id, p.name, boxesCache.filter(b => b.pageId === p.id)));
+        addGroup('_other', '其他', boxesCache.filter(b => !(pages || []).some(p => p.id === b.pageId)));
+        if (!groups.length) { el.innerHTML = `<div style="color:#8e8e93; font-size:12px;">尚無任何物品資料</div>`; return; }
+        groups.forEach(g => {
+            const sec = document.createElement('div'); sec.className = 'lk-sec' + (lookupOpen === g.key ? ' open' : '');
+            const head = document.createElement('button'); head.type = 'button'; head.className = 'lk-head';
+            head.innerHTML = `<span>📍 ${escapeHtml(g.title)}</span><span class="lk-n">${g.names.length} 種 <i>▾</i></span>`;
+            head.onclick = () => { lookupOpen = lookupOpen === g.key ? null : g.key; document.querySelectorAll('#lookup-item-chips .lk-sec').forEach(x => x.classList.remove('open')); if (lookupOpen) sec.classList.add('open'); };
+            const body = document.createElement('div'); body.className = 'lk-body';
+            g.names.forEach(name => {
+                const btn = document.createElement('button');
+                btn.className = 'apple-btn secondary lookup-chip';
+                btn.style.cssText = 'padding:8px 12px; font-size:12px; margin:0 6px 6px 0;';
+                btn.innerText = name;
+                btn.onclick = () => {
+                    document.getElementById('lookup-search-input').value = name;
+                    document.querySelectorAll('#lookup-item-chips .lookup-chip').forEach(b => b.classList.remove('active-chip'));
+                    btn.classList.add('active-chip');
+                    onLookupSearchInput();
+                    const r = document.getElementById('lookup-item-results'); if (r) setTimeout(() => r.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+                };
+                body.appendChild(btn);
+            });
+            sec.appendChild(head); sec.appendChild(body); el.appendChild(sec);
         });
     }
 
