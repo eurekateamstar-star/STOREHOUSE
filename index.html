@@ -610,6 +610,7 @@
         .exp-st{flex:none;font-size:11px;font-weight:900;border-radius:8px;padding:4px 7px;color:#fff;background:#f59e0b;}.exp-st.expired{background:#dc2626;}
         .exp-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}.exp-main b{font-size:15px;color:#1f2430;}.exp-main small{font-size:12px;color:#6b625e;}
         .exp-row i{font-style:normal;color:#c2410c;font-weight:900;}
+        .held-pill{display:inline-block;margin-top:4px;font-size:10.5px;font-weight:700;color:#8a5a2b;background:#fdf0e1;border-radius:999px;padding:1px 8px;}
         .lk-switch{display:flex;gap:6px;margin-bottom:10px;background:#f1ece9;border-radius:12px;padding:4px;}
         .lk-switch button{all:unset;flex:1;text-align:center;padding:8px 4px;border-radius:9px;font-size:13px;font-weight:800;color:#6b625e;cursor:pointer;}
         .lk-switch button.on{background:#fff;color:#c2410c;box-shadow:0 1px 4px rgba(0,0,0,.08);}
@@ -4849,7 +4850,7 @@
                 const checkedOutNow = isConsumable ? 0 : (Number(it.checkedOutCount) || 0);
                 const heldNow = isConsumable ? heldOf(it) : 0;
                 const qtyLabel = checkedOutNow > 0 ? `${it.qty}/${totalUnits} ${UNIT(it)}`
-                    : heldNow > 0 ? `${it.qty}/${(Number(it.qty) || 0) + heldNow} ${UNIT(it)}<div style="font-size:10px;color:#c2410c;font-weight:700;">在外 ${heldNow}</div>` : `${it.qty} ${UNIT(it)}`;
+                    : heldNow > 0 ? `${it.qty} ${UNIT(it)}<div class="held-pill">外出 ${heldNow}</div>` : `${it.qty} ${UNIT(it)}`;
                 const expiryInfo = isConsumable ? getExpiryInfo(it) : null;
                 const expiryBadge = expiryInfo && expiryInfo.status !== 'ok'
                     ? ` <span style="font-size:9px; color:${expiryInfo.color}; font-weight:700;">${expiryInfo.status === 'expired' ? '❌已過期' : '⏳快到期'}</span>`
