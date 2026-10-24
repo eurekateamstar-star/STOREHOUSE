@@ -610,6 +610,8 @@
         .exp-st{flex:none;font-size:11px;font-weight:900;border-radius:8px;padding:4px 7px;color:#fff;background:#f59e0b;}.exp-st.expired{background:#dc2626;}
         .exp-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}.exp-main b{font-size:15px;color:#1f2430;}.exp-main small{font-size:12px;color:#6b625e;}
         .exp-row i{font-style:normal;color:#c2410c;font-weight:900;}
+        .lbl-pill{display:inline-block;margin-top:4px;font-size:10px;font-weight:700;border-radius:999px;padding:1px 7px;background:#fef2f2;color:#b91c1c;}
+        .lbl-pill.ok{background:#ecfdf5;color:#047857;}
         .held-pill{display:inline-block;margin-top:4px;font-size:10.5px;font-weight:700;color:#8a5a2b;background:#fdf0e1;border-radius:999px;padding:1px 8px;}
         .lk-switch{display:flex;gap:6px;margin-bottom:10px;background:#f1ece9;border-radius:12px;padding:4px;}
         .lk-switch button{all:unset;flex:1;text-align:center;padding:8px 4px;border-radius:9px;font-size:13px;font-weight:800;color:#6b625e;cursor:pointer;}
@@ -4874,6 +4876,8 @@
                     <div class="grid-item-name">${escapeHtml(it.name)}${isConsumable ? (it.mustReturn ? '' : ' <span style="font-size:9px; color:#0a84ff;">📦耗材</span>') : ''}${expiryBadge}</div>
                     ${it.stockCode ? `<div style="font-size:9px; color:#8e8e93; margin-bottom:2px;">${escapeHtml(it.stockCode)}</div>` : ''}
                     <div class="grid-item-qty" style="${isQtyZero ? 'color: #ff3b30;' : ''}">${isQtyZero ? '已清空' : qtyLabel}</div>
+                    ${isContentEditActive ? (() => { const n = isConsumable ? 1 : it.units.length, d = isConsumable ? (it.labelAt ? 1 : 0) : it.units.filter(u => u.labelAt).length;
+                        return n ? `<div class="lbl-pill ${d >= n ? 'ok' : ''}">${d >= n ? '🏷️ 已下載' : d ? `🏷️ ${d}/${n}` : '🏷️ 未下載'}</div>` : ''; })() : ''}
                 `;
                 card.onclick = () => openEditItemModal(idx);
                 container.appendChild(card);
@@ -5054,6 +5058,7 @@
         fontSettingsGroup.style.display = (isContentEditActive && !isConsumable) ? 'block' : 'none';
         const _dlAll = document.getElementById('btn-dl-all-labels'); if (_dlAll) _dlAll.style.display = isContentEditActive ? '' : 'none';
         const _dlCon = document.getElementById('btn-dl-consumable-label'); if (_dlCon) _dlCon.style.display = isContentEditActive ? '' : 'none';
+        refreshLabelButtons(it);
 
         if (isContentEditActive) {
             document.getElementById('edit-modal-title').innerText = isConsumable ? '✏️ 編輯耗材資料' : '✏️ 編輯物品資料與 QR Code';
@@ -5553,6 +5558,7 @@
                 document.body.removeChild(tempDiv);
 
                 deliverLabels([{ dataUrl: canvas.toDataURL('image/png'), filename: `${stockCode}_${it.name}.png` }]);
+                markLabels('consumable');
             };
             if (qrEl.tagName === 'CANVAS' || qrEl.complete) render(qrEl);
             else qrEl.onload = () => render(qrEl);
@@ -5593,7 +5599,8 @@
             const dlBtn = document.createElement('button');
             dlBtn.className = 'apple-btn secondary';
             dlBtn.style.cssText = 'padding:6px 10px; font-size:11px; flex-shrink:0;';
-            dlBtn.innerText = '下載';
+            dlBtn.innerText = u.labelAt ? `✅ ${md(u.labelAt)}` : '下載';
+            if (u.labelAt) { dlBtn.style.color = '#15803d'; dlBtn.title = '已下載過，再按一次重新下載'; }
             dlBtn.onclick = () => downloadItemLabel(u.uid);
             if (isContentEditActive) row.appendChild(dlBtn);
 
@@ -5734,9 +5741,27 @@
     }
     window.closeLabelViewer = function () { document.getElementById('label-viewer').style.display = 'none'; };
 
+    // ===== 標籤下載紀錄：下載過的標記起來，避免重複印 =====
+    const md = t => { const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()}`; };
+    async function markLabels(uids) {
+        const b = boxesCache.find(x => x.id === currentBoxId); if (!b || editingItemIndex === null) return;
+        const it = b.items[editingItemIndex], now = Date.now();
+        if (uids === 'consumable') it.labelAt = now;
+        else (it.units || []).forEach(u => { if (uids.includes(u.uid)) u.labelAt = now; });
+        try { await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items }); } catch (e) {}
+        refreshLabelButtons(it);
+        if (it.itemType !== 'consumable') renderItemUnitsList(it, b.id, editingItemIndex);
+        renderBoxModal(b);
+    }
+    function refreshLabelButtons(it) {
+        const all = document.getElementById('btn-dl-all-labels'), con = document.getElementById('btn-dl-consumable-label');
+        if (all && it.itemType !== 'consumable') { const n = (it.units || []).length, d = (it.units || []).filter(u => u.labelAt).length;
+            all.innerText = d ? `🖨️ 下載標籤（已下載 ${d}/${n}${d < n ? `，還有 ${n - d} 張沒下載` : '，全部下載過'}）` : '🖨️ 下載全部標籤 (每件一張獨立 QR)'; }
+        if (con && it.itemType === 'consumable') con.innerText = it.labelAt ? `🖨️ 下載標籤圖片（✅ ${md(it.labelAt)} 已下載過）` : '🖨️ 下載標籤圖片';
+    }
     window.downloadItemLabel = async function(uid) {
         const r = await generateAndDownloadUnitLabel(uid);
-        if (r) deliverLabels([r]);
+        if (r) { deliverLabels([r]); markLabels([uid]); }
     };
 
     window.downloadAllItemLabels = async function() {
@@ -5744,10 +5769,17 @@
         if (!b || editingItemIndex === null) return;
         const it = b.items[editingItemIndex];
         ensureUnits(it);
-        showToast(`⏳ 產生 ${it.units.length} 張標籤中…`, 'info', 900);
+        const fresh = it.units.filter(u => !u.labelAt), done = it.units.length - fresh.length;
+        let pick = it.units;
+        if (done) {
+            if (fresh.length && await showConfirmDialog(`已經下載過 ${done} 張，還有 ${fresh.length} 張沒下載。\n\n要只下載沒下載過的 ${fresh.length} 張嗎？`, '只下載新的')) pick = fresh;
+            else if (!(await showConfirmDialog(`要把全部 ${it.units.length} 張重新下載嗎？\n（已下載過的也會再下載一次）`, '全部重新下載'))) return;
+        }
+        showToast(`⏳ 產生 ${pick.length} 張標籤中…`, 'info', 900);
         const list = [];
-        for (const u of it.units) list.push(await generateAndDownloadUnitLabel(u.uid));
-        deliverLabels(list);
+        for (const u of pick) list.push(await generateAndDownloadUnitLabel(u.uid));
+        deliverLabels(list.filter(Boolean));
+        markLabels(pick.map(u => u.uid));
     };
 
     window.saveEditingItem = async function() {
