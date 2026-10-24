@@ -459,7 +459,9 @@
         .ov-fold-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
         .ov-qr-box{font-size:10px;font-weight:800;color:#7c3aed;background:#f3e8ff;border-radius:8px;padding:2px 6px;}
         .ov-toolbar{align-items:center;gap:10px;}
-        .ov-qr-sum{margin-right:auto;font-size:13px;font-weight:700;line-height:1.35;}
+        .ov-qr-sum{font-size:13px;font-weight:700;line-height:1.35;margin:10px 2px 0;background:#f3e8ff;border-radius:12px;padding:10px 12px;}
+        .ov-toolbar{gap:8px;}
+        body:not(.ov-qr-on) .ov-qr-page,body:not(.ov-qr-on) .ov-qr-box,body:not(.ov-qr-on) .ov-tag,body:not(.ov-qr-on) .ov-qr-sum{display:none!important;}
         .ov-qr-sum b{color:#7c3aed;font-size:17px;}
         .ov-qr-sum small{display:block;font-size:11px;font-weight:500;color:#8e8e93;}
         .ov-page-title{display:flex;align-items:center;}
@@ -4375,6 +4377,16 @@
         renderBoxes();
     };
 
+    let ovShowQr = false;
+    try { ovShowQr = localStorage.getItem('ov_show_qr') === '1'; } catch (e) {}
+    window.toggleOvQr = function () {
+        ovShowQr = !ovShowQr; try { localStorage.setItem('ov_show_qr', ovShowQr ? '1' : '0'); } catch (e) {}
+        const ov = document.getElementById('overview-view'), y = ov ? ov.scrollTop : 0;
+        document.body.classList.toggle('ov-qr-on', ovShowQr);
+        const b = document.querySelector('.ov-qr-toggle'); if (b) b.textContent = ovShowQr ? '🏷️ 隱藏 QR 張數' : '🏷️ QR 張數';
+        if (ovShowQr && isOverviewActive) { setOverviewMode(true); if (ov) ov.scrollTop = y; }
+    };
+    try { if (localStorage.getItem('ov_show_qr') === '1') document.body.classList.add('ov-qr-on'); } catch (e) {}
     window.toggleOverview = function() {
         if (isPanoActive) setPanoUI(false);
         setOverviewMode(!isOverviewActive);
@@ -4403,7 +4415,8 @@
             const _anyOpen = _ids.some(id => !ovCollapsed.has(id));
             const _qr = { all: 0, dur: 0, con: 0 };
             (boxesCache || []).filter(b => pages.some(p => p.id === b.pageId)).forEach(b => (b.items || []).forEach(it => { const n = qrCount(it); _qr.all += n; if (it.itemType === 'consumable') _qr.con += n; else _qr.dur += n; }));
-            let html = _ids.length ? `<div class="ov-toolbar"><div class="ov-qr-sum">🏷️ 全部要印 <b>${_qr.all}</b> 張 QR<small>耐久品 ${_qr.dur} 張（每件一張）・耗材 ${_qr.con} 張（每種一張）</small></div><button class="ov-fold-all" onclick="toggleOvAll()">${_anyOpen ? '全部收起 ▴' : '全部展開 ▾'}</button></div>` : '';
+            let html = _ids.length ? `<div class="ov-toolbar"><button class="ov-fold-all ov-qr-toggle" onclick="toggleOvQr()">🏷️ ${ovShowQr ? '隱藏 QR 張數' : 'QR 張數'}</button><button class="ov-fold-all" onclick="toggleOvAll()">${_anyOpen ? '全部收起 ▴' : '全部展開 ▾'}</button></div>` : '';
+            if (_ids.length && ovShowQr) html += `<div class="ov-qr-sum">🏷️ 全部要印 <b>${_qr.all}</b> 張 QR<small>耐久品 ${_qr.dur} 張（每件一張）・耗材 ${_qr.con} 張（每種一張）</small></div>`;
             pages.forEach(p => {
                 const boxes = (boxesCache || []).filter(b => b.pageId === p.id);
                 const pageQr = boxes.reduce((a, b) => a + (b.items || []).reduce((x, it) => x + qrCount(it), 0), 0);
