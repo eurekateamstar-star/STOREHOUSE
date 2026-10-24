@@ -355,6 +355,8 @@
         #no-photo-hint.np-ro{cursor:default;}
         #no-photo-hint.np-ro .np-s{background:#eee;color:#888;}
         #no-photo-hint.hidden{display:none;}
+        .pano-zone-img{position:absolute;background-size:cover;background-position:center;pointer-events:none;z-index:0;}
+        .pano-poly-label .pano-cam-btn{left:auto;right:-22px;}
         .grid-item-qty { font-size: 11px; color: #ff9500; font-weight: 600; }
         .grid-item-del {
             position: absolute; top: 6px; right: 6px; background: rgba(255, 59, 48, 0.9); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 11px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 5;
@@ -3786,10 +3788,17 @@
             const draw = () => {
                 poly.setAttribute('points', pts.map(q => q.join(',')).join(' '));
                 const c = polyCenter(pts), lo = p.panoLabel || { x: 0, y: 0 }; lab.style.left = clamp(c[0] + lo.x, 0, 100) + '%'; lab.style.top = clamp(c[1] + lo.y, 0, 100) + '%';
+                if (ph) {   // 框內照片：貼齊框的範圍，用框的形狀裁切
+                    const xs = pts.map(q => q[0]), ys = pts.map(q => q[1]), x0 = Math.min(...xs), y0 = Math.min(...ys), w = Math.max(...xs) - x0 || 1, h = Math.max(...ys) - y0 || 1;
+                    Object.assign(ph.style, { left: x0 + '%', top: y0 + '%', width: w + '%', height: h + '%' });
+                    ph.style.clipPath = `polygon(${pts.map(q => `${(q[0] - x0) / w * 100}% ${(q[1] - y0) / h * 100}%`).join(',')})`;
+                }
                 handles.forEach((h, k) => { h.style.left = pts[k][0] + '%'; h.style.top = pts[k][1] + '%'; });
                 mids.forEach((m, k) => { const a = pts[k], b = pts[(k + 1) % pts.length]; m.style.left = (a[0] + b[0]) / 2 + '%'; m.style.top = (a[1] + b[1]) / 2 + '%'; });
             };
             svg.appendChild(poly);
+            let ph = null;
+            if (p.panoImg) { ph = document.createElement('div'); ph.className = 'pano-zone-img'; ph.style.backgroundImage = `url("${p.panoImg}")`; layer.insertBefore(ph, svg); }
 
             const lab = document.createElement('div');
             lab.className = 'pano-poly-label';
@@ -3810,6 +3819,27 @@
             eb.className = 'pano-edit-btn pano-poly-edit'; eb.innerText = '✎';
             eb.onclick = e => { e.stopPropagation(); renamePage(i); };
             lab.appendChild(eb);
+            // 編輯：📷 框內照片（上傳／更換／移除）
+            const cb = document.createElement('button');
+            cb.className = 'pano-edit-btn pano-poly-edit pano-cam-btn'; cb.innerText = '📷'; cb.title = '框內照片';
+            cb.onpointerdown = e => e.stopPropagation();
+            cb.onclick = async e => {
+                e.stopPropagation();
+                if (p.panoImg) {
+                    const act = await showConfirmDialog(`「${p.name}」框內已經有照片。\n按確定＝換一張新的\n按取消＝不動`, '框內照片');
+                    if (!act) { if (await showConfirmDialog('要把框內照片移除嗎？', '移除照片')) { await updateDoc(doc(db, "warehouse_pages", p.id), { panoImg: '' }); p.panoImg = ''; renderPanorama(); showToast('已移除', 'success', 800); } return; }
+                }
+                const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+                inp.onchange = async () => {
+                    const f = inp.files[0]; if (!f) return;
+                    try { showToast('上傳中…', 'success', 1500);
+                        const b64 = await compressImage(f, 800, 0.7);
+                        await updateDoc(doc(db, "warehouse_pages", p.id), { panoImg: b64 }); p.panoImg = b64; renderPanorama(); showToast('✅ 框內照片已更新', 'success', 900);
+                    } catch (err) { showToast('❌ 上傳失敗，照片太大或網路問題', 'error', 1400); }
+                };
+                inp.click();
+            };
+            lab.appendChild(cb);
             lab.style.pointerEvents = 'auto';
 
             // 拖整塊
