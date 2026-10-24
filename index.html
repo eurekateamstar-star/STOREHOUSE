@@ -5056,11 +5056,11 @@
         const isConsumable = it.itemType === 'consumable';
         if (!isConsumable) ensureUnits(it);
 
-        if (!it.stockCode) {
-            it.stockCode = await generateStockCode(b, idx);
+        if (isAdmin() && (!it.stockCode || (isConsumable && !it.cid))) {   // 只有管理員補貨號／身分碼（小幫手只能看）
+            if (!it.stockCode) it.stockCode = await generateStockCode(b, idx);
+            if (isConsumable && !it.cid) { it.cid = makeUid(); delete it.labelAt; }   // 耗材的固定身分碼（QR 用，刪掉別的物品也不會跑掉）
+            try { await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items }); } catch (e) {}
         }
-        if (isConsumable && !it.cid) { it.cid = makeUid(); delete it.labelAt; }   // 耗材的固定身分碼（QR 用，刪掉別的物品也不會跑掉）
-        await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
         document.getElementById('item-stock-code-text').innerText = `貨號: ${it.stockCode}`;
 
         document.getElementById('durable-item-panel').style.display = isConsumable ? 'none' : 'block';
