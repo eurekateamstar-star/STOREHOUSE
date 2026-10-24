@@ -2010,6 +2010,7 @@
             if (isBorrowerEditMode) { isBorrowerEditMode = false; renderBorrowerSelectorUI(); }
             stopUsersWatch();
             closeAdminScreens();
+            if (isHelper()) loadHelperMembers();   // 小幫手：從 Worker 拿可領用成員名單（不含個資）
         } else {
             startUsersWatch();
         }
@@ -2054,6 +2055,22 @@
             usersFirstLoad = false;
             if (_el('users-view').style.display === 'block') renderUsersView();
         }, () => {});
+    }
+    let helperMembersAt = 0;
+    async function loadHelperMembers(force) {
+        if (usersUnsub || !auth.currentUser) return;
+        if (!force && Date.now() - helperMembersAt < 60000 && usersCache.length) return;
+        helperMembersAt = Date.now();
+        try {
+            const idToken = await auth.currentUser.getIdToken();
+            const r = await fetch(AUTH_URL + '/wh-members', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken }) });
+            const j = await r.json();
+            if (j.ok && !usersUnsub) {
+                usersCache = (j.list || []).map(d => normUser(d.id, d));
+                const m = _el('borrower-modal');
+                if (m && m.style.display && m.style.display !== 'none') renderBorrowerSelectorUI();
+            }
+        } catch (e) { helperMembersAt = 0; }
     }
     function stopUsersWatch() {
         if (usersUnsub) { usersUnsub(); usersUnsub = null; }
@@ -2507,6 +2524,8 @@
         document.getElementById('selected-target-preview').innerText = '尚未選擇對象';
         document.getElementById('btn-confirm-borrow').disabled = true;
         document.getElementById('btn-confirm-borrow').innerText = borrowerModalOnConfirm ? '確認選擇' : '確認並開始掃描';
+
+        if (!isAdmin() && isHelper()) loadHelperMembers();
     };
 
     window.closeBorrowerModal = function() {

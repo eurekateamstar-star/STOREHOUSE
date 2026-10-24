@@ -83,6 +83,7 @@ export default {
     if (path === '/sharecard') return shareCardRoute(req, env, json);
     if (path === '/guardian-no') return guardianNoRoute(req, env, json);
     if (path === '/item-cats') return itemCatsRoute(req, env, json);
+    if (path === '/wh-members') return whMembersRoute(req, env, json);
 
     try {
       const { accessToken } = await req.json();
@@ -202,7 +203,7 @@ async function fsUser(idToken, uid) {
   if (!r.ok) throw Object.assign(new Error('not allowed'), { code: r.status === 403 ? 403 : 401 });
   const f = (await r.json()).fields || {};
   const v = k => f[k] && (f[k].stringValue ?? f[k].booleanValue);
-  return { role: v('role'), status: v('status'), adminMember: v('adminMember') === true };
+  return { role: v('role'), status: v('status'), adminMember: v('adminMember') === true, adminWarehouse: v('adminWarehouse') === true, warehouseHelper: v('warehouseHelper') === true, warehouseRemoved: v('warehouseRemoved') === true };
 }
 const memberAdmin = u => !!u && u.status === 'approved' && (u.role === 'admin' || u.adminMember);
 
@@ -628,6 +629,21 @@ async function itemCatsRoute(req, env, json) {
     }
     return json({ ok: true, cats: ITEM_CATS, map });
   } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
+}
+// ===== 倉庫進出庫小幫手：只拿可領用成員的名字／分類／頭貼（不含身分證等個資）=====
+async function whMembersRoute(req, env, json) {
+  try {
+    const { idToken } = await req.json();
+    if (!idToken) return json({ error: 'missing' }, 400);
+    const me = await fsUser(idToken, uidOfToken(idToken));
+    const ok = me && me.status === 'approved' && !me.warehouseRemoved && (me.role === 'admin' || me.adminWarehouse || me.warehouseHelper);
+    if (!ok) return json({ error: 'not allowed' }, 403);
+    const tok = await saToken(env);
+    const list = (await fsList(tok, 'users'))
+      .filter(u => u.status === 'approved' && !u.warehouseRemoved && u.realName)
+      .map(u => ({ id: u.id, realName: u.realName, category: u.category || '', pictureUrl: u.pictureUrl || '', status: 'approved' }));
+    return json({ ok: true, list });
+  } catch (e) { return json({ error: String((e && e.message) || e) }, e && e.code ? e.code : 500); }
 }
 // ===== 全民醫護證：守護編號（同一個 LINE 帳號永遠拿到同一號，流水號）=====
 async function guardianNoRoute(req, env, json) {
