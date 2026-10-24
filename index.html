@@ -4871,7 +4871,7 @@
                 card.innerHTML = `
                     ${isContentEditActive ? `<button class="grid-item-del" onclick="event.stopPropagation(); deleteItem(${idx})">✕</button>` : ''}
                     <img src="${it.imageUrl || 'https://via.placeholder.com/100?text=No+Img'}" alt="" style="${isQtyZero ? 'opacity: 0.3;' : ''}">
-                    <div class="grid-item-name">${escapeHtml(it.name)}${isConsumable ? (it.mustReturn ? ' <span style="font-size:9px; color:#ea580c;">🔁要歸還</span>' : ' <span style="font-size:9px; color:#0a84ff;">📦耗材</span>') : ''}${expiryBadge}</div>
+                    <div class="grid-item-name">${escapeHtml(it.name)}${isConsumable ? (it.mustReturn ? '' : ' <span style="font-size:9px; color:#0a84ff;">📦耗材</span>') : ''}${expiryBadge}</div>
                     ${it.stockCode ? `<div style="font-size:9px; color:#8e8e93; margin-bottom:2px;">${escapeHtml(it.stockCode)}</div>` : ''}
                     <div class="grid-item-qty" style="${isQtyZero ? 'color: #ff3b30;' : ''}">${isQtyZero ? '已清空' : qtyLabel}</div>
                 `;
