@@ -454,7 +454,16 @@
         .ov-item .ov-q{flex:none;margin-left:auto;font-weight:800;white-space:nowrap;color:#c2410c;font-size:.95em;}
         .ov-item.checked-out .ov-q{color:#dc2626;}
         .ov-item .ov-b{flex:1 0 100%;font-size:.85em;font-weight:650;opacity:.9;}
-        .ov-tier-title,.ov-page-title{scroll-margin-top:90px;}
+.ov-tier-title,.ov-page-title{scroll-margin-top:90px;}
+        .ov-item .ov-tag{flex:1 0 100%;font-size:.82em;color:#8e8e93;font-weight:600;margin-top:1px;}
+        .ov-fold-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+        .ov-qr-box{font-size:10px;font-weight:800;color:#7c3aed;background:#f3e8ff;border-radius:8px;padding:2px 6px;}
+        .ov-toolbar{align-items:center;gap:10px;}
+        .ov-qr-sum{margin-right:auto;font-size:13px;font-weight:700;line-height:1.35;}
+        .ov-qr-sum b{color:#7c3aed;font-size:17px;}
+        .ov-qr-sum small{display:block;font-size:11px;font-weight:500;color:#8e8e93;}
+        .ov-page-title{display:flex;align-items:center;}
+        .ov-qr-page{margin-left:auto;font-size:12px;font-weight:800;color:#7c3aed;background:#f3e8ff;border-radius:10px;padding:3px 9px;}
         .ov-tier-row .tier-chip,.ov-tier-wrap .tier-chip{font-size:10px;padding:4px 6px;}
         /* ===== 總覽：細項收合 ===== */
         .ov-toolbar{display:flex;justify-content:flex-end;margin:0 0 -4px;}
@@ -3385,6 +3394,8 @@
     }
 
     const UNIT = it => (it && String(it.unit || '').trim()) || '個';
+    // 需要幾張 QR 標籤：耗材 1 張；耐久品每一件 1 張
+    const qrCount = it => it.itemType === 'consumable' ? 1 : (Array.isArray(it.units) && it.units.length ? it.units.length : (Number(it.qty) || 0) + (Number(it.checkedOutCount) || 0));
     window.UNIT = UNIT;
     function updateItemStatusBanner(it) {
         const statusBanner = document.getElementById('item-status-banner');
@@ -4390,10 +4401,13 @@
         if (active) {
             const _ids = (boxesCache || []).filter(b => (b.items || []).length).map(b => b.id);
             const _anyOpen = _ids.some(id => !ovCollapsed.has(id));
-            let html = _ids.length ? `<div class="ov-toolbar"><button class="ov-fold-all" onclick="toggleOvAll()">${_anyOpen ? '全部收起 ▴' : '全部展開 ▾'}</button></div>` : '';
+            const _qr = { all: 0, dur: 0, con: 0 };
+            (boxesCache || []).filter(b => pages.some(p => p.id === b.pageId)).forEach(b => (b.items || []).forEach(it => { const n = qrCount(it); _qr.all += n; if (it.itemType === 'consumable') _qr.con += n; else _qr.dur += n; }));
+            let html = _ids.length ? `<div class="ov-toolbar"><div class="ov-qr-sum">🏷️ 全部要印 <b>${_qr.all}</b> 張 QR<small>耐久品 ${_qr.dur} 張（每件一張）・耗材 ${_qr.con} 張（每種一張）</small></div><button class="ov-fold-all" onclick="toggleOvAll()">${_anyOpen ? '全部收起 ▴' : '全部展開 ▾'}</button></div>` : '';
             pages.forEach(p => {
-                html += `<div class="ov-page-title">📍 ${escapeHtml(p.name)}</div>`;
                 const boxes = (boxesCache || []).filter(b => b.pageId === p.id);
+                const pageQr = boxes.reduce((a, b) => a + (b.items || []).reduce((x, it) => x + qrCount(it), 0), 0);
+                html += `<div class="ov-page-title">📍 ${escapeHtml(p.name)}${pageQr ? `<span class="ov-qr-page">🏷️ ${pageQr} 張</span>` : ''}</div>`;
                 if (boxes.length === 0) html += `<div class="ov-empty-page">（無箱子）</div>`;
                 const tiers = [...new Set(boxes.map(b => Number(b.tier) || 0))].sort((a, b) => (b || 99) - (a || 99)); // 高層在上、第一層在最下面；未分層放最上
                 const showTierTitles = !(tiers.length === 1 && tiers[0] === 0);
@@ -4406,7 +4420,7 @@
                         const itemsN = (b.items || []).length;
                         const folded = ovCollapsed.has(b.id);
                         const countHtml = itemsN > 0
-                            ? `<button class="ov-fold" onclick="event.stopPropagation(); toggleOvBox('${b.id}')">${itemsN} 項 ${folded ? '▸' : '▾'}</button>`
+                            ? `<div class="ov-fold-row"><button class="ov-fold" onclick="event.stopPropagation(); toggleOvBox('${b.id}')">${itemsN} 項 ${folded ? '▸' : '▾'}</button><span class="ov-qr-box">🏷️${(b.items || []).reduce((x, it) => x + qrCount(it), 0)}</span></div>`
                             : `<span class="ov-box-count">0 項</span>`;
                         html += `<div class="ov-box" onclick="openBoxModal('${b.id}')"><div class="ov-box-title"><span>📦 ${escapeHtml(b.name)}</span>${countHtml}</div>`;
                         if (isContentEditActive) {
@@ -4420,9 +4434,9 @@
                             const totalUnits = Array.isArray(it.units) && it.units.length ? it.units.length : (Number(it.qty) || 0) + checkedOut;
                             if (checkedOut > 0) {
                                 const borrowerText = it.borrower ? `出庫 ${checkedOut} → ${it.borrower}` : `已出庫 ${checkedOut}`;
-                                html += `<div class="ov-item checked-out"><span class="ov-n">${escapeHtml(it.name)}</span><span class="ov-q">${it.qty||0}/${totalUnits} ${escapeHtml(UNIT(it))}</span><span class="ov-b">${escapeHtml(borrowerText)}</span></div>`;
+                                html += `<div class="ov-item checked-out"><span class="ov-n">${escapeHtml(it.name)}</span><span class="ov-q">${it.qty||0}/${totalUnits} ${escapeHtml(UNIT(it))}</span><span class="ov-b">${escapeHtml(borrowerText)}</span><span class="ov-tag">🏷️ ${qrCount(it)} 張</span></div>`;
                             } else {
-                                html += `<div class="ov-item"><span class="ov-n">${escapeHtml(it.name)}</span><span class="ov-q">${it.qty||1} ${escapeHtml(UNIT(it))}</span></div>`;
+                                html += `<div class="ov-item"><span class="ov-n">${escapeHtml(it.name)}</span><span class="ov-q">${it.qty||1} ${escapeHtml(UNIT(it))}</span><span class="ov-tag">🏷️ ${qrCount(it)} 張${it.itemType === 'consumable' ? '・耗材' : ''}</span></div>`;
                             }
                         });
                         html += `</div>`;
