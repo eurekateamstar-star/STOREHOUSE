@@ -613,6 +613,7 @@
         .lbl-pill{display:inline-block;margin-top:4px;font-size:10px;font-weight:700;border-radius:999px;padding:1px 7px;background:#fef2f2;color:#b91c1c;}
         .lbl-pill.ok{background:#ecfdf5;color:#047857;}
         .held-pill{display:inline-block;margin-top:4px;font-size:10.5px;font-weight:700;color:#8a5a2b;background:#fdf0e1;border-radius:999px;padding:1px 8px;}
+        .hp-scan{all:unset;box-sizing:border-box;display:block;width:100%;text-align:center;cursor:pointer;font-size:15px;font-weight:900;padding:12px;border-radius:12px;background:linear-gradient(90deg,#ea580c,#f59e0b);color:#fff;margin-bottom:10px;}
         .hp-btn{all:unset;flex:none;cursor:pointer;font-size:12.5px;font-weight:800;padding:7px 12px;border-radius:10px;border:1.5px solid #fed7aa;color:#c2410c;background:#fff;}
         .hp-btn.on{background:#ea580c;border-color:#ea580c;color:#fff;}
         .lk-switch{display:flex;gap:6px;margin-bottom:10px;background:#f1ece9;border-radius:12px;padding:4px;}
@@ -2260,7 +2261,8 @@
         const ov = document.createElement('div'); ov.className = 'exp-ov'; ov.id = 'helper-ov';
         ov.innerHTML = `<div class="exp-card"><div class="exp-h" style="color:#c2410c">🧰 進出庫小幫手<button type="button" class="exp-x">✕</button></div>
             <div style="font-size:12.5px;color:#6b625e;line-height:1.6;margin:0 4px 10px">小幫手可以：掃 QR 進貨、出貨、掃成員 QR。<br>不能：編輯貨架、箱子、物品、庫存數字。</div>
-            <input id="hp-q" class="apple-input" placeholder="🔍 搜尋姓名" style="width:100%;box-sizing:border-box;margin-bottom:10px;font-size:14px;padding:10px 12px">
+            <button type="button" class="hp-scan" onclick="document.getElementById('helper-ov').remove(); openScanner('helper')">📷 掃對方的個人 QR 設定</button>
+            <input id="hp-q" class="apple-input" placeholder="🔍 或搜尋姓名" style="width:100%;box-sizing:border-box;margin-bottom:10px;font-size:14px;padding:10px 12px">
             <div id="hp-list"></div></div>`;
         document.body.appendChild(ov);
         ov.onclick = e => { if (e.target === ov || e.target.closest('.exp-x')) ov.remove(); };
@@ -3167,6 +3169,7 @@
     };
 
     window.openScanner = function(mode) {
+        if (mode === 'helper' && !isAdmin()) return showToast('🔒 只有管理員可以設定小幫手', 'error', 1200);
         if (mode !== 'locate' && !canScan()) return showToast('🔒 只有管理員或進出庫小幫手可以進出貨', 'error', 1200);
         scannerMode = mode;
         lastScannedCode = null;
@@ -3184,6 +3187,7 @@
         else if (mode === 'in') { title = '📥 快速進貨 (還回)'; hint = '連續掃描物品 QR Code 進行還回/補貨'; }
         else if (mode === 'out') { title = `📤 快速出貨`; hint = '連續掃描物品 QR Code 出庫；掃成員 QR 可換對象'; }
         else if (mode === 'pickperson') { title = '👤 掃成員 QR 選人'; hint = '請對準成員手機上的「我的 QR」'; }
+        else if (mode === 'helper') { title = '🧰 掃 QR 設定小幫手'; hint = '請對方打開「我的 QR 與持有物品」，對準他的個人 QR'; }
 
         document.getElementById('scanner-title').innerText = title;
         document.getElementById('scanner-hint').innerText = hint;
@@ -4460,6 +4464,13 @@
         if (!user || uStatus(user) !== 'approved' || user.removed) {
             scanErrorFeedback('⚠️', '找不到這位成員\n或尚未通過審核');
             showToast('⚠️ 找不到這位成員，或尚未通過審核', 'error', 1200);
+            return;
+        }
+        if (scannerMode === 'helper') {
+            closeScanner();
+            if (user.role === 'admin') { scanErrorFeedback('👑', `${user.account}\n已經是管理員`); showToast(`「${user.account}」已經是管理員，不需要設小幫手`, 'info', 1600); return; }
+            scanSuccessFeedback('🧰', user.account);
+            setTimeout(() => setUserHelper(user.id, !user.helper, () => { const ov = _el('helper-ov'); if (ov) ov.remove(); openHelperAdmin(); }), 300);
             return;
         }
         const target = targetForUser(user.account);
