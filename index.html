@@ -613,6 +613,8 @@
         .lbl-pill{display:inline-block;margin-top:4px;font-size:10px;font-weight:700;border-radius:999px;padding:1px 7px;background:#fef2f2;color:#b91c1c;}
         .lbl-pill.ok{background:#ecfdf5;color:#047857;}
         .held-pill{display:inline-block;margin-top:4px;font-size:10.5px;font-weight:700;color:#8a5a2b;background:#fdf0e1;border-radius:999px;padding:1px 8px;}
+        .hp-btn{all:unset;flex:none;cursor:pointer;font-size:12.5px;font-weight:800;padding:7px 12px;border-radius:10px;border:1.5px solid #fed7aa;color:#c2410c;background:#fff;}
+        .hp-btn.on{background:#ea580c;border-color:#ea580c;color:#fff;}
         .lk-switch{display:flex;gap:6px;margin-bottom:10px;background:#f1ece9;border-radius:12px;padding:4px;}
         .lk-switch button{all:unset;flex:1;text-align:center;padding:8px 4px;border-radius:9px;font-size:13px;font-weight:800;color:#6b625e;cursor:pointer;}
         .lk-switch button.on{background:#fff;color:#c2410c;box-shadow:0 1px 4px rgba(0,0,0,.08);}
@@ -779,6 +781,11 @@
                     <div class="menu-card-icon">👥</div>
                     <div class="menu-card-title">使用者管理</div>
                     <div class="menu-card-desc">審核新成員、設定管理員</div>
+                </div>
+                <div class="menu-card" id="menu-card-helpers" onclick="openHelperAdmin()" style="display:none;">
+                    <div class="menu-card-icon">🧰</div>
+                    <div class="menu-card-title">進出庫小幫手</div>
+                    <div class="menu-card-desc">選團員幫忙掃碼進出庫</div>
                 </div>
                 <div class="menu-card" onclick="openMapQuery()" style="grid-column: span 2;">
                     <div class="menu-card-icon">🗺️</div>
@@ -1991,8 +1998,10 @@
         setDisp('menu-card-users', false);   // 會員的踢除／停權／管理員權限統一在會員中心管理
         setDisp('btn-logs-edit', admin);
         setDisp('btn-edit-groups', admin);
-        ['in', 'out', 'logs', 'lookup'].forEach(k => setDisp('menu-card-' + k, admin));
-        const loc = _el('menu-card-locate'); if (loc) loc.style.gridColumn = admin ? '' : 'span 2';
+        ['logs', 'lookup'].forEach(k => setDisp('menu-card-' + k, admin));
+        ['in', 'out'].forEach(k => setDisp('menu-card-' + k, canScan()));   // 小幫手也可以進出庫
+        setDisp('menu-card-helpers', admin);
+        const loc = _el('menu-card-locate'); if (loc) loc.style.gridColumn = canScan() ? '' : 'span 2';
         setDisp('btn-item-history', admin);
         if (!admin) {
             if (isContentEditActive) toggleContentEditMode();
@@ -2243,10 +2252,40 @@
         const reason = (await showPromptDialog('停權原因（可留空，直接按確定）', '', '停權原因')) || '';
         patchUser(id, { status: 'banned', rejectReason: reason }, '已停權');
     };
-    window.setUserHelper = async (id, on) => {
+    // ===== 進出庫小幫手管理（管理員）=====
+    window.openHelperAdmin = function () {
+        if (!isAdmin()) return showToast('🔒 只有管理員可以設定小幫手', 'error', 1200);
+        startUsersWatch();
+        let q = '';
+        const ov = document.createElement('div'); ov.className = 'exp-ov'; ov.id = 'helper-ov';
+        ov.innerHTML = `<div class="exp-card"><div class="exp-h" style="color:#c2410c">🧰 進出庫小幫手<button type="button" class="exp-x">✕</button></div>
+            <div style="font-size:12.5px;color:#6b625e;line-height:1.6;margin:0 4px 10px">小幫手可以：掃 QR 進貨、出貨、掃成員 QR。<br>不能：編輯貨架、箱子、物品、庫存數字。</div>
+            <input id="hp-q" class="apple-input" placeholder="🔍 搜尋姓名" style="width:100%;box-sizing:border-box;margin-bottom:10px;font-size:14px;padding:10px 12px">
+            <div id="hp-list"></div></div>`;
+        document.body.appendChild(ov);
+        ov.onclick = e => { if (e.target === ov || e.target.closest('.exp-x')) ov.remove(); };
+        const draw = () => {
+            const list = (usersCache || []).filter(u => uStatus(u) === 'approved' && !u.removed && u.role !== 'admin')
+                .filter(u => !q || (u.account || '').includes(q) || (u.displayName || '').includes(q))
+                .sort((a, b) => (b.helper - a.helper) || (a.account || '').localeCompare(b.account || '', 'zh-Hant'));
+            const on = list.filter(u => u.helper).length;
+            _el('hp-list').innerHTML = (usersCache.length ? '' : '<div style="text-align:center;color:#8e8e93;padding:14px">讀取成員中…</div>')
+                + `<div style="font-size:12px;font-weight:800;color:#c2410c;margin:0 4px 6px">目前小幫手 ${on} 人</div>`
+                + list.map(u => `<div class="exp-row" style="cursor:default">
+                    <img src="${escapeHtml(u.pictureUrl || '')}" onerror="this.style.visibility='hidden'" style="width:36px;height:36px;border-radius:50%;object-fit:cover;background:#eee;flex:none">
+                    <span class="exp-main"><b>${escapeHtml(u.account || '(未命名)')}</b><small>${escapeHtml(u.category || u.displayName || '')}</small></span>
+                    <button type="button" data-hp="${u.id}" class="hp-btn${u.helper ? ' on' : ''}">${u.helper ? '✓ 小幫手' : '設為小幫手'}</button></div>`).join('');
+            _el('hp-list').querySelectorAll('[data-hp]').forEach(b => b.onclick = () => { const u = usersCache.find(x => x.id === b.dataset.hp); if (u) setUserHelper(u.id, !u.helper, draw); });
+        };
+        _el('hp-q').oninput = e => { q = e.target.value.trim(); draw(); };
+        draw(); setTimeout(draw, 1200);
+    };
+    window.setUserHelper = async (id, on, after) => {
         const u = findUser(id) || {};
         if (!(await showConfirmDialog(on ? `把「${u.account || ''}」設為【進出庫小幫手】？\n\n可以：掃 QR 進貨、出貨、掃成員 QR\n不行：編輯貨架、箱子、物品、庫存數字` : `取消「${u.account || ''}」的進出庫小幫手？`, on ? '設為小幫手' : '取消小幫手'))) return;
-        patchUser(id, { warehouseHelper: !!on }, on ? '🧰 已設為進出庫小幫手' : '已取消小幫手');
+        await patchUser(id, { warehouseHelper: !!on }, on ? '🧰 已設為進出庫小幫手' : '已取消小幫手');
+        const u2 = findUser(id); if (u2) u2.helper = !!on;
+        if (after) after();
     };
     window.setUserRole = async (id, role) => {
         if (id === currentUser.userId) return showToast('不能變更自己的權限', 'error', 1000);
