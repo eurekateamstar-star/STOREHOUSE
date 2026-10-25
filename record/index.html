@@ -264,6 +264,13 @@
       #tab-basic .row-multi.stp-row { align-items: center; }
       #tab-basic .row-multi .col-name { padding-left: 4px; }
       #tab-basic .label .req { color: #e11d48; font-style: normal; margin-left: 2px; }
+      /* 後面三頁：段落標題加步驟編號 */
+      .stp-head { display: flex; align-items: center; gap: 10px; color: #3f3f46; font-size: 15px; opacity: 1; text-transform: none; letter-spacing: 0; margin: 24px 20px 10px 20px; }
+      .stp-head small { font-size: 11.5px; font-weight: 600; color: #a8a29e; }
+      .stp-head .req { color: #e11d48; font-style: normal; margin-left: 2px; }
+      .stp-head .stp { width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 2px solid #F08339; color: #F08339; font-weight: 800; font-size: 12.5px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-sizing: border-box; transition: .2s; }
+      .stp-head.done .stp { background: #22c55e; border-color: #22c55e; color: #fff; font-size: 0; }
+      .stp-head.done .stp::before { content: "✓"; font-size: 13px; }
     </style>
 
     <style id="addonStyles">
@@ -642,7 +649,7 @@
 
         <!-- ================= TAB 2: 現場狀況 ================= -->
         <div id="tab-scene" class="tab-content">
-          <div class="section-header">問題類型 (可複選)</div>
+          <div class="section-header stp-head" data-step="problems"><span class="stp">7</span><span>問題類型<i class="req">*</i></span><small>可複選</small></div>
           <div class="scene-grid-container">
             <div class="scene-item"><label><input type="checkbox" name="problems" value="起水泡問題"><div class="scene-chip">起水泡問題</div></label></div>
             <div class="scene-item"><label><input type="checkbox" name="problems" value="抽筋/痠痛"><div class="scene-chip">抽筋/痠痛</div></label></div>
@@ -664,7 +671,7 @@
           </div>
           <input type="hidden" id="problemOtherValue" value="">
           
-          <div class="section-header">主訴描述</div>
+          <div class="section-header stp-head" data-step="mainComplaint"><span class="stp">8</span><span>主訴描述<i class="req">*</i></span></div>
           <div class="card">
             <textarea name="mainComplaint" class="main-complaint" placeholder="描述患者不舒服的狀況、部位或傷口大小..."></textarea>
           </div>
@@ -673,7 +680,7 @@
         <!-- ================= TAB 3: 急救處置 ================= -->
         <div id="tab-treatment" class="tab-content">
           
-          <div class="section-header">受傷部位 (點擊圖示標記)</div>
+          <div class="section-header stp-head" data-step="body"><span class="stp">9</span><span>受傷部位</span><small>點圖示標記，可不填</small></div>
           <div class="body-map-scroll" id="bodyMapScroll">
           <div class="body-map-container" id="bodyMapContainer">
             <img src="https://i.ibb.co/6JFnSZp7/image.jpg" class="body-map-img" alt="body chart">
@@ -684,7 +691,7 @@
           </div>
           <div id="selectedBodyParts">尚無標記</div>
 
-          <div class="section-header">處置項目</div>
+          <div class="section-header stp-head" data-step="treatment"><span class="stp">10</span><span>處置項目<i class="req">*</i></span><small>可複選</small></div>
           <div class="scene-grid-container">
             <div class="scene-item"><label><input type="checkbox" name="treatment" value="清洗傷口"><div class="scene-chip">清洗/消毒傷口</div></label></div>
             <div class="scene-item"><label><input type="checkbox" name="treatment" value="水泡處理"><div class="scene-chip">水泡引流/包紮</div></label></div>
@@ -710,7 +717,7 @@
         <!-- ================= TAB 4: 後續交班 ================= -->
         <div id="tab-vitals" class="tab-content">
           
-          <div class="section-header">處置後生命徵象</div>
+          <div class="section-header stp-head" data-step="postVitals"><span class="stp">11</span><span>處置後生命徵象<i class="req">*</i></span></div>
           <div class="scene-grid-container" style="grid-template-columns: 1fr;"> 
             <div class="scene-item">
               <label>
@@ -727,12 +734,12 @@
           </div>
           <input type="hidden" id="postVitalsOtherText" value="">
 
-          <div class="section-header">處理團員 / 接手單位資訊</div>
+          <div class="section-header stp-head" data-step="handoverInfo"><span class="stp">12</span><span>處理團員 / 接手單位<i class="req">*</i></span></div>
           <div class="card">
             <textarea name="handoverInfo" class="main-complaint" style="height:90px;" placeholder="例：由團員楊小馬處理完成 / 或 XX醫院91接手"></textarea>
           </div>
 
-          <div class="section-header">現場照片上傳 (選填，最多 2 張)</div>
+          <div class="section-header stp-head" data-step="photos"><span class="stp">13</span><span>現場照片</span><small>選填，最多 2 張</small></div>
           <div class="card" style="padding: 20px; text-align:center; margin-bottom: 30px;">
             <label for="imageUpload" class="upload-btn">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
@@ -3725,7 +3732,21 @@
           const ok = k === 'location' ? !!(val('gps_lat') && val('gps_lng')) : !!val(k) && val(k) !== '載入中...';
           r.classList.toggle('done', ok);
         });
+        const F = f(); if (!F) return;
+        const any = n => !!F.querySelector(`input[name="${n}"]:checked`);
+        const txt = id => { const e = document.getElementById(id); return e ? e.textContent.trim() : ''; };
+        const okMap = {
+          problems: any('problems') && !(document.getElementById('problemOtherCheckbox') || {}).checked || (any('problems') && !!val2('problemOtherValue')),
+          mainComplaint: !!val('mainComplaint'),
+          body: !!txt('selectedBodyParts') && txt('selectedBodyParts') !== '尚無標記',
+          treatment: any('treatment') && !(document.getElementById('treatmentOtherCheckbox') || {}).checked || (any('treatment') && !!val2('treatmentOtherValue')),
+          postVitals: (F.querySelector('input[name="postVitals"]:checked') || {}).value === '其他' ? !!val2('postVitalsOtherText') : any('postVitals'),
+          handoverInfo: !!val('handoverInfo'),
+          photos: !!(document.getElementById('imagePreviewContainer') || { children: [] }).children.length,
+        };
+        document.querySelectorAll('.stp-head[data-step]').forEach(h => h.classList.toggle('done', !!okMap[h.dataset.step]));
       }
+      function val2(id) { const e = document.getElementById(id); return e ? String(e.value || '').trim() : ''; }
       document.addEventListener('input', upd, true); document.addEventListener('change', upd, true);
       setInterval(upd, 700); document.addEventListener('DOMContentLoaded', upd);
     })();
