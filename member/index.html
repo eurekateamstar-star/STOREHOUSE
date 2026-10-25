@@ -494,7 +494,6 @@
         <button class="sbtn" id="btn-richmenu" style="background:#06c755;color:#fff;">🧩 發佈 LINE 圖文選單</button>
         <button class="sbtn" id="btn-journey" style="background:#C4622E;color:#fff;">📸 醫護足跡照片</button>
         <button class="sbtn" id="btn-sharecard" style="background:#1e3a5f;color:#fff;">📤 分享圖文卡片</button>
-        <button class="sbtn" id="btn-viewers" style="background:#0284c7;color:#fff;">👀 主控台唯讀（教官團）</button>
       </div>
       <div class="card tbl-wrap"><table class="tbl" id="us-table"></table></div>
       <div class="cards-list" id="us-cards"></div>
@@ -3305,10 +3304,7 @@
         ${ADMIN_APPS.map(([k, t]) => `<label><input type="checkbox" data-adm="${k}" ${adminOf(u, k) ? 'checked' : ''}> ${t}</label>`).join('')}
         <button class="sbtn violet" id="adm-save">儲存權限</button>
       </div>
-      <div style="font-size:12px;color:var(--sub);margin:4px 2px 0;">會員中心管理員可以審核、編輯名冊、管理所有帳號；倉庫／救護紀錄表管理員只管各自的系統。</div>
-      <div class="grp">👀 救護主控台（唯讀）</div>
-      <label class="adm-all" style="display:flex;gap:8px;align-items:center;padding:10px 12px;background:#f0f9ff;border-radius:12px;font-weight:700;color:#0369a1">
-        <input type="checkbox" id="rec-viewer" ${u.recordViewer ? 'checked' : ''}> 可以看救護主控台（清單、統計、地圖），不能修改</label>`}
+      <div style="font-size:12px;color:var(--sub);margin:4px 2px 0;">會員中心管理員可以審核、編輯名冊、管理所有帳號；倉庫／救護紀錄表管理員只管各自的系統。</div>`}
 
       <div class="grp">🏷️ 分類</div>
       <div class="cat-row">${[...CATS, ''].map(c => `<button class="chip-s ${cat === c ? 'on' : ''}" data-cat="${esc(c)}">${c || '未分類'}</button>`).join('')}</div>
@@ -3340,7 +3336,6 @@
       const names = ADMIN_APPS.filter(([k]) => v[k]).map(([, t]) => t);
       await patch(data, names.length ? `⭐ 已設為管理員：${all ? '全部系統' : names.join('、')}` : '已取消管理員');
     };
-    if ($('rec-viewer')) $('rec-viewer').onchange = e => patch({ recordViewer: e.target.checked }, e.target.checked ? '👀 已開放救護主控台（唯讀）' : '已取消主控台唯讀');
     // 分類
     document.querySelectorAll('[data-cat]').forEach(b => b.onclick = () => patch({ category: b.dataset.cat, warehouseCategory: b.dataset.cat }, b.dataset.cat ? `🏷️ 已分類：${b.dataset.cat}` : '已改為未分類'));
     // 帳號處理
@@ -3536,35 +3531,6 @@
       try { await scApi({ action: 'del', id: b.dataset.scd }); toast('已刪除'); scLoad(); } catch (e) { toast('❌ ' + e.message); } });
   }
   $('btn-sharecard').onclick = () => openShareCards();
-  // ===== 救護主控台唯讀名單（教官團等）：可以看紀錄，不能修改 =====
-  $('btn-viewers').onclick = () => openViewers();
-  function openViewers() {
-    const pos = u => { const r = u.rosterId && rosterById(u.rosterId); return r ? rv(r, 'position') : ''; };
-    const live = usersCache.filter(u => u.status === 'approved' && !isDevU(u) && !adminOf(u, 'adminRecord'));
-    const coaches = live.filter(u => pos(u) === '教官團');
-    const draw = () => {
-      const list = live.slice().sort((a, b) => (!!b.recordViewer - !!a.recordViewer) || ((pos(b) === '教官團') - (pos(a) === '教官團')) || String(a.realName || '').localeCompare(String(b.realName || ''), 'zh-Hant'));
-      const on = list.filter(u => u.recordViewer).length;
-      $('sheet-body').innerHTML = `<h3>👀 救護主控台（唯讀）</h3>
-        <div style="font-size:12.5px;color:var(--sub);line-height:1.6;margin:4px 0 10px">勾選的人在救護紀錄表右上角會有「📊 主控台」，可以看清單、統計、地圖，<b>不能編輯或刪除</b>。管理員本來就看得到，不列在這裡。</div>
-        ${coaches.length ? `<button class="sbtn" id="vw-coach" style="background:#0284c7;color:#fff;width:100%;margin-bottom:10px">⭐ 名冊上的教官團全部開放（${coaches.length} 人）</button>` : ''}
-        <div style="font-size:12px;font-weight:800;color:#0369a1;margin:0 2px 6px">目前開放 ${on} 人</div>
-        ${list.map(u => `<label style="display:flex;align-items:center;gap:10px;padding:9px 6px;border-bottom:1px solid #f1ece9">
-          <input type="checkbox" data-vw="${u.id}" ${u.recordViewer ? 'checked' : ''} style="width:20px;height:20px">
-          <span style="flex:1"><b>${esc(u.realName || '(未填)')}</b> <small style="color:var(--sub)">${esc(pos(u) || '')}${u.category ? '・' + esc(u.category) : ''}</small></span></label>`).join('')}`;
-      document.querySelectorAll('[data-vw]').forEach(c => c.onchange = async () => {
-        try { await updateDoc(doc(db, 'users', c.dataset.vw), { recordViewer: c.checked }); const u = userById(c.dataset.vw); if (u) u.recordViewer = c.checked; toast(c.checked ? '👀 已開放' : '已取消'); draw(); }
-        catch (e) { toast('❌ 操作失敗（規則尚未發佈？）'); c.checked = !c.checked; }
-      });
-      if ($('vw-coach')) $('vw-coach').onclick = async () => {
-        let n = 0;
-        for (const u of coaches) if (!u.recordViewer) { try { await updateDoc(doc(db, 'users', u.id), { recordViewer: true }); u.recordViewer = true; n++; } catch (e) {} }
-        toast(n ? `⭐ 已開放 ${n} 位教官團` : '教官團都已經開放了'); draw();
-      };
-    };
-    draw();
-    $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open'); $('sheet').scrollTop = 0;
-  }
 
 
   // 依身分證＋姓名，把已存在的會員自動配對到名冊

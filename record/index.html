@@ -962,6 +962,7 @@
         <div class="console-tab" id="cTab-stats" onclick="window.switchConsoleTab('stats')">📈 統計</div>
         <div class="console-tab" id="cTab-map" onclick="window.switchConsoleTab('map')">🗺 地圖</div>
         <div class="console-tab" id="cTab-users" style="display:none" onclick="window.switchConsoleTab('users')">👥 人員</div>
+        <div class="console-tab" id="cTab-members" style="display:none" onclick="window.switchConsoleTab('members')">👀 成員控制</div>
       </div>
 
       <!-- 分頁 1: 案件清單 -->
@@ -1015,6 +1016,14 @@
         <div id="bigMap"></div>
         <div id="mapLegend" class="map-legend"></div>
         <div id="mapRouteLegend" class="map-legend"></div>
+      </div>
+
+      <!-- 成員控制：誰可以看主控台（唯讀，教官團等） -->
+      <div class="console-panel" id="panel-members">
+        <div style="font-size:12px; padding:8px 10px; background:#e0f2fe; color:#0369a1; font-weight:bold; border-radius:8px; margin-bottom:8px; line-height:1.6;">👀 勾選的人可以打開「📊 主控台」看清單、統計、地圖，<u>不能編輯或刪除</u>。管理員本來就看得到，不列在這裡。</div>
+        <input type="text" id="vwSearch" placeholder="🔍 搜尋姓名" oninput="window.renderViewerPanel()" style="width:100%; box-sizing:border-box; padding:9px 12px; border:1px solid #bae6fd; border-radius:8px; font-size:14px; text-align:left; margin-bottom:8px;">
+        <div id="vwCoachBox"></div>
+        <div id="viewerList" style="flex:1; overflow-y:auto;">載入中...</div>
       </div>
 
       <!-- 分頁 4: 人員身分與權限審核 -->
@@ -2204,6 +2213,7 @@
       document.getElementById('panel-' + tabName).classList.add('active');
       if(tabName === 'stats') renderStatsCharts();
       if(tabName === 'map') renderBigMap();
+      if(tabName === 'members') window.renderViewerPanel();
       if(tabName === 'users') loadAdminUsers(true); 
     };
 
@@ -2535,9 +2545,50 @@
       refreshStatus(done);
     }
 
+    // ===== 成員控制：主控台唯讀（教官團等）=====
+    let rosterPosMap = null;   // rosterId → 職位（讀得到名冊才有，用來一鍵開放教官團）
+    async function loadRosterPos() {
+      if (rosterPosMap) return;
+      rosterPosMap = {};
+      try { const sn = await getDocs(collection(db, 'member_roster')); sn.forEach(d => { rosterPosMap[d.id] = d.data().position || '團員'; }); } catch (e) {}
+    }
+    window.renderViewerPanel = async function () {
+      if (!recAdmin(currentUserData)) return;
+      const box = document.getElementById('viewerList');
+      const users = await startAdminUsersLive();
+      await loadRosterPos();
+      const q = (document.getElementById('vwSearch').value || '').trim();
+      const pos = u => (u.rosterId && rosterPosMap[u.rosterId]) || '';
+      const live = (users || []).filter(u => u.status === 'approved' && !recAdmin(u) && !isDevU(u));
+      const coaches = live.filter(u => pos(u) === '教官團');
+      const list = live.filter(u => !q || String(u.realName || '').includes(q) || String(u.lineDisplayName || '').includes(q))
+        .sort((a, b) => (!!b.recordViewer - !!a.recordViewer) || ((pos(b) === '教官團') - (pos(a) === '教官團')) || String(a.realName || '').localeCompare(String(b.realName || ''), 'zh-Hant'));
+      const on = live.filter(u => u.recordViewer).length;
+      const cb = document.getElementById('vwCoachBox');
+      cb.innerHTML = (coaches.length ? `<button type="button" id="vwCoach" style="width:100%; padding:10px; border:none; border-radius:8px; background:#0284c7; color:#fff; font-weight:bold; font-size:14px; margin-bottom:8px;">⭐ 名冊上的教官團全部開放（${coaches.length} 人）</button>` : '')
+        + `<div style="font-size:12px; font-weight:bold; color:#0369a1; margin:2px 2px 6px;">目前開放 ${on} 人</div>`;
+      box.innerHTML = list.length ? list.map(u => `<label style="display:flex; align-items:center; gap:10px; padding:10px 6px; border-bottom:1px solid #e2e8f0; cursor:pointer;">
+          <input type="checkbox" data-vw="${u.id}" ${u.recordViewer ? 'checked' : ''} style="width:20px; height:20px; flex-shrink:0;">
+          ${u.pictureUrl ? `<img src="${esc(u.pictureUrl)}" style="width:34px; height:34px; border-radius:50%; object-fit:cover; flex-shrink:0;" onerror="this.style.visibility='hidden'">` : '<span style="width:34px;height:34px;border-radius:50%;background:#e2e8f0;flex-shrink:0;"></span>'}
+          <span style="flex:1; min-width:0; text-align:left;"><b style="font-size:14px; color:#0f172a;">${esc(u.realName || '(未填)')}</b><br><small style="color:#64748b;">${esc(pos(u))}${pos(u) && auCat(u) ? '・' : ''}${esc(auCat(u) || '')}</small></span>
+          ${u.recordViewer ? '<span style="font-size:11px; color:#0284c7; font-weight:bold;">👀 可看</span>' : ''}</label>`).join('')
+        : '<div style="color:#64748b; padding:20px; text-align:center;">沒有符合的成員</div>';
+      box.querySelectorAll('[data-vw]').forEach(c => c.onchange = async () => {
+        try { await updateDoc(doc(db, 'users', c.dataset.vw), { recordViewer: c.checked }); const u = (adminUsersCache || []).find(x => x.id === c.dataset.vw); if (u) u.recordViewer = c.checked; window.renderViewerPanel(); }
+        catch (e) { c.checked = !c.checked; alert('操作失敗：請確認 Firestore 規則已發佈'); }
+      });
+      const btn = document.getElementById('vwCoach');
+      if (btn) btn.onclick = async () => {
+        btn.disabled = true; btn.textContent = '設定中…';
+        for (const u of coaches) if (!u.recordViewer) { try { await updateDoc(doc(db, 'users', u.id), { recordViewer: true }); u.recordViewer = true; } catch (e) {} }
+        window.renderViewerPanel();
+      };
+    };
+
     window.openAdminConsole = async function() {
       if (!canConsole(currentUserData)) return;
       { const ro = document.getElementById('consoleRO'); if (ro) ro.style.display = recAdmin(currentUserData) ? 'none' : 'inline-block'; }
+      { const mt = document.getElementById('cTab-members'); if (mt) mt.style.display = recAdmin(currentUserData) ? '' : 'none'; }
       const consoleOverlay = document.getElementById('adminConsoleOverlay');
       consoleOverlay.style.display = 'flex';
       document.getElementById('consoleRecordsList').innerHTML = "正在載入所有救護紀錄...";

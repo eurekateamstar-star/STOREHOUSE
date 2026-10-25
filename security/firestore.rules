@@ -76,7 +76,9 @@ service cloud.firestore {
                           || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['category', 'warehouseCategory'])))
         || (signedIn() && me() == userId && selfUpdateOk())
         // 倉庫管理員可以設定／取消進出庫小幫手
-        || (whAdmin() && !devLocked(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['warehouseHelper']));
+        || (whAdmin() && !devLocked(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['warehouseHelper']))
+        // 救護紀錄表管理員可以設定／取消主控台唯讀（教官團等）
+        || (recAdmin() && !devLocked(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['recordViewer']));
       allow delete: if isAdmin() && !devLocked(userId);
     }
 
