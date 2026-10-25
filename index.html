@@ -2424,10 +2424,12 @@
         await patchUser(id, { category: name, warehouseCategory: name }, name ? `🏷️ 已分類：${name}` : '已改為未分類');
     }
 
+    let coreDataReady = null;   // 頁面／箱子／全景都讀完才算好（第一次登入網路慢，先點進倉庫也要等）
     async function preloadAllData() {
         document.getElementById('preload-status').innerText = "正在背景預載資料庫…";
         try {
-            await Promise.all([loadPages(), startBoxesLiveSync(), loadBorrowerGroupsFromCloud(), loadPanorama()]);
+            coreDataReady = Promise.all([loadPages(), startBoxesLiveSync(), loadBorrowerGroupsFromCloud(), loadPanorama()]);
+            await coreDataReady;
             document.getElementById('preload-status').innerText = "正在預先下載底圖…";
             const pageImgUrls = pages.map(p => p.imageUrl).concat([panoImg]);
             await preloadImagesAwait(pageImgUrls);
@@ -2509,7 +2511,8 @@
     window.openMapQuery = async function() {
         document.getElementById('main-menu-view').style.display = 'none';
         document.getElementById('warehouse-system-view').style.display = 'block';
-        if (!boxesCache) {
+        if (coreDataReady) { try { await coreDataReady; } catch (e) {} }
+        if (!boxesCache || !pages.length) {
             await initApp();
         } else {
             await switchToPage(currentPageIndex, true);
@@ -3185,7 +3188,8 @@
         document.getElementById('lookup-view').style.display = 'none';
         document.getElementById('main-menu-view').style.display = 'none';
         document.getElementById('warehouse-system-view').style.display = 'block';
-        if (!boxesCache) await initApp();
+        if (coreDataReady) { try { await coreDataReady; } catch (e) {} }
+        if (!boxesCache || !pages.length) await initApp();
         const box = boxesCache.find(b => b.id === boxId);
         if (!box) { showToast('❌ 找不到這個箱子（可能已被刪除或搬移）', 'error', 900); return; }
         const pageIndex = pages.findIndex(p => p.id === box.pageId);
