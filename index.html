@@ -1735,6 +1735,7 @@
     // 進出庫小幫手：可以掃 QR 進貨／出貨，但不能編輯貨架、箱子、物品
     const isHelper = () => !!(currentUser && currentUser.helper && currentUser.status === 'approved' && !currentUser.removed);
     const canScan = () => isAdmin() || isHelper();
+    let DEV_UID = '';   // 開發者帳號 uid（meta/developer）
     const opInfo = () => ({ operator: currentUser ? currentUser.account : '', operatorId: currentUser ? currentUser.userId : '', operatorRole: (!isAdmin() && isHelper()) ? 'helper' : 'admin' });
     const inLine = () => { try { return !!(window.liff && liff.isInClient && liff.isInClient()); } catch (e) { return false; } };
     const uStatus = u => u.status || 'pending';
@@ -1969,7 +1970,7 @@
 
     function updateMenuUser() {
         const mu = _el('menu-user'), lb = _el('btn-logout');
-        if (mu) mu.innerText = currentUser ? `👤 ${currentUser.account}${isAdmin() ? ' · 管理員' : isHelper() ? ' · 進出庫小幫手' : ''}` : '';
+        if (mu) mu.innerText = currentUser ? `👤 ${currentUser.account}${isAdmin() && !(DEV_UID && currentUser.userId === DEV_UID) ? ' · 管理員' : isHelper() ? ' · 進出庫小幫手' : ''}` : '';
         if (lb) { lb.innerText = '登出'; lb.style.display = inLine() ? 'none' : ''; }
         const eb = _el('expiry-bar'); if (eb && !isAdmin()) eb.remove();
         if (isAdmin()) setTimeout(checkExpiringConsumables, 300);
@@ -2041,11 +2042,10 @@
     // ===== 使用者管理（僅管理員） =====
     let usersCache = [], usersUnsub = null, usersFirstLoad = true;
     // 開發者帳號（會員中心 meta/developer）：不顯示管理員身分、不能被移出／踢出／改權限
-    let DEV_UID = '';
     const isDevU = u => !!u && !!DEV_UID && u.id === DEV_UID;
     function startUsersWatch() {
         if (usersUnsub) return;
-        if (!DEV_UID) getDoc(doc(db, "meta", "developer")).then(s => { DEV_UID = s.exists() ? (s.data().uid || '') : ''; if (_el('users-view').style.display === 'block') renderUsersView(); }).catch(() => {});
+        if (!DEV_UID) getDoc(doc(db, "meta", "developer")).then(s => { DEV_UID = s.exists() ? (s.data().uid || '') : ''; updateMenuUser(); if (_el('users-view').style.display === 'block') renderUsersView(); }).catch(() => {});
         usersFirstLoad = true;
         usersUnsub = onSnapshot(collection(db, "users"), (snap) => {
             const prevPending = new Set(usersCache.filter(u => uStatus(u) === 'pending').map(u => u.id));

@@ -718,7 +718,7 @@
     $('btn-admin').classList.toggle('hidden', !isAdmin());
     if (adminOn && isAdmin()) { show('v-admin'); renderAdmin(); return; }
     adminOn = false;
-    $('btn-admin').firstChild.textContent = '🛠 管理員';
+    $('btn-admin').firstChild.textContent = meDev() ? '⚙️' : '🛠 管理員';
     $('page-title').textContent = '會員中心';
 
     if (!user) {
@@ -753,7 +753,7 @@
     $('m-badges').innerHTML = (cert ? `<span class="badge solid">${esc(cert)}</span>` : '')
       + (cat && cat !== cert ? `<span class="badge">🏷️ ${esc(cat)}</span>` : '')
       + (user.rosterId ? '<span class="badge">✔ 名冊已驗證</span>' : '')
-      + (adminList(user).length ? '<span class="badge">⭐ 管理員</span>' : '');
+      + (adminList(user).length && !meDev() ? '<span class="badge">⭐ 管理員</span>' : '');
     const created = tsMs(user.createdAt);
     $('m-pos').textContent = '白沙屯醫護團 ' + (myRoster ? (rv(myRoster, 'position') || '團員') : '會員');
     $('m-since').textContent = joinText(myRoster && myRoster.joinYear) || (created ? '加入於 ' + new Date(created).toLocaleDateString('zh-TW') : '');
@@ -763,7 +763,7 @@
     $('f-bday').textContent = bdayText(user.birthday || (myRoster && myRoster.birthday));
     $('f-cert').textContent = cert || '未填寫';
     $('f-cat').textContent = cat || '未分類';
-    { const al = adminList(user); $('f-role').innerHTML = al.length === 3 ? '<b>管理員（全部系統）</b>' : al.length ? `<b>管理員：${esc(al.join('、'))}</b>` : '一般會員'; }
+    { const al = meDev() ? [] : adminList(user); $('f-role').innerHTML = al.length === 3 ? '<b>管理員（全部系統）</b>' : al.length ? `<b>管理員：${esc(al.join('、'))}</b>` : '一般會員'; }
     $('f-status').innerHTML = '<span class="ok">✅ 已核准</span>' + (user.verifiedBy === 'roster' ? '（名冊自動驗證）' : '');
     $('f-line').textContent = user.lineDisplayName || profile.displayName || '—';
     $('confirm-card').classList.toggle('hidden', !!user.profileConfirmedAt);
@@ -846,7 +846,7 @@
 
   $('btn-admin').onclick = () => {
     adminOn = !adminOn;
-    $('btn-admin').firstChild.textContent = adminOn ? '← 我的資料' : '🛠 管理員';
+    $('btn-admin').firstChild.textContent = adminOn ? '← 我的資料' : (meDev() ? '⚙️' : '🛠 管理員');
     $('page-title').textContent = adminOn ? '會員管理' : '會員中心';
     if (adminOn) startAdminWatch();
     render();
@@ -857,7 +857,8 @@
   $('us-q').oninput = e => { usQuery = e.target.value.trim().toLowerCase(); renderUsers(); };
 
   // 開發者帳號：不顯示管理員身分、其他管理員不能刪除／停權／改權限（meta/developer 只能設定一次）
-  let DEV_UID = '';
+  let DEV_UID = ''; try { DEV_UID = localStorage.getItem('bstDevUid') || ''; } catch (e) {}
+  const meDev = () => !!DEV_UID && !!profile && profile.userId === DEV_UID;   // 我就是開發者：前台也不顯示管理員
   const isDevU = u => !!u && !!DEV_UID && u.id === DEV_UID;
   const devHidden = u => isDevU(u) && !(profile && u.id === profile.userId);   // 別人看開發者
   function loadDev() {
@@ -867,7 +868,9 @@
         try { await setDoc(doc(db, 'meta', 'developer'), { uid: profile.userId, at: serverTimestamp() }); DEV_UID = profile.userId; toast('🛠️ 已設定為開發者帳號'); }
         catch (e) { toast('❌ 開發者設定失敗（規則尚未發佈？）'); }
       } else if (pendingDevClaim && DEV_UID) toast(DEV_UID === (profile && profile.userId) ? '🛠️ 你已經是開發者帳號' : '開發者帳號已經設定過了');
-      if (adminOn) renderAdmin();
+      try { localStorage.setItem('bstDevUid', DEV_UID); } catch (e) {}
+      if (adminOn) renderAdmin(); else { render(); }
+      if (!adminOn) $('btn-admin').firstChild.textContent = meDev() ? '⚙️' : '🛠 管理員';
     }).catch(() => {});
   }
   function startAdminWatch() {
@@ -3693,7 +3696,7 @@
     } catch (e) { return fail('無法啟動 LINE 登入，請從 LINE 開啟本頁，或稍後再試。'); }
     if (pendingCard) { location.replace(GUARDIAN_URL); return; }
     if (!liff.isLoggedIn()) {
-      $('btn-line-login').onclick = () => liff.login({ redirectUri: pendingShare ? location.href : location.origin + location.pathname });
+      $('btn-line-login').onclick = () => liff.login({ redirectUri: (pendingShare || pendingDevClaim) ? location.href : location.origin + location.pathname });
       return show('v-login');
     }
     if (pendingShare) return openSharePage(pendingShare);
