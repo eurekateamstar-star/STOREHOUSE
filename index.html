@@ -1006,7 +1006,7 @@
         <div id="fab-modal" class="modal" style="z-index: 2200; padding-bottom: 40px;">
             <div style="font-size: 16px; font-weight: 600; margin-bottom: 16px; text-align: center; color: #0a84ff;">⚙️ 編輯模式快捷選單</div>
             <div style="display: flex; flex-direction: column; gap: 10px;">
-                <button class="apple-btn success" style="padding: 14px; font-size: 15px;" onclick="promptAddNewBox()">📦 新增箱子（可一次輸入多個）</button>
+                <button class="apple-btn success" id="fab-add-box" style="padding: 14px; font-size: 15px;" onclick="promptAddNewBox()">📦 新增箱子（可一次輸入多個）</button>
                 <button class="apple-btn secondary" style="padding: 14px; font-size: 15px;" onclick="document.getElementById('bg-upload').click(); closeFabMenu();">📁 更換底圖 (自動壓縮上傳)</button>
                 <button class="apple-btn secondary" style="padding: 14px; font-size: 15px; color: #ff3b30;" onclick="closeFabMenu()">取消</button>
             </div>
@@ -1735,7 +1735,16 @@
     // 進出庫小幫手：可以掃 QR 進貨／出貨，但不能編輯貨架、箱子、物品
     const isHelper = () => !!(currentUser && currentUser.helper && currentUser.status === 'approved' && !currentUser.removed);
     const canScan = () => isAdmin() || isHelper();
-    let DEV_UID = '';   // 開發者帳號 uid（meta/developer）
+    let DEV_UID = ''; try { DEV_UID = localStorage.getItem('whDevUid') || ''; } catch (e) {}   // 開發者帳號 uid（meta/developer）
+    let devLoaded = false;
+    // 只有開發者可以：新增／移動／刪除箱子、改箱子標籤與分層、排（頁）的新增／刪除／改名／排序／框線、物品新增／刪除／搬移／改名／類型
+    // 還沒設定開發者時，維持原本：管理員都可以
+    const isDev = () => isAdmin() && (devLoaded && !DEV_UID ? true : (!!DEV_UID && !!currentUser && currentUser.userId === DEV_UID));
+    const devOnly = () => { if (isDev()) return false; showToast('🔒 只有開發者可以調整箱子、排與物品設定\n管理員可以改數量、下載 QR、換照片', 'error', 1800); return true; };
+    function loadDevUid() {
+        getDoc(doc(db, "meta", "developer")).then(s => { DEV_UID = s.exists() ? (s.data().uid || '') : ''; devLoaded = true; try { localStorage.setItem('whDevUid', DEV_UID); } catch (e) {}
+            updateMenuUser(); if (isContentEditActive) { renderPageNav(); renderBoxes(); if (isPanoActive) renderPanorama(); } }).catch(() => {});
+    }
     const opInfo = () => ({ operator: currentUser ? currentUser.account : '', operatorId: currentUser ? currentUser.userId : '', operatorRole: (!isAdmin() && isHelper()) ? 'helper' : 'admin' });
     const inLine = () => { try { return !!(window.liff && liff.isInClient && liff.isInClient()); } catch (e) { return false; } };
     const uStatus = u => u.status || 'pending';
@@ -2024,6 +2033,7 @@
         _el('login-view').style.display = 'none';
         _el('main-menu-view').style.display = 'flex';
         applyRoleUI();
+        if (isAdmin()) loadDevUid();
         preloadAllData();
     }
 
@@ -2045,7 +2055,7 @@
     const isDevU = u => !!u && !!DEV_UID && u.id === DEV_UID;
     function startUsersWatch() {
         if (usersUnsub) return;
-        if (!DEV_UID) getDoc(doc(db, "meta", "developer")).then(s => { DEV_UID = s.exists() ? (s.data().uid || '') : ''; updateMenuUser(); if (_el('users-view').style.display === 'block') renderUsersView(); }).catch(() => {});
+        if (!devLoaded) getDoc(doc(db, "meta", "developer")).then(s => { DEV_UID = s.exists() ? (s.data().uid || '') : ''; devLoaded = true; updateMenuUser(); if (_el('users-view').style.display === 'block') renderUsersView(); }).catch(() => {});
         usersFirstLoad = true;
         usersUnsub = onSnapshot(collection(db, "users"), (snap) => {
             const prevPending = new Set(usersCache.filter(u => uStatus(u) === 'pending').map(u => u.id));
@@ -3766,7 +3776,8 @@
         const fab = document.getElementById('fab-container');
         if (fab) fab.style.display = (isContentEditActive && !isOverviewActive) ? 'block' : 'none';
         const moveBtn = document.getElementById('btn-move-mode');
-        if (moveBtn) moveBtn.style.display = isContentEditActive ? 'inline-flex' : 'none';
+        if (moveBtn) moveBtn.style.display = (isContentEditActive && isDev()) ? 'inline-flex' : 'none';
+        { const ab = document.getElementById('fab-add-box'); if (ab) ab.style.display = isDev() ? '' : 'none'; }
         
         closeModal();
         closeEditItemModal();
@@ -3789,6 +3800,7 @@
     };
 
     window.toggleLayoutMode = function() {
+        if (!isLayoutMode && devOnly()) return;
         if (isPanoActive) return showToast('請先進入某一排再調整佈局', 'error', 1200);
         isLayoutMode = !isLayoutMode;
         if (!isLayoutMode) { scale = 1; panX = 0; panY = 0; updateCanvasTransform(); }
@@ -3851,12 +3863,13 @@
         if (nextBtn) nextBtn.disabled = currentPageIndex >= pages.length - 1;
 
         const addPageBtn = document.getElementById('btn-add-page');
-        if (addPageBtn) addPageBtn.style.display = isContentEditActive ? 'flex' : 'none';
+        const devEdit = isContentEditActive && isDev();
+        if (addPageBtn) addPageBtn.style.display = devEdit ? 'flex' : 'none';
         const delPageBtn = document.getElementById('btn-del-page');
-        if (delPageBtn) delPageBtn.style.display = (isContentEditActive && pages.length > 1) ? 'flex' : 'none';
+        if (delPageBtn) delPageBtn.style.display = (devEdit && pages.length > 1) ? 'flex' : 'none';
         const renameBtn = document.getElementById('btn-rename-page');
-        if (renameBtn) renameBtn.style.display = isContentEditActive ? 'flex' : 'none';
-        const showMove = isContentEditActive && pages.length > 1;
+        if (renameBtn) renameBtn.style.display = devEdit ? 'flex' : 'none';
+        const showMove = devEdit && pages.length > 1;
         const mvL = document.getElementById('btn-move-page-left');
         const mvR = document.getElementById('btn-move-page-right');
         if (mvL) { mvL.style.display = showMove ? 'flex' : 'none'; mvL.disabled = currentPageIndex <= 0; }
@@ -3864,6 +3877,7 @@
     }
 
     window.addNewPage = async function() {
+        if (devOnly()) return;
         const name = await showPromptDialog('請輸入新頁面名稱', `第 ${pages.length + 1} 排`, '新增頁面');
         if (!name) return;
         const p = { name: name.trim(), imageUrl: '', scale: 1, panX: 0, panY: 0, order: Date.now() };
@@ -3873,6 +3887,7 @@
     };
 
     window.deleteCurrentPage = async function() {
+        if (devOnly()) return;
         if (pages.length <= 1) return showToast('必須保留至少一個頁面', 'error', 900);
         if (!(await showConfirmDialog('確定刪除此頁面？', '刪除頁面'))) return;
         await deleteDoc(doc(db, "warehouse_pages", pages[currentPageIndex].id));
@@ -3906,6 +3921,7 @@
         renderPanorama();
     };
     window.renamePage = async function (idx = currentPageIndex) {
+        if (devOnly()) return;
         const p = pages[idx]; if (!p) return;
         const n = await showPromptDialog('請輸入頁面名稱', p.name, '編輯頁面名稱');
         if (!n) return;
@@ -4018,7 +4034,7 @@
             const eb = document.createElement('button');
             eb.className = 'pano-edit-btn pano-poly-edit'; eb.innerText = '✎';
             eb.onclick = e => { e.stopPropagation(); renamePage(i); };
-            lab.appendChild(eb);
+            if (isDev()) lab.appendChild(eb);
             // 編輯：📷 框內照片（上傳／更換／移除）
             const cb = document.createElement('button');
             cb.className = 'pano-edit-btn pano-poly-edit pano-cam-btn'; cb.innerText = '📷'; cb.title = '框內照片';
@@ -4041,6 +4057,7 @@
             };
             lab.appendChild(cb);
             lab.style.pointerEvents = 'auto';
+            if (!isDev()) { draw(); return; }   // 管理員：只能換框內照片，不能拖框
 
             // 拖整塊
             const dragAll = e => {
@@ -4102,7 +4119,7 @@
             build(); draw();
         });
 
-        if (isContentEditActive && pages.length) {
+        if (isContentEditActive && pages.length && isDev()) {
             const tip = document.createElement('div');
             tip.className = 'pano-tip';
             tip.innerText = '拖橘點調角・拖＋加點・點兩下橘點刪除・拖框內整塊移動・拖文字移動名稱';
@@ -4161,6 +4178,7 @@
 
     // ===== 頁面（排）換順序 =====
     window.movePage = async function (dir) {
+        if (devOnly()) return;
         const i = currentPageIndex, j = i + dir;
         if (j < 0 || j >= pages.length) return;
         const a = pages[i], b = pages[j];
@@ -4282,6 +4300,7 @@
         return g;
     }
     async function saveBoxGeom(b) {
+        if (devOnly()) return;
         const g = geomOf(b);
         b.fx = r3(g.fx); b.fy = r3(g.fy); b.fw = r3(g.fw); b.fh = r3(g.fh);
         try { await updateDoc(doc(db, "warehouse_boxes", b.id), { fx: b.fx, fy: b.fy, fw: b.fw, fh: b.fh }); } catch (e) {}
@@ -4339,6 +4358,7 @@
     let tierPickerBoxId = null;
 
     window.openTierPicker = function (id) {
+        if (devOnly()) return;
         id = id || currentBoxId;
         const b = (boxesCache || []).find(x => x.id === id);
         if (!b) return;
@@ -4363,6 +4383,7 @@
         document.getElementById('tier-modal').style.display = 'none';
     };
     window.setBoxTier = async function (id, tier) {
+        if (devOnly()) return;
         const b = (boxesCache || []).find(x => x.id === id);
         if (!b) return;
         b.tier = tier;
@@ -4384,6 +4405,7 @@
     }
 
     window.editBoxLabels = async function (id) {
+        if (devOnly()) return;
         const b = (boxesCache || []).find(x => x.id === id);
         if (!b) return;
         const cur = labelsOf(b);
@@ -4412,6 +4434,7 @@
 
     // ===== 一次新增多個箱子（一行一個箱子；同箱多標籤用 / 或 、 分開） =====
     window.promptAddNewBox = async function () {
+        if (devOnly()) return;
         closeFabMenu();
         if (isPanoActive) return showToast('請先進入某一排再新增箱子', 'error', 1200);
         const text = await showTextareaDialog(
@@ -4889,7 +4912,7 @@
                 if (Date.now() < swipeBlockUntil) return;
                 if (wrap.dataset.moved) return;
                 if (isLayoutMode) return;
-                if (isContentEditActive) {
+                if (isContentEditActive && isDev()) {
                     if (selectedBoxId !== b.id) { selectedBoxId = b.id; renderBoxes(); }
                     return;
                 }
@@ -4947,9 +4970,10 @@
     function renderBoxModal(b) {
         document.getElementById('modal-box-title').innerText = `📦 ${b.name}${b.tier ? ' · ' + tierLabel(Number(b.tier)) : ''}`;
         const tierSec = document.getElementById('tier-section');
-        if (tierSec) tierSec.style.display = isContentEditActive ? 'block' : 'none';
-        document.getElementById('delete-box-section').style.display = isContentEditActive ? 'block' : 'none';
-        document.getElementById('add-item-trigger-section').style.display = isContentEditActive ? 'block' : 'none';
+        const devEdit = isContentEditActive && isDev();
+        if (tierSec) tierSec.style.display = devEdit ? 'block' : 'none';
+        document.getElementById('delete-box-section').style.display = devEdit ? 'block' : 'none';
+        document.getElementById('add-item-trigger-section').style.display = devEdit ? 'block' : 'none';
 
         const container = document.getElementById('item-list-container');
         container.innerHTML = '';
@@ -4971,7 +4995,7 @@
 
                 card.className = `grid-item-card ${isQtyZero ? 'empty-slot' : ''}`;
                 card.innerHTML = `
-                    ${isContentEditActive ? `<button class="grid-item-del" onclick="event.stopPropagation(); deleteItem(${idx})">✕</button>` : ''}
+ ${devEdit ? `<button class="grid-item-del" onclick="event.stopPropagation(); deleteItem(${idx})">✕</button>` : ''}
                     <img src="${it.imageUrl || 'https://via.placeholder.com/100?text=No+Img'}" alt="" style="${isQtyZero ? 'opacity: 0.3;' : ''}">
                     <div class="grid-item-name">${escapeHtml(it.name)}${isConsumable ? (it.mustReturn ? '' : ' <span style="font-size:9px; color:#0a84ff;">📦耗材</span>') : ''}${expiryBadge}</div>
                     ${it.stockCode ? `<div style="font-size:9px; color:#8e8e93; margin-bottom:2px;">${escapeHtml(it.stockCode)}</div>` : ''}
@@ -5008,6 +5032,7 @@
     };
 
     window.openAddItemModal = function() {
+        if (devOnly()) return;
         document.getElementById('new-item-name').value = '';
         document.getElementById('new-item-qty').value = '1';
         document.getElementById('new-item-unit').value = '';
@@ -5077,6 +5102,7 @@
     };
 
     window.deleteItem = async function(idx) {
+        if (devOnly()) return;
         if (!(await showConfirmDialog('確定刪除此物品？', '刪除物品'))) return;
         const b = boxesCache.find(x => x.id === currentBoxId);
         b.items.splice(idx, 1);
@@ -5085,6 +5111,7 @@
     };
 
     window.saveMustReturn = async function (on) {
+        if (devOnly()) return;
         const b = boxesCache.find(x => x.id === currentBoxId); if (!b || editingItemIndex === null) return;
         const it = b.items[editingItemIndex]; if (on) it.mustReturn = true; else delete it.mustReturn;
         try { await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items }); showToast(on ? '✅ 已設為「一定要歸還」' : '已取消「一定要歸還」', 'success', 900); renderBoxModal(b); }
@@ -5099,6 +5126,7 @@
     }
     // 耐久品 ⇄ 耗材 直接切換，不用刪掉重建（貨號、圖片、名稱、單位都保留）
     window.switchEditingItemType = async function(to) {
+        if (devOnly()) return;
         const b = boxesCache.find(x => x.id === currentBoxId);
         if (!b || editingItemIndex === null) return;
         const it = b.items[editingItemIndex];
@@ -5168,17 +5196,21 @@
             document.getElementById('edit-mode-hint').style.display = 'none';
             
             document.getElementById('edit-item-name-input').value = it.name || '';
+            { const dv = isDev(); const ni = document.getElementById('edit-item-name-input'), ui = document.getElementById('edit-item-unit');
+              ni.readOnly = !dv; ui.readOnly = !dv; ni.style.opacity = dv ? '' : '.6'; ui.style.opacity = dv ? '' : '.6';
+              const tb = document.getElementById('edit-type-durable'); if (tb && tb.parentElement) { tb.parentElement.style.display = dv ? 'flex' : 'none'; if (tb.parentElement.previousElementSibling) tb.parentElement.previousElementSibling.style.display = dv ? '' : 'none'; } }
             document.getElementById('edit-item-qty-input').value = it.qty || 0;
             document.getElementById('edit-item-unit').value = it.unit || '';
             paintEditTypeButtons(it);
             { const row = document.getElementById('must-return-row'); if (row) row.style.display = it.itemType === 'consumable' ? 'flex' : 'none';
-              const cb = document.getElementById('edit-must-return'); if (cb) cb.checked = !!it.mustReturn; }
+              const cb = document.getElementById('edit-must-return'); if (cb) cb.checked = !!it.mustReturn;
+              if (row && !isDev()) row.style.display = 'none'; }
             document.getElementById('edit-item-preview-img').src = it.imageUrl || 'https://via.placeholder.com/60?text=No+Img';
             document.getElementById('edit-item-img-input').value = '';
 
-            document.getElementById('btn-modal-del').style.display = 'block';
+            document.getElementById('btn-modal-del').style.display = isDev() ? 'block' : 'none';
             document.getElementById('btn-modal-save').style.display = 'block';
-            document.getElementById('btn-modal-move').style.display = 'block';
+            document.getElementById('btn-modal-move').style.display = isDev() ? 'block' : 'none';
         } else {
             document.getElementById('edit-modal-title').innerText = isConsumable ? '🏷️ 物品資訊（耗材／消耗品）' : '🏷️ 物品資訊與專屬 QR Code';
             document.getElementById('view-item-container').style.display = 'block';
@@ -5204,6 +5236,7 @@
     let moveTargetBoxId = null;
 
     window.openMoveItemModal = function() {
+        if (devOnly()) return;
         const b = boxesCache.find(x => x.id === currentBoxId);
         if (!b || editingItemIndex === null) return;
         const it = b.items[editingItemIndex];
@@ -5892,8 +5925,10 @@
         if (isNaN(newQty) || newQty < 0) return showToast('數量必須為 0 或正整數', 'error', 900);
 
         const it = b.items[editingItemIndex];
-        it.name = newName;
-        { const u = (document.getElementById('edit-item-unit').value || '').trim().slice(0, 3); if (u && u !== '個') it.unit = u; else delete it.unit; }
+        if (isDev()) {   // 名稱、單位只有開發者能改；管理員只改數量
+            it.name = newName;
+            const u = (document.getElementById('edit-item-unit').value || '').trim().slice(0, 3); if (u && u !== '個') it.unit = u; else delete it.unit;
+        }
 
         if (it.itemType === 'consumable') {
             it.qty = newQty;
@@ -5923,6 +5958,7 @@
     };
 
     window.deleteCurrentBox = async function() {
+        if (devOnly()) return;
         if (!(await showConfirmDialog('確定刪除此箱子？', '刪除箱子'))) return;
         await deleteDoc(doc(db, "warehouse_boxes", currentBoxId));
         boxesCache = boxesCache.filter(b => b.id !== currentBoxId);

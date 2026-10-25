@@ -22,6 +22,8 @@ service cloud.firestore {
     // 開發者帳號：meta/developer.uid（只能設定一次）；其他管理員不能刪除、停權、改權限
     function devPath() { return /databases/$(database)/documents/meta/developer; }
     function devLocked(id) { return me() != id && exists(devPath()) && get(devPath()).data.get('uid', '') == id; }
+    // 倉庫結構（箱子、排、框線）只有開發者能改；還沒設定開發者時維持倉庫管理員
+    function whDev() { return inWarehouse() && ((exists(devPath()) && get(devPath()).data.get('uid', '') == me()) || (!exists(devPath()) && whAdmin())); }
     function cleanName(s) { return s.replace(' ', '').replace('　', ''); }
 
     // 本人用「姓名＋身分證＋生日」對上管理員匯入的名冊，才可自動開通
@@ -168,10 +170,14 @@ service cloud.firestore {
     }
 
     // ===== 倉庫 =====
-    match /warehouse_boxes/{id} { allow read: if inWarehouse(); allow write: if whAdmin();
+    match /warehouse_boxes/{id} { allow read: if inWarehouse(); allow write: if whDev();
+      // 管理員：只能改箱內物品（數量、照片、標籤下載紀錄）和自動編號；新增／移動／刪除箱子只有開發者
+      allow update: if whAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['items', 'boxNumber']);
       // 小幫手：只能改箱內物品（進出庫數量），不能改箱名、位置、層別，也不能新增／刪除箱子
       allow update: if whHelper() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['items']); }
-    match /warehouse_pages/{id} { allow read: if inWarehouse(); allow write: if whAdmin(); }
+    match /warehouse_pages/{id} { allow read: if inWarehouse(); allow write: if whDev();
+      // 管理員：只能換這一排的底圖、框內照片
+      allow update: if whAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['imageUrl', 'panoImg']); }
     match /warehouse_logs/{id}  { allow read: if inWarehouse(); allow write: if whAdmin(); allow create: if whHelper(); }
     match /meta/developer       { allow get: if signedIn();
                                   allow create: if isSuper() && request.resource.data.uid == me() && request.resource.data.keys().hasOnly(['uid', 'at']); }
