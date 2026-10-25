@@ -952,7 +952,7 @@
   <div id="adminConsoleOverlay">
     <div class="console-card">
       <div class="console-header">
-        <span>📊 救護主控台</span>
+        <span>📊 救護主控台<small id="consoleRO" style="display:none;margin-left:8px;font-size:12px;background:rgba(255,255,255,.25);padding:2px 8px;border-radius:999px">👀 唯讀</small></span>
         <button onclick="document.getElementById('adminConsoleOverlay').style.display='none'" style="background:transparent; border:none; color:#fff; font-size:18px; font-weight:bold; cursor:pointer;">✕</button>
       </div>
       
@@ -1056,7 +1056,9 @@
     const analytics = getAnalytics(app);
     const IOS_WV = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const db = initializeFirestore(app, IOS_WV ? { experimentalAutoDetectLongPolling: true } : { localCache: persistentLocalCache(), experimentalAutoDetectLongPolling: true });   // iPhone 不用 IndexedDB 快取（LINE 背景回來會卡死）
-    const recAdmin = d => !!d && (d.role === 'admin' || d.adminRecord === true);   // 救護紀錄表管理員（權限在會員中心設定）
+    const recAdmin = d => !!d && (d.role === 'admin' || d.adminRecord === true);
+    const recViewer = d => !!d && !recAdmin(d) && d.recordViewer === true;   // 主控台唯讀（教官團等）：只能看不能改
+    const canConsole = d => recAdmin(d) || recViewer(d);   // 救護紀錄表管理員（權限在會員中心設定）
 
     // ===== Firebase 身分驗證：LINE → 驗證伺服器（Cloudflare）→ Firebase，資料庫規則靠這個認人 =====
     const AUTH_URL = 'https://bst-auth.eurekateamstar.workers.dev';   // Cloudflare Worker 網址
@@ -1290,17 +1292,21 @@
         }
 
         // 管理員權限即時切換
+        if (recViewer(d) !== recViewer(old) && !recAdmin(d)) {
+          document.querySelector('.admin-console-btn').style.display = recViewer(d) ? 'block' : 'none';
+          if (!recViewer(d)) { const ov = document.getElementById('adminConsoleOverlay'); if (ov) ov.style.display = 'none'; }
+        }
         if (recAdmin(d) !== recAdmin(old)) {
           const isAdminNow = recAdmin(d);
           updateAdminAdjustBtn();
-          document.querySelector('.admin-console-btn').style.display = isAdminNow ? 'block' : 'none';
+          document.querySelector('.admin-console-btn').style.display = canConsole(d) ? 'block' : 'none';
           if (isAdminNow) {
             startAdminUsersLive();
             window.showNotice('success', '權限已更新', '你已被設為管理員，可以使用主控台。');
           } else {
             stopAdminUsersLive();
             const ov = document.getElementById('adminConsoleOverlay');
-            if (ov) ov.style.display = 'none';
+            if (ov && !recViewer(d)) ov.style.display = 'none';
             document.querySelectorAll('.modal-overlay').forEach(m => { if (m.id === 'userEditModal' || m.id === 'userCatModal' || m.id === 'reasonModal') m.style.display = 'none'; });
             window.showNotice('error', '權限已更新', '你的管理員權限已被取消。');
           }
@@ -1332,7 +1338,7 @@
         if (!isOffline) startAdminUsersLive();   // ★ 人員名單即時同步
       } else {
         updateAdminAdjustBtn();
-        document.querySelector('.admin-console-btn').style.display = 'none';
+        document.querySelector('.admin-console-btn').style.display = recViewer(userData) ? 'block' : 'none';
       }
 
       try {
@@ -2530,6 +2536,8 @@
     }
 
     window.openAdminConsole = async function() {
+      if (!canConsole(currentUserData)) return;
+      { const ro = document.getElementById('consoleRO'); if (ro) ro.style.display = recAdmin(currentUserData) ? 'none' : 'inline-block'; }
       const consoleOverlay = document.getElementById('adminConsoleOverlay');
       consoleOverlay.style.display = 'flex';
       document.getElementById('consoleRecordsList').innerHTML = "正在載入所有救護紀錄...";
@@ -2854,7 +2862,7 @@
       
       const btnsArea = document.querySelector('#previewOverlay .preview-btns');
       btnsArea.innerHTML = `
-        <button class="p-btn" style="background:#e0f2fe; color:#0284c7;" onclick="window.editRecord('${d.id}')">✏️ 編輯</button>
+        ${recAdmin(currentUserData) ? `<button class="p-btn" style="background:#e0f2fe; color:#0284c7;" onclick="window.editRecord('${d.id}')">✏️ 編輯</button>` : ''}
         <button class="p-btn p-btn-ok" style="background:#0284c7;" onclick="document.getElementById('previewOverlay').style.display='none'">關閉檢視</button>
       `;
       
@@ -2939,6 +2947,7 @@
     }
 
     window.editRecord = function(id) {
+      if (!recAdmin(currentUserData)) return;
       const d = allRecordsData.find(r => r.id === id);
       if(!d) { window.showNotice('error', '找不到紀錄', '找不到這筆紀錄'); return; }
 

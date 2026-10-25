@@ -17,6 +17,7 @@ service cloud.firestore {
     function whHelper() { return inWarehouse() && myData().get('warehouseHelper', false) == true; }   // 進出庫小幫手
     function whAdmin() { return inWarehouse() && (myData().get('role', '') == 'admin' || myData().get('adminWarehouse', false) == true); }
     function recAdmin() { return isSuper() || (approved() && myData().get('adminRecord', false) == true); }
+    function recViewer() { return approved() && myData().get('recordViewer', false) == true; }   // 救護主控台唯讀（教官團等）
     function anyAdmin() { return isAdmin() || whAdmin() || recAdmin(); }
     // 開發者帳號：meta/developer.uid（只能設定一次）；其他管理員不能刪除、停權、改權限
     function devPath() { return /databases/$(database)/documents/meta/developer; }
@@ -36,7 +37,7 @@ service cloud.firestore {
 
     // 本人不能自己改的欄位（權限、審核、移出倉庫）
     function lockedKeys() {
-      return ['role', 'adminMember', 'adminWarehouse', 'adminRecord', 'warehouseHelper', 'status', 'verifiedBy', 'rosterId', 'approvedAt', 'approvedBy', 'rejectReason',
+      return ['role', 'adminMember', 'adminWarehouse', 'adminRecord', 'warehouseHelper', 'recordViewer', 'status', 'verifiedBy', 'rosterId', 'approvedAt', 'approvedBy', 'rejectReason',
               'warehouseRemoved', 'warehouseRemovedBy', 'warehouseRemovedAt', 'lineUserId'];
     }
 
@@ -44,7 +45,7 @@ service cloud.firestore {
       let d = request.resource.data;
       let o = resource.data;
       let changed = d.diff(o).affectedKeys();
-      let hard = ['role', 'adminMember', 'adminWarehouse', 'adminRecord', 'warehouseHelper', 'approvedBy', 'warehouseRemoved', 'warehouseRemovedBy', 'warehouseRemovedAt', 'lineUserId'];
+      let hard = ['role', 'adminMember', 'adminWarehouse', 'adminRecord', 'warehouseHelper', 'recordViewer', 'approvedBy', 'warehouseRemoved', 'warehouseRemovedBy', 'warehouseRemovedAt', 'lineUserId'];
       return
         // 一般更新：頭貼、登入時間、姓名、證照…
         !changed.hasAny(lockedKeys())
@@ -62,7 +63,7 @@ service cloud.firestore {
     function selfCreateOk() {
       let d = request.resource.data;
       return d.get('role', 'user') == 'user'
-        && !d.keys().hasAny(['approvedBy', 'warehouseRemoved', 'adminMember', 'adminWarehouse', 'adminRecord', 'warehouseHelper'])
+        && !d.keys().hasAny(['approvedBy', 'warehouseRemoved', 'adminMember', 'adminWarehouse', 'adminRecord', 'warehouseHelper', 'recordViewer'])
         && (d.get('status', 'pending') == 'pending' || (d.get('status', '') == 'approved' && rosterMatches(d)));
     }
 
@@ -150,7 +151,8 @@ service cloud.firestore {
     // ===== 救護紀錄表 =====
     match /medical_records/{id} {
       allow create: if approved();
-      allow read, update, delete: if recAdmin();
+      allow read: if recAdmin() || recViewer();
+      allow update, delete: if recAdmin();
     }
     match /system_configs/{id} {
       allow read: if signedIn();
