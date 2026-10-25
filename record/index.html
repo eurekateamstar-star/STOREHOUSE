@@ -254,29 +254,16 @@
       .btn-confirm { background: var(--ssc-primary); color: white; }
       .btn-cancel { background: #eee; color: #666; }
       #loading { background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; justify-content: center; align-items: center; color: #fff; font-size: 18px; }
-      /* ===== 基本資料：步驟編號＋輸入框 ===== */
-      .vg { padding: 4px 0; }
-      .vg .row.gr { display: flex; align-items: center; gap: 10px; padding: 9px 14px 9px 12px; position: relative; min-height: 44px; border-bottom: none; }
-      .vg .gr:not([data-step="location"]):not([data-step="pPhone"])::after { content: ""; position: absolute; left: 25px; top: 38px; bottom: -8px; width: 2px; background: #f0e2dc; }
-      .vg .n { width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 2px solid #F08339; color: #F08339; font-weight: 800; font-size: 12.5px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative; z-index: 1; box-sizing: border-box; transition: .2s; }
-      .vg .gr.done .n { background: #22c55e; border-color: #22c55e; color: #fff; font-size: 0; }
-      .vg .gr.done .n::before { content: "✓"; font-size: 13px; }
-      .vg .lb { width: 64px; font-weight: 700; color: #3f3f46; font-size: 15px; flex-shrink: 0; }
-      .vg .lb i { color: #e11d48; font-style: normal; margin-left: 2px; }
-      .vg .in { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
-      .vg input.bx { flex: 1; min-width: 0; width: 100%; box-sizing: border-box; text-align: left; background: #f4f1ef; border: 1px solid #ebe5e1; border-radius: 10px; height: 42px; padding: 0 12px; font-size: 16px; color: #222; transition: .15s; }
-      .vg input.bx:focus { background: #fff; border-color: #F08339; box-shadow: 0 0 0 3px rgba(240,131,57,.12); }
-      .vg input.bx::placeholder { color: #aaa; }
-      .vg input.ro { text-align: left; font-weight: 700; font-size: 16px; height: 30px; }
-      .vg .gps-btn { margin: 0; height: 42px; padding: 0 11px; border-radius: 10px; font-size: 14px; font-weight: 700; }
-      .vg .sg { display: flex; gap: 6px; flex: 1; }
-      .vg .sg label { flex: 1; position: relative; }
-      .vg .sg input { position: absolute; opacity: 0; pointer-events: none; }
-      .vg .sg b { display: block; text-align: center; height: 40px; line-height: 40px; border-radius: 10px; background: #f4f1ef; color: #888; font-size: 15px; transition: .15s; }
-      .vg .sg input:checked + b { background: #D65A68; color: #fff; }
-      .vg input[type=number]::-webkit-inner-spin-button, .vg input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-      .vg input[type=number] { -moz-appearance: textfield; }
-      .vg em { font-style: normal; color: #777; font-weight: 700; }
+      /* ===== 基本資料：步驟編號（填好自動打勾）===== */
+      #tab-basic .stp-row { position: relative; padding-left: 14px; }
+      #tab-basic .stp-row:not([data-step="location"]):not([data-step="pPhone"])::after { content: ""; position: absolute; left: 26px; top: calc(50% + 13px); bottom: 0; width: 2px; background: #f0e2dc; }
+      #tab-basic .stp-row:not([data-step="caseTime"]):not([data-step="pName"])::before { content: ""; position: absolute; left: 26px; top: 0; height: calc(50% - 13px); width: 2px; background: #f0e2dc; }
+      #tab-basic .stp { width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 2px solid #F08339; color: #F08339; font-weight: 800; font-size: 12.5px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-right: 12px; box-sizing: border-box; position: relative; z-index: 1; transition: .2s; }
+      #tab-basic .stp-row.done .stp { background: #22c55e; border-color: #22c55e; color: #fff; font-size: 0; }
+      #tab-basic .stp-row.done .stp::before { content: "✓"; font-size: 13px; }
+      #tab-basic .row-multi.stp-row { align-items: center; }
+      #tab-basic .row-multi .col-name { padding-left: 4px; }
+      #tab-basic .label .req { color: #e11d48; font-style: normal; margin-left: 2px; }
     </style>
 
     <style id="addonStyles">
@@ -602,10 +589,22 @@
         <!-- ================= TAB 1: 基本資料 ================= -->
         <div id="tab-basic" class="tab-content active">
           <div class="section-header">案件資料</div>
-          <div class="card vg">
-            <div class="row gr" data-step="caseTime"><span class="n">1</span><div class="lb">時間</div><div class="in"><input type="text" name="caseTime" id="caseTimeInput" readonly class="ro"></div></div>
-            <div class="row gr" data-step="personnel"><span class="n">2</span><div class="lb">人員</div><div class="in"><input type="text" name="personnel" id="personnelInput" placeholder="載入中..." readonly class="ro" style="color:#0284c7;"></div></div>
-            <div class="row gr" data-step="location"><span class="n">3</span><div class="lb">地點<i>*</i></div><div class="in"><input type="text" name="location" class="bx" placeholder="地址或地標" enterkeyhint="next"><button type="button" class="gps-btn" id="gpsBtn" onclick="window.getGPS()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>定位</button></div></div>
+          <div class="card">
+            <div data-step="caseTime" class="stp-row row"><span class="stp">1</span>
+              <div class="label">時間</div>
+              <input type="text" name="caseTime" id="caseTimeInput" readonly>
+            </div>
+            <div data-step="personnel" class="stp-row row"><span class="stp">2</span>
+              <div class="label">人員</div>
+              <input type="text" name="personnel" id="personnelInput" placeholder="載入中..." readonly style="color:#0284c7;">
+            </div>
+            <div data-step="location" class="stp-row row" style="padding-right:10px;"><span class="stp">3</span>
+              <div class="label">地點<i class="req">*</i></div>
+              <input type="text" name="location" placeholder="地址或地標">
+              <button type="button" class="gps-btn" id="gpsBtn" onclick="window.getGPS()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>定位
+              </button>
+            </div>
             <input type="hidden" name="gps_lat" id="gps_lat">
             <input type="hidden" name="gps_lng" id="gps_lng">
             <input type="hidden" name="gps_address" id="gps_address">
@@ -614,12 +613,30 @@
           </div>
 
           <div class="section-header">病患資料</div>
-          <div class="card vg">
-            <div class="row gr" data-step="pName"><span class="n">4</span><div class="lb">姓名<i>*</i></div><div class="in"><input type="text" name="pName" class="bx" placeholder="患者姓名" autocomplete="off" enterkeyhint="next"></div></div>
-            <div class="row gr" data-step="gender"><span class="n">5</span><div class="lb">性別</div><div class="in"><div class="sg"><label><input type="radio" name="gender" value="男" checked><b>男</b></label><label><input type="radio" name="gender" value="女"><b>女</b></label><label><input type="radio" name="gender" value="不詳"><b>不詳</b></label></div></div></div>
-            <div class="row gr" data-step="age"><span class="n">6</span><div class="lb">年齡</div><div class="in"><input type="number" name="age" class="bx" inputmode="numeric" placeholder="0" style="max-width:110px;margin-left:auto"><em>歲</em></div></div>
-            <div class="row gr" data-step="armband"><span class="n">7</span><div class="lb">臂章編號</div><div class="in"><input type="text" name="armband" class="bx" placeholder="無則免填" autocomplete="off"></div></div>
-            <div class="row gr" data-step="pPhone"><span class="n">8</span><div class="lb">電話</div><div class="in"><input type="tel" name="pPhone" class="bx" inputmode="tel" placeholder="09xx..." autocomplete="off"></div></div>
+          <div class="card">
+            <div data-step="pName" class="stp-row row row-multi"><span class="stp">4</span>
+              <div class="col-box col-name">
+                <input type="text" name="pName" placeholder="患者姓名">
+              </div>
+              <div class="col-box col-gender">
+                <select name="gender" class="clean-select">
+                  <option value="男">男</option>
+                  <option value="女">女</option>
+                  <option value="不詳">?</option>
+                </select>
+              </div>
+              <div class="col-box col-age">
+                <input type="number" name="age" placeholder="歲">
+              </div>
+            </div>
+            <div data-step="armband" class="stp-row row"><span class="stp">5</span>
+              <div class="label">臂章編號</div>
+              <input type="text" name="armband" placeholder="香燈腳臂章 (無則免填)">
+            </div>
+            <div data-step="pPhone" class="stp-row row"><span class="stp">6</span>
+              <div class="label">電話</div>
+              <input type="tel" name="pPhone" placeholder="09xx...">
+            </div>
           </div>
         </div>
 
@@ -3703,11 +3720,9 @@
       const f = () => document.getElementById('ambulanceForm');
       const val = n => { const el = f() && f().elements[n]; return el ? String(el.value || '').trim() : ''; };
       function upd() {
-        document.querySelectorAll('#tab-basic .gr[data-step]').forEach(r => {
+        document.querySelectorAll('#tab-basic .stp-row[data-step]').forEach(r => {
           const k = r.dataset.step;
-          const ok = k === 'location' ? !!(val('gps_lat') && val('gps_lng')) || (!!val('location') && document.getElementById('gpsBtn') && document.getElementById('gpsBtn').classList.contains('success'))
-            : k === 'gender' ? !!f().querySelector('input[name="gender"]:checked')
-            : !!val(k) && val(k) !== '載入中...';
+          const ok = k === 'location' ? !!(val('gps_lat') && val('gps_lng')) : !!val(k) && val(k) !== '載入中...';
           r.classList.toggle('done', ok);
         });
       }
