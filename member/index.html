@@ -3334,9 +3334,8 @@
       <div class="grp">🏷️ 分類</div>
       <div class="cat-row">${[...CATS, ''].map(c => `<button class="chip-s ${cat === c ? 'on' : ''}" data-cat="${esc(c)}">${c || '未分類'}</button>`).join('')}</div>
 
-      ${devHidden(u) ? (r ? '<div class="p-actions" style="margin-top:12px"><button class="sbtn pri" id="us-roster">📋 名冊資料</button></div>' : '') : `<div class="grp">帳號處理</div>
+      ${devHidden(u) ? '' : `<div class="grp">帳號處理</div>
       <div class="p-actions" style="flex-wrap:wrap;">
-        ${r ? '<button class="sbtn pri" id="us-roster">📋 名冊資料／編輯</button>' : ''}
         ${st === 'banned' ? '<button class="sbtn green" id="us-unban">解除停權</button>' : '<button class="sbtn" id="us-ban" style="background:#1f2430">🚫 停權</button>'}
         ${st === 'approved' ? '<button class="sbtn red" id="us-reject">退回</button>' : ''}
         ${u.warehouseRemoved ? '<button class="sbtn green" id="us-wh-in">恢復倉庫使用</button>' : ''}
