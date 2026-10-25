@@ -1046,7 +1046,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
-    import { initializeFirestore, persistentLocalCache, collection, addDoc, getDocs, doc, getDoc, setDoc, deleteDoc, updateDoc, query, orderBy, limit, serverTimestamp, onSnapshot } 
+    import { initializeFirestore, persistentLocalCache, collection, addDoc, getDocs, doc, getDoc, setDoc, deleteDoc, updateDoc, query, orderBy, limit, serverTimestamp, onSnapshot, deleteField } 
     from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
@@ -2545,6 +2545,45 @@
       refreshStatus(done);
     }
 
+    // ===== 現場照片另外存（medical_photos/{id}），主控台清單不用下載照片，開啟比較快 =====
+    const photoCache = {};
+    const photoCountOf = d => Array.isArray(d.photos) ? d.photos.length : (d.photoCount || 0);
+    async function getPhotos(d) {
+      if (Array.isArray(d.photos)) return d.photos;
+      if (!d.photoCount) return [];
+      if (photoCache[d.id]) return photoCache[d.id];
+      try { const sn = await getDoc(doc(db, 'medical_photos', d.id)); photoCache[d.id] = sn.exists() ? (sn.data().photos || []) : []; }
+      catch (e) { return []; }
+      return photoCache[d.id];
+    }
+    // 存紀錄：照片先存到 medical_photos，主紀錄只記張數
+    async function writeRecord(id, data, isUpdate) {
+      const photos = Array.isArray(data.photos) ? data.photos : [];
+      const rec = { ...data, photoCount: photos.length };
+      if (isUpdate) rec.photos = deleteField(); else delete rec.photos;
+      if (photos.length || isUpdate) {
+        try { await setDoc(doc(db, 'medical_photos', id), { photos }); photoCache[id] = photos; }
+        catch (e) { rec.photos = photos; console.warn('照片另存失敗，先存在紀錄裡', e); }   // 規則還沒發佈或網路問題：照片照舊存在紀錄裡，不會掉
+      }
+      return isUpdate ? updateDoc(doc(db, 'medical_records', id), rec) : setDoc(doc(db, 'medical_records', id), rec);
+    }
+    // 舊紀錄的照片搬出去（管理員打開主控台時在背景慢慢搬，搬完之後載入就快了）
+    let migrating = false;
+    async function migrateOldPhotos(list) {
+      if (migrating || !recAdmin(currentUserData)) return;
+      const todo = list.filter(d => Array.isArray(d.photos));
+      if (!todo.length) return;
+      migrating = true;
+      for (const d of todo) {
+        try {
+          await setDoc(doc(db, 'medical_photos', d.id), { photos: d.photos });
+          await updateDoc(doc(db, 'medical_records', d.id), { photos: deleteField(), photoCount: d.photos.length });
+          photoCache[d.id] = d.photos;
+        } catch (e) { console.warn('照片搬移失敗', d.id, e); break; }
+      }
+      migrating = false;
+    }
+
     // ===== 成員控制：主控台唯讀（教官團等）=====
     let rosterPosMap = null;   // rosterId → 職位（讀得到名冊才有，用來一鍵開放教官團）
     async function loadRosterPos() {
@@ -2591,7 +2630,8 @@
       { const mt = document.getElementById('cTab-members'); if (mt) mt.style.display = recAdmin(currentUserData) ? '' : 'none'; }
       const consoleOverlay = document.getElementById('adminConsoleOverlay');
       consoleOverlay.style.display = 'flex';
-      document.getElementById('consoleRecordsList').innerHTML = "正在載入所有救護紀錄...";
+      if (allRecordsData && allRecordsData.length) window.filterConsoleRecords();   // 第二次打開：先顯示上次的，背景再更新
+      else document.getElementById('consoleRecordsList').innerHTML = "正在載入所有救護紀錄...";
 
       try {
         const q = query(collection(db, "medical_records"), orderBy("timestamp", "desc"));
@@ -2616,6 +2656,7 @@
         }
 
         window.filterConsoleRecords();
+        setTimeout(() => migrateOldPhotos(allRecordsData), 1500);
       } catch (e) {
         document.getElementById('consoleRecordsList').innerHTML = `<div style="color:red; padding:20px;">載入失敗: ${e.message}</div>`;
       }
@@ -2732,8 +2773,8 @@
           const partsText = parts.length ? parts.map(i => `• ${i.part}: ${i.desc}`).join('<br>') : '無標記';
           html += `
             <div class="cc-card" onclick="window.openDetailById('${d.id}')">
-              ${listViewMode === 'large' ? `<div class="cc-media-tabs"><button type="button" data-m="map" class="active" onclick="event.stopPropagation(); window.setCardMedia(this,'map')">🧍 傷情圖</button><button type="button" data-m="photo" onclick="event.stopPropagation(); window.setCardMedia(this,'photo')">📷 現場照片 (${(d.photos || []).length})</button></div>` : ''}
-              <div class="cc-thumb"><div class="cc-map"><img src="https://i.ibb.co/6JFnSZp7/image.jpg" loading="lazy">${dots}</div>${listViewMode === 'large' ? `<div class="cc-pane-photo">${(d.photos && d.photos.length) ? d.photos.map(b => `<img src="${b}" loading="lazy">`).join('') : '<div class="cc-nophoto">未上傳照片</div>'}</div>` : ''}</div>
+              ${listViewMode === 'large' ? `<div class="cc-media-tabs"><button type="button" data-m="map" class="active" onclick="event.stopPropagation(); window.setCardMedia(this,'map')">🧍 傷情圖</button><button type="button" data-m="photo" onclick="event.stopPropagation(); window.setCardMedia(this,'photo')">📷 現場照片 (${photoCountOf(d)})</button></div>` : ''}
+              <div class="cc-thumb"><div class="cc-map"><img src="https://i.ibb.co/6JFnSZp7/image.jpg" loading="lazy">${dots}</div>${listViewMode === 'large' ? `<div class="cc-pane-photo" data-pid="${d.id}">${photoCountOf(d) ? '<div class="cc-nophoto">照片載入中…</div>' : '<div class="cc-nophoto">未上傳照片</div>'}</div>` : ''}</div>
               <div class="cc-body">
                 <div><b>${pName}</b> <span class="cc-mid">${ga}</span> <span class="cc-armband">${armband}</span></div>
                 <div class="cc-problem">${problem}</div>
@@ -2861,10 +2902,13 @@
       const dotsHtml = injuryOverlayHtml(injuredParts);
 
       let photosHtml = '';
-      if(d.photos && d.photos.length > 0) {
+      if(Array.isArray(d.photos) && d.photos.length > 0) {
         d.photos.forEach(b64 => {
           photosHtml += `<img src="${b64}" class="preview-photo">`;
         });
+      } else if (d.photoCount) {
+        photosHtml = `<span id="pvPhotos" style="color:#888; font-size:11px;">照片載入中…</span>`;
+        getPhotos(d).then(ph => { const el = document.getElementById('pvPhotos'); if (el) el.outerHTML = ph.map(b => `<img src="${b}" class="preview-photo">`).join('') || '<span style="color:#888; font-size:10px;">未上傳照片</span>'; });
       } else {
         photosHtml = '<span style="color:#888; font-size:10px;">未上傳照片</span>';
       }
@@ -3049,6 +3093,7 @@
 
       window.compressedImagesArray = Array.isArray(d.photos) ? d.photos.slice(0, 2) : [];
       renderImagePreviews();
+      if (!Array.isArray(d.photos) && d.photoCount) getPhotos(d).then(ph => { if (editingId === d.id) { window.compressedImagesArray = ph.slice(0, 2); renderImagePreviews(); } });
 
       enterEditUI((P.name && P.name !== '不詳') ? P.name : '無名氏');
 
@@ -3070,6 +3115,7 @@
       try {
         document.getElementById('loading').style.display = 'flex';
         await deleteDoc(doc(db, "medical_records", editingId));
+        deleteDoc(doc(db, "medical_photos", editingId)).catch(() => {});
         document.getElementById('loading').style.display = 'none';
         window.showNotice('success', '已刪除', '這筆救護紀錄已刪除');
         exitEditUI();
@@ -3117,6 +3163,12 @@
       if (!card) return;
       const th = card.querySelector('.cc-thumb');
       th.classList.toggle('show-photo', mode === 'photo');
+      const pane = th.querySelector('.cc-pane-photo[data-pid]');
+      if (mode === 'photo' && pane && !pane.dataset.loaded) {
+        pane.dataset.loaded = '1';
+        const d = allRecordsData.find(r => r.id === pane.dataset.pid);
+        if (d && photoCountOf(d)) getPhotos(d).then(ph => { pane.innerHTML = ph.length ? ph.map(b => `<img src="${b}" loading="lazy">`).join('') : '<div class="cc-nophoto">未上傳照片</div>'; });
+      }
       card.querySelectorAll('.cc-media-tabs button').forEach(b => b.classList.toggle('active', b.dataset.m === mode));
     };
 
@@ -3148,7 +3200,7 @@
       try {
         for (const it of outboxGet()) {
           try {
-            await withTimeout(setDoc(doc(db, "medical_records", it.id), { ...it.data, timestamp: serverTimestamp(), offlineSavedAt: it.savedAt }), 20000);
+            await withTimeout(writeRecord(it.id, { ...it.data, timestamp: serverTimestamp(), offlineSavedAt: it.savedAt }, false), 20000);
             outboxSet(outboxGet().filter(x => x.id !== it.id)); sent++;
           } catch (e) {
             // 網路不穩時那筆其實可能已經送到了 → 再寫一次會被當成「修改」而被拒，視為已上傳
@@ -3212,7 +3264,7 @@
         if(editingId) {
           delete recordData.timestamp;
           recordData.updatedAt = serverTimestamp();
-          await updateDoc(doc(db, "medical_records", editingId), recordData);
+          await writeRecord(editingId, recordData, true);
           if (navigator.onLine) window.showNotice('success', '更新完成', '救護紀錄已成功更新');
 
           document.getElementById('loading').style.display = 'none';
@@ -3227,7 +3279,7 @@
             else { window.showNotice('error', '手機空間不足', '照片太多存不下，請刪掉幾張照片再送出一次。'); return; }
             resetFormUI(); updateOutboxBadge(); return;
           }
-          await withTimeout(setDoc(doc(db, "medical_records", newId), recordData), 15000).catch(err => {
+          await withTimeout(writeRecord(newId, recordData, false), 15000).catch(err => {
             if (err && err.message === 'timeout') { outboxAdd(newId, recordData, true); return 'queued'; } throw err; }).then(res => {
             if (res === 'queued') window.showNotice('success', '已存在手機裡', '網路不穩，紀錄先存在手機，網路好了會自動上傳。');
             else window.showNotice('success', '上傳成功', '救護紀錄已成功送出'); });

@@ -156,6 +156,12 @@ service cloud.firestore {
       allow read: if recAdmin() || recViewer();
       allow update, delete: if recAdmin();
     }
+    // 現場照片另外存，主控台清單不用下載照片
+    match /medical_photos/{id} {
+      allow create: if approved();
+      allow read: if recAdmin() || recViewer();
+      allow update, delete: if recAdmin();
+    }
     match /system_configs/{id} {
       allow read: if signedIn();
       allow write: if recAdmin();
