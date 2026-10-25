@@ -3339,7 +3339,7 @@
         ${r ? '<button class="sbtn pri" id="us-roster">📋 名冊資料／編輯</button>' : ''}
         ${st === 'banned' ? '<button class="sbtn green" id="us-unban">解除停權</button>' : '<button class="sbtn" id="us-ban" style="background:#1f2430">🚫 停權</button>'}
         ${st === 'approved' ? '<button class="sbtn red" id="us-reject">退回</button>' : ''}
-        ${u.warehouseRemoved ? '<button class="sbtn green" id="us-wh-in">恢復倉庫使用</button>' : '<button class="sbtn" id="us-wh-out">⛔ 移出倉庫</button>'}
+        ${u.warehouseRemoved ? '<button class="sbtn green" id="us-wh-in">恢復倉庫使用</button>' : ''}
         <button class="sbtn red" id="us-kick">🗑️ 踢出（需重新申請）</button>
       </div>`}`;
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open');
