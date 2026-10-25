@@ -254,28 +254,6 @@
       .btn-confirm { background: var(--ssc-primary); color: white; }
       .btn-cancel { background: #eee; color: #666; }
       #loading { background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; justify-content: center; align-items: center; color: #fff; font-size: 18px; }
-      /* ===== 基本資料：大輸入框、標籤在上，比較好填 ===== */
-      .fcard { padding: 6px 0; }
-      .fcard .row.fbox { display: block; padding: 10px 16px; border-bottom: none; min-height: 0; }
-      .flabel { font-size: 13.5px; font-weight: 700; color: #5b4f4a; margin: 0 0 6px 2px; }
-      .freq { color: #e11d48; font-size: 14px; }
-      .flabel small { font-weight: 500; color: #a8a29e; font-size: 11.5px; margin-left: 4px; }
-      .fcard input.finput { display: block; box-sizing: border-box; width: 100%; height: 50px; padding: 0 14px; border-radius: 14px;
-        background: #f6f2f0; border: 1.5px solid #ece4e0; font-size: 17px; color: #1f2937; text-align: left; font-weight: 600; transition: .15s; }
-      .fcard input.finput:focus { background: #fff; border-color: #F08339; box-shadow: 0 0 0 4px rgba(240,131,57,.14); }
-      .fcard input.finput::placeholder { color: #b8aea9; font-weight: 500; font-size: 15px; }
-      .fcard input.fro { display: block; width: 100%; height: 40px; padding: 0 2px; text-align: left; font-size: 16.5px; font-weight: 700; }
-      .frow2 { display: grid; grid-template-columns: 1fr 1fr; }
-      .fr-ga { grid-template-columns: 1.35fr 1fr; }
-      .finline { display: flex; align-items: center; gap: 8px; }
-      .finline input.finput { flex: 1; min-width: 0; }
-      .funit { font-size: 15px; font-weight: 700; color: #78716c; flex-shrink: 0; }
-      .fcard .gps-btn { height: 50px; margin: 0; padding: 0 14px; border-radius: 14px; font-size: 15px; }
-      .fseg { display: flex; background: #f6f2f0; border: 1.5px solid #ece4e0; border-radius: 14px; padding: 3px; height: 50px; box-sizing: border-box; }
-      .fseg label { flex: 1; position: relative; }
-      .fseg input { position: absolute; opacity: 0; pointer-events: none; }
-      .fseg span { display: flex; height: 100%; align-items: center; justify-content: center; border-radius: 11px; font-size: 15.5px; font-weight: 700; color: #8a7f7a; transition: .15s; }
-      .fseg input:checked + span { background: linear-gradient(135deg, #D65A68, #E57E86); color: #fff; box-shadow: 0 3px 10px rgba(214,90,104,.3); }
     </style>
 
     <style id="addonStyles">
@@ -601,20 +579,21 @@
         <!-- ================= TAB 1: 基本資料 ================= -->
         <div id="tab-basic" class="tab-content active">
           <div class="section-header">案件資料</div>
-          <div class="card fcard">
-            <div class="frow2">
-              <div class="row fbox"><div class="flabel">🕒 時間</div>
-                <input type="text" name="caseTime" id="caseTimeInput" readonly class="fro"></div>
-              <div class="row fbox"><div class="flabel">🧑‍⚕️ 人員</div>
-                <input type="text" name="personnel" id="personnelInput" placeholder="載入中..." readonly class="fro" style="color:#0284c7;"></div>
+          <div class="card">
+            <div class="row">
+              <div class="label">時間</div>
+              <input type="text" name="caseTime" id="caseTimeInput" readonly>
             </div>
-            <div class="row fbox"><div class="flabel">📍 地點 <b class="freq">*</b><small>請按「定位」，可再補地標</small></div>
-              <div class="finline">
-                <input type="text" name="location" class="finput" placeholder="地址或地標" enterkeyhint="next">
-                <button type="button" class="gps-btn" id="gpsBtn" onclick="window.getGPS()">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>定位
-                </button>
-              </div>
+            <div class="row">
+              <div class="label">人員</div>
+              <input type="text" name="personnel" id="personnelInput" placeholder="載入中..." readonly style="color:#0284c7;">
+            </div>
+            <div class="row" style="padding-right:10px;">
+              <div class="label">地點</div>
+              <input type="text" name="location" placeholder="地址或地標（可留空）">
+              <button type="button" class="gps-btn" id="gpsBtn" onclick="window.getGPS()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>定位
+              </button>
             </div>
             <input type="hidden" name="gps_lat" id="gps_lat">
             <input type="hidden" name="gps_lng" id="gps_lng">
@@ -624,23 +603,30 @@
           </div>
 
           <div class="section-header">病患資料</div>
-          <div class="card fcard">
-            <div class="row fbox"><div class="flabel">👤 患者姓名 <b class="freq">*</b></div>
-              <input type="text" name="pName" class="finput" placeholder="輸入患者姓名" autocomplete="off" enterkeyhint="next"></div>
-            <div class="frow2 fr-ga">
-              <div class="row fbox"><div class="flabel">性別</div>
-                <div class="fseg">
-                  <label><input type="radio" name="gender" value="男" checked><span>男</span></label>
-                  <label><input type="radio" name="gender" value="女"><span>女</span></label>
-                  <label><input type="radio" name="gender" value="不詳"><span>不詳</span></label>
-                </div></div>
-              <div class="row fbox"><div class="flabel">年齡</div>
-                <div class="finline"><input type="number" name="age" class="finput" inputmode="numeric" pattern="[0-9]*" placeholder="--" enterkeyhint="next"><span class="funit">歲</span></div></div>
+          <div class="card">
+            <div class="row row-multi">
+              <div class="col-box col-name">
+                <input type="text" name="pName" placeholder="患者姓名">
+              </div>
+              <div class="col-box col-gender">
+                <select name="gender" class="clean-select">
+                  <option value="男">男</option>
+                  <option value="女">女</option>
+                  <option value="不詳">?</option>
+                </select>
+              </div>
+              <div class="col-box col-age">
+                <input type="number" name="age" placeholder="歲">
+              </div>
             </div>
-            <div class="row fbox"><div class="flabel">🏷️ 臂章編號 <small>香燈腳臂章，沒有免填</small></div>
-              <input type="text" name="armband" class="finput" placeholder="輸入臂章上的號碼" autocomplete="off" enterkeyhint="next"></div>
-            <div class="row fbox"><div class="flabel">📞 電話 <small>可留空</small></div>
-              <input type="tel" name="pPhone" class="finput" inputmode="tel" placeholder="09xx-xxx-xxx" autocomplete="off" enterkeyhint="done"></div>
+            <div class="row">
+              <div class="label">臂章編號</div>
+              <input type="text" name="armband" placeholder="香燈腳臂章 (無則免填)">
+            </div>
+            <div class="row">
+              <div class="label">電話</div>
+              <input type="tel" name="pPhone" placeholder="09xx...">
+            </div>
           </div>
         </div>
 
