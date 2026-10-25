@@ -175,13 +175,11 @@ service cloud.firestore {
       allow update: if whAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['items', 'boxNumber']);
       // 小幫手：只能改箱內物品（進出庫數量），不能改箱名、位置、層別，也不能新增／刪除箱子
       allow update: if whHelper() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['items']); }
-    match /warehouse_pages/{id} { allow read: if inWarehouse(); allow write: if whDev();
-      // 管理員：只能換這一排的底圖、框內照片
-      allow update: if whAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['imageUrl', 'panoImg']); }
+    match /warehouse_pages/{id} { allow read: if inWarehouse(); allow write: if whDev(); }
     match /warehouse_logs/{id}  { allow read: if inWarehouse(); allow write: if whAdmin(); allow create: if whHelper(); }
     match /meta/developer       { allow get: if signedIn();
                                   allow create: if isSuper() && request.resource.data.uid == me() && request.resource.data.keys().hasOnly(['uid', 'at']); }
-    match /settings/{id}        { allow read: if inWarehouse(); allow write: if whAdmin(); }
+    match /settings/{id}        { allow read: if inWarehouse(); allow write: if (whAdmin() && id != 'panorama') || whDev(); }
 
     // 其他沒列出的集合一律拒絕
   }

@@ -1740,7 +1740,7 @@
     // 只有開發者可以：新增／移動／刪除箱子、改箱子標籤與分層、排（頁）的新增／刪除／改名／排序／框線、物品新增／刪除／搬移／改名／類型
     // 還沒設定開發者時，維持原本：管理員都可以
     const isDev = () => isAdmin() && (devLoaded && !DEV_UID ? true : (!!DEV_UID && !!currentUser && currentUser.userId === DEV_UID));
-    const devOnly = () => { if (isDev()) return false; showToast('🔒 只有開發者可以調整箱子、排與物品設定\n管理員可以改數量、下載 QR、換照片', 'error', 1800); return true; };
+    const devOnly = () => { if (isDev()) return false; showToast('🔒 只有開發者可以調整箱子、排、底圖與物品設定\n管理員可以改名稱、數量、下載 QR、換物品照片', 'error', 1800); return true; };
     function loadDevUid() {
         getDoc(doc(db, "meta", "developer")).then(s => { DEV_UID = s.exists() ? (s.data().uid || '') : ''; devLoaded = true; try { localStorage.setItem('whDevUid', DEV_UID); } catch (e) {}
             updateMenuUser(); if (isContentEditActive) { renderPageNav(); renderBoxes(); if (isPanoActive) renderPanorama(); } }).catch(() => {});
@@ -3774,7 +3774,7 @@
         if (indicator) indicator.innerText = isContentEditActive ? "編輯模式" : "檢視模式";
         
         const fab = document.getElementById('fab-container');
-        if (fab) fab.style.display = (isContentEditActive && !isOverviewActive) ? 'block' : 'none';
+        if (fab) fab.style.display = (isContentEditActive && !isOverviewActive && isDev()) ? 'block' : 'none';
         const moveBtn = document.getElementById('btn-move-mode');
         if (moveBtn) moveBtn.style.display = (isContentEditActive && isDev()) ? 'inline-flex' : 'none';
         { const ab = document.getElementById('fab-add-box'); if (ab) ab.style.display = isDev() ? '' : 'none'; }
@@ -4022,7 +4022,7 @@
             layer.appendChild(lab);
             const handles = [], mids = [];
 
-            if (!isContentEditActive) {
+            if (!isContentEditActive || !isDev()) {
                 poly.onclick = () => { if (Date.now() < swipeBlockUntil) return; switchToPage(i); };
                 lab.onclick = () => { if (Date.now() < swipeBlockUntil) return; switchToPage(i); };
                 lab.style.pointerEvents = 'auto'; lab.style.cursor = 'pointer';
@@ -4034,7 +4034,7 @@
             const eb = document.createElement('button');
             eb.className = 'pano-edit-btn pano-poly-edit'; eb.innerText = '✎';
             eb.onclick = e => { e.stopPropagation(); renamePage(i); };
-            if (isDev()) lab.appendChild(eb);
+            lab.appendChild(eb);
             // 編輯：📷 框內照片（上傳／更換／移除）
             const cb = document.createElement('button');
             cb.className = 'pano-edit-btn pano-poly-edit pano-cam-btn'; cb.innerText = '📷'; cb.title = '框內照片';
@@ -4057,7 +4057,6 @@
             };
             lab.appendChild(cb);
             lab.style.pointerEvents = 'auto';
-            if (!isDev()) { draw(); return; }   // 管理員：只能換框內照片，不能拖框
 
             // 拖整塊
             const dragAll = e => {
@@ -4700,7 +4699,7 @@
         const sideArrowsEl = document.getElementById('side-arrows');
         if (sideArrowsEl) sideArrowsEl.style.display = active ? 'none' : 'block';
         const fab = document.getElementById('fab-container');
-        if (fab) fab.style.display = (active || !isContentEditActive) ? 'none' : 'block';
+        if (fab) fab.style.display = (active || !isContentEditActive || !isDev()) ? 'none' : 'block';
         const ovView = document.getElementById('overview-view');
         if (ovView) ovView.style.display = active ? 'block' : 'none';
         
@@ -5197,7 +5196,6 @@
             
             document.getElementById('edit-item-name-input').value = it.name || '';
             { const dv = isDev(); const ni = document.getElementById('edit-item-name-input'), ui = document.getElementById('edit-item-unit');
-              ni.readOnly = !dv; ui.readOnly = !dv; ni.style.opacity = dv ? '' : '.6'; ui.style.opacity = dv ? '' : '.6';
               const tb = document.getElementById('edit-type-durable'); if (tb && tb.parentElement) { tb.parentElement.style.display = dv ? 'flex' : 'none'; if (tb.parentElement.previousElementSibling) tb.parentElement.previousElementSibling.style.display = dv ? '' : 'none'; } }
             document.getElementById('edit-item-qty-input').value = it.qty || 0;
             document.getElementById('edit-item-unit').value = it.unit || '';
@@ -5410,6 +5408,7 @@
     };
 
     window.uploadBackgroundImage = async function(e) {
+        if (devOnly()) return;
         const file = e.target.files[0];
         if (!file) return;
         const currentPage = pages[currentPageIndex];
@@ -5925,10 +5924,8 @@
         if (isNaN(newQty) || newQty < 0) return showToast('數量必須為 0 或正整數', 'error', 900);
 
         const it = b.items[editingItemIndex];
-        if (isDev()) {   // 名稱、單位只有開發者能改；管理員只改數量
-            it.name = newName;
-            const u = (document.getElementById('edit-item-unit').value || '').trim().slice(0, 3); if (u && u !== '個') it.unit = u; else delete it.unit;
-        }
+        it.name = newName;
+        { const u = (document.getElementById('edit-item-unit').value || '').trim().slice(0, 3); if (u && u !== '個') it.unit = u; else delete it.unit; }
 
         if (it.itemType === 'consumable') {
             it.qty = newQty;
