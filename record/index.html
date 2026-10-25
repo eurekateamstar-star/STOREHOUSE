@@ -1021,8 +1021,8 @@
       <!-- 成員控制：誰可以看主控台（唯讀，教官團等） -->
       <div class="console-panel" id="panel-members">
         <div style="font-size:12px; padding:8px 10px; background:#e0f2fe; color:#0369a1; font-weight:bold; border-radius:8px; margin-bottom:8px; line-height:1.6;">👀 勾選的人可以打開「📊 主控台」看清單、統計、地圖，<u>不能編輯或刪除</u>。管理員本來就看得到，不列在這裡。</div>
-        <input type="text" id="vwSearch" placeholder="🔍 搜尋姓名" oninput="window.renderViewerPanel()" style="width:100%; box-sizing:border-box; padding:9px 12px; border:1px solid #bae6fd; border-radius:8px; font-size:14px; text-align:left; margin-bottom:8px;">
-        <div id="vwCoachBox"></div>
+        <input type="text" id="vwSearch" placeholder="🔍 搜尋姓名" oninput="window.renderViewerPanel()" style="flex:none; width:100%; height:40px; box-sizing:border-box; padding:0 12px; border:1px solid #bae6fd; border-radius:8px; font-size:16px; text-align:left; margin-bottom:8px; background:#fff;">
+        <div id="vwCoachBox" style="flex:none;"></div>
         <div id="viewerList" style="flex:1; overflow-y:auto;">載入中...</div>
       </div>
 
@@ -2605,16 +2605,27 @@
       const on = live.filter(u => u.recordViewer).length;
       const cb = document.getElementById('vwCoachBox');
       cb.innerHTML = (coaches.length ? `<button type="button" id="vwCoach" style="width:100%; padding:10px; border:none; border-radius:8px; background:#0284c7; color:#fff; font-weight:bold; font-size:14px; margin-bottom:8px;">⭐ 名冊上的教官團全部開放（${coaches.length} 人）</button>` : '')
-        + `<div style="font-size:12px; font-weight:bold; color:#0369a1; margin:2px 2px 6px;">目前開放 ${on} 人</div>`;
+        + `<div style="font-size:12px; font-weight:bold; color:#0369a1; margin:2px 2px 6px;">目前開放 <span id="vwCount">${on}</span> 人</div>`;
       box.innerHTML = list.length ? list.map(u => `<label style="display:flex; align-items:center; gap:10px; padding:10px 6px; border-bottom:1px solid #e2e8f0; cursor:pointer;">
           <input type="checkbox" data-vw="${u.id}" ${u.recordViewer ? 'checked' : ''} style="width:20px; height:20px; flex-shrink:0;">
           ${u.pictureUrl ? `<img src="${esc(u.pictureUrl)}" style="width:34px; height:34px; border-radius:50%; object-fit:cover; flex-shrink:0;" onerror="this.style.visibility='hidden'">` : '<span style="width:34px;height:34px;border-radius:50%;background:#e2e8f0;flex-shrink:0;"></span>'}
           <span style="flex:1; min-width:0; text-align:left;"><b style="font-size:14px; color:#0f172a;">${esc(u.realName || '(未填)')}</b><br><small style="color:#64748b;">${esc(pos(u))}${pos(u) && auCat(u) ? '・' : ''}${esc(auCat(u) || '')}</small></span>
-          ${u.recordViewer ? '<span style="font-size:11px; color:#0284c7; font-weight:bold;">👀 可看</span>' : ''}</label>`).join('')
+          <span class="vw-tag" style="font-size:11px; color:#0284c7; font-weight:bold; min-width:44px; text-align:right;">${u.recordViewer ? '👀 可看' : ''}</span></label>`).join('')
         : '<div style="color:#64748b; padding:20px; text-align:center;">沒有符合的成員</div>';
-      box.querySelectorAll('[data-vw]').forEach(c => c.onchange = async () => {
-        try { await updateDoc(doc(db, 'users', c.dataset.vw), { recordViewer: c.checked }); const u = (adminUsersCache || []).find(x => x.id === c.dataset.vw); if (u) u.recordViewer = c.checked; window.renderViewerPanel(); }
-        catch (e) { c.checked = !c.checked; alert('操作失敗：請確認 Firestore 規則已發佈'); }
+      box.querySelectorAll('[data-vw]').forEach(c => c.onchange = async ev => {
+        ev.stopPropagation();
+        const on = c.checked, row = c.closest('label'), tag = row && row.querySelector('.vw-tag');
+        c.disabled = true; if (tag) tag.textContent = '儲存中…';
+        try {
+          await updateDoc(doc(db, 'users', c.dataset.vw), { recordViewer: on });
+          const u = (adminUsersCache || []).find(x => x.id === c.dataset.vw); if (u) u.recordViewer = on;
+          if (tag) tag.textContent = on ? '👀 可看' : '';
+          const cnt = document.getElementById('vwCount'); if (cnt) cnt.textContent = (adminUsersCache || []).filter(x => x.status === 'approved' && !recAdmin(x) && !isDevU(x) && x.recordViewer).length;
+        } catch (e) {
+          c.checked = !on; if (tag) tag.textContent = !on ? '👀 可看' : '';
+          window.showNotice('error', '設定失敗', '請確認 Firestore 規則已經發佈。\n（' + ((e && e.code) || e) + '）');
+        }
+        c.disabled = false;
       });
       const btn = document.getElementById('vwCoach');
       if (btn) btn.onclick = async () => {
