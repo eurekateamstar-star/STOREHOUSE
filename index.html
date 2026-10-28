@@ -2594,7 +2594,7 @@
                     itemsHtml += `
                         <div style="display:flex; gap:6px; margin-top:4px;">
                             <input type="text" class="apple-input" value="${escapeHtml(item)}" id="edit-item-${gIdx}-${iIdx}" style="padding:4px 8px; font-size:12px; flex:1;">
-                            <button class="apple-btn secondary" style="padding:2px 6px; font-size:11px; display:flex; align-items:center;" title="上傳圖片" onclick="pickGroupImage(${gIdx}, ${iIdx})">${(group.images || {})[item] ? `<img src="${group.images[item]}" style="width:26px;height:26px;border-radius:6px;object-fit:cover">` : '📷'}</button>
+                            <button class="apple-btn secondary" style="padding:2px 6px; font-size:11px; display:flex; align-items:center;" title="上傳圖片" onclick="pickGroupImage(${gIdx}, ${iIdx})">${(group.images || {})[item] ? `<img src="${group.images[item]}" style="width:30px;height:26px;border-radius:6px;object-fit:contain">` : '📷'}</button>
                             <button class="apple-btn success" style="padding:4px 8px; font-size:11px;" onclick="saveGroupItem(${gIdx}, ${iIdx})">儲存</button>
                             <button class="apple-btn danger" style="padding:4px 8px; font-size:11px;" onclick="deleteGroupItem(${gIdx}, ${iIdx})">刪</button>
                         </div>
@@ -2603,7 +2603,7 @@
 
                 groupCard.innerHTML = `
                     <div style="display:flex; gap:6px; margin-bottom:6px;">
-                        <button class="apple-btn secondary" style="padding:2px 6px; font-size:11px; display:flex; align-items:center;" title="群組圖片" onclick="pickGroupImage(${gIdx}, -1)">${group.icon ? `<img src="${group.icon}" style="width:28px;height:28px;border-radius:6px;object-fit:cover">` : '📷'}</button>
+                        <button class="apple-btn secondary" style="padding:2px 6px; font-size:11px; display:flex; align-items:center;" title="群組圖片" onclick="pickGroupImage(${gIdx}, -1)">${group.icon ? `<img src="${group.icon}" style="width:32px;height:28px;border-radius:6px;object-fit:contain">` : '📷'}</button>
                         <input type="text" class="apple-input" value="${escapeHtml(group.groupName)}" id="edit-group-${gIdx}" style="padding:6px 8px; font-size:13px; font-weight:600; flex:1;">
                         <button class="apple-btn success" style="padding:4px 10px; font-size:11px;" onclick="saveGroupName(${gIdx})">改名</button>
                         <button class="apple-btn danger" style="padding:4px 10px; font-size:11px;" onclick="deleteGroup(${gIdx})">刪除群組</button>
@@ -2633,7 +2633,7 @@
                     const card = document.createElement('div');
                     card.className = 'borrower-card';
                     card.innerHTML = `
-                        <div class="borrower-card-icon">${group.icon ? `<img src="${group.icon}" alt="" style="width:46px;height:46px;border-radius:12px;object-fit:cover;display:block;margin:0 auto">` : '📁'}</div>
+                        <div class="borrower-card-icon">${group.icon ? `<img src="${group.icon}" alt="" style="width:100%;max-width:120px;height:64px;object-fit:contain;display:block;margin:0 auto">` : '📁'}</div>
                         <div class="borrower-card-name">${escapeHtml(group.groupName)}</div>
                         <div style="font-size:10px; color:#8e8e93; margin-top:2px;">${group.items.length} 項 ›</div>
                     `;
@@ -2683,7 +2683,7 @@
                     card.dataset.person = '1';
                     card.dataset.name = itemName.toLowerCase();
                     card.innerHTML = `
-                        <div class="borrower-card-icon">${(currentGroup.images || {})[itemName] ? `<img src="${currentGroup.images[itemName]}" alt="" style="width:46px;height:46px;border-radius:12px;object-fit:cover;display:block;margin:0 auto">` : avatarHtml(itemName, 40)}</div>
+                        <div class="borrower-card-icon">${(currentGroup.images || {})[itemName] ? `<img src="${currentGroup.images[itemName]}" alt="" style="width:100%;max-width:120px;height:64px;object-fit:contain;display:block;margin:0 auto">` : avatarHtml(itemName, 40)}</div>
                         <div class="borrower-card-name">${escapeHtml(itemName)}</div>
                     `;
                     card.onclick = () => {
@@ -2755,6 +2755,18 @@
     };
 
     // 群組／細項圖片（存小圖，跟群組設定放一起）
+    // 縮小圖片並保留透明背景（去背的車子不會變黑底／白底）
+    function shrinkImagePng(file, maxW) {
+        return new Promise((res, rej) => {
+            const r = new FileReader();
+            r.onload = () => { const im = new Image(); im.onload = () => {
+                const sc = Math.min(1, maxW / Math.max(im.width, im.height)); const c = document.createElement('canvas');
+                c.width = Math.round(im.width * sc); c.height = Math.round(im.height * sc);
+                c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+                const png = c.toDataURL('image/png'); res(png.length < 180000 ? png : c.toDataURL('image/webp', 0.85)); }; im.onerror = rej; im.src = r.result; };
+            r.onerror = rej; r.readAsDataURL(file);
+        });
+    }
     window.pickGroupImage = function (gIdx, iIdx) {
         const g = borrowerGroupsCache[gIdx]; if (!g) return;
         const name = iIdx < 0 ? g.groupName : g.items[iIdx];
@@ -2765,7 +2777,7 @@
                 const f = inp.files[0]; if (!f) return;
                 try {
                     showToast('上傳中…', 'info', 900);
-                    const b64 = await compressImage(f, 240, 0.75);
+                    const b64 = await shrinkImagePng(f, 260);
                     if (iIdx < 0) g.icon = b64; else { g.images = g.images || {}; g.images[name] = b64; }
                     await saveBorrowerGroupsToCloud(); renderBorrowerSelectorUI();
                     showToast('✅ 圖片已更新', 'success', 900);
