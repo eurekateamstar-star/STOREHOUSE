@@ -94,8 +94,27 @@
       .pv-f>div:focus-within{border-color:var(--ssc-primary);}
       .pv-gcs{flex:1;display:flex;align-items:center;gap:6px;}
       .pv-g{flex:1;display:flex;align-items:center;background:#fff;border:1.5px solid #eee;border-radius:12px;padding:0 0 0 9px;}
+      .pv-g{font-family:inherit;cursor:pointer;padding:8px 10px !important;justify-content:space-between;}
       .pv-g span{font-size:13px;font-weight:800;color:#D65A68;}
-      .pv-g select{flex:1;min-width:0;border:none;background:none;font-size:16px;font-weight:700;padding:8px 4px;color:#222;-webkit-appearance:none;appearance:none;text-align:center;}
+      .pv-g b{font-size:16px;font-weight:800;color:#222;}
+      .pv-stable{display:block;margin:0 16px 10px;cursor:pointer;}
+      .pv-stable input{display:none;}
+      .pv-stable span{display:flex;align-items:center;justify-content:center;gap:8px;padding:13px 10px;border-radius:14px;background:#fff;border:1.5px solid #eee;font-size:15px;font-weight:700;color:#555;box-shadow:0 2px 5px rgba(0,0,0,.05);}
+      .pv-stable i{font-style:normal;width:20px;height:20px;border-radius:50%;border:1.5px solid #ccc;color:transparent;font-size:12px;display:flex;align-items:center;justify-content:center;}
+      .pv-stable input:checked+span{border-color:#16a34a;color:#15803d;background:#f0fdf4;}
+      .pv-stable input:checked+span i{background:#16a34a;border-color:#16a34a;color:#fff;}
+      .pv-card.pv-off{display:none;}
+      .pv-sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9999;display:flex;align-items:flex-end;justify-content:center;}
+      .pv-sheet{width:100%;max-width:520px;background:#fff;border-radius:22px 22px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));animation:pvUp .2s ease-out;}
+      @keyframes pvUp{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+      .pv-sheet h4{margin:2px 4px 12px;font-size:17px;color:#222;display:flex;justify-content:space-between;align-items:center;}
+      .pv-sheet h4 small{font-size:12px;color:#999;font-weight:600;}
+      .pv-opt{display:flex;align-items:center;gap:12px;width:100%;border:1.5px solid #eee;background:#fff;border-radius:14px;padding:11px 14px;margin-bottom:8px;font-family:inherit;font-size:15px;color:#333;text-align:left;cursor:pointer;}
+      .pv-opt b{flex:none;width:34px;height:34px;border-radius:10px;background:#fff1f2;color:#D65A68;font-size:18px;display:flex;align-items:center;justify-content:center;}
+      .pv-opt.on{border-color:#D65A68;background:#fff5f6;}
+      .pv-opt.on b{background:#D65A68;color:#fff;}
+      .pv-sheet .pv-x{display:flex;gap:8px;margin-top:4px;}
+      .pv-sheet .pv-x button{flex:1;border:none;border-radius:12px;padding:12px;font-family:inherit;font-size:15px;font-weight:700;background:#f2f2f2;color:#666;}
       .pv-card.pv-is-crit{border:1.5px solid #D65A68;}
       #pvGcsSum{flex:none;min-width:34px;text-align:center;font-size:17px;color:#D65A68;}
       .pv-note input{text-align:left !important;width:100%;border:1.5px solid #eee !important;border-radius:12px;padding:9px 12px !important;font-size:15px !important;background:#fff !important;}
@@ -746,17 +765,18 @@
         <div id="tab-vitals" class="tab-content">
           
           <div class="section-header stp-head" data-step="postVitals"><span class="stp">11</span><span>處置後生命徵象<i class="req">*</i></span></div>
+          <label class="pv-stable"><input type="checkbox" id="pvStable" onchange="window.pvUpdate()"><span><i>✓</i>意識清楚生命徵象穩定（未量測）</span></label>
           <div class="card pv-card" id="pvCard">
             <div class="pv-row"><div class="pv-lab">意識<i class="req">*</i></div><div class="pv-seg"><label><input type="radio" name="pvConsc" value="清" onchange="window.pvUpdate()"><span>清</span></label><label><input type="radio" name="pvConsc" value="聲" onchange="window.pvUpdate()"><span>聲</span></label><label><input type="radio" name="pvConsc" value="痛" onchange="window.pvUpdate()"><span>痛</span></label><label><input type="radio" name="pvConsc" value="否" onchange="window.pvUpdate()"><span>否</span></label></div></div>
             <div class="pv-grid">
               <label class="pv-f"><span>呼吸</span><div><input type="text" inputmode="numeric" id="pvRR" placeholder="" oninput="window.pvUpdate()"><em>次/分</em></div></label>
               <label class="pv-f"><span>脈搏</span><div><input type="text" inputmode="numeric" id="pvHR" placeholder="" oninput="window.pvUpdate()"><em>次/分</em></div></label>
-              <label class="pv-f"><span>血壓</span><div><input type="text" inputmode="text" id="pvBP" placeholder="收縮/舒張" oninput="window.pvUpdate()"><em>mmHg</em></div></label>
+              <label class="pv-f"><span>血壓</span><div><input type="text" inputmode="numeric" id="pvBP" placeholder="120/80" oninput="window.pvBPfmt(this)"><em>mmHg</em></div></label>
               <label class="pv-f"><span>血氧</span><div><input type="text" inputmode="numeric" id="pvSpO2" placeholder="" oninput="window.pvUpdate()"><em>%</em></div></label>
               <label class="pv-f"><span>血糖</span><div><input type="text" inputmode="numeric" id="pvBS" placeholder="" oninput="window.pvUpdate()"><em>mg/dL</em></div></label>
               <label class="pv-f"><span>體溫</span><div><input type="text" inputmode="decimal" id="pvBT" placeholder="" oninput="window.pvUpdate()"><em>°C</em></div></label>
             </div>
-            <div class="pv-row"><div class="pv-lab">GCS</div><div class="pv-gcs"><label class="pv-g"><span>E</span><select id="pvE" onchange="window.pvUpdate()"><option value="">–</option><option>4</option><option>3</option><option>2</option><option>1</option></select></label><label class="pv-g"><span>V</span><select id="pvV" onchange="window.pvUpdate()"><option value="">–</option><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select></label><label class="pv-g"><span>M</span><select id="pvM" onchange="window.pvUpdate()"><option value="">–</option><option>6</option><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select></label><b id="pvGcsSum">—</b></div></div>
+            <div class="pv-row"><div class="pv-lab">GCS</div><div class="pv-gcs"><button type="button" class="pv-g" onclick="window.pvGcsPick('E')"><span>E</span><b id="pvEtxt">–</b></button><input type="hidden" id="pvE"><button type="button" class="pv-g" onclick="window.pvGcsPick('V')"><span>V</span><b id="pvVtxt">–</b></button><input type="hidden" id="pvV"><button type="button" class="pv-g" onclick="window.pvGcsPick('M')"><span>M</span><b id="pvMtxt">–</b></button><input type="hidden" id="pvM"><b id="pvGcsSum">—</b></div></div>
             <div class="pv-row"><div class="pv-lab">危急個案<i class="req">*</i></div><div class="pv-seg pv-crit"><label><input type="radio" name="pvCrit" value="否" onchange="window.pvUpdate()"><span>否</span></label><label><input type="radio" name="pvCrit" value="是" onchange="window.pvUpdate()"><span>是</span></label></div></div>
             <div class="pv-row pv-note"><input type="text" id="pvNote" placeholder="備註（選填）" oninput="window.pvUpdate()"></div>
           </div>
@@ -1936,7 +1956,40 @@
     const pvVal = id => (document.getElementById(id) || {}).value?.trim() || '';
     const pvRadio = n => (document.querySelector(`input[name="${n}"]:checked`) || {}).value || '';
     window.escapeHtmlPV = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const PV_GCS = {
+      E: ['睜眼反應', { 4: '自發睜眼', 3: '叫喚會睜眼', 2: '痛刺激才睜眼', 1: '無反應' }],
+      V: ['語言反應', { 5: '定向感正常', 4: '言語混亂', 3: '用字不當', 2: '只發出聲音', 1: '無反應' }],
+      M: ['運動反應', { 6: '遵從指令', 5: '可定位疼痛', 4: '疼痛時回縮', 3: '異常屈曲', 2: '異常伸展', 1: '無反應' }],
+    };
+    window.pvGcsPick = function(k) {
+      document.querySelectorAll('.pv-sheet-bg').forEach(e => e.remove());
+      const [title, opts] = PV_GCS[k], cur = pvVal('pv' + k);
+      const bg = document.createElement('div'); bg.className = 'pv-sheet-bg';
+      bg.innerHTML = `<div class="pv-sheet"><h4>GCS ${k}・${title}<small>點一下選擇</small></h4>${Object.keys(opts).sort((a, b) => b - a).map(n => `<button type="button" class="pv-opt${cur === n ? ' on' : ''}" data-n="${n}"><b>${n}</b>${opts[n]}</button>`).join('')}<div class="pv-x"><button type="button" data-n="">清除</button><button type="button" data-close="1">取消</button></div></div>`;
+      bg.onclick = ev => {
+        if (ev.target === bg || ev.target.closest('[data-close]')) return bg.remove();
+        const o = ev.target.closest('[data-n]'); if (!o) return;
+        document.getElementById('pv' + k).value = o.dataset.n; bg.remove(); window.pvUpdate();
+        const nx = { E: 'V', V: 'M' }[k];   // 選完 E 自動接著選 V、M
+        if (o.dataset.n && nx && !pvVal('pv' + nx)) setTimeout(() => window.pvGcsPick(nx), 120);
+      };
+      document.body.appendChild(bg);
+    };
+    // 血壓：只打數字，自動補上「/」（1、2 開頭收縮壓三位數，其他兩位數）
+    window.pvBPfmt = function(el) {
+      const raw = el.value, hasSlash = raw.includes('/');
+      let out;
+      if (hasSlash) { const [a, b] = raw.split('/'); out = a.replace(/\D/g, '').slice(0, 3) + '/' + (b || '').replace(/\D/g, '').slice(0, 3); }
+      else {
+        const d = raw.replace(/\D/g, ''), n = /^[12]/.test(d) ? 3 : 2;
+        out = d.length > n ? d.slice(0, n) + '/' + d.slice(n, n + 3) : d;
+        if (d.length === n && (el._pvLen || 0) < raw.length) out = d + '/';
+      }
+      el._pvLen = out.length; el.value = out; window.pvUpdate();
+    };
     window.pvData = function() {
+      const stable = !!(document.getElementById('pvStable') || {}).checked;
+      if (stable) return { stable: true, consc: '清', critical: '否' };
       const d = { consc: pvRadio('pvConsc'), critical: pvRadio('pvCrit') };
       PV_IDS.forEach(id => d[id.slice(2)] = pvVal(id));
       const e = +d.E || 0, v = +d.V || 0, m = +d.M || 0;
@@ -1945,6 +1998,7 @@
     };
     window.pvText = function(d) {
       d = d || window.pvData();
+      if (d.stable) return '意識清楚生命徵象穩定（未量測）';
       const parts = [];
       if (d.consc) parts.push(`意識 ${d.consc}`);
       if (d.RR) parts.push(`呼吸 ${d.RR}`);
@@ -1961,12 +2015,16 @@
     window.pvUpdate = function() {
       const d = window.pvData();
       const sum = document.getElementById('pvGcsSum'); if (sum) sum.textContent = d.GCS || '—';
+      ['E', 'V', 'M'].forEach(k => { const t = document.getElementById('pv' + k + 'txt'); if (t) t.textContent = pvVal('pv' + k) || '–'; });
+      const st = !!(document.getElementById('pvStable') || {}).checked;
+      const cardEl = document.getElementById('pvCard'); if (cardEl) cardEl.classList.toggle('pv-off', st);
       const h = document.getElementById('postVitalsHidden'); if (h) h.value = (d.consc && d.critical) ? window.pvText(d) : '';
       const card = document.getElementById('pvCard'); if (card) card.classList.toggle('pv-is-crit', d.critical === '是');
       try { window.updateStepDone && window.updateStepDone(); } catch (e) {}
     };
     window.pvSet = function(d) {
       d = d || {};
+      const stEl = document.getElementById('pvStable'); if (stEl) stEl.checked = !!d.stable;
       document.querySelectorAll('input[name="pvConsc"],input[name="pvCrit"]').forEach(r => r.checked = (r.name === 'pvConsc' ? d.consc : d.critical) === r.value);
       PV_IDS.forEach(id => { const el = document.getElementById(id); if (el) el.value = d[id.slice(2)] || ''; });
       window.pvUpdate();
@@ -3069,7 +3127,7 @@
         if(label.hasAttribute('data-default')) label.innerText = label.getAttribute('data-default');
       });
       document.querySelectorAll('input[type="hidden"]').forEach(input => input.value = "");
-      window.clearVitalsOther();
+      try { window.pvSet({}); } catch (e) {}
 
       selectedPartsData = []; window.updateInjuredDisplay();
       document.querySelectorAll('.body-zone').forEach(el => el.classList.remove('active'));
@@ -3129,7 +3187,7 @@
       applyCheckGroup('treatment', T.actions, 'treatmentOtherCheckbox', 'treatmentOtherLabel', 'treatmentOtherValue');
 
       if (F.vitals) window.pvSet(F.vitals);
-      else { const pv = F.postVitals || ''; window.pvSet(pv === '意識清楚生命徵象穩定' ? { consc: '清', critical: '否' } : { Note: pv }); }
+      else { const pv = F.postVitals || ''; window.pvSet(/^意識清楚生命徵象穩定/.test(pv) ? { stable: true } : { Note: pv }); }
 
       selectedPartsData = JSON.parse(JSON.stringify(T.injuredParts || []));
       document.querySelectorAll('.body-zone').forEach(z => {
