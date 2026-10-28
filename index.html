@@ -594,6 +594,24 @@
         .header-btns.compact button{padding:0 2px !important;}
         .page-nav{top:42px !important;}
         #overview-view{padding-top:50px !important;}
+        /* 總覽：清單式，一箱一行、物品變小標籤，一次看比較多 */
+        #overview-view{padding-left:12px !important;padding-right:12px !important;}
+        #overview-view .ov-tier-row,#overview-view .ov-tier-wrap{display:block !important;background:#fff;border:1px solid #eee6e2;border-radius:14px;overflow:hidden;margin-bottom:8px;}
+        #overview-view .ov-box{display:block;min-height:0 !important;margin:0 !important;padding:8px 12px !important;border:none !important;border-bottom:1px solid #f3eeeb !important;border-radius:0 !important;background:transparent !important;box-shadow:none !important;}
+        #overview-view .ov-box:last-child{border-bottom:none !important;}
+        #overview-view .ov-box:active{background:#fbf7f5 !important;}
+        #overview-view .ov-box-title{flex-direction:row !important;align-items:center;gap:8px !important;margin:0 !important;font-size:14px !important;}
+        #overview-view .ov-box-title>span:first-child{flex:1;min-width:0;height:auto !important;display:block !important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;-webkit-line-clamp:unset;font-weight:800;}
+        #overview-view .ov-fold-row{flex-wrap:nowrap;flex:none;}
+        #overview-view .ov-fold{font-size:11px !important;padding:2px 8px !important;}
+        #overview-view .ov-item{display:inline-flex !important;flex-wrap:nowrap !important;align-items:baseline;gap:5px;width:auto;max-width:100%;margin:5px 5px 0 0;padding:3px 8px !important;border:none !important;border-radius:8px;background:#f6f1ee;font-size:12px !important;line-height:1.3;}
+        #overview-view .ov-item .ov-n{flex:0 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#374151;font-weight:600;}
+        #overview-view .ov-item .ov-q{margin-left:0;font-size:12px;}
+        #overview-view .ov-item .ov-b,#overview-view .ov-item .ov-tag{flex:none !important;font-size:11px;margin:0;}
+        #overview-view .ov-item.checked-out{background:#fef2f2;}
+        #overview-view .ov-tier-title{margin:10px 4px 5px !important;font-size:12px;}
+        #overview-view .ov-page-title{margin:16px 2px 6px !important;font-size:16px;}
+        #overview-view .ov-tier-chips{margin-top:6px;}
         /* 換頁箭頭移到最下方（地板那一帶），不要擋到架子上的標籤 */
         .side-arrow{top:auto !important;margin-top:0 !important;bottom:calc(112px + env(safe-area-inset-bottom));width:40px;height:40px;border-radius:50%;opacity:.88;}
         .side-arrow svg{width:18px;height:18px;}
