@@ -581,18 +581,18 @@
         .header-btns button.active{background:rgba(214,90,104,.14) !important;color:var(--primary) !important;}
         .side-arrow{color:var(--primary) !important;animation:none;}
         /* 地圖上方工具列：返回變圓鈕、功能鈕圖示在上字在下，一排放得下不用滑 */
-        header{left:12px !important;right:12px !important;gap:8px !important;}
-        .nav-back-pill{width:38px;height:38px;padding:0 !important;justify-content:center;border-radius:50% !important;flex:none;}
+        header{top:6px !important;left:10px !important;right:10px !important;gap:6px !important;}
+        .nav-back-pill{width:32px;height:32px;padding:0 !important;justify-content:center;border-radius:50% !important;flex:none;}
         .nav-back-pill span{display:none;}
-        .nav-back-pill svg{width:18px !important;height:18px !important;}
+        .nav-back-pill svg{width:16px !important;height:16px !important;}
         .header-pill{flex:1;min-width:0;border-radius:15px !important;padding:2px !important;}
         .header-btns{flex:1;display:flex;gap:2px;min-width:0;}
-        .header-btns button,.header-btns .pill-btn{flex:1 1 0;min-width:0;height:32px !important;padding:0 2px !important;border-radius:12px !important;
-            flex-direction:column;justify-content:center;gap:1px !important;font-size:9.5px !important;font-weight:700 !important;letter-spacing:0;}
-        .header-btns button svg{width:14px !important;height:14px !important;}
+        .header-btns button,.header-btns .pill-btn{flex:1 1 0;min-width:0;flex-direction:row !important;height:26px !important;padding:0 2px !important;border-radius:10px !important;
+            flex-direction:column;justify-content:center;gap:4px !important;font-size:11px !important;font-weight:700 !important;letter-spacing:0;}
+        .header-btns button svg{width:13px !important;height:13px !important;}
         .header-btns .lbl{display:block !important;line-height:1;}
         .header-btns.compact button{padding:0 2px !important;}
-        .page-nav{top:60px !important;}
+        .page-nav{top:42px !important;}
         /* 換頁箭頭移到最下方（地板那一帶），不要擋到架子上的標籤 */
         .side-arrow{top:auto !important;margin-top:0 !important;bottom:calc(112px + env(safe-area-inset-bottom));width:40px;height:40px;border-radius:50%;opacity:.88;}
         .side-arrow svg{width:18px;height:18px;}
@@ -600,10 +600,13 @@
         #side-arrows{position:absolute !important;inset:0 !important;pointer-events:none !important;z-index:96;}
         #side-arrows .side-arrow{position:absolute !important;top:auto !important;bottom:calc(26px + env(safe-area-inset-bottom)) !important;margin:0 !important;pointer-events:auto;
             width:50px !important;height:50px !important;border-radius:50% !important;padding:0 !important;display:flex !important;align-items:center;justify-content:center;
-            background:var(--primary) !important;color:#fff !important;border:2px solid #fff !important;box-shadow:0 6px 16px rgba(31,36,48,.28) !important;opacity:1 !important;animation:none !important;}
+            background:rgba(10,132,255,.38) !important;color:#fff !important;border:1.5px solid rgba(255,255,255,.7) !important;box-shadow:0 4px 14px rgba(10,80,180,.25) !important;opacity:1 !important;
+            backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);animation:none !important;}
         #page-nav-prev{left:14px !important;} #page-nav-next{right:14px !important;}
         #side-arrows .side-arrow svg{width:24px !important;height:24px !important;}
-        #side-arrows .chev{animation:none !important;display:flex;}
+        #side-arrows .chev{display:flex;}
+        #page-nav-prev .chev{animation:chevNudgeL 1.6s ease-in-out infinite !important;}
+        #page-nav-next .chev{animation:chevNudgeR 1.6s ease-in-out infinite !important;}
         #side-arrows .side-arrow:disabled{display:none !important;}
         .mode-hint{background:rgba(255,255,255,.92) !important;color:#c2410c !important;border-color:rgba(240,131,57,.35) !important;box-shadow:0 6px 16px rgba(0,0,0,.08);}
         #map-loading-overlay .spinner{border-color:rgba(214,90,104,.15);border-top-color:var(--primary);}
