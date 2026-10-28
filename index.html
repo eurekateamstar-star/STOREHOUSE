@@ -625,6 +625,10 @@
 
         /* ===== 彈出視窗：底色加深一點、卡片用白色，文字顏色加深（淺色字在白底看不清楚）===== */
         .modal{background:#f4efec !important;}
+        #move-item-box-list > *{flex-shrink:0;}
+        #move-item-box-list .borrower-grid{max-height:none !important;display:grid !important;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;overflow:visible !important;}
+        #move-item-box-list .borrower-card{min-height:74px;padding:10px 6px;cursor:pointer;}
+        #move-item-box-list .borrower-card.pick{border:2px solid #34c759 !important;background:#ecfdf3 !important;}
         .modal .grid-item-card,.modal .borrower-card{background:#fff !important;border:1px solid #e7e0dc !important;box-shadow:0 4px 12px rgba(31,36,48,.06);}
         .modal [style*="background: rgba(255, 255, 255, 0.04)"],.modal [style*="background:rgba(255,255,255,0.04)"],
         .modal [style*="background: rgba(255,255,255,0.04)"],.modal [style*="background:rgba(255,255,255,0.06)"],.modal [style*="background: rgba(255, 255, 255, 0.06)"]{background:#fff !important;border-color:#e7e0dc !important;}
@@ -1188,7 +1192,7 @@
             </div>
             <div style="font-size: 13px; color:#8e8e93; margin-bottom: 14px;" id="move-item-desc">正在搬移「<span id="move-item-name-label"></span>」，請選擇目標箱子：</div>
 
-            <div id="move-item-box-list" style="max-height: 320px; overflow-y: auto; margin-bottom:14px; display:flex; flex-direction:column; gap:14px;"></div>
+            <div id="move-item-box-list" style="max-height: 52vh; overflow-y: auto; -webkit-overflow-scrolling: touch; margin-bottom:14px; display:flex; flex-direction:column; gap:10px;"></div>
 
             <div style="font-size: 13px; color: #34c759; font-weight: 600; margin-bottom: 12px; text-align: center;" id="move-item-target-preview">
                 尚未選擇目標箱子
@@ -5252,7 +5256,7 @@
             if (otherBoxesOnPage.length === 0) return;
 
             const pageTitle = document.createElement('div');
-            pageTitle.style.cssText = 'font-size:12px; color:#0a84ff; font-weight:700; padding-bottom:6px; border-bottom:1px solid rgba(255,255,255,0.1);';
+            pageTitle.style.cssText = 'font-size:13px; color:#c2410c; font-weight:800; padding:4px 2px 6px; border-bottom:1px solid #eee3dd;';
             pageTitle.innerText = `📍 ${p.name}`;
             listEl.appendChild(pageTitle);
 
@@ -5274,12 +5278,8 @@
                     document.getElementById('move-item-target-preview').innerText = `已選擇目標箱子: [ ${p.name} - ${bx.name} ]`;
                     document.getElementById('btn-confirm-move-item').disabled = false;
 
-                    listEl.querySelectorAll('.borrower-card').forEach(c => {
-                        c.style.borderColor = 'rgba(255,255,255,0.08)';
-                        c.style.background = 'rgba(44, 44, 46, 0.7)';
-                    });
-                    card.style.borderColor = '#34c759';
-                    card.style.background = 'rgba(52, 199, 89, 0.15)';
+                    listEl.querySelectorAll('.borrower-card').forEach(c => c.classList.remove('pick'));
+                    card.classList.add('pick');
                 };
                 grid.appendChild(card);
             });
