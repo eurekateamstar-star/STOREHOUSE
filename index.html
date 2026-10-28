@@ -3697,18 +3697,20 @@
                     rows.push({ key: 'd' + idx + '|' + h, idx, kind: 'd', holder: h, uids, name: it.name, img: it.imageUrl, max: uids.length, unit: UNIT(it), sub: `${targetName(h)} 借出 ${uids.length} ${UNIT(it)}` }));
             }
         });
-        const val = {}; rows.forEach(r => val[r.key] = isOut ? 0 : r.max);   // 入庫：預設全部還回
+        const val = {}, inc = {}; rows.forEach(r => { val[r.key] = isOut ? 0 : r.max; inc[r.key] = !isOut && r.kind === 'c'; });   // 入庫：預設全部還回；耗材預設要結清（0＝全部用掉）
         const ov = document.createElement('div'); ov.className = 'exp-ov'; ov.id = 'box-batch-ov'; ov.style.zIndex = 9500;
         const close = () => { ov.remove(); batchOpen = false; lastScannedCode = null; scanGateUntil = Date.now() + 800; };
         const draw = () => {
             const total = rows.reduce((a, r) => a + (val[r.key] || 0), 0);
+            const settle = rows.filter(r => inc[r.key] && !val[r.key]).length;   // 回來 0 個、要記消耗的耗材
+            const can = total > 0 || settle > 0;
             ov.innerHTML = `<div class="exp-card">
                 <div class="exp-h" style="color:${isOut ? '#c2410c' : '#15803d'}">${isOut ? '📤 整箱出庫' : '📥 整箱入庫'}・${escapeHtml(box.name)}<button type="button" class="exp-x">✕</button></div>
                 <div style="font-size:13px;color:#6b625e;margin:0 4px 10px">${isOut ? `領用對象：<b style="color:#c2410c">${escapeHtml(currentBorrowTarget)}</b>　點 ＋ 選要帶走的數量` : '選要還回來的東西（預設全數，沒回來的耗材記消耗）'}</div>
                 ${rows.length ? `<button type="button" class="bb-all" style="all:unset;box-sizing:border-box;display:block;width:100%;text-align:center;padding:10px;border-radius:12px;background:#fff7ed;color:#c2410c;font-weight:800;margin-bottom:10px;cursor:pointer">${total ? '全部清除' : (isOut ? '整箱全部帶走' : '全部還回')}</button>` : ''}
-                ${rows.length ? rows.map(r => `<div class="bb-row" style="display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:12px;border:1px solid ${val[r.key] ? '#86efac' : '#f0e6e3'};background:${val[r.key] ? '#f0fdf4' : '#fff'};margin-bottom:8px;${r.max ? '' : 'opacity:.45'}">
+                ${rows.length ? rows.map(r => `<div class="bb-row" style="display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:12px;border:1px solid ${val[r.key] || inc[r.key] ? '#86efac' : '#f0e6e3'};background:${val[r.key] || inc[r.key] ? '#f0fdf4' : '#fff'};margin-bottom:8px;${r.max ? '' : 'opacity:.45'}">
                     <img src="${escapeHtml(r.img || '')}" onerror="this.style.visibility='hidden'" style="width:42px;height:42px;border-radius:8px;object-fit:cover;background:#f3efed;flex:none">
-                    <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14.5px;color:#1f2937;word-break:break-all">${escapeHtml(r.name)}</div><div style="font-size:12px;color:#8a7f7a">${escapeHtml(r.sub)}</div></div>
+                    <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14.5px;color:#1f2937;word-break:break-all">${escapeHtml(r.name)}</div><div style="font-size:12px;color:#8a7f7a">${escapeHtml(r.sub)}</div>${!isOut && r.kind === 'c' ? `<label style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:${inc[r.key] ? '#b42318' : '#8a7f7a'};margin-top:3px;cursor:pointer"><input type="checkbox" data-inc="${escapeHtml(r.key)}" ${inc[r.key] ? 'checked' : ''} style="width:16px;height:16px;margin:0">這次結清${inc[r.key] && !val[r.key] ? '（0＝全部用掉，記消耗）' : val[r.key] < r.max && inc[r.key] ? `（沒回來的 ${r.max - val[r.key]} 記消耗）` : ''}</label>` : ''}</div>
                     ${r.max ? `<div style="display:flex;align-items:center;gap:6px;flex:none">
                         <button type="button" data-k="${escapeHtml(r.key)}" data-d="-1" style="all:unset;width:34px;height:34px;border-radius:10px;background:#f3efed;text-align:center;line-height:34px;font-size:20px;font-weight:900;cursor:pointer">−</button>
                         <b style="min-width:26px;text-align:center;font-size:17px">${val[r.key]}</b>
@@ -3717,7 +3719,7 @@
                 </div>`).join('') : `<div style="text-align:center;color:#8e8e93;padding:24px">${isOut ? '箱子裡沒有東西' : '這箱沒有借出中的東西'}</div>`}
                 <div style="display:flex;gap:10px;margin-top:6px">
                     <button type="button" class="bb-cancel" style="all:unset;flex:1;text-align:center;padding:13px;border-radius:14px;background:#f3efed;font-weight:800;cursor:pointer">取消</button>
-                    <button type="button" class="bb-ok" ${total ? '' : 'disabled'} style="all:unset;flex:2;text-align:center;padding:13px;border-radius:14px;background:${total ? (isOut ? '#f08339' : '#22c55e') : '#d6d3d1'};color:#fff;font-weight:900;cursor:pointer">${isOut ? '確認出庫' : '確認入庫'}（${total}）</button>
+                    <button type="button" class="bb-ok" ${can ? '' : 'disabled'} style="all:unset;flex:2;text-align:center;padding:13px;border-radius:14px;background:${can ? (isOut ? '#f08339' : '#22c55e') : '#d6d3d1'};color:#fff;font-weight:900;cursor:pointer">${isOut ? `確認出庫（${total}）` : `確認入庫（${total}）${settle ? `・消耗 ${settle} 項` : ''}`}</button>
                 </div></div>`;
             ov.querySelector('.exp-x').onclick = close; ov.querySelector('.bb-cancel').onclick = close;
             ov.querySelectorAll('[data-k]').forEach(b => b.onclick = () => {
@@ -3725,19 +3727,20 @@
                 val[r.key] = b.dataset.d === 'max' ? r.max : Math.max(0, Math.min(r.max, val[r.key] + Number(b.dataset.d)));
                 draw();
             });
+            ov.querySelectorAll('[data-inc]').forEach(c => c.onchange = () => { inc[c.dataset.inc] = c.checked; draw(); });
             const all = ov.querySelector('.bb-all');
-            if (all) all.onclick = () => { const any = rows.some(r => val[r.key]); rows.forEach(r => val[r.key] = any ? 0 : r.max); draw(); };
+            if (all) all.onclick = () => { const any = rows.some(r => val[r.key]); rows.forEach(r => { val[r.key] = any ? 0 : r.max; if (!isOut && r.kind === 'c') inc[r.key] = !any; }); draw(); };
             const ok = ov.querySelector('.bb-ok');
-            if (ok && total) ok.onclick = async () => { ok.onclick = null; ok.innerText = '處理中…'; await applyBoxBatch(box, rows, val, isOut); close(); };
+            if (ok && can) ok.onclick = async () => { ok.onclick = null; ok.innerText = '處理中…'; await applyBoxBatch(box, rows, val, isOut, inc); close(); };
         };
         ov.onclick = e => { if (e.target === ov) close(); };
         document.body.appendChild(ov); draw();
     }
-    async function applyBoxBatch(box, rows, val, isOut) {
+    async function applyBoxBatch(box, rows, val, isOut, inc = {}) {
         const items = box.items || [], logs = [], ts = Date.now(), timeStr = nowTimeStr(), who = (currentUser && currentUser.account) || '';
         let count = 0;
         rows.forEach(r => {
-            const n = val[r.key] || 0; if (!n) return;
+            const n = val[r.key] || 0; if (!n && !(!isOut && r.kind === 'c' && inc[r.key])) return;
             const it = items[r.idx]; if (!it) return;
             if (isOut) {
                 if (r.kind === 'c') {
@@ -3774,7 +3777,8 @@
         try { await updateDoc(doc(db, "warehouse_boxes", box.id), { items }); }
         catch (e) { scanErrorFeedback('⚠️', '儲存失敗\n請再試一次'); showToast('❌ 儲存失敗：' + ((e && e.code) || e), 'error', 1600); return; }
         for (const l of logs) { try { await addDoc(collection(db, "warehouse_logs"), { ...opInfo(), ...l, timestamp: ts, timeStr }); } catch (e) {} }
-        scanSuccessFeedback(isOut ? '📤' : '📥', `${isOut ? '已出庫' : '已入庫'} ${count} 件\n${box.name}${isOut ? `\n→ ${currentBorrowTarget}` : ''}`);
+        const usedN = logs.filter(l => l.type === '消耗').reduce((a, l) => a + l.qty, 0);
+        scanSuccessFeedback(isOut ? '📤' : '📥', `${isOut ? '已出庫' : '已入庫'} ${count} 件${usedN ? `\n消耗 ${usedN}` : ''}\n${box.name}${isOut ? `\n→ ${currentBorrowTarget}` : ''}`);
         showToast(`✅ ${box.name}\n${isOut ? '出庫' : '入庫'} ${count} 件`, 'success', 1200);
         refreshLiveViews();
     }
