@@ -594,30 +594,19 @@
         .header-btns.compact button{padding:0 2px !important;}
         .page-nav{top:42px !important;}
         #overview-view{padding-top:50px !important;}
-        /* 總覽：收納箱造型（藍框箱＋白色貼紙箱名＋深色窗內物品），一層四箱放在木層板上 */
-        #overview-view{padding-left:8px !important;padding-right:8px !important;}
-        #overview-view .ov-tier-row,#overview-view .ov-tier-wrap{display:grid !important;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;align-items:start;
-            background:#f1e8e2;padding:6px;border-radius:10px;border:none;border-bottom:5px solid #dcc6b8;margin-bottom:4px;}
-        #overview-view .ov-box{min-height:0 !important;margin:0 !important;padding:4px !important;border-radius:10px !important;background:#fff !important;border:1.5px solid #f0d6d9 !important;box-shadow:0 1px 3px rgba(214,90,104,.08) !important;overflow:hidden;}
-        #overview-view .ov-box:active{background:#fdf2f3 !important;}
-        #overview-view .ov-box-title{display:block !important;position:relative;margin:2px auto 5px !important;padding:3px 16px 3px 4px !important;background:#fde8ea;border-radius:6px;box-shadow:none;
-            font-size:10.5px !important;line-height:1.2;text-align:center;}
-        #overview-view .ov-box-title>span:first-child{display:-webkit-box !important;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-all;font-weight:800;color:#b4414e;height:auto !important;}
-        #overview-view .ov-fold-row{position:absolute;top:50%;right:2px;transform:translateY(-50%);}
-        #overview-view .ov-fold{font-size:0 !important;padding:0 !important;min-width:13px;height:13px;border-radius:50% !important;background:#d65a68 !important;border:none !important;}
-        #overview-view .ov-fold::after{content:attr(data-n);font-size:8.5px;font-weight:800;color:#fff;line-height:13px;display:block;text-align:center;}
-        #overview-view .ov-box-count{display:none;}
-        #overview-view .ov-item{display:flex !important;align-items:flex-end;gap:3px;margin:0 !important;padding:3px 5px !important;border:none !important;border-bottom:1px solid #f1e6e2 !important;background:#faf6f4 !important;color:#374151;line-height:1.2;}
-        #overview-view .ov-box-title + .ov-item{border-radius:4px 4px 0 0;}
-        #overview-view .ov-item:last-child{border-radius:0 0 4px 4px;border-bottom:none !important;}
-        #overview-view .ov-box-title + .ov-item:last-child{border-radius:4px;}
-        #overview-view .ov-item .ov-n{flex:1;min-width:0;font-size:10px;color:#4b5563;white-space:normal;word-break:break-all;}
-        #overview-view .ov-item .ov-q{flex:none;margin:0;font-size:10px;font-weight:800;color:#c2410c;white-space:nowrap;}
-        #overview-view .ov-item .ov-b{display:none;}
-        #overview-view .ov-item.checked-out{background:#fef2f2 !important;}
-        #overview-view .ov-item.checked-out .ov-q{color:#dc2626;}
+        /* 總覽：照片牆（每箱一張封面照＋箱名＋項數），一層四箱 */
+        #overview-view{padding-left:10px !important;padding-right:10px !important;}
+        #overview-view .ov-tier-row,#overview-view .ov-tier-wrap{display:grid !important;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;align-items:start;background:none;border:none;padding:0;margin-bottom:4px;}
+        #overview-view .ov-box.ov-photo{min-height:0 !important;margin:0 !important;padding:0 !important;border-radius:12px !important;background:#fff !important;border:none !important;box-shadow:0 1px 4px rgba(60,40,30,.1) !important;overflow:hidden;}
+        #overview-view .ov-box.ov-photo:active{transform:scale(.97);}
+        .ovp-cov{position:relative;aspect-ratio:1/1;background:#fdf1ee;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+        .ovp-cov img{width:100%;height:100%;object-fit:cover;display:block;}
+        .ovp-cov span{font-size:26px;opacity:.7;}
+        .ovp-cov em{position:absolute;left:4px;bottom:4px;font-style:normal;font-size:9px;font-weight:800;color:#fff;background:rgba(220,38,38,.88);border-radius:6px;padding:1px 5px;}
+        .ovp-t{font-size:11px;font-weight:800;color:#1f2937;line-height:1.25;padding:5px 6px 0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-all;}
+        .ovp-n{font-size:10px;font-weight:700;color:#d65a68;padding:1px 6px 6px;}
         #overview-view .ov-tier-title{display:flex;margin:12px 2px 5px !important;font-size:12px !important;color:#c2410c !important;font-weight:800;}
-        #overview-view .ov-tier-title span:last-child{margin-left:auto;color:#94a3b8 !important;font-weight:500;font-size:11px;}
+        #overview-view .ov-tier-title span:last-child{margin-left:auto;color:#a8a29e !important;font-weight:500;font-size:11px;}
         #overview-view .ov-page-title{margin:16px 2px 4px !important;padding:0 !important;font-size:16px !important;color:#d65a68 !important;background:none;border:none !important;font-weight:900;}
         #overview-view .ov-tier-chips{margin:4px;}
         /* 換頁箭頭移到最下方（地板那一帶），不要擋到架子上的標籤 */
@@ -5103,7 +5092,7 @@
             const _anyOpen = _ids.some(id => !ovCollapsed.has(id));
             const _qr = { all: 0, dur: 0, con: 0 };
             (boxesCache || []).filter(b => pages.some(p => p.id === b.pageId)).forEach(b => (b.items || []).forEach(it => { const n = qrCount(it); _qr.all += n; if (it.itemType === 'consumable') _qr.con += n; else _qr.dur += n; }));
-            let html = _ids.length ? `<div class="ov-toolbar">${isAdmin() ? `<button class="ov-fold-all ov-qr-toggle" onclick="downloadAllBoxLabels()">📦 全部整箱 QR</button>` : ''}<button class="ov-fold-all" onclick="toggleOvAll()">${_anyOpen ? '全部收起 ▴' : '全部展開 ▾'}</button></div>` : '';
+            let html = _ids.length ? `<div class="ov-toolbar">${isAdmin() ? `<button class="ov-fold-all ov-qr-toggle" onclick="downloadAllBoxLabels()">📦 全部整箱 QR</button>` : ''}</div>` : '';
             document.body.classList.remove('ov-qr-on');
             if (false) html += `<div class="ov-qr-sum">🏷️ 全部要印 <b>${_qr.all}</b> 張 QR<small>耐久品 ${_qr.dur} 張（每件一張）・耗材 ${_qr.con} 張（每種一張）</small></div>`;
             pages.forEach(p => {
@@ -5124,14 +5113,17 @@
                         const countHtml = itemsN > 0
                             ? `<div class="ov-fold-row"><button class="ov-fold" data-n="${itemsN}" onclick="event.stopPropagation(); toggleOvBox('${b.id}')">${itemsN} 項 ${folded ? '▸' : '▾'}</button><span class="ov-qr-box">🏷️${(b.items || []).reduce((x, it) => x + qrCount(it), 0)}</span></div>`
                             : `<span class="ov-box-count">0 項</span>`;
-                        html += `<div class="ov-box" onclick="openBoxModal('${b.id}')"><div class="ov-box-title"><span>${escapeHtml(b.name)}</span>${countHtml}</div>`;
+                        { const cov = (b.items || []).find(it => it.imageUrl);   // 照片牆：用箱內第一張物品照片當封面
+                          const out = (b.items || []).reduce((a, it) => a + (Number(it.checkedOutCount) || 0) + (it.itemType === 'consumable' ? heldOf(it) : 0), 0);
+                          html += `<div class="ov-box ov-photo" onclick="openBoxModal('${b.id}')"><div class="ovp-cov">${cov ? `<img src="${escapeHtml(cov.imageUrl)}" alt="" loading="lazy" onerror="this.remove()">` : '<span>📦</span>'}${out ? `<em>外出 ${out}</em>` : ''}</div>`
+                            + `<div class="ovp-t">${escapeHtml(b.name)}</div><div class="ovp-n">${itemsN} 項 ›</div>`; }
                         if (isContentEditActive) {
                             const cur = Number(b.tier) || 0;
                             html += `<div class="ov-tier-chips">` + [1, 2, 3, 4, 5, 0].map(n =>
                                 `<button class="tier-chip ${cur === n ? 'on' : ''}" onclick="event.stopPropagation(); setBoxTier('${b.id}', ${n})">${n ? tierLabel(n) : '未分層'}</button>`
                             ).join('') + `</div>`;
                         }
-                        (folded ? [] : (b.items || [])).forEach(it => {
+                        [].forEach(it => {
                             const checkedOut = Number(it.checkedOutCount) || 0;
                             const totalUnits = Array.isArray(it.units) && it.units.length ? it.units.length : (Number(it.qty) || 0) + checkedOut;
                             if (checkedOut > 0) {
