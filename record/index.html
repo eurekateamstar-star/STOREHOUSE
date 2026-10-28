@@ -503,6 +503,50 @@
       #previewOverlay { padding: 0; align-items: stretch; justify-content: center; height: 100vh; height: 100dvh; }
       .preview-card { max-width: 100%; max-height: none; height: 100%; border-radius: 0; box-shadow: none; }
       .preview-scroll-wrapper { padding: 12px 14px; padding-top: max(12px, env(safe-area-inset-top)); -webkit-overflow-scrolling: touch; }
+
+      /* ===== 專業版報告 ===== */
+      .report-header{border-bottom:2.5px solid #1f2937 !important;padding-bottom:8px !important;margin-bottom:10px !important;align-items:flex-end;}
+      .report-title{font-size:20px !important;font-weight:900 !important;color:#1f2937 !important;letter-spacing:2px;line-height:1.15;}
+      .report-subtitle{font-size:9.5px !important;color:#8a8a8a !important;letter-spacing:1px;font-weight:700;}
+      .report-top-meta{display:flex;flex-direction:column;gap:3px;text-align:right;}
+      .report-top-meta div{font-size:12px;font-weight:800;color:#1f2937;}
+      .report-top-meta span{display:block;font-size:9px;color:#999;font-weight:700;letter-spacing:1px;}
+      .rp-alert{background:#D65A68;color:#fff;text-align:center;font-weight:900;font-size:14px;letter-spacing:3px;padding:7px;border-radius:8px;margin-bottom:6px;}
+      .rp-sec{display:flex;align-items:baseline;gap:7px;margin:14px 0 6px;padding-bottom:4px;border-bottom:1px solid #e5e7eb;font-size:13.5px;font-weight:900;color:#1f2937;}
+      .rp-sec em{font-style:normal;font-size:11px;font-weight:900;color:#D65A68;font-variant-numeric:tabular-nums;}
+      .rp-sec small{margin-left:auto;font-size:9px;color:#b0b0b0;letter-spacing:1.5px;font-weight:800;}
+      .rp-kv{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;}
+      .rp-kv th{width:72px;white-space:nowrap;background:#f6f7f9;color:#6b7280;font-weight:700;font-size:11.5px;text-align:left;padding:7px 8px;border:1px solid #e5e7eb;vertical-align:top;}
+      .rp-kv td{padding:7px 9px;border:1px solid #e5e7eb;color:#111827;font-weight:700;word-break:break-all;line-height:1.45;}
+      .rp-na{color:#c0c0c0;font-style:normal;font-weight:500;}
+      .rp-tag{display:inline-block;background:#fdf2f3;color:#b4434f;border:1px solid #f6d3d7;border-radius:6px;padding:2px 7px;margin:2px 4px 2px 0;font-size:12px;font-weight:800;}
+      .rp-box{border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;font-size:13px;font-weight:700;color:#111827;line-height:1.5;word-break:break-all;}
+      .rp-body{display:flex;gap:10px;align-items:flex-start;border:1px solid #e5e7eb;border-radius:8px;padding:8px;}
+      .rp-body .preview-body-container{flex:none;margin:0;}
+      .rp-body-list{flex:1;min-width:0;}
+      .rp-tbl{width:100%;border-collapse:collapse;font-size:12px;}
+      .rp-tbl th{background:#f6f7f9;color:#6b7280;font-size:10.5px;text-align:left;padding:4px 6px;border:1px solid #e5e7eb;}
+      .rp-tbl td{padding:5px 6px;border:1px solid #e5e7eb;font-weight:700;color:#111827;}
+      .rp-tbl td:first-child{color:#b4434f;white-space:nowrap;}
+      .rp-vgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;}
+      .rp-vt{border:1px solid #e5e7eb;border-radius:8px;padding:6px 8px;background:#fff;}
+      .rp-vt.rp-wide{grid-column:span 3;display:flex;justify-content:space-between;align-items:center;}
+      .rp-vgrid .rp-wide + .rp-wide{grid-column:span 3;}
+      .rp-vt span{display:block;font-size:10px;color:#9ca3af;font-weight:800;letter-spacing:.3px;}
+      .rp-vt b{display:block;font-size:17px;font-weight:900;color:#111827;font-variant-numeric:tabular-nums;line-height:1.25;}
+      .rp-vt.rp-wide b{font-size:14.5px;}
+      .rp-vt b small{font-size:10px;color:#9ca3af;font-weight:700;margin-left:3px;}
+      .rp-vt.empty b{color:#d1d5db;}
+      .rp-vt.bad{border-color:#f3b4bb;background:#fff5f6;}
+      .rp-vt.bad b{color:#c53043;}
+      .rp-crit{margin-top:5px;border-radius:8px;padding:7px 10px;font-size:13px;font-weight:800;}
+      .rp-crit.no{background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;}
+      .rp-crit.yes{background:#D65A68;color:#fff;}
+      .rp-note{margin-top:5px;} .rp-note span{display:block;font-size:10px;color:#9ca3af;font-weight:800;}
+      .rp-stable{border:1px solid #bbf7d0;background:#f0fdf4;color:#15803d;border-radius:8px;padding:10px;font-size:14px;font-weight:900;text-align:center;}
+      .rp-stable small{font-weight:700;font-size:11px;margin-left:4px;color:#4b9b6a;}
+      .rp-foot{margin-top:14px;padding-top:8px;border-top:1px solid #e5e7eb;text-align:center;font-size:9.5px;color:#a3a3a3;line-height:1.5;}
+      .preview-photo{max-height:140px !important;}
       .preview-btns { height: auto; flex-shrink: 0; padding-bottom: max(10px, env(safe-area-inset-bottom)); background: #fff; }
       .preview-btns .p-btn { min-height: 54px; }
 
@@ -983,8 +1027,9 @@
       <div class="preview-scroll-wrapper" id="previewCaptureArea">
         <div class="report-header">
           <div>
-            <div class="report-title">白沙屯醫護團 - 救護紀錄表</div>
-            <div class="report-subtitle">EMERGENCY MEDICAL SERVICE REPORT</div>
+            <div class="report-subtitle">白沙屯拱天宮醫護團</div>
+            <div class="report-title">救護紀錄表</div>
+            <div class="report-subtitle">EMS PATIENT CARE REPORT</div>
           </div>
           <div id="reportTopMeta" class="report-top-meta"></div>
         </div>
@@ -2208,6 +2253,64 @@
       });
     });
 
+
+    // ===== 專業版救護報告（預覽與主控台共用）=====
+    const rpE = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const rpV = t => { const v = String(t ?? '').trim(); return v && v !== '無' && v !== '不詳' && v !== '未填' ? rpE(v) : '<i class="rp-na">—</i>'; };
+    const rpTags = t => { const a = String(t || '').split(/[,，、]\s*/).map(x => x.trim()).filter(x => x && x !== '無'); return a.length ? a.map(x => `<span class="rp-tag">${rpE(x)}</span>`).join('') : '<i class="rp-na">—</i>'; };
+    function rpVitalsHtml(v, text) {
+      if (v && v.stable || (!v && /^意識清楚生命徵象穩定/.test(text || ''))) return `<div class="rp-stable">✓ 意識清楚，生命徵象穩定<small>（未量測數值）</small></div>`;
+      if (!v) return `<div class="rp-box">${rpV(text)}</div>`;
+      const n = x => parseFloat(x), sbp = n(String(v.BP || '').split('/')[0]), dbp = n(String(v.BP || '').split('/')[1]);
+      const cell = (lab, val, unit, bad) => `<div class="rp-vt${val ? (bad ? ' bad' : '') : ' empty'}"><span>${lab}</span><b>${val ? rpE(val) : '—'}${val && unit ? `<small>${unit}</small>` : ''}</b></div>`;
+      const avpu = { '清': 'A 清醒', '聲': 'V 對聲音有反應', '痛': 'P 對疼痛有反應', '否': 'U 無反應' }[v.consc] || '—';
+      const gcs = v.GCS ? `${v.GCS}<small>E${v.E}V${v.V}M${v.M}</small>` : (v.E || v.V || v.M ? `<small>E${v.E || '?'}V${v.V || '?'}M${v.M || '?'}</small>` : '');
+      return `<div class="rp-vgrid">
+          <div class="rp-vt rp-wide${v.consc && v.consc !== '清' ? ' bad' : ''}"><span>意識 AVPU</span><b>${rpE(avpu)}</b></div>
+          <div class="rp-vt rp-wide${v.GCS && +v.GCS < 15 ? ' bad' : ''}${gcs ? '' : ' empty'}"><span>GCS</span><b>${gcs || '—'}</b></div>
+          ${cell('呼吸 RR', v.RR, '次/分', n(v.RR) < 10 || n(v.RR) > 24)}
+          ${cell('脈搏 HR', v.HR, '次/分', n(v.HR) < 50 || n(v.HR) > 120)}
+          ${cell('血壓 BP', v.BP, 'mmHg', sbp < 90 || sbp > 180 || dbp > 110)}
+          ${cell('血氧 SpO₂', v.SpO2, '%', n(v.SpO2) < 94)}
+          ${cell('血糖', v.BS, 'mg/dL', n(v.BS) < 70 || n(v.BS) > 250)}
+          ${cell('體溫', v.BT, '°C', n(v.BT) < 35 || n(v.BT) >= 38)}
+        </div>
+        <div class="rp-crit ${v.critical === '是' ? 'yes' : 'no'}">危急個案：<b>${rpE(v.critical || '—')}</b></div>
+        ${v.Note ? `<div class="rp-box rp-note"><span>備註</span>${rpE(v.Note)}</div>` : ''}`;
+    }
+    function reportHtml(r) {
+      const crit = r.vitals && r.vitals.critical === '是';
+      const parts = (r.injured || []).length
+        ? `<table class="rp-tbl"><tr><th>部位</th><th>傷情</th></tr>${r.injured.map(i => `<tr><td>${rpE(i.part)}</td><td>${rpE(i.desc)}</td></tr>`).join('')}</table>`
+        : '<div class="rp-box"><i class="rp-na">無標記傷處</i></div>';
+      const sec = (no, t, en) => `<div class="rp-sec"><em>${no}</em>${t}<small>${en}</small></div>`;
+      return `${crit ? '<div class="rp-alert">⚠ 危急個案</div>' : ''}
+        ${sec('01', '病患資料', 'PATIENT')}
+        <table class="rp-kv">
+          <tr><th>姓名</th><td>${rpV(r.name)}</td><th>性別</th><td>${rpV(r.gender)}</td></tr>
+          <tr><th>年齡</th><td>${r.age && r.age !== '無' ? rpE(r.age) + ' 歲' : '<i class="rp-na">—</i>'}</td><th>電話</th><td>${rpV(r.phone)}</td></tr>
+          <tr><th>臂章</th><td colspan="3">${rpV(r.armband)}</td></tr>
+          <tr><th>地點</th><td colspan="3">${rpV(r.address)}</td></tr>
+        </table>
+        ${sec('02', '現場評估', 'ASSESSMENT')}
+        <table class="rp-kv">
+          <tr><th>問題類型</th><td>${rpTags(r.problems)}</td></tr>
+          <tr><th>主訴</th><td>${rpV(r.complaint)}</td></tr>
+        </table>
+        ${sec('03', '傷情部位', 'INJURIES')}
+        <div class="rp-body"><div class="preview-body-container"><img src="https://i.ibb.co/6JFnSZp7/image.jpg" class="preview-body-img">${r.dotsHtml || ''}</div><div class="rp-body-list">${parts}</div></div>
+        ${sec('04', '處置', 'TREATMENT')}
+        <div class="rp-box">${rpTags(r.actions)}</div>
+        ${sec('05', '處置後生命徵象', 'VITAL SIGNS')}
+        ${rpVitalsHtml(r.vitals, r.vitalsText)}
+        ${sec('06', '交班', 'HANDOVER')}
+        <div class="rp-box">${rpV(r.handover)}</div>
+        ${sec('07', '現場照片', 'PHOTOS')}
+        <div class="preview-photos-grid">${r.photosHtml}</div>
+        ${r.mapHtml ? sec('08', '發生地點', 'LOCATION') + r.mapHtml : ''}
+        <div class="rp-foot">白沙屯拱天宮醫護團（慈昕醫護協會）・本紀錄供醫療交班與統計使用，請妥善保管個資</div>`;
+    }
+
     window.showPreview = function() {
       if (!validateRequired()) return;
       const fd = new FormData(document.getElementById('ambulanceForm'));
@@ -2217,10 +2320,7 @@
         <button class="p-btn p-btn-ok" onclick="window.finalSubmit()">${editingId ? '確認儲存' : '確認送出'}</button>
       `;
       
-      document.getElementById('reportTopMeta').innerHTML = `
-        🕒 ${fd.get('caseTime') || '未填'}<br>
-        👤 ${fd.get('personnel') || '未填'}
-      `;
+      document.getElementById('reportTopMeta').innerHTML = `<div><span>案件時間</span>${rpE(fd.get('caseTime') || '未填')}</div><div><span>紀錄人員</span>${rpE(fd.get('personnel') || '未填')}</div>`;
 
       const injuredText = selectedPartsData.length > 0 
         ? selectedPartsData.map(i => `<b style="color:#D65A68;">• ${i.part}</b>: ${i.desc}`).join("<br>") 
@@ -2239,44 +2339,13 @@
         photosHtml = '<span style="color:#888; font-size:10px;">未上傳照片</span>';
       }
 
-      const html = `
-        <div class="report-section-title">1. 病患與案件基本資料</div>
-        <div class="report-grid">
-          <div class="report-item"><span>姓名 / 性別</span><b>${fd.get('pName') || '不詳'} (${fd.get('gender')})</b></div>
-          <div class="report-item"><span>年齡 / 電話</span><b>${fd.get('age') ? fd.get('age') + '歲' : '無'} / ${fd.get('pPhone') || '無'}</b></div>
-          <div class="report-item"><span>臂章編號</span><b>${fd.get('armband') || '無'}</b></div>
-          <div class="report-item"><span>地點</span><b>${effLoc(fd) || '未填'}</b></div>
-        </div>
-
-        <div class="report-section-title">2. 現場狀況與主訴</div>
-        <div class="report-grid">
-          <div class="report-item report-grid-full"><span>問題:</span> <b>${getCheckedValuesWithHidden('problems', 'problemOtherValue')}</b></div>
-          <div class="report-item report-grid-full"><span>主訴:</span> <b>${fd.get('mainComplaint') || '無'}</b></div>
-        </div>
-
-        <div class="report-section-title">3. 傷情部位與人體圖標記</div>
-        <div style="display: flex; gap: 8px; align-items: center; background: #f9f9f9; padding: 6px; border-radius: 6px; border: 1px solid #eee;">
-          <div class="preview-body-container" style="flex-shrink:0;">
-            <img src="https://i.ibb.co/6JFnSZp7/image.jpg" class="preview-body-img">
-            ${dotsHtml}
-          </div>
-          <div style="font-size: 11px; line-height: 1.4; flex-grow: 1;">
-            ${injuredText}
-          </div>
-        </div>
-
-        <div class="report-section-title">4. 處置、交班與現場照片</div>
-        <div class="report-grid">
-          <div class="report-item report-grid-full"><span>處置:</span> <b>${getCheckedValuesWithHidden('treatment', 'treatmentOtherValue')}</b></div>
-          <div class="report-item"><span>徵象:</span> <b>${vitalsResult}</b></div>
-          <div class="report-item"><span>交班:</span> <b>${fd.get('handoverInfo') || '無'}</b></div>
-        </div>
-        <div class="preview-photos-grid">
-          ${photosHtml}
-        </div>
-        ${(fd.get('gps_lat') || effLoc(fd)) ? `<div class="report-section-title">5. 發生地點地圖</div>${mapEmbedHtml(fd.get('gps_lat'), fd.get('gps_lng'), effLoc(fd), 150)}` : ''}
-        <div style="text-align:center; font-size:10px; color:#888; margin-top:8px;">💡 提示：您可以直接「長按上方表格」將整張紀錄表儲存為圖片</div>
-      `;
+      const html = reportHtml({
+        name: fd.get('pName') || '不詳', gender: fd.get('gender'), age: String(fd.get('age') || '').trim(), phone: fd.get('pPhone'), armband: fd.get('armband'), address: effLoc(fd),
+        problems: getCheckedValuesWithHidden('problems', 'problemOtherValue'), complaint: fd.get('mainComplaint'),
+        injured: selectedPartsData, dotsHtml, actions: getCheckedValuesWithHidden('treatment', 'treatmentOtherValue'),
+        vitals: window.pvData(), vitalsText: window.pvText(), handover: fd.get('handoverInfo'), photosHtml,
+        mapHtml: (fd.get('gps_lat') || effLoc(fd)) ? mapEmbedHtml(fd.get('gps_lat'), fd.get('gps_lng'), effLoc(fd), 150) : ''
+      }) + `<div style="text-align:center; font-size:10px; color:#999; margin-top:6px;">💡 可長按上方紀錄表存成圖片</div>`;
 
       document.getElementById('pDataArea').innerHTML = html;
       document.getElementById('previewOverlay').style.display = 'flex';
@@ -2998,10 +3067,7 @@
     window.openDetailRecord = function(jsonStr) {
       const d = (typeof jsonStr === 'string') ? JSON.parse(jsonStr) : jsonStr;
       
-      document.getElementById('reportTopMeta').innerHTML = `
-        🕒 ${d.caseTime || '未填'}<br>
-        👤 ${d.personnel || '未填'}
-      `;
+      document.getElementById('reportTopMeta').innerHTML = `<div><span>案件時間</span>${rpE(d.caseTime || '未填')}</div><div><span>紀錄人員</span>${rpE(d.personnel || '未填')}</div>`;
 
       const injuredParts = d.treatment && d.treatment.injuredParts ? d.treatment.injuredParts : [];
       const injuredText = injuredParts.length > 0 
@@ -3022,45 +3088,12 @@
         photosHtml = '<span style="color:#888; font-size:10px;">未上傳照片</span>';
       }
 
-      const html = `
-        <div class="report-section-title">1. 病患與案件基本資料</div>
-        <div class="report-grid">
-          <div class="report-item"><span>姓名 / 性別</span><b>${d.patient.name} (${d.patient.gender})</b></div>
-          <div class="report-item"><span>年齡 / 電話</span><b>${(d.patient.age && d.patient.age !== '無') ? d.patient.age + '歲' : '無'} / ${d.patient.phone || '無'}</b></div>
-          <div class="report-item"><span>臂章編號</span><b>${d.patient.armband || '無'}</b></div>
-          <div class="report-item"><span>地點</span><b>${d.location.address || '未填'}</b></div>
-        </div>
-
-        <div class="report-section-title">2. 現場狀況與主訴</div>
-        <div class="report-grid">
-          <div class="report-item report-grid-full"><span>問題:</span> <b>${d.scene.problems}</b></div>
-          <div class="report-item report-grid-full"><span>主訴:</span> <b>${d.scene.mainComplaint || '無'}</b></div>
-        </div>
-
-        <div class="report-section-title">3. 傷情部位與人體圖標記</div>
-        <div style="display: flex; gap: 8px; align-items: center; background: #f9f9f9; padding: 6px; border-radius: 6px; border: 1px solid #eee;">
-          <div class="preview-body-container" style="flex-shrink:0;">
-            <img src="https://i.ibb.co/6JFnSZp7/image.jpg" class="preview-body-img">
-            ${dotsHtml}
-          </div>
-          <div style="font-size: 11px; line-height: 1.4; flex-grow: 1;">
-            ${injuredText}
-          </div>
-        </div>
-
-        <div class="report-section-title">4. 處置、交班與現場照片</div>
-        <div class="report-grid">
-          <div class="report-item report-grid-full"><span>處置:</span> <b>${d.treatment.actions}</b></div>
-          <div class="report-item"><span>徵象:</span> <b>${d.followUp.postVitals}</b></div>
-          <div class="report-item"><span>交班:</span> <b>${d.followUp.handoverInfo || '無'}</b></div>
-        </div>
-        <div class="preview-photos-grid">
-          ${photosHtml}
-        </div>
-
-        <div class="report-section-title">5. 發生地點地圖</div>
-        ${mapEmbedHtml(d.location && d.location.lat, d.location && d.location.lng, typeof d.location === 'string' ? d.location : (d.location && d.location.address), 180)}
-      `;
+      const html = reportHtml({
+        name: d.patient.name, gender: d.patient.gender, age: d.patient.age, phone: d.patient.phone, armband: d.patient.armband, address: d.location && (typeof d.location === 'string' ? d.location : d.location.address),
+        problems: d.scene.problems, complaint: d.scene.mainComplaint, injured: injuredParts, dotsHtml, actions: d.treatment.actions,
+        vitals: d.followUp.vitals || null, vitalsText: d.followUp.postVitals, handover: d.followUp.handoverInfo, photosHtml,
+        mapHtml: mapEmbedHtml(d.location && d.location.lat, d.location && d.location.lng, typeof d.location === 'string' ? d.location : (d.location && d.location.address), 180)
+      });
 
       document.getElementById('pDataArea').innerHTML = html;
       
