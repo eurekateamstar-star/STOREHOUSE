@@ -624,17 +624,6 @@
         #lookup-item-chips .lk-head>span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
         #lookup-item-chips .lk-n{white-space:nowrap;flex:none;}
         .lk-switch{margin-bottom:2px !important;}
-        .lg-row{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #eee7e3;border-radius:12px;padding:10px 12px;margin-bottom:6px;}
-        .lg-tag{flex:none;font-size:12px;font-weight:800;padding:4px 8px;border-radius:6px;min-width:30px;text-align:center;}
-        .lg-main{flex:1;min-width:0;}
-        .lg-item{font-weight:800;font-size:14.5px;color:#1f2937;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-        .lg-detail{font-size:12px;color:#57534e;margin-top:2px;line-height:1.45;}
-        .lg-sub{font-size:12px;color:#8a7f7a;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-        .lg-box{color:#b4aaa5;}
-        .lg-right{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:44px;}
-        .lg-right b{font-size:16px;font-weight:900;}
-        .lg-right span{font-size:11.5px;color:#a8a29e;}
-        .lg-del{all:unset;font-size:11px;color:#dc2626;background:#fee2e2;border-radius:6px;padding:2px 7px;cursor:pointer;margin-top:2px;}
         .seg-tabs{display:flex;background:#efe9e6;border-radius:11px;padding:3px;margin-bottom:10px;}
         .seg-tabs button{all:unset;flex:1;text-align:center;padding:8px 0;border-radius:9px;font-size:13px;font-weight:700;color:#6b625e;cursor:pointer;white-space:nowrap;}
         .seg-tabs button.on{background:#fff;color:#1f2937;box-shadow:0 1px 3px rgba(0,0,0,.1);}
@@ -642,6 +631,21 @@
         .lg-datebox span{font-size:13px;color:#8a7f7a;font-weight:700;flex:none;}
         .lg-datebox input{all:unset;flex:1;font-size:14px;color:#1f2937;min-width:0;}
         .lg-clear{all:unset;flex:none;padding:0 14px;height:40px;line-height:40px;border-radius:11px;background:#fff;border:1px solid #e7e0dc;font-size:13px;font-weight:700;color:#57534e;cursor:pointer;}
+        .lg-day{background:#fff;border:1px solid #ece5e1;border-radius:14px;margin-bottom:12px;overflow:hidden;}
+        .lg-dayh{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#faf7f5;border-bottom:1px solid #eee7e3;}
+        .lg-dayh b{font-size:13.5px;color:#1f2937;}
+        .lg-dayh span{display:flex;gap:10px;font-size:12px;font-weight:800;}
+        .lg-line{display:flex;align-items:flex-start;gap:12px;padding:11px 14px;border-bottom:1px solid #f3eeeb;}
+        .lg-line:last-child{border-bottom:none;}
+        .lg-t{flex:none;width:40px;font-size:12.5px;color:#a8a29e;font-variant-numeric:tabular-nums;padding-top:1px;}
+        .lg-mid{flex:1;min-width:0;}
+        .lg-name{font-size:14.5px;font-weight:800;color:#1f2937;line-height:1.35;word-break:break-all;}
+        .lg-meta{font-size:12px;color:#8a7f7a;margin-top:2px;line-height:1.45;}
+        .lg-meta b{font-weight:800;}
+        .lg-meta i{font-style:normal;margin:0 5px;color:#d6cfcb;}
+        .lg-boxl{color:#b4aaa5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .lg-q{flex:none;font-size:16px;font-weight:900;text-align:right;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
+        .lg-del{all:unset;font-size:11px;font-weight:700;color:#dc2626;background:#fee2e2;border-radius:6px;padding:2px 7px;cursor:pointer;}
         .lg-sum{display:flex;gap:6px;margin-bottom:8px;}
         .lg-sum span{flex:1;text-align:center;background:#fff;border-radius:10px;padding:7px 2px;font-size:12px;color:#6b625e;border:1px solid #f0e8e4;}
         .lg-sum b{display:block;font-size:17px;color:#1f2937;}
@@ -2936,17 +2940,7 @@
             return;
         }
 
-        let html = '';
-        let lastDateKey = null;
-        groupLogs(filtered).forEach(l => {
-            const dateKey = getLogDateKey(l.timestamp);
-            if (dateKey !== lastDateKey) {
-                html += `<div class="lg-date">${getLogDateLabel(l.timestamp)}</div>`;
-                lastDateKey = dateKey;
-            }
-            html += logRowHtml(l, { showItem: true, showBox: true, del: isLogsEditMode });
-        });
-        container.innerHTML = html;
+        container.innerHTML = logDaysHtml(groupLogs(filtered), { showItem: true, showBox: true, del: isLogsEditMode });
     };
 
     window.toggleLogsEditMode = function() {
@@ -4902,7 +4896,7 @@
             rows.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
             if (!personViewUser || personViewUser.account !== account) return;
             if (!rows.length) { el.innerHTML = '<div style="color:#8e8e93; text-align:center; padding:16px; font-size:13px;">還沒有紀錄</div>'; return; }
-            el.innerHTML = groupLogs(rows).slice(0, 20).map(l => logRowHtml(l, { showItem: true, showBox: true })).join('');
+            el.innerHTML = logDaysHtml(groupLogs(rows).slice(0, 20), { showItem: true });
         } catch (e) {
             el.innerHTML = '<div style="color:#ff3b30; text-align:center; padding:16px; font-size:13px;">載入紀錄失敗</div>';
         }
@@ -4925,28 +4919,39 @@
         return tg.split(' → ').map(targetName).join(' → ');
     }
     const hm = l => { const t = String(l.timeStr || ''); const i = t.indexOf(' '); return i < 0 ? t : t.slice(i + 1); };
-    // 一筆（或同一次批次的多筆）紀錄
+    // 帳本式一行：時間｜品名＋說明｜數量
     function logRowHtml(l, opt = {}) {
         const list = l._group || [l], k = logKind(l), who = logWho(l);
-        const amount = l.type === '調整' ? `${l.fromQty ?? '?'} → ${l.toQty ?? '?'}` : `${k.sign}${list.reduce((a, x) => a + (Number(x.qty) || 0), 0)}`;
-        let title = '', detail = '';
-        if (opt.showItem) {
-            const by = {}; list.forEach(x => { by[x.itemName] = (by[x.itemName] || 0) + (Number(x.qty) || 0); });
-            const names = Object.keys(by);
-            title = names.length === 1 ? escapeHtml(names[0]) : `${escapeHtml(names[0])} 等 ${names.length} 項`;
-            if (names.length > 1) detail = names.map(n => `${escapeHtml(n)} ×${by[n]}`).join('、');
-        }
+        const total = list.reduce((a, x) => a + (Number(x.qty) || 0), 0);
+        const amount = l.type === '調整' ? `${l.fromQty ?? '?'}→${l.toQty ?? '?'}` : `${k.sign}${total}`;
+        const by = {}; list.forEach(x => { by[x.itemName] = (by[x.itemName] || 0) + (Number(x.qty) || 0); });
+        const names = Object.keys(by);
+        let title = opt.showItem ? (names.length === 1 ? escapeHtml(names[0]) : `${escapeHtml(names[0])} 等 ${names.length} 項`) : '';
+        const detail = opt.showItem && names.length > 1 ? names.map(n => `${escapeHtml(n)} ${by[n]}`).join('、') : '';
         const units = list.length === 1 && l.unitLabel ? String(l.unitLabel).replace(/^第 /, '#').replace(/ 件$/, '') : '';
-        const meta = [who ? escapeHtml(who) : '', units ? escapeHtml(units) : '', l.operator ? `${escapeHtml(l.operator)}${l.operatorRole === 'helper' ? '（小幫手）' : ''}` : ''].filter(Boolean).join(' · ');
-        return `<div class="lg-row">
-            <span class="lg-tag" style="color:${k.c};background:${k.bg}">${k.verb}</span>
-            <div class="lg-main">
-                ${title ? `<div class="lg-item">${title}</div>` : ''}
-                ${detail ? `<div class="lg-detail">${detail}</div>` : ''}
-                <div class="lg-sub">${meta}${opt.showBox && l.boxName ? `<span class="lg-box">${meta ? '｜' : ''}${escapeHtml(l.boxName)}</span>` : ''}</div>
+        const action = l.type === '調整' ? '後台修改數量' : `${k.verb}${who ? (l.type === '出庫' ? ' → ' : l.type === '轉交' ? ' ' : l.type === '消耗' ? '（' : ' ← ') + escapeHtml(who) + (l.type === '消耗' ? '）' : '') : ''}`;
+        const meta = [`<b style="color:${k.c}">${action}</b>`, units ? escapeHtml(units) : '', l.operator ? `${escapeHtml(l.operator)}${l.operatorRole === 'helper' ? '（小幫手）' : ''}` : ''].filter(Boolean).join('<i>·</i>');
+        return `<div class="lg-line">
+            <div class="lg-t">${escapeHtml(hm(l))}</div>
+            <div class="lg-mid">
+                ${title ? `<div class="lg-name">${title}</div>` : ''}
+                <div class="lg-meta">${meta}</div>
+                ${detail ? `<div class="lg-meta">${detail}</div>` : ''}
+                ${opt.showBox && l.boxName ? `<div class="lg-meta lg-boxl">${escapeHtml(l.boxName)}</div>` : ''}
             </div>
-            <div class="lg-right"><b style="color:${k.c}">${amount}</b><span>${escapeHtml(hm(l))}</span>${opt.del && list.length === 1 ? `<button onclick="deleteLog('${l.id}')" class="lg-del">刪除</button>` : ''}</div>
+            <div class="lg-q" style="color:${k.c}">${amount}${opt.del && list.length === 1 ? `<button onclick="deleteLog('${l.id}')" class="lg-del">刪除</button>` : ''}</div>
         </div>`;
+    }
+    // 一天一張卡片：上面日期＋當天統計，下面一行一筆
+    function logDaysHtml(arr, opt) {
+        const days = []; let cur = null;
+        arr.forEach(l => { const k = getLogDateKey(l.timestamp); if (!cur || cur.k !== k) { cur = { k, label: getLogDateLabel(l.timestamp), rows: [] }; days.push(cur); } cur.rows.push(l); });
+        return days.map(d => {
+            const s = { o: 0, i: 0, u: 0 };
+            d.rows.forEach(r => (r._group || [r]).forEach(x => { const q = Number(x.qty) || 0; if (x.type === '出庫') s.o += q; else if (x.type === '消耗') s.u += q; else if (x.type === '進貨') s.i += q; }));
+            const stat = [s.o ? `<span style="color:#dc2626">出 ${s.o}</span>` : '', s.i ? `<span style="color:#16a34a">入 ${s.i}</span>` : '', s.u ? `<span style="color:#9333ea">用 ${s.u}</span>` : ''].filter(Boolean).join('');
+            return `<div class="lg-day"><div class="lg-dayh"><b>${d.label}</b><span>${stat}</span></div>${d.rows.map(r => logRowHtml(r, opt)).join('')}</div>`;
+        }).join('');
     }
     // 同一次整箱進出庫（同時間、同類型、同對象、同箱子）合成一筆
     function groupLogs(arr) {
@@ -5696,8 +5701,7 @@
             const sum = { out: 0, back: 0, used: 0 };
             itemLogs.forEach(l => { if (l.type === '出庫') sum.out += l.qty || 0; else if (l.type === '消耗') sum.used += l.qty || 0; else if (l.type === '進貨') sum.back += l.qty || 0; });
             let html = `<div class="lg-sum"><span>出庫<b>${sum.out}</b></span><span>入庫／還回<b>${sum.back}</b></span><span>用掉<b>${sum.used}</b></span></div>`;
-            let lastD = '';
-            itemLogs.forEach(l => { const dk = getLogDateLabel(l.timestamp); if (dk !== lastD) { html += `<div class="lg-date">${dk}</div>`; lastD = dk; } html += logRowHtml(l, {}); });
+            html += logDaysHtml(itemLogs, {});
             container.innerHTML = html;
         } catch (e) {
             container.innerHTML = '<div style="color: #ff3b30; text-align: center; padding: 20px;">載入紀錄失敗</div>';
