@@ -968,7 +968,7 @@
             <div class="image-map-container" id="map-container">
                 <div class="photo-blur" id="map-blur"></div>
                 <div id="map-canvas">
-                    <img id="warehouse-img" src="" alt="請點擊換底圖">
+                    <img id="warehouse-img" src="" alt="">
                     <div id="boxes-layer"></div>
                 </div>
                 <div id="map-loading-overlay">
@@ -2438,11 +2438,12 @@
         await patchUser(id, { category: name, warehouseCategory: name }, name ? `🏷️ 已分類：${name}` : '已改為未分類');
     }
 
-    let coreDataReady = null;   // 頁面／箱子／全景都讀完才算好（第一次登入網路慢，先點進倉庫也要等）
+    let coreDataReady = null, pagesReady = null;   // 頁面／箱子／全景都讀完才算好（第一次登入網路慢，先點進倉庫也要等）
     async function preloadAllData() {
         document.getElementById('preload-status').innerText = "正在背景預載資料庫…";
         try {
-            coreDataReady = Promise.all([loadPages(), startBoxesLiveSync(), loadBorrowerGroupsFromCloud(), loadPanorama()]);
+            pagesReady = Promise.all([loadPages(), loadPanorama()]);   // 全景只需要排和全景圖，先好先顯示
+            coreDataReady = Promise.all([pagesReady, startBoxesLiveSync(), loadBorrowerGroupsFromCloud()]);
             await coreDataReady;
             document.getElementById('preload-status').innerText = "正在預先下載底圖…";
             const pageImgUrls = pages.map(p => p.imageUrl).concat([panoImg]);
@@ -2525,13 +2526,13 @@
     window.openMapQuery = async function() {
         document.getElementById('main-menu-view').style.display = 'none';
         document.getElementById('warehouse-system-view').style.display = 'block';
-        if (coreDataReady) { try { await coreDataReady; } catch (e) {} }
-        if (!boxesCache || !pages.length) {
-            await initApp();
-        } else {
-            await switchToPage(currentPageIndex, true);
-        }
-        showPanorama();
+        const ov = document.getElementById('map-loading-overlay');
+        if (!pages.length || !boxesCache) { ov.style.display = 'flex'; ov.querySelector('div:last-child').innerText = '載入倉庫中…'; }
+        if (pagesReady) { try { await pagesReady; } catch (e) {} }
+        if (!pages.length) { await loadPanorama(); await loadPages(); }
+        showPanorama();                       // 全景先出來，箱子資料在背景繼續載
+        ov.style.display = 'none';
+        if (!boxesCache) startBoxesLiveSync();
     };
 
     let isBorrowerEditMode = false;
@@ -3597,10 +3598,11 @@
     }
 
     let boxesListenerStarted = false;
+    let boxesFirstLoad = null;
     function startBoxesLiveSync() {
-        if (boxesListenerStarted) return Promise.resolve();
+        if (boxesListenerStarted) return boxesFirstLoad || Promise.resolve();
         boxesListenerStarted = true;
-        return new Promise((resolve) => {
+        return boxesFirstLoad = new Promise((resolve) => {
             let resolved = false;
             onSnapshot(collection(db, "warehouse_boxes"), (snap) => {
                 const fresh = [];
@@ -3829,6 +3831,11 @@
     };
 
     async function switchToPage(idx, init = false) {
+        if (!boxesCache) {   // 箱子資料還沒好：先轉圈等
+            const ov = document.getElementById('map-loading-overlay'); ov.style.display = 'flex'; ov.querySelector('div:last-child').innerText = '載入箱子中…';
+            if (coreDataReady) { try { await coreDataReady; } catch (e) {} }
+            if (!boxesCache) await startBoxesLiveSync();
+        }
         if (!pages.length) return;
         const ni = Math.max(0, Math.min(idx, pages.length - 1));
         const p = pages[ni];
