@@ -631,21 +631,32 @@
         .lg-datebox span{font-size:13px;color:#8a7f7a;font-weight:700;flex:none;}
         .lg-datebox input{all:unset;flex:1;font-size:14px;color:#1f2937;min-width:0;}
         .lg-clear{all:unset;flex:none;padding:0 14px;height:40px;line-height:40px;border-radius:11px;background:#fff;border:1px solid #e7e0dc;font-size:13px;font-weight:700;color:#57534e;cursor:pointer;}
-        .lg-day{background:#fff;border:1px solid #ece5e1;border-radius:14px;margin-bottom:12px;overflow:hidden;}
-        .lg-dayh{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#faf7f5;border-bottom:1px solid #eee7e3;}
-        .lg-dayh b{font-size:13.5px;color:#1f2937;}
+        .lg-day{background:#fff;border:1px solid #ece5e1;border-radius:16px;margin-bottom:12px;overflow:hidden;box-shadow:0 1px 3px rgba(60,40,30,.04);}
+        .lg-dayh{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-bottom:1px solid #f1ebe8;}
+        .lg-dayh b{font-size:14px;color:#1f2937;}
         .lg-dayh span{display:flex;gap:10px;font-size:12px;font-weight:800;}
-        .lg-line{display:flex;align-items:flex-start;gap:12px;padding:11px 14px;border-bottom:1px solid #f3eeeb;}
+        .lg-line{display:block;border-bottom:1px solid #f4efec;}
         .lg-line:last-child{border-bottom:none;}
-        .lg-t{flex:none;width:40px;font-size:12.5px;color:#a8a29e;font-variant-numeric:tabular-nums;padding-top:1px;}
-        .lg-mid{flex:1;min-width:0;}
-        .lg-name{font-size:14.5px;font-weight:800;color:#1f2937;line-height:1.35;word-break:break-all;}
-        .lg-meta{font-size:12px;color:#8a7f7a;margin-top:2px;line-height:1.45;}
+        .lg-line:not(details),.lg-grp>summary{display:flex;align-items:center;gap:12px;padding:11px 14px;}
+        .lg-grp>summary{list-style:none;cursor:pointer;}
+        .lg-grp>summary::-webkit-details-marker{display:none;}
+        .lg-grp[open]>summary{background:#fbf8f6;}
+        .lg-grp[open] .lg-q em{color:#57534e;}
+        .lg-ic{flex:none;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:900;}
+        .lg-mid{flex:1;min-width:0;display:flex;flex-direction:column;}
+        .lg-name{font-size:14.5px;font-weight:800;color:#1f2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .lg-meta{font-size:12px;color:#8a7f7a;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
         .lg-meta b{font-weight:800;}
         .lg-meta i{font-style:normal;margin:0 5px;color:#d6cfcb;}
-        .lg-boxl{color:#b4aaa5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-        .lg-q{flex:none;font-size:16px;font-weight:900;text-align:right;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
-        .lg-del{all:unset;font-size:11px;font-weight:700;color:#dc2626;background:#fee2e2;border-radius:6px;padding:2px 7px;cursor:pointer;}
+        .lg-q{flex:none;font-size:17px;font-weight:900;text-align:right;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;align-items:flex-end;}
+        .lg-q em{font-style:normal;font-size:11px;font-weight:700;color:#a8a29e;margin-top:1px;}
+        .lg-detail{padding:4px 14px 12px 60px;background:#fbf8f6;}
+        .lg-dt{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px dashed #ebe3df;font-size:13.5px;color:#1f2937;font-weight:700;}
+        .lg-dt small{display:block;font-size:11.5px;color:#a8a29e;font-weight:600;margin-top:1px;}
+        .lg-dt b{font-size:15px;font-variant-numeric:tabular-nums;}
+        .lg-dbox{font-size:12px;color:#a8a29e;margin-top:8px;}
+        .lg-dl{flex:none;}
+        .lg-del{all:unset;font-size:11px;font-weight:700;color:#dc2626;background:#fee2e2;border-radius:6px;padding:3px 7px;cursor:pointer;margin-top:6px;}
         .lg-sum{display:flex;gap:6px;margin-bottom:8px;}
         .lg-sum span{flex:1;text-align:center;background:#fff;border-radius:10px;padding:7px 2px;font-size:12px;color:#6b625e;border:1px solid #f0e8e4;}
         .lg-sum b{display:block;font-size:17px;color:#1f2937;}
@@ -4919,47 +4930,43 @@
         return tg.split(' → ').map(targetName).join(' → ');
     }
     const hm = l => { const t = String(l.timeStr || ''); const i = t.indexOf(' '); return i < 0 ? t : t.slice(i + 1); };
-    // 帳本式一行：時間｜品名＋說明｜數量
+    const LG_IC = { '出庫': '↑', '轉交': '⇄', '消耗': '−', '調整': '✎' };
+    // 動態式一筆：圓形圖示｜品名＋說明｜數量；合併的批次點開看明細
     function logRowHtml(l, opt = {}) {
         const list = l._group || [l], k = logKind(l), who = logWho(l);
         const total = list.reduce((a, x) => a + (Number(x.qty) || 0), 0);
-        const amount = l.type === '調整' ? `${l.fromQty ?? '?'}→${l.toQty ?? '?'}` : `${k.sign}${total}`;
-        const by = {}; list.forEach(x => { by[x.itemName] = (by[x.itemName] || 0) + (Number(x.qty) || 0); });
-        const names = Object.keys(by);
-        let title = opt.showItem ? (names.length === 1 ? escapeHtml(names[0]) : `${escapeHtml(names[0])} 等 ${names.length} 項`) : '';
-        const detail = opt.showItem && names.length > 1 ? names.map(n => `${escapeHtml(n)} ${by[n]}`).join('、') : '';
-        const units = list.length === 1 && l.unitLabel ? String(l.unitLabel).replace(/^第 /, '#').replace(/ 件$/, '') : '';
-        const action = l.type === '調整' ? '後台修改數量' : `${k.verb}${who ? (l.type === '出庫' ? ' → ' : l.type === '轉交' ? ' ' : l.type === '消耗' ? '（' : ' ← ') + escapeHtml(who) + (l.type === '消耗' ? '）' : '') : ''}`;
-        const meta = [`<b style="color:${k.c}">${action}</b>`, units ? escapeHtml(units) : '', l.operator ? `${escapeHtml(l.operator)}${l.operatorRole === 'helper' ? '（小幫手）' : ''}` : ''].filter(Boolean).join('<i>·</i>');
-        return `<div class="lg-line">
-            <div class="lg-t">${escapeHtml(hm(l))}</div>
-            <div class="lg-mid">
-                ${title ? `<div class="lg-name">${title}</div>` : ''}
-                <div class="lg-meta">${meta}</div>
-                ${detail ? `<div class="lg-meta">${detail}</div>` : ''}
-                ${opt.showBox && l.boxName ? `<div class="lg-meta lg-boxl">${escapeHtml(l.boxName)}</div>` : ''}
-            </div>
-            <div class="lg-q" style="color:${k.c}">${amount}${opt.del && list.length === 1 ? `<button onclick="deleteLog('${l.id}')" class="lg-del">刪除</button>` : ''}</div>
-        </div>`;
+        const amount = l.type === '調整' ? `${l.fromQty ?? '?'} → ${l.toQty ?? '?'}` : `${k.sign}${total}`;
+        const by = {}; list.forEach(x => { const n = x.itemName || '?'; (by[n] = by[n] || { q: 0, u: [] }).q += Number(x.qty) || 0; if (x.unitLabel) by[n].u.push(String(x.unitLabel).replace(/^第 /, '#').replace(/\/\d+ 件$/, '').replace(/ 件$/, '')); });
+        const names = Object.keys(by), multi = names.length > 1 || list.length > 1;
+        const title = !opt.showItem ? k.verb : names.length === 1 ? escapeHtml(names[0]) : `${escapeHtml(names[0])}、${escapeHtml(names[1])}${names.length > 2 ? ` 等 ${names.length} 項` : ''}`;
+        const action = l.type === '調整' ? '後台修改數量' : l.type === '出庫' ? `出庫給 ${escapeHtml(who || '—')}` : l.type === '轉交' ? `轉交 ${escapeHtml(who)}` : l.type === '消耗' ? `${escapeHtml(who || '')} 用掉` : who ? `${escapeHtml(who)} 還回` : '入庫';
+        const sub = [`<b style="color:${k.c}">${action}</b>`, escapeHtml(hm(l)), l.operator ? escapeHtml(l.operator) + (l.operatorRole === 'helper' ? '（小幫手）' : '') : ''].filter(Boolean).join('<i>·</i>');
+        const ic = LG_IC[l.type] || '↓';
+        const head = `<span class="lg-ic" style="background:${k.bg};color:${k.c}">${ic}</span>
+            <span class="lg-mid"><span class="lg-name">${title}</span><span class="lg-meta">${sub}</span></span>
+            <span class="lg-q" style="color:${k.c}">${amount}${multi ? '<em>明細 ▾</em>' : ''}</span>`;
+        const delBtn = opt.del ? list.map(x => `<button onclick="event.stopPropagation(); deleteLog('${x.id}')" class="lg-del">刪除</button>`) : [];
+        if (!multi) return `<div class="lg-line">${head}${opt.del ? `<span class="lg-dl">${delBtn[0]}</span>` : ''}</div>`;
+        const rows = names.map(n => `<div class="lg-dt"><span>${escapeHtml(n)}${by[n].u.length ? `<small>${escapeHtml(by[n].u.sort((a, b) => parseInt(a.slice(1)) - parseInt(b.slice(1))).join('、'))}</small>` : ''}</span><b style="color:${k.c}">${k.sign}${by[n].q}</b></div>`).join('');
+        return `<details class="lg-line lg-grp"><summary>${head}</summary><div class="lg-detail">${rows}${l.boxName ? `<div class="lg-dbox">📦 ${escapeHtml(l.boxName)}</div>` : ''}${opt.del ? `<div style="text-align:right">${list.map(x => `<button onclick="deleteLog('${x.id}')" class="lg-del" style="margin-left:4px">刪 ${escapeHtml(x.itemName || '')}${x.unitLabel ? ' ' + escapeHtml(String(x.unitLabel).replace(/^第 /, '#').replace(/\/\d+ 件$/, '')) : ''}</button>`).join('')}</div>` : ''}</div></details>`;
     }
-    // 一天一張卡片：上面日期＋當天統計，下面一行一筆
+    // 一天一張卡片：上面日期＋當天統計
     function logDaysHtml(arr, opt) {
         const days = []; let cur = null;
         arr.forEach(l => { const k = getLogDateKey(l.timestamp); if (!cur || cur.k !== k) { cur = { k, label: getLogDateLabel(l.timestamp), rows: [] }; days.push(cur); } cur.rows.push(l); });
         return days.map(d => {
             const s = { o: 0, i: 0, u: 0 };
             d.rows.forEach(r => (r._group || [r]).forEach(x => { const q = Number(x.qty) || 0; if (x.type === '出庫') s.o += q; else if (x.type === '消耗') s.u += q; else if (x.type === '進貨') s.i += q; }));
-            const stat = [s.o ? `<span style="color:#dc2626">出 ${s.o}</span>` : '', s.i ? `<span style="color:#16a34a">入 ${s.i}</span>` : '', s.u ? `<span style="color:#9333ea">用 ${s.u}</span>` : ''].filter(Boolean).join('');
+            const stat = [s.o ? `<span style="color:#dc2626">出庫 ${s.o}</span>` : '', s.i ? `<span style="color:#16a34a">入庫 ${s.i}</span>` : '', s.u ? `<span style="color:#9333ea">用掉 ${s.u}</span>` : ''].filter(Boolean).join('');
             return `<div class="lg-day"><div class="lg-dayh"><b>${d.label}</b><span>${stat}</span></div>${d.rows.map(r => logRowHtml(r, opt)).join('')}</div>`;
         }).join('');
     }
-    // 同一次整箱進出庫（同時間、同類型、同對象、同箱子）合成一筆
+    // 同一次進出庫（同類型、同對象、同箱子、同經手人、時間相差 2 分鐘內）合成一筆
     function groupLogs(arr) {
         const out = [];
         arr.forEach(l => {
-            const p = out[out.length - 1];
-            if (p && l.type !== '調整' && p.type === l.type && p.target === l.target && p.boxName === l.boxName && p.operator === l.operator && Math.abs((p.timestamp || 0) - (l.timestamp || 0)) < 3000) (p._group = p._group || [p]).push(l);
-            else out.push(l);
+            const p = l.type === '調整' ? null : out.find(p => p.type === l.type && p.target === l.target && p.boxName === l.boxName && p.operator === l.operator && Math.abs((p.timestamp || 0) - (l.timestamp || 0)) < 120000);
+            if (p) (p._group = p._group || [p]).push(l); else out.push(l);
         });
         return out;
     }
@@ -5701,7 +5708,7 @@
             const sum = { out: 0, back: 0, used: 0 };
             itemLogs.forEach(l => { if (l.type === '出庫') sum.out += l.qty || 0; else if (l.type === '消耗') sum.used += l.qty || 0; else if (l.type === '進貨') sum.back += l.qty || 0; });
             let html = `<div class="lg-sum"><span>出庫<b>${sum.out}</b></span><span>入庫／還回<b>${sum.back}</b></span><span>用掉<b>${sum.used}</b></span></div>`;
-            html += logDaysHtml(itemLogs, {});
+            html += logDaysHtml(groupLogs(itemLogs), {});
             container.innerHTML = html;
         } catch (e) {
             container.innerHTML = '<div style="color: #ff3b30; text-align: center; padding: 20px;">載入紀錄失敗</div>';
