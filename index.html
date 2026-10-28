@@ -657,6 +657,7 @@
         .lg-dbox{font-size:12px;color:#a8a29e;margin-top:8px;}
         .lg-dl{flex:none;}
         .lg-del{all:unset;font-size:11px;font-weight:700;color:#dc2626;background:#fee2e2;border-radius:6px;padding:3px 7px;cursor:pointer;margin-top:6px;}
+        #item-history-container>*,#logs-container>*,#me-logs>*{flex-shrink:0;}
         .lg-sum{display:flex;gap:6px;margin-bottom:8px;}
         .lg-sum span{flex:1;text-align:center;background:#fff;border-radius:10px;padding:7px 2px;font-size:12px;color:#6b625e;border:1px solid #f0e8e4;}
         .lg-sum b{display:block;font-size:17px;color:#1f2937;}
@@ -1261,7 +1262,7 @@
                 <h2 id="item-history-title" style="margin:0; font-size:17px; font-weight:600; color:#0a84ff;">📜 物品歷史紀錄</h2>
                 <button onclick="closeItemHistoryModal()" class="apple-btn secondary" style="padding: 6px 12px; font-size: 12px;">關閉</button>
             </div>
-            <div id="item-history-container" style="max-height: 320px; overflow-y: auto; display:flex; flex-direction:column; gap:8px;">
+            <div id="item-history-container" style="max-height: 62vh; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; display:block;">
                 <div style="color: #8e8e93; text-align: center; padding: 20px;">載入中…</div>
             </div>
         </div>
