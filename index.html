@@ -3724,16 +3724,26 @@
         setTimeout(() => {
             const q = tmp.querySelector('canvas') || tmp.querySelector('img');
             const render = el => {
-                const c = document.createElement('canvas'); c.width = 460; c.height = 700; const x = c.getContext('2d');
+                // 箱名太長：照「/」或字數自動換行，字體依行數縮小
+                const meas = document.createElement('canvas').getContext('2d');
+                const wrapLines = (text, font, maxW) => {
+                    meas.font = font; const parts = String(text).split(/\s*[\/／、]\s*/).filter(Boolean); const lines = []; let cur = '';
+                    const push = t => { if (meas.measureText(t).width <= maxW) { lines.push(t); return; } let c2 = ''; for (const ch of t) { if (meas.measureText(c2 + ch).width > maxW) { lines.push(c2); c2 = ch; } else c2 += ch; } if (c2) lines.push(c2); };
+                    parts.forEach(pt => { const t = cur ? cur + ' / ' + pt : pt; if (meas.measureText(t).width <= maxW) cur = t; else { if (cur) push(cur); cur = ''; if (meas.measureText(pt).width <= maxW) cur = pt; else push(pt); } });
+                    if (cur) push(cur); return lines;
+                };
+                let fs = 64, lines;
+                while (true) { lines = wrapLines(b.name, `bold ${fs}px sans-serif`, 420); if (lines.length * fs * 1.25 <= 360 || fs <= 30) break; fs -= 4; }
+                const lh = Math.round(fs * 1.25), textH = lines.length * lh;
+                const c = document.createElement('canvas'); c.width = 460; c.height = 520 + textH + (page ? 70 : 20); const x = c.getContext('2d');
                 x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
                 x.drawImage(el, 30, 30, 400, 400);
                 x.fillStyle = '#c2410c'; x.textAlign = 'center'; x.font = 'bold 40px sans-serif'; x.fillText('📦 整箱 QR', 230, 490);
-                x.fillStyle = '#000'; let fs = 72; x.font = `bold ${fs}px sans-serif`;
-                while (x.measureText(b.name).width > 430 && fs > 34) { fs -= 2; x.font = `bold ${fs}px sans-serif`; }
-                x.fillText(b.name, 230, 580);
-                if (page) { x.fillStyle = '#666'; x.font = 'bold 32px sans-serif'; x.fillText(page.name, 230, 640); }
+                x.fillStyle = '#000'; x.font = `bold ${fs}px sans-serif`;
+                lines.forEach((ln, i) => x.fillText(ln, 230, 520 + lh * (i + 1) - Math.round(lh * 0.2)));
+                if (page) { x.fillStyle = '#666'; x.font = 'bold 32px sans-serif'; x.fillText(page.name, 230, 520 + textH + 50); }
                 tmp.remove();
-                deliverLabels([{ dataUrl: c.toDataURL('image/png'), filename: `箱子_${b.name}.png` }]);
+                deliverLabels([{ dataUrl: c.toDataURL('image/png'), filename: `箱子_${String(b.name).replace(/[\/／\\:*?"<>|\s]+/g, '_').slice(0, 30)}.png` }]);
             };
             if (!q) { tmp.remove(); return showToast('❌ 產生失敗，請重試', 'error', 900); }
             if (q.tagName === 'CANVAS' || q.complete) render(q); else q.onload = () => render(q);
