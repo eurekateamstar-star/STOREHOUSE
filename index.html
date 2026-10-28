@@ -4713,6 +4713,8 @@
     }
     function avatarHtml(name, size = 40, emoji = true) {
         const url = avatarOf(name);
+        const custom = url && (borrowerGroupsCache || []).some(g => g.images && g.images[name]);
+        if (custom) return `<img src="${escapeHtml(url)}" alt="" onerror="this.style.display='none'" style="width:${Math.round(size * 1.5)}px; height:${size}px; object-fit:contain; flex-shrink:0; display:block; margin:0 auto;">`;   // 自訂圖片（車子等）：完整顯示不裁成圓形
         if (!url) return emoji ? `<span style="font-size:${Math.round(size * 0.6)}px; line-height:1;">👤</span>` : '';
         return `<img src="${escapeHtml(url)}" alt="" onerror="this.style.display='none'" style="width:${size}px; height:${size}px; border-radius:50%; object-fit:cover; background:#2c2c2e; flex-shrink:0; display:block; margin:0 auto;">`;
     }
