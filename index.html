@@ -624,19 +624,28 @@
         #lookup-item-chips .lk-head>span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
         #lookup-item-chips .lk-n{white-space:nowrap;flex:none;}
         .lk-switch{margin-bottom:2px !important;}
-        .lg-row{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #f0e8e4;border-left:4px solid #ccc;border-radius:12px;padding:9px 10px;margin-bottom:7px;}
-        .lg-ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex:none;}
+        .lg-row{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #eee7e3;border-radius:12px;padding:10px 12px;margin-bottom:6px;}
+        .lg-tag{flex:none;font-size:12px;font-weight:800;padding:4px 8px;border-radius:6px;min-width:30px;text-align:center;}
         .lg-main{flex:1;min-width:0;}
-        .lg-top{display:flex;align-items:baseline;gap:8px;font-size:15px;}
-        .lg-item{font-weight:800;color:#1f2937;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-        .lg-amt{margin-left:auto;font-weight:900;font-size:16px;flex:none;}
-        .lg-sub{font-size:12px;color:#8a7f7a;margin-top:2px;line-height:1.45;}
-        .lg-time{font-size:11px;color:#a8a29e;text-align:right;line-height:1.3;flex:none;min-width:38px;}
-        .lg-del{all:unset;display:block;margin:4px 0 0 auto;width:22px;height:22px;line-height:22px;text-align:center;border-radius:7px;background:#fee2e2;color:#dc2626;font-size:12px;cursor:pointer;}
+        .lg-item{font-weight:800;font-size:14.5px;color:#1f2937;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .lg-detail{font-size:12px;color:#57534e;margin-top:2px;line-height:1.45;}
+        .lg-sub{font-size:12px;color:#8a7f7a;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .lg-box{color:#b4aaa5;}
+        .lg-right{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:44px;}
+        .lg-right b{font-size:16px;font-weight:900;}
+        .lg-right span{font-size:11.5px;color:#a8a29e;}
+        .lg-del{all:unset;font-size:11px;color:#dc2626;background:#fee2e2;border-radius:6px;padding:2px 7px;cursor:pointer;margin-top:2px;}
+        .seg-tabs{display:flex;background:#efe9e6;border-radius:11px;padding:3px;margin-bottom:10px;}
+        .seg-tabs button{all:unset;flex:1;text-align:center;padding:8px 0;border-radius:9px;font-size:13px;font-weight:700;color:#6b625e;cursor:pointer;white-space:nowrap;}
+        .seg-tabs button.on{background:#fff;color:#1f2937;box-shadow:0 1px 3px rgba(0,0,0,.1);}
+        .lg-datebox{flex:1;display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e7e0dc;border-radius:11px;padding:0 12px;height:40px;}
+        .lg-datebox span{font-size:13px;color:#8a7f7a;font-weight:700;flex:none;}
+        .lg-datebox input{all:unset;flex:1;font-size:14px;color:#1f2937;min-width:0;}
+        .lg-clear{all:unset;flex:none;padding:0 14px;height:40px;line-height:40px;border-radius:11px;background:#fff;border:1px solid #e7e0dc;font-size:13px;font-weight:700;color:#57534e;cursor:pointer;}
         .lg-sum{display:flex;gap:6px;margin-bottom:8px;}
         .lg-sum span{flex:1;text-align:center;background:#fff;border-radius:10px;padding:7px 2px;font-size:12px;color:#6b625e;border:1px solid #f0e8e4;}
         .lg-sum b{display:block;font-size:17px;color:#1f2937;}
-        .lg-date{font-size:12px;font-weight:800;color:#c2410c;margin:10px 2px 6px;}
+        .lg-date{font-size:12.5px;font-weight:800;color:#57534e;margin:14px 2px 6px;}
         .lk-fold{all:unset;grid-column:1/-1;box-sizing:border-box;text-align:center;padding:9px;border-radius:12px;background:#fff7ed;color:#c2410c;font-size:13.5px;font-weight:800;cursor:pointer;}
         .lk-switch button{white-space:nowrap;}
         .lk-switch{display:flex;gap:6px;margin-bottom:10px;background:#f1ece9;border-radius:12px;padding:4px;}
@@ -878,27 +887,27 @@
         <!-- 5. 歷史紀錄面板 -->
         <div id="logs-view">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-top: 10px;">
-                <div style="font-size: 20px; font-weight: 700;">📜 進出貨稽核紀錄</div>
+                <div style="font-size: 20px; font-weight: 800;">進出庫紀錄</div>
                 <div style="display:flex; gap:8px;">
-                    <button onclick="toggleLogsEditMode()" class="apple-btn secondary" id="btn-logs-edit" style="padding: 8px 14px; font-size: 12px;">✏️ 編輯</button>
+                    <button onclick="toggleLogsEditMode()" class="apple-btn secondary" id="btn-logs-edit" style="padding: 8px 14px; font-size: 12px;">編輯</button>
                     <button onclick="closeLogsView()" class="apple-btn secondary" style="padding: 8px 14px; font-size: 13px;">返回</button>
                 </div>
             </div>
 
             <input type="text" id="logs-search-input" class="apple-input" placeholder="🔍 搜尋物品名稱 / 箱子 / 對象…" style="margin-bottom:10px; font-size:13px; padding:10px 14px;" oninput="onLogsFilterChange()">
 
-            <div style="display:flex; gap:6px; margin-bottom:10px;" id="logs-type-tabs">
-                <button class="apple-btn secondary logs-tab" data-type="all" onclick="setLogsTypeFilter('all')" style="flex:1; padding:8px; font-size:12px;">全部</button>
-                <button class="apple-btn secondary logs-tab" data-type="出庫" onclick="setLogsTypeFilter('出庫')" style="flex:1; padding:8px; font-size:12px;">📤 出庫</button>
-                <button class="apple-btn secondary logs-tab" data-type="轉交" onclick="setLogsTypeFilter('轉交')" style="flex:1; padding:8px; font-size:12px;">🔄 轉交</button>
-                <button class="apple-btn secondary logs-tab" data-type="消耗" onclick="setLogsTypeFilter('消耗')" style="flex:1; padding:8px; font-size:12px;">🟣 消耗</button>
-                <button class="apple-btn secondary logs-tab" data-type="進貨" onclick="setLogsTypeFilter('進貨')" style="flex:1; padding:8px; font-size:12px;">📥 進貨</button>
-                <button class="apple-btn secondary logs-tab" data-type="調整" onclick="setLogsTypeFilter('調整')" style="flex:1; padding:8px; font-size:12px;">✏️ 修改</button>
+            <div class="seg-tabs" id="logs-type-tabs">
+                <button class="logs-tab" data-type="all" onclick="setLogsTypeFilter('all')">全部</button>
+                <button class="logs-tab" data-type="出庫" onclick="setLogsTypeFilter('出庫')">出庫</button>
+                <button class="logs-tab" data-type="進貨" onclick="setLogsTypeFilter('進貨')">入庫</button>
+                <button class="logs-tab" data-type="消耗" onclick="setLogsTypeFilter('消耗')">用掉</button>
+                <button class="logs-tab" data-type="轉交" onclick="setLogsTypeFilter('轉交')">轉交</button>
+                <button class="logs-tab" data-type="調整" onclick="setLogsTypeFilter('調整')">修改</button>
             </div>
 
             <div style="display:flex; gap:8px; margin-bottom:12px; align-items:center;">
-                <input type="date" id="logs-date-input" class="apple-input" style="flex:1; font-size:13px; padding:10px 14px; cursor:pointer;" onchange="onLogsFilterChange()">
-                <button class="apple-btn secondary" style="padding:10px 14px; font-size:12px; flex-shrink:0;" onclick="clearLogsDateFilter()">清除日期</button>
+                <label class="lg-datebox"><span>日期</span><input type="date" id="logs-date-input" onchange="onLogsFilterChange()"></label>
+                <button class="lg-clear" onclick="clearLogsDateFilter()">全部日期</button>
             </div>
 
             <button id="btn-logs-delete-all" class="apple-btn danger" style="display:none; width:100%; margin-bottom:14px; padding:10px; font-size:13px;" onclick="deleteAllLogs()">🗑️ 全部刪除（目前篩選結果）</button>
@@ -2929,10 +2938,10 @@
 
         let html = '';
         let lastDateKey = null;
-        filtered.forEach(l => {
+        groupLogs(filtered).forEach(l => {
             const dateKey = getLogDateKey(l.timestamp);
             if (dateKey !== lastDateKey) {
-                html += `<div class="lg-date">📅 ${getLogDateLabel(l.timestamp)}</div>`;
+                html += `<div class="lg-date">${getLogDateLabel(l.timestamp)}</div>`;
                 lastDateKey = dateKey;
             }
             html += logRowHtml(l, { showItem: true, showBox: true, del: isLogsEditMode });
@@ -2948,7 +2957,7 @@
     };
     function updateLogsEditUI() {
         const btn = document.getElementById('btn-logs-edit');
-        btn.innerText = isLogsEditMode ? '✓ 完成' : '✏️ 編輯';
+        btn.innerText = isLogsEditMode ? '完成' : '編輯';
         btn.classList.toggle('active', isLogsEditMode);
     }
 
@@ -2960,9 +2969,7 @@
     function updateLogsTabsUI() {
         document.querySelectorAll('.logs-tab').forEach(btn => {
             const active = btn.dataset.type === logsTypeFilter;
-            btn.style.background = active ? '#0a84ff' : 'rgba(255,255,255,0.08)';
-            btn.style.borderColor = active ? 'transparent' : 'rgba(255,255,255,0.12)';
-            btn.style.color = '#fff';
+            btn.classList.toggle('on', active);
         });
     }
 
@@ -4895,7 +4902,7 @@
             rows.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
             if (!personViewUser || personViewUser.account !== account) return;
             if (!rows.length) { el.innerHTML = '<div style="color:#8e8e93; text-align:center; padding:16px; font-size:13px;">還沒有紀錄</div>'; return; }
-            el.innerHTML = rows.slice(0, 20).map(l => logRowHtml(l, { showItem: true, showBox: true })).join('');
+            el.innerHTML = groupLogs(rows).slice(0, 20).map(l => logRowHtml(l, { showItem: true, showBox: true })).join('');
         } catch (e) {
             el.innerHTML = '<div style="color:#ff3b30; text-align:center; padding:16px; font-size:13px;">載入紀錄失敗</div>';
         }
@@ -4907,7 +4914,7 @@
         if (t === '出庫') return { ic: '📤', c: '#dc2626', bg: '#fef2f2', verb: '出庫', sign: '−' };
         if (t === '轉交') return { ic: '🔄', c: '#d97706', bg: '#fffbeb', verb: '轉交', sign: '' };
         if (t === '消耗') return { ic: '🔥', c: '#9333ea', bg: '#faf5ff', verb: '用掉', sign: '' };
-        if (t === '調整') return { ic: '✏️', c: '#2563eb', bg: '#eff6ff', verb: '後台修改', sign: '' };
+        if (t === '調整') return { ic: '✏️', c: '#2563eb', bg: '#eff6ff', verb: '修改', sign: '' };
         if (tg.startsWith('還回')) return { ic: '📥', c: '#16a34a', bg: '#f0fdf4', verb: '還回', sign: '+' };
         return { ic: '📦', c: '#16a34a', bg: '#f0fdf4', verb: '入庫', sign: '+' };
     }
@@ -4917,19 +4924,39 @@
         if (tg === '補貨/進貨' || tg === '後台修改庫存') return '';
         return tg.split(' → ').map(targetName).join(' → ');
     }
+    const hm = l => { const t = String(l.timeStr || ''); const i = t.indexOf(' '); return i < 0 ? t : t.slice(i + 1); };
+    // 一筆（或同一次批次的多筆）紀錄
     function logRowHtml(l, opt = {}) {
-        const k = logKind(l), who = logWho(l);
-        const amount = l.type === '調整' ? `${l.fromQty ?? '?'} → ${l.toQty ?? '?'}` : `${k.sign}${l.qty}`;
-        const role = l.operatorRole === 'helper' ? '小幫手' : '';
-        const sub = [opt.showBox && l.boxName ? `📦 ${escapeHtml(l.boxName)}` : '', who ? escapeHtml(who) : '', l.unitLabel ? escapeHtml(l.unitLabel) : '', l.operator ? `經手 ${escapeHtml(l.operator)}${role ? '（小幫手）' : ''}` : ''].filter(Boolean).join(' · ');
-        return `<div class="lg-row" style="border-left-color:${k.c}">
-            <div class="lg-ic" style="background:${k.bg}">${k.ic}</div>
+        const list = l._group || [l], k = logKind(l), who = logWho(l);
+        const amount = l.type === '調整' ? `${l.fromQty ?? '?'} → ${l.toQty ?? '?'}` : `${k.sign}${list.reduce((a, x) => a + (Number(x.qty) || 0), 0)}`;
+        let title = '', detail = '';
+        if (opt.showItem) {
+            const by = {}; list.forEach(x => { by[x.itemName] = (by[x.itemName] || 0) + (Number(x.qty) || 0); });
+            const names = Object.keys(by);
+            title = names.length === 1 ? escapeHtml(names[0]) : `${escapeHtml(names[0])} 等 ${names.length} 項`;
+            if (names.length > 1) detail = names.map(n => `${escapeHtml(n)} ×${by[n]}`).join('、');
+        }
+        const units = list.length === 1 && l.unitLabel ? String(l.unitLabel).replace(/^第 /, '#').replace(/ 件$/, '') : '';
+        const meta = [who ? escapeHtml(who) : '', units ? escapeHtml(units) : '', l.operator ? `${escapeHtml(l.operator)}${l.operatorRole === 'helper' ? '（小幫手）' : ''}` : ''].filter(Boolean).join(' · ');
+        return `<div class="lg-row">
+            <span class="lg-tag" style="color:${k.c};background:${k.bg}">${k.verb}</span>
             <div class="lg-main">
-                <div class="lg-top"><b style="color:${k.c}">${k.verb}</b>${opt.showItem ? `<span class="lg-item">${escapeHtml(l.itemName || '')}</span>` : ''}<span class="lg-amt" style="color:${k.c}">${amount}</span></div>
-                ${sub ? `<div class="lg-sub">${sub}</div>` : ''}
+                ${title ? `<div class="lg-item">${title}</div>` : ''}
+                ${detail ? `<div class="lg-detail">${detail}</div>` : ''}
+                <div class="lg-sub">${meta}${opt.showBox && l.boxName ? `<span class="lg-box">${meta ? '｜' : ''}${escapeHtml(l.boxName)}</span>` : ''}</div>
             </div>
-            <div class="lg-time">${escapeHtml(String(l.timeStr || '').replace(' ', '<br>')).replace('&lt;br&gt;', '<br>')}${opt.del ? `<button onclick="deleteLog('${l.id}')" class="lg-del">✕</button>` : ''}</div>
+            <div class="lg-right"><b style="color:${k.c}">${amount}</b><span>${escapeHtml(hm(l))}</span>${opt.del && list.length === 1 ? `<button onclick="deleteLog('${l.id}')" class="lg-del">刪除</button>` : ''}</div>
         </div>`;
+    }
+    // 同一次整箱進出庫（同時間、同類型、同對象、同箱子）合成一筆
+    function groupLogs(arr) {
+        const out = [];
+        arr.forEach(l => {
+            const p = out[out.length - 1];
+            if (p && l.type !== '調整' && p.type === l.type && p.target === l.target && p.boxName === l.boxName && p.operator === l.operator && Math.abs((p.timestamp || 0) - (l.timestamp || 0)) < 3000) (p._group = p._group || [p]).push(l);
+            else out.push(l);
+        });
+        return out;
     }
 
     // 紀錄上的「經手管理員」文字
@@ -5668,7 +5695,7 @@
 
             const sum = { out: 0, back: 0, used: 0 };
             itemLogs.forEach(l => { if (l.type === '出庫') sum.out += l.qty || 0; else if (l.type === '消耗') sum.used += l.qty || 0; else if (l.type === '進貨') sum.back += l.qty || 0; });
-            let html = `<div class="lg-sum"><span>📤 出庫 <b>${sum.out}</b></span><span>📥 入庫/還回 <b>${sum.back}</b></span><span>🔥 用掉 <b>${sum.used}</b></span></div>`;
+            let html = `<div class="lg-sum"><span>出庫<b>${sum.out}</b></span><span>入庫／還回<b>${sum.back}</b></span><span>用掉<b>${sum.used}</b></span></div>`;
             let lastD = '';
             itemLogs.forEach(l => { const dk = getLogDateLabel(l.timestamp); if (dk !== lastD) { html += `<div class="lg-date">${dk}</div>`; lastD = dk; } html += logRowHtml(l, {}); });
             container.innerHTML = html;
