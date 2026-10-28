@@ -604,7 +604,11 @@
         .ovp-cov span{font-size:26px;opacity:.7;}
         .ovp-cov em{position:absolute;left:4px;bottom:4px;font-style:normal;font-size:9px;font-weight:800;color:#fff;background:rgba(220,38,38,.88);border-radius:6px;padding:1px 5px;}
         .ovp-t{font-size:11px;font-weight:800;color:#1f2937;line-height:1.25;padding:5px 6px 0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-all;}
-        .ovp-n{font-size:10px;font-weight:700;color:#d65a68;padding:1px 6px 6px;}
+        .ovp-list{padding:3px 5px 5px;}
+        .ovp-i{display:flex;align-items:flex-end;gap:3px;font-size:9.5px;color:#57534e;padding:2px 0;border-top:1px solid #f5ecea;line-height:1.25;}
+        .ovp-i span{flex:1;min-width:0;word-break:break-all;}
+        .ovp-i b{flex:none;color:#c2410c;white-space:nowrap;}
+        .ovp-i.co b{color:#dc2626;}
         #overview-view .ov-tier-title{display:flex;margin:12px 2px 5px !important;font-size:12px !important;color:#c2410c !important;font-weight:800;}
         #overview-view .ov-tier-title span:last-child{margin-left:auto;color:#a8a29e !important;font-weight:500;font-size:11px;}
         #overview-view .ov-page-title{margin:16px 2px 4px !important;padding:0 !important;font-size:16px !important;color:#d65a68 !important;background:none;border:none !important;font-weight:900;}
@@ -5116,7 +5120,9 @@
                         { const cov = (b.items || []).find(it => it.imageUrl);   // 照片牆：用箱內第一張物品照片當封面
                           const out = (b.items || []).reduce((a, it) => a + (Number(it.checkedOutCount) || 0) + (it.itemType === 'consumable' ? heldOf(it) : 0), 0);
                           html += `<div class="ov-box ov-photo" onclick="openBoxModal('${b.id}')"><div class="ovp-cov">${cov ? `<img src="${escapeHtml(cov.imageUrl)}" alt="" loading="lazy" onerror="this.remove()">` : '<span>📦</span>'}${out ? `<em>外出 ${out}</em>` : ''}</div>`
-                            + `<div class="ovp-t">${escapeHtml(b.name)}</div><div class="ovp-n">${itemsN} 項 ›</div>`; }
+                            + `<div class="ovp-t">${escapeHtml(b.name)}</div>`
+                            + `<div class="ovp-list">${(b.items || []).map(it => { const co = (Number(it.checkedOutCount) || 0) > 0 || (it.itemType === 'consumable' && heldOf(it) > 0);
+                                return `<div class="ovp-i${co ? ' co' : ''}"><span>${escapeHtml(it.name)}</span><b>${it.qty || 0} ${escapeHtml(UNIT(it))}</b></div>`; }).join('') || '<div class="ovp-i"><span>（空）</span></div>'}</div>`; }
                         if (isContentEditActive) {
                             const cur = Number(b.tier) || 0;
                             html += `<div class="ov-tier-chips">` + [1, 2, 3, 4, 5, 0].map(n =>
