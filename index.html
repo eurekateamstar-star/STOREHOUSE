@@ -3732,16 +3732,18 @@
                     parts.forEach(pt => { const t = cur ? cur + ' / ' + pt : pt; if (meas.measureText(t).width <= maxW) cur = t; else { if (cur) push(cur); cur = ''; if (meas.measureText(pt).width <= maxW) cur = pt; else push(pt); } });
                     if (cur) push(cur); return lines;
                 };
-                let fs = 64, lines;
-                while (true) { lines = wrapLines(b.name, `bold ${fs}px sans-serif`, 420); if (lines.length * fs * 1.25 <= 360 || fs <= 30) break; fs -= 4; }
-                const lh = Math.round(fs * 1.25), textH = lines.length * lh;
-                const c = document.createElement('canvas'); c.width = 460; c.height = 520 + textH + (page ? 70 : 20); const x = c.getContext('2d');
+                // 每張標籤固定同樣大小；箱名放在固定區塊裡，太長就縮小字
+                const AREA_TOP = 515, AREA_H = 190;
+                let fs = 44, lines;
+                while (true) { lines = wrapLines(b.name, `bold ${fs}px sans-serif`, 420); if (lines.length * fs * 1.22 <= AREA_H || fs <= 20) break; fs -= 2; }
+                const lh = Math.round(fs * 1.22), textH = lines.length * lh, y0 = AREA_TOP + Math.max(0, (AREA_H - textH) / 2);
+                const c = document.createElement('canvas'); c.width = 460; c.height = 770; const x = c.getContext('2d');
                 x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
                 x.drawImage(el, 30, 30, 400, 400);
-                x.fillStyle = '#c2410c'; x.textAlign = 'center'; x.font = 'bold 40px sans-serif'; x.fillText('📦 整箱 QR', 230, 490);
+                x.fillStyle = '#c2410c'; x.textAlign = 'center'; x.font = 'bold 40px sans-serif'; x.fillText('📦 整箱 QR', 230, 485);
                 x.fillStyle = '#000'; x.font = `bold ${fs}px sans-serif`;
-                lines.forEach((ln, i) => x.fillText(ln, 230, 520 + lh * (i + 1) - Math.round(lh * 0.2)));
-                if (page) { x.fillStyle = '#666'; x.font = 'bold 32px sans-serif'; x.fillText(page.name, 230, 520 + textH + 50); }
+                lines.forEach((ln, i) => x.fillText(ln, 230, y0 + lh * (i + 1) - Math.round(lh * 0.22)));
+                if (page) { x.fillStyle = '#666'; x.font = 'bold 30px sans-serif'; x.fillText(page.name, 230, 745); }
                 tmp.remove();
                 deliverLabels([{ dataUrl: c.toDataURL('image/png'), filename: `箱子_${String(b.name).replace(/[\/／\\:*?"<>|\s]+/g, '_').slice(0, 30)}.png` }]);
             };
