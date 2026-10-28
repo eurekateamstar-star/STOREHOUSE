@@ -71,6 +71,34 @@
       select.clean-select { font-size: 17px; color: var(--ssc-primary); border: none; background: transparent; outline: none; width: 100%; text-align: center; appearance: none; font-weight: 600; }
       textarea.main-complaint { width: 100%; border: none; font-size: 16px; color: #333; font-family: inherit; padding: 20px; resize: none; height: 120px; outline: none; box-sizing: border-box; background: transparent; line-height: 1.5; }
       
+
+      /* 處置後生命徵象（結構化） */
+      .pv-card{padding:6px 14px 10px;}
+      .pv-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.05);}
+      .pv-row:last-child{border-bottom:none;}
+      .pv-lab{flex:none;width:68px;font-size:14px;font-weight:700;color:#444;}
+      .pv-lab .req{color:#D65A68;font-style:normal;margin-left:2px;}
+      .pv-seg{flex:1;display:flex;gap:6px;}
+      .pv-seg label{flex:1;}
+      .pv-seg input{display:none;}
+      .pv-seg span{display:block;text-align:center;padding:9px 0;border-radius:12px;background:#fff;border:1.5px solid #eee;font-size:15px;font-weight:600;color:#555;cursor:pointer;}
+      .pv-seg input:checked+span{border-color:var(--ssc-primary);color:var(--ssc-primary);background:#fff5f6;box-shadow:0 3px 10px rgba(214,90,104,.18);}
+      .pv-crit input[value="是"]:checked+span{background:#D65A68;color:#fff;border-color:#D65A68;}
+      .pv-crit input[value="否"]:checked+span{border-color:#16a34a;color:#16a34a;background:#f0fdf4;box-shadow:none;}
+      .pv-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.05);}
+      .pv-f{display:flex;flex-direction:column;gap:3px;}
+      .pv-f>span{font-size:12.5px;font-weight:700;color:#666;}
+      .pv-f>div{display:flex;align-items:center;background:#fff;border:1.5px solid #eee;border-radius:12px;padding:0 10px;}
+      .pv-f input{flex:1;min-width:0;border:none !important;background:none !important;padding:9px 0 !important;font-size:16px !important;font-weight:700;color:#222;box-shadow:none !important;outline:none;text-align:left !important;}
+      .pv-f em{flex:none;font-style:normal;font-size:11.5px;color:#aaa;}
+      .pv-f>div:focus-within{border-color:var(--ssc-primary);}
+      .pv-gcs{flex:1;display:flex;align-items:center;gap:6px;}
+      .pv-g{flex:1;display:flex;align-items:center;background:#fff;border:1.5px solid #eee;border-radius:12px;padding:0 0 0 9px;}
+      .pv-g span{font-size:13px;font-weight:800;color:#D65A68;}
+      .pv-g select{flex:1;min-width:0;border:none;background:none;font-size:16px;font-weight:700;padding:8px 4px;color:#222;-webkit-appearance:none;appearance:none;text-align:center;}
+      .pv-card.pv-is-crit{border:1.5px solid #D65A68;}
+      #pvGcsSum{flex:none;min-width:34px;text-align:center;font-size:17px;color:#D65A68;}
+      .pv-note input{text-align:left !important;width:100%;border:1.5px solid #eee !important;border-radius:12px;padding:9px 12px !important;font-size:15px !important;background:#fff !important;}
       .scene-grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 16px; margin-bottom: 10px; }
       .scene-item { position: relative; }
       .scene-chip { display: flex; align-items: center; justify-content: center; background: #FFFFFF; color: #555; padding: 14px 5px; border-radius: 14px; font-size: 15px; font-weight: 500; text-align: center; width: 100%; box-shadow: 0 2px 5px rgba(0,0,0,0.05); transition: all 0.2s; border: 1.5px solid transparent; cursor: pointer; }
@@ -718,20 +746,21 @@
         <div id="tab-vitals" class="tab-content">
           
           <div class="section-header stp-head" data-step="postVitals"><span class="stp">11</span><span>處置後生命徵象<i class="req">*</i></span></div>
-          <div class="scene-grid-container" style="grid-template-columns: 1fr;"> 
-            <div class="scene-item">
-              <label>
-                <input type="radio" name="postVitals" value="意識清楚生命徵象穩定" checked onclick="window.clearVitalsOther()">
-                <div class="scene-chip">意識清楚生命徵象穩定</div>
-              </label>
+          <div class="card pv-card" id="pvCard">
+            <div class="pv-row"><div class="pv-lab">意識<i class="req">*</i></div><div class="pv-seg"><label><input type="radio" name="pvConsc" value="清" onchange="window.pvUpdate()"><span>清</span></label><label><input type="radio" name="pvConsc" value="聲" onchange="window.pvUpdate()"><span>聲</span></label><label><input type="radio" name="pvConsc" value="痛" onchange="window.pvUpdate()"><span>痛</span></label><label><input type="radio" name="pvConsc" value="否" onchange="window.pvUpdate()"><span>否</span></label></div></div>
+            <div class="pv-grid">
+              <label class="pv-f"><span>呼吸</span><div><input type="text" inputmode="numeric" id="pvRR" placeholder="" oninput="window.pvUpdate()"><em>次/分</em></div></label>
+              <label class="pv-f"><span>脈搏</span><div><input type="text" inputmode="numeric" id="pvHR" placeholder="" oninput="window.pvUpdate()"><em>次/分</em></div></label>
+              <label class="pv-f"><span>血壓</span><div><input type="text" inputmode="text" id="pvBP" placeholder="收縮/舒張" oninput="window.pvUpdate()"><em>mmHg</em></div></label>
+              <label class="pv-f"><span>血氧</span><div><input type="text" inputmode="numeric" id="pvSpO2" placeholder="" oninput="window.pvUpdate()"><em>%</em></div></label>
+              <label class="pv-f"><span>血糖</span><div><input type="text" inputmode="numeric" id="pvBS" placeholder="" oninput="window.pvUpdate()"><em>mg/dL</em></div></label>
+              <label class="pv-f"><span>體溫</span><div><input type="text" inputmode="decimal" id="pvBT" placeholder="" oninput="window.pvUpdate()"><em>°C</em></div></label>
             </div>
-            <div class="scene-item">
-              <label>
-                <input type="radio" name="postVitals" value="其他" id="vitalsOtherRadio" onclick="window.promptVitalsOther()">
-                <div class="scene-chip" id="vitalsOtherLabel">其他 (點擊輸入異常數值)</div>
-              </label>
-            </div>
+            <div class="pv-row"><div class="pv-lab">GCS</div><div class="pv-gcs"><label class="pv-g"><span>E</span><select id="pvE" onchange="window.pvUpdate()"><option value="">–</option><option>4</option><option>3</option><option>2</option><option>1</option></select></label><label class="pv-g"><span>V</span><select id="pvV" onchange="window.pvUpdate()"><option value="">–</option><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select></label><label class="pv-g"><span>M</span><select id="pvM" onchange="window.pvUpdate()"><option value="">–</option><option>6</option><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select></label><b id="pvGcsSum">—</b></div></div>
+            <div class="pv-row"><div class="pv-lab">危急個案<i class="req">*</i></div><div class="pv-seg pv-crit"><label><input type="radio" name="pvCrit" value="否" onchange="window.pvUpdate()"><span>否</span></label><label><input type="radio" name="pvCrit" value="是" onchange="window.pvUpdate()"><span>是</span></label></div></div>
+            <div class="pv-row pv-note"><input type="text" id="pvNote" placeholder="備註（選填）" oninput="window.pvUpdate()"></div>
           </div>
+          <input type="hidden" name="postVitals" id="postVitalsHidden" value="">
           <input type="hidden" id="postVitalsOtherText" value="">
 
           <div class="section-header stp-head" data-step="handoverInfo"><span class="stp">12</span><span>處理團員 / 接手單位<i class="req">*</i></span></div>
@@ -1902,31 +1931,45 @@
       } else { window.showNotice('info', '請輸入內容', '請輸入內容，或按取消'); }
     };
 
-    window.promptVitalsOther = function() {
-      document.getElementById('customVitalsInput').value = document.getElementById('postVitalsOtherText').value;
-      document.getElementById('vitalsInputModal').style.display = 'flex';
-      setTimeout(() => document.getElementById('customVitalsInput').focus(), 100);
+    // 處置後生命徵象：意識／呼吸／脈搏／血壓／血氧／血糖／體溫／GCS／危急個案 → 組成一行文字存進 postVitals
+    const PV_IDS = ['pvRR', 'pvHR', 'pvBP', 'pvSpO2', 'pvBS', 'pvBT', 'pvE', 'pvV', 'pvM', 'pvNote'];
+    const pvVal = id => (document.getElementById(id) || {}).value?.trim() || '';
+    const pvRadio = n => (document.querySelector(`input[name="${n}"]:checked`) || {}).value || '';
+    window.escapeHtmlPV = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    window.pvData = function() {
+      const d = { consc: pvRadio('pvConsc'), critical: pvRadio('pvCrit') };
+      PV_IDS.forEach(id => d[id.slice(2)] = pvVal(id));
+      const e = +d.E || 0, v = +d.V || 0, m = +d.M || 0;
+      d.GCS = (e && v && m) ? String(e + v + m) : '';
+      return d;
     };
-
-    window.closeVitalsModal = function() {
-      document.getElementById('vitalsInputModal').style.display = 'none';
-      if(document.getElementById('postVitalsOtherText').value === "") {
-        document.querySelector('input[name="postVitals"][value="意識清楚生命徵象穩定"]').checked = true;
-      }
+    window.pvText = function(d) {
+      d = d || window.pvData();
+      const parts = [];
+      if (d.consc) parts.push(`意識 ${d.consc}`);
+      if (d.RR) parts.push(`呼吸 ${d.RR}`);
+      if (d.HR) parts.push(`脈搏 ${d.HR}`);
+      if (d.BP) parts.push(`血壓 ${d.BP}`);
+      if (d.SpO2) parts.push(`血氧 ${d.SpO2}%`);
+      if (d.BS) parts.push(`血糖 ${d.BS}`);
+      if (d.BT) parts.push(`體溫 ${d.BT}°C`);
+      if (d.E || d.V || d.M) parts.push(`GCS ${d.GCS || '?'}（E${d.E || '?'}V${d.V || '?'}M${d.M || '?'}）`);
+      if (d.critical) parts.push(`危急個案：${d.critical}`);
+      if (d.Note) parts.push(`備註：${d.Note}`);
+      return parts.join('｜');
     };
-
-    window.confirmVitalsModal = function() {
-      const val = document.getElementById('customVitalsInput').value.trim();
-      if(val !== "") {
-        document.getElementById('postVitalsOtherText').value = val;
-        document.getElementById('vitalsOtherLabel').innerText = "其他: " + val;
-        document.getElementById('vitalsInputModal').style.display = 'none';
-      } else { window.showNotice('info', '請輸入內容', '請輸入數值內容，或按取消'); }
+    window.pvUpdate = function() {
+      const d = window.pvData();
+      const sum = document.getElementById('pvGcsSum'); if (sum) sum.textContent = d.GCS || '—';
+      const h = document.getElementById('postVitalsHidden'); if (h) h.value = (d.consc && d.critical) ? window.pvText(d) : '';
+      const card = document.getElementById('pvCard'); if (card) card.classList.toggle('pv-is-crit', d.critical === '是');
+      try { window.updateStepDone && window.updateStepDone(); } catch (e) {}
     };
-
-    window.clearVitalsOther = function() {
-      document.getElementById('postVitalsOtherText').value = "";
-      document.getElementById('vitalsOtherLabel').innerText = "其他 (點擊輸入異常數值)";
+    window.pvSet = function(d) {
+      d = d || {};
+      document.querySelectorAll('input[name="pvConsc"],input[name="pvCrit"]').forEach(r => r.checked = (r.name === 'pvConsc' ? d.consc : d.critical) === r.value);
+      PV_IDS.forEach(id => { const el = document.getElementById(id); if (el) el.value = d[id.slice(2)] || ''; });
+      window.pvUpdate();
     };
 
     window.compressedImagesArray = []; 
@@ -2080,7 +2123,7 @@
       const actions = getCheckedValuesWithHidden('treatment', 'treatmentOtherValue');
       if (actions === '無' || actions.includes('其他: 未註明')) add(2, '處置項目（含「其他」內容）', document.querySelector('#tab-treatment .scene-grid-container'));
 
-      if (fd.get('postVitals') === '其他' && !filled(document.getElementById('postVitalsOtherText').value)) add(3, '處置後生命徵象', document.querySelector('#tab-vitals .scene-grid-container'));
+      { const d = window.pvData(); if (!d.consc || !d.critical) add(3, '處置後生命徵象（意識、是否危急個案）', document.getElementById('pvCard')); }
       if (!filled(fd.get('handoverInfo'))) add(3, '處理團員 / 接手單位資訊', boxOf('handoverInfo'));
       return missing;
     }
@@ -2127,10 +2170,7 @@
 
       const dotsHtml = injuryOverlayHtml(selectedPartsData);
 
-      let vitalsResult = "意識清楚生命徵象穩定";
-      if(fd.get('postVitals') === "其他") {
-        vitalsResult = document.getElementById('postVitalsOtherText').value.trim() || "未填";
-      }
+      let vitalsResult = window.escapeHtmlPV(window.pvText() || '未填');
 
       let photosHtml = '';
       if(window.compressedImagesArray.length > 0) {
@@ -3011,6 +3051,7 @@
     function resetFormUI() {
       document.querySelectorAll('.field-error').forEach(e => e.classList.remove('field-error'));
       document.getElementById('ambulanceForm').reset();
+      try { window.pvUpdate(); } catch (e) {}
       
       // 保留已經帶入的人員姓名
       const cachedUserStr = localStorage.getItem('sfc_user_cache');
@@ -3087,14 +3128,8 @@
       applyCheckGroup('problems', S.problems, 'problemOtherCheckbox', 'problemOtherLabel', 'problemOtherValue');
       applyCheckGroup('treatment', T.actions, 'treatmentOtherCheckbox', 'treatmentOtherLabel', 'treatmentOtherValue');
 
-      const pv = F.postVitals || '意識清楚生命徵象穩定';
-      if(pv === '意識清楚生命徵象穩定') {
-        document.querySelector('input[name="postVitals"][value="意識清楚生命徵象穩定"]').checked = true;
-      } else {
-        document.getElementById('vitalsOtherRadio').checked = true;
-        document.getElementById('postVitalsOtherText').value = pv;
-        document.getElementById('vitalsOtherLabel').innerText = "其他: " + pv;
-      }
+      if (F.vitals) window.pvSet(F.vitals);
+      else { const pv = F.postVitals || ''; window.pvSet(pv === '意識清楚生命徵象穩定' ? { consc: '清', critical: '否' } : { Note: pv }); }
 
       selectedPartsData = JSON.parse(JSON.stringify(T.injuredParts || []));
       document.querySelectorAll('.body-zone').forEach(z => {
@@ -3235,10 +3270,8 @@
         document.getElementById('loading').style.display = 'flex';
       }
 
-      let finalVitals = fd.get('postVitals');
-      if(finalVitals === "其他") {
-        finalVitals = document.getElementById('postVitalsOtherText').value.trim() || "未填寫";
-      }
+      const pvD = window.pvData();
+      let finalVitals = window.pvText(pvD) || '未填寫';
 
       const recordData = {
         timestamp: serverTimestamp(),
@@ -3266,6 +3299,8 @@
         },
         followUp: {
           postVitals: finalVitals,
+          vitals: pvD,
+          critical: pvD.critical === '是',
           handoverInfo: fd.get('handoverInfo') || ''
         },
         photos: window.compressedImagesArray || []
@@ -3863,7 +3898,7 @@
           mainComplaint: !!val('mainComplaint'),
           body: !!txt('selectedBodyParts') && txt('selectedBodyParts') !== '尚無標記',
           treatment: any('treatment') && !(document.getElementById('treatmentOtherCheckbox') || {}).checked || (any('treatment') && !!val2('treatmentOtherValue')),
-          postVitals: (F.querySelector('input[name="postVitals"]:checked') || {}).value === '其他' ? !!val2('postVitalsOtherText') : any('postVitals'),
+          postVitals: (() => { const d = window.pvData(); return !!(d.consc && d.critical); })(),
           handoverInfo: !!val('handoverInfo'),
           photos: !!(document.getElementById('imagePreviewContainer') || { children: [] }).children.length,
         };
