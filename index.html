@@ -593,20 +593,23 @@
         .header-btns .lbl{display:block !important;line-height:1;}
         .header-btns.compact button{padding:0 2px !important;}
         .page-nav{top:42px !important;}
+        #overview-view{padding-top:50px !important;}
         /* 換頁箭頭移到最下方（地板那一帶），不要擋到架子上的標籤 */
         .side-arrow{top:auto !important;margin-top:0 !important;bottom:calc(112px + env(safe-area-inset-bottom));width:40px;height:40px;border-radius:50%;opacity:.88;}
         .side-arrow svg{width:18px;height:18px;}
-        /* 換頁：左右下角各一顆圓形箭頭 */
+        /* 換頁：貼在左右邊緣的半圓拉片（像翻頁），箭頭會動 */
         #side-arrows{position:absolute !important;inset:0 !important;pointer-events:none !important;z-index:96;}
-        #side-arrows .side-arrow{position:absolute !important;top:auto !important;bottom:calc(26px + env(safe-area-inset-bottom)) !important;margin:0 !important;pointer-events:auto;
-            width:50px !important;height:50px !important;border-radius:50% !important;padding:0 !important;display:flex !important;align-items:center;justify-content:center;
-            background:rgba(10,132,255,.38) !important;color:#fff !important;border:1.5px solid rgba(255,255,255,.7) !important;box-shadow:0 4px 14px rgba(10,80,180,.25) !important;opacity:1 !important;
-            backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);animation:none !important;}
-        #page-nav-prev{left:14px !important;} #page-nav-next{right:14px !important;}
-        #side-arrows .side-arrow svg{width:24px !important;height:24px !important;}
+        #side-arrows .side-arrow{position:absolute !important;top:auto !important;bottom:calc(120px + env(safe-area-inset-bottom)) !important;margin:0 !important;pointer-events:auto;
+            width:30px !important;height:72px !important;padding:0 !important;display:flex !important;align-items:center;justify-content:center;
+            background:rgba(255,255,255,.78) !important;color:#0a84ff !important;border:none !important;box-shadow:0 4px 14px rgba(31,36,48,.22) !important;opacity:1 !important;
+            backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);animation:none !important;}
+        #page-nav-prev{left:0 !important;border-radius:0 36px 36px 0 !important;justify-content:flex-start !important;padding-left:2px !important;}
+        #page-nav-next{right:0 !important;border-radius:36px 0 0 36px !important;justify-content:flex-end !important;padding-right:2px !important;}
+        #side-arrows .side-arrow svg{width:24px !important;height:24px !important;stroke-width:2.6;}
         #side-arrows .chev{display:flex;}
         #page-nav-prev .chev{animation:chevNudgeL 1.6s ease-in-out infinite !important;}
         #page-nav-next .chev{animation:chevNudgeR 1.6s ease-in-out infinite !important;}
+        #side-arrows .side-arrow:active:not(:disabled){background:#fff !important;width:36px !important;}
         #side-arrows .side-arrow:disabled{display:none !important;}
         .mode-hint{background:rgba(255,255,255,.92) !important;color:#c2410c !important;border-color:rgba(240,131,57,.35) !important;box-shadow:0 6px 16px rgba(0,0,0,.08);}
         #map-loading-overlay .spinner{border-color:rgba(214,90,104,.15);border-top-color:var(--primary);}
