@@ -1148,6 +1148,8 @@
         </div>
 
         <!-- 物品編輯視窗 -->
+        <div id="item-edit-backdrop" style="display:none; position:absolute; inset:0; background:rgba(0,0,0,0.35); z-index:2490;" onclick="closeEditItemModal()"></div>
+        <div id="history-backdrop" style="display:none; position:absolute; inset:0; background:rgba(0,0,0,0.35); z-index:2790;" onclick="closeItemHistoryModal()"></div>
         <div id="item-edit-modal" class="modal" style="z-index: 2500;">
             <h2 id="edit-modal-title" style="margin:0 0 14px 0; font-size:18px; font-weight:600; color:#ff9500;">🏷️ 物品資訊與專屬 QR Code</h2>
             
@@ -5556,9 +5558,10 @@
         }
 
         document.getElementById('item-edit-modal').style.display = 'block';
+        document.getElementById('item-edit-backdrop').style.display = 'block';
     };
 
-    window.closeEditItemModal = function() { document.getElementById('item-edit-modal').style.display = 'none'; };
+    window.closeEditItemModal = function() { document.getElementById('item-edit-modal').style.display = 'none'; document.getElementById('item-edit-backdrop').style.display = 'none'; if (document.getElementById('item-history-modal').style.display === 'block') closeItemHistoryModal(); };
 
     let moveTargetBoxId = null;
 
@@ -5689,6 +5692,7 @@
         const container = document.getElementById('item-history-container');
         container.innerHTML = '<div style="color: #8e8e93; text-align: center; padding: 20px;">載入中…</div>';
         document.getElementById('item-history-modal').style.display = 'block';
+        document.getElementById('history-backdrop').style.display = 'block';
 
         try {
             const snap = await getDocs(collection(db, "warehouse_logs"));
@@ -5718,6 +5722,7 @@
 
     window.closeItemHistoryModal = function() {
         document.getElementById('item-history-modal').style.display = 'none';
+        document.getElementById('history-backdrop').style.display = 'none';
     };
 
     window.uploadBackgroundImage = async function(e) {
