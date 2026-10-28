@@ -594,26 +594,29 @@
         .header-btns.compact button{padding:0 2px !important;}
         .page-nav{top:42px !important;}
         #overview-view{padding-top:50px !important;}
-        /* 總覽：一層一列，四箱並排的標籤卡 */
+        /* 總覽：庫存表風格（中性色、細線、數字對齊），一層四箱 */
         #overview-view{padding-left:8px !important;padding-right:8px !important;}
-        #overview-view .ov-tier-row,#overview-view .ov-tier-wrap{display:grid !important;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;align-items:start;margin-bottom:2px;background:none;border:none;padding:0;}
-        #overview-view .ov-box{min-height:0 !important;margin:0 !important;padding:0 !important;border-radius:10px !important;background:#fff !important;border:1px solid #ece4df !important;
-            box-shadow:0 1px 2px rgba(60,40,30,.05) !important;overflow:hidden;}
-        #overview-view .ov-box:active{background:#faf6f3 !important;}
-        #overview-view .ov-box-title{display:block !important;margin:0 !important;padding:6px 6px 5px !important;background:#fdf1ec;border-bottom:1px solid #f3e3dc;font-size:11.5px !important;line-height:1.25;position:relative;}
-        #overview-view .ov-box-title>span:first-child{display:-webkit-box !important;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-all;font-weight:800;color:#9a3412;height:auto !important;padding-right:16px;}
+        #overview-view .ov-tier-row,#overview-view .ov-tier-wrap{display:grid !important;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;align-items:start;margin-bottom:4px;background:none;border:none;padding:0;}
+        #overview-view .ov-box{min-height:0 !important;margin:0 !important;padding:0 !important;border-radius:8px !important;background:#fff !important;border:1px solid #e2e8f0 !important;
+            box-shadow:0 1px 2px rgba(15,23,42,.05) !important;overflow:hidden;}
+        #overview-view .ov-box:active{background:#f8fafc !important;}
+        #overview-view .ov-box-title{display:block !important;margin:0 !important;padding:6px 7px 5px !important;background:#f8fafc;border-bottom:1px solid #e2e8f0;border-top:3px solid #334155;font-size:11.5px !important;line-height:1.25;position:relative;}
+        #overview-view .ov-box-title>span:first-child{display:-webkit-box !important;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-all;font-weight:800;color:#0f172a;height:auto !important;padding-right:20px;}
         #overview-view .ov-fold-row{position:absolute;top:5px;right:4px;}
-        #overview-view .ov-fold{font-size:0 !important;padding:0 !important;width:16px;height:16px;border-radius:50% !important;background:#fff !important;border:1px solid #f0d9cf !important;}
-        #overview-view .ov-fold::after{content:attr(data-n);font-size:9.5px;font-weight:800;color:#c2410c;line-height:14px;display:block;text-align:center;}
+        #overview-view .ov-fold{font-size:0 !important;padding:0 5px !important;min-width:18px;height:16px;border-radius:4px !important;background:#e2e8f0 !important;border:none !important;}
+        #overview-view .ov-fold::after{content:attr(data-n);font-size:9.5px;font-weight:800;color:#475569;line-height:16px;display:block;text-align:center;}
         #overview-view .ov-box-count{display:none;}
-        #overview-view .ov-item{display:flex !important;align-items:flex-end;gap:3px;padding:3px 5px 3px 6px !important;margin:0 !important;border:none !important;border-top:1px solid #f5efec !important;background:none !important;line-height:1.25;}
+        #overview-view .ov-item{display:flex !important;align-items:flex-end;gap:4px;padding:4px 7px !important;margin:0 !important;border:none !important;border-top:1px solid #f1f5f9 !important;background:none !important;line-height:1.3;}
         #overview-view .ov-box-title + .ov-item{border-top:none !important;}
-        #overview-view .ov-item .ov-n{flex:1;min-width:0;display:block;font-size:10.5px;color:#57534e;white-space:normal;word-break:break-all;line-height:1.3;}
-        #overview-view .ov-item .ov-q{flex:none;margin:0;font-size:10.5px;font-weight:900;color:#1f2937;white-space:nowrap;}
+        #overview-view .ov-item:nth-of-type(even){background:#fbfcfd !important;}
+        #overview-view .ov-item .ov-n{flex:1;min-width:0;font-size:10.5px;color:#475569;white-space:normal;word-break:break-all;}
+        #overview-view .ov-item .ov-q{flex:none;margin:0;font-size:10.5px;font-weight:800;color:#0f172a;white-space:nowrap;font-variant-numeric:tabular-nums;}
         #overview-view .ov-item .ov-b{display:none;}
         #overview-view .ov-item.checked-out .ov-q{color:#dc2626;}
-        #overview-view .ov-tier-title{margin:10px 2px 4px !important;font-size:12px;}
-        #overview-view .ov-page-title{margin:14px 2px 6px !important;font-size:16px;}
+        #overview-view .ov-tier-title{display:flex;align-items:center;gap:8px;margin:12px 2px 6px !important;font-size:11.5px !important;color:#334155 !important;letter-spacing:.5px;}
+        #overview-view .ov-tier-title span:first-child{font-weight:800;}
+        #overview-view .ov-tier-title span:last-child{font-size:11px;color:#94a3b8 !important;margin-left:auto;}
+        #overview-view .ov-page-title{margin:18px 2px 4px !important;padding:8px 10px !important;font-size:15px !important;color:#fff !important;background:#334155;border-radius:8px;border:none !important;}
         #overview-view .ov-tier-chips{margin:4px;}
         /* 換頁箭頭移到最下方（地板那一帶），不要擋到架子上的標籤 */
         .side-arrow{top:auto !important;margin-top:0 !important;bottom:calc(112px + env(safe-area-inset-bottom));width:40px;height:40px;border-radius:50%;opacity:.88;}
