@@ -5060,15 +5060,14 @@
     // 一鍵：全部展開（所有排＋細項）／全部收起
     function syncOvAllBtn() {
         const b = document.getElementById('ov-all-btn'); if (!b) return;
-        const anyOpen = !document.body.classList.contains('ov-nodetail') || [...document.querySelectorAll('.ov-pg')].some(e => !e.classList.contains('closed'));
+        const anyOpen = [...document.querySelectorAll('.ov-pg')].some(e => !e.classList.contains('closed'));
         b.textContent = anyOpen ? '⊟ 全部收起' : '⊞ 全部展開';
     }
     function toggleOvAll() {
         const pgs = [...document.querySelectorAll('.ov-pg')];
-        const anyOpen = !document.body.classList.contains('ov-nodetail') || pgs.some(e => !e.classList.contains('closed'));
+        const anyOpen = pgs.some(e => !e.classList.contains('closed'));
         pgs.forEach(e => e.classList.toggle('closed', anyOpen));
         try { localStorage.setItem('ov_pg_closed', JSON.stringify(anyOpen ? pgs.map(e => e.dataset.pg) : [])); } catch (e) {}
-        if (document.body.classList.contains('ov-nodetail') !== anyOpen) toggleOvFold();
         syncOvAllBtn();
     }
     window.toggleOvAll = toggleOvAll;
@@ -5151,8 +5150,8 @@
             const _qr = { all: 0, dur: 0, con: 0 };
             (boxesCache || []).filter(b => pages.some(p => p.id === b.pageId)).forEach(b => (b.items || []).forEach(it => { const n = qrCount(it); _qr.all += n; if (it.itemType === 'consumable') _qr.con += n; else _qr.dur += n; }));
             let _ovf = false; try { _ovf = localStorage.getItem('ov_fold') === '1'; } catch (e) {}
-            document.body.classList.toggle('ov-nodetail', _ovf);
-            let html = _ids.length ? `<div class="ov-toolbar"><button class="ov-fold-all ov-qr-toggle ov-all-btn" id="ov-all-btn" onclick="toggleOvAll()"></button><button class="ov-fold-all ov-qr-toggle" id="ov-fold-btn" onclick="toggleOvFold()">${_ovf ? '▸ 展開細項' : '▾ 收起細項'}</button>${isAdmin() ? `<button class="ov-fold-all ov-qr-toggle" onclick="downloadAllBoxLabels()">📦 全部整箱 QR</button>` : ''}</div>` : '';
+            document.body.classList.remove('ov-nodetail');   // 細項一律顯示
+            let html = _ids.length ? `<div class="ov-toolbar"><button class="ov-fold-all ov-qr-toggle ov-all-btn" id="ov-all-btn" onclick="toggleOvAll()"></button>${isAdmin() ? `<button class="ov-fold-all ov-qr-toggle" onclick="downloadAllBoxLabels()">📦 全部整箱 QR</button>` : ''}</div>` : '';
             document.body.classList.remove('ov-qr-on');
             if (false) html += `<div class="ov-qr-sum">🏷️ 全部要印 <b>${_qr.all}</b> 張 QR<small>耐久品 ${_qr.dur} 張（每件一張）・耗材 ${_qr.con} 張（每種一張）</small></div>`;
             pages.forEach(p => {
