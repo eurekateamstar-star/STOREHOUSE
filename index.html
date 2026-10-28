@@ -594,23 +594,25 @@
         .header-btns.compact button{padding:0 2px !important;}
         .page-nav{top:42px !important;}
         #overview-view{padding-top:50px !important;}
-        /* 總覽：清單式，一箱一行、物品變小標籤，一次看比較多 */
-        #overview-view{padding-left:12px !important;padding-right:12px !important;}
-        #overview-view .ov-tier-row,#overview-view .ov-tier-wrap{display:block !important;background:#fff;border:1px solid #eee6e2;border-radius:14px;overflow:hidden;margin-bottom:8px;}
-        #overview-view .ov-box{display:block;min-height:0 !important;margin:0 !important;padding:8px 12px !important;border:none !important;border-bottom:1px solid #f3eeeb !important;border-radius:0 !important;background:transparent !important;box-shadow:none !important;}
-        #overview-view .ov-box:last-child{border-bottom:none !important;}
-        #overview-view .ov-box:active{background:#fbf7f5 !important;}
-        #overview-view .ov-box-title{flex-direction:row !important;align-items:center;gap:8px !important;margin:0 !important;font-size:14px !important;}
-        #overview-view .ov-box-title>span:first-child{flex:1;min-width:0;height:auto !important;display:block !important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;-webkit-line-clamp:unset;font-weight:800;}
-        #overview-view .ov-fold-row{flex-wrap:nowrap;flex:none;}
-        #overview-view .ov-fold{font-size:11px !important;padding:2px 8px !important;}
-        #overview-view .ov-item{display:inline-flex !important;flex-wrap:nowrap !important;align-items:baseline;gap:5px;width:auto;max-width:100%;margin:5px 5px 0 0;padding:3px 8px !important;border:none !important;border-radius:8px;background:#f6f1ee;font-size:12px !important;line-height:1.3;}
-        #overview-view .ov-item .ov-n{flex:0 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#374151;font-weight:600;}
-        #overview-view .ov-item .ov-q{margin-left:0;font-size:12px;}
-        #overview-view .ov-item .ov-b,#overview-view .ov-item .ov-tag{flex:none !important;font-size:11px;margin:0;}
-        #overview-view .ov-item.checked-out{background:#fef2f2;}
-        #overview-view .ov-tier-title{margin:10px 4px 5px !important;font-size:12px;}
-        #overview-view .ov-page-title{margin:16px 2px 6px !important;font-size:16px;}
+        /* 總覽：一層一排的「貨架」，箱子並排成小卡，物品一行一個（小字） */
+        #overview-view{padding-left:10px !important;padding-right:10px !important;}
+        #overview-view .ov-tier-row,#overview-view .ov-tier-wrap{display:grid !important;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;align-items:stretch;
+            padding:6px 6px 10px;margin-bottom:4px;background:linear-gradient(#fff,#fff) padding-box;border-radius:12px;border-bottom:5px solid #d9c3a5;box-shadow:0 1px 3px rgba(60,40,20,.08);}
+        #overview-view .ov-box{min-height:0 !important;margin:0 !important;padding:7px 8px !important;border-radius:9px !important;background:#f8f4f1 !important;border:1px solid #efe7e2 !important;box-shadow:none !important;}
+        #overview-view .ov-box:active{background:#f1e9e4 !important;}
+        #overview-view .ov-box-title{display:flex !important;flex-direction:row !important;align-items:center;gap:4px !important;margin:0 0 4px !important;font-size:12.5px !important;line-height:1.3;}
+        #overview-view .ov-box-title{align-items:flex-start !important;}
+        #overview-view .ov-box-title>span:first-child{flex:1;min-width:0;height:auto !important;display:-webkit-box !important;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-all;font-weight:800;}
+        #overview-view .ov-fold-row{flex:none;}
+        #overview-view .ov-fold{font-size:10px !important;padding:1px 5px !important;border-radius:8px !important;}
+        #overview-view .ov-item{display:flex !important;flex-wrap:nowrap !important;justify-content:space-between;gap:4px;padding:2px 0 !important;margin:0 !important;border:none !important;border-top:1px dashed #e8dfda !important;font-size:11.5px !important;line-height:1.35;background:none !important;}
+        #overview-view .ov-item:first-of-type{border-top:none !important;}
+        #overview-view .ov-item .ov-n{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#4b5563;}
+        #overview-view .ov-item .ov-q{flex:none;font-size:11.5px;margin:0;}
+        #overview-view .ov-item .ov-b{display:none;}
+        #overview-view .ov-item.checked-out .ov-n{color:#dc2626;}
+        #overview-view .ov-tier-title{margin:10px 4px 4px !important;font-size:12px;}
+        #overview-view .ov-page-title{margin:14px 2px 6px !important;font-size:16px;}
         #overview-view .ov-tier-chips{margin-top:6px;}
         /* 換頁箭頭移到最下方（地板那一帶），不要擋到架子上的標籤 */
         .side-arrow{top:auto !important;margin-top:0 !important;bottom:calc(112px + env(safe-area-inset-bottom));width:40px;height:40px;border-radius:50%;opacity:.88;}
@@ -5095,9 +5097,9 @@
             const _anyOpen = _ids.some(id => !ovCollapsed.has(id));
             const _qr = { all: 0, dur: 0, con: 0 };
             (boxesCache || []).filter(b => pages.some(p => p.id === b.pageId)).forEach(b => (b.items || []).forEach(it => { const n = qrCount(it); _qr.all += n; if (it.itemType === 'consumable') _qr.con += n; else _qr.dur += n; }));
-            let html = _ids.length ? `<div class="ov-toolbar">${isAdmin() ? `<button class="ov-fold-all ov-qr-toggle" onclick="toggleOvQr()">🏷️ ${ovShowQr ? '隱藏 QR 張數' : 'QR 張數'}</button>` : ''}${isAdmin() ? `<button class="ov-fold-all ov-qr-toggle" onclick="downloadAllBoxLabels()">📦 全部整箱 QR</button>` : ''}<button class="ov-fold-all" onclick="toggleOvAll()">${_anyOpen ? '全部收起 ▴' : '全部展開 ▾'}</button></div>` : '';
-            document.body.classList.toggle('ov-qr-on', ovShowQr && isAdmin());
-            if (_ids.length && ovShowQr && isAdmin()) html += `<div class="ov-qr-sum">🏷️ 全部要印 <b>${_qr.all}</b> 張 QR<small>耐久品 ${_qr.dur} 張（每件一張）・耗材 ${_qr.con} 張（每種一張）</small></div>`;
+            let html = _ids.length ? `<div class="ov-toolbar">${isAdmin() ? `<button class="ov-fold-all ov-qr-toggle" onclick="downloadAllBoxLabels()">📦 全部整箱 QR</button>` : ''}<button class="ov-fold-all" onclick="toggleOvAll()">${_anyOpen ? '全部收起 ▴' : '全部展開 ▾'}</button></div>` : '';
+            document.body.classList.remove('ov-qr-on');
+            if (false) html += `<div class="ov-qr-sum">🏷️ 全部要印 <b>${_qr.all}</b> 張 QR<small>耐久品 ${_qr.dur} 張（每件一張）・耗材 ${_qr.con} 張（每種一張）</small></div>`;
             pages.forEach(p => {
                 const boxes = (boxesCache || []).filter(b => b.pageId === p.id);
                 const pageQr = boxes.reduce((a, b) => a + (b.items || []).reduce((x, it) => x + qrCount(it), 0), 0);
@@ -5116,7 +5118,7 @@
                         const countHtml = itemsN > 0
                             ? `<div class="ov-fold-row"><button class="ov-fold" onclick="event.stopPropagation(); toggleOvBox('${b.id}')">${itemsN} 項 ${folded ? '▸' : '▾'}</button><span class="ov-qr-box">🏷️${(b.items || []).reduce((x, it) => x + qrCount(it), 0)}</span></div>`
                             : `<span class="ov-box-count">0 項</span>`;
-                        html += `<div class="ov-box" onclick="openBoxModal('${b.id}')"><div class="ov-box-title"><span>📦 ${escapeHtml(b.name)}</span>${countHtml}</div>`;
+                        html += `<div class="ov-box" onclick="openBoxModal('${b.id}')"><div class="ov-box-title"><span>${escapeHtml(b.name)}</span>${countHtml}</div>`;
                         if (isContentEditActive) {
                             const cur = Number(b.tier) || 0;
                             html += `<div class="ov-tier-chips">` + [1, 2, 3, 4, 5, 0].map(n =>
