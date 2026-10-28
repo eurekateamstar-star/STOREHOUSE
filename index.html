@@ -606,6 +606,12 @@
         .ovp-t{font-size:11px;font-weight:800;color:#1f2937;line-height:1.25;padding:5px 6px 0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-all;}
         .ovp-list{padding:3px 5px 5px;}
         body.ov-fold .ovp-list{display:none;}
+        .ov-pg .ov-page-title{cursor:pointer;user-select:none;}
+        .ov-pg-meta{margin-left:auto;font-size:12px;font-weight:700;color:#a8a29e;display:flex;align-items:center;gap:6px;}
+        .ov-pg-meta i{font-style:normal;display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;border-radius:50%;background:#fde8ea;color:#d65a68;font-size:12px;transition:transform .2s;}
+        .ov-pg.closed .ov-pg-meta i{transform:rotate(-90deg);}
+        .ov-pg.closed .ov-pg-body{display:none;}
+        .ov-pg.closed .ov-page-title{background:#fff !important;border-radius:12px;padding:10px 12px !important;margin:8px 0 !important;box-shadow:0 1px 3px rgba(60,40,30,.06);}
         body.ov-fold .ovp-t{padding-bottom:6px;}
         .ovp-i{display:flex;align-items:flex-end;gap:3px;font-size:9.5px;color:#57534e;padding:2px 0;border-top:1px solid #f5ecea;line-height:1.25;}
         .ovp-i span{flex:1;min-width:0;word-break:break-all;}
@@ -5020,6 +5026,15 @@
         }).join('');
     }
     // 同一次進出庫（同類型、同對象、同箱子、同經手人、時間相差 2 分鐘內）合成一筆
+    // 總覽：每一排可收起（記住哪幾排收起）
+    function ovPgClosed() { try { return JSON.parse(localStorage.getItem('ov_pg_closed') || '[]'); } catch (e) { return []; } }
+    function toggleOvPage(id) {
+        const el = document.querySelector(`.ov-pg[data-pg="${id}"]`); if (!el) return;
+        const closed = el.classList.toggle('closed');
+        const set = new Set(ovPgClosed()); closed ? set.add(id) : set.delete(id);
+        try { localStorage.setItem('ov_pg_closed', JSON.stringify([...set])); } catch (e) {}
+    }
+    window.toggleOvPage = toggleOvPage;
     // 總覽：細項收起／展開（記住選擇）
     function toggleOvFold() {
         const on = !document.body.classList.contains('ov-fold');
@@ -5114,7 +5129,8 @@
             pages.forEach(p => {
                 const boxes = (boxesCache || []).filter(b => b.pageId === p.id);
                 const pageQr = boxes.reduce((a, b) => a + (b.items || []).reduce((x, it) => x + qrCount(it), 0), 0);
-                html += `<div class="ov-page-title">📍 ${escapeHtml(p.name)}${pageQr ? `<span class="ov-qr-page">🏷️ ${pageQr} 張</span>` : ''}</div>`;
+                const _pgc = ovPgClosed().includes(p.id);
+                html += `<div class="ov-pg${_pgc ? ' closed' : ''}" data-pg="${p.id}"><div class="ov-page-title" onclick="toggleOvPage('${p.id}')">📍 ${escapeHtml(p.name)}<span class="ov-pg-meta">${boxes.length} 箱 <i>▾</i></span></div><div class="ov-pg-body">`;
                 if (boxes.length === 0) html += `<div class="ov-empty-page">（無箱子）</div>`;
                 const tiers = [...new Set(boxes.map(b => Number(b.tier) || 0))].sort((a, b) => (b || 99) - (a || 99)); // 高層在上、第一層在最下面；未分層放最上
                 const showTierTitles = !(tiers.length === 1 && tiers[0] === 0);
@@ -5155,6 +5171,7 @@
                     });
                     html += `</div>`;
                 });
+                html += `</div></div>`;
             });
             if (ovView) ovView.innerHTML = html;
         }
