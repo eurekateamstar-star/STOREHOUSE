@@ -605,6 +605,8 @@
         .ovp-cov em{position:absolute;left:4px;bottom:4px;font-style:normal;font-size:9px;font-weight:800;color:#fff;background:rgba(220,38,38,.88);border-radius:6px;padding:1px 5px;}
         .ovp-t{font-size:11px;font-weight:800;color:#1f2937;line-height:1.25;padding:5px 6px 0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-all;}
         .ovp-list{padding:3px 5px 5px;}
+        body.ov-fold .ovp-list{display:none;}
+        body.ov-fold .ovp-t{padding-bottom:6px;}
         .ovp-i{display:flex;align-items:flex-end;gap:3px;font-size:9.5px;color:#57534e;padding:2px 0;border-top:1px solid #f5ecea;line-height:1.25;}
         .ovp-i span{flex:1;min-width:0;word-break:break-all;}
         .ovp-i b{flex:none;color:#c2410c;white-space:nowrap;}
@@ -5018,6 +5020,14 @@
         }).join('');
     }
     // 同一次進出庫（同類型、同對象、同箱子、同經手人、時間相差 2 分鐘內）合成一筆
+    // 總覽：細項收起／展開（記住選擇）
+    function toggleOvFold() {
+        const on = !document.body.classList.contains('ov-fold');
+        document.body.classList.toggle('ov-fold', on);
+        try { localStorage.setItem('ov_fold', on ? '1' : '0'); } catch (e) {}
+        const b = document.getElementById('ov-fold-btn'); if (b) b.textContent = on ? '▸ 展開細項' : '▾ 收起細項';
+    }
+    window.toggleOvFold = toggleOvFold;
     function groupLogs(arr) {
         const out = [];
         arr.forEach(l => {
@@ -5096,7 +5106,9 @@
             const _anyOpen = _ids.some(id => !ovCollapsed.has(id));
             const _qr = { all: 0, dur: 0, con: 0 };
             (boxesCache || []).filter(b => pages.some(p => p.id === b.pageId)).forEach(b => (b.items || []).forEach(it => { const n = qrCount(it); _qr.all += n; if (it.itemType === 'consumable') _qr.con += n; else _qr.dur += n; }));
-            let html = _ids.length ? `<div class="ov-toolbar">${isAdmin() ? `<button class="ov-fold-all ov-qr-toggle" onclick="downloadAllBoxLabels()">📦 全部整箱 QR</button>` : ''}</div>` : '';
+            let _ovf = false; try { _ovf = localStorage.getItem('ov_fold') === '1'; } catch (e) {}
+            document.body.classList.toggle('ov-fold', _ovf);
+            let html = _ids.length ? `<div class="ov-toolbar"><button class="ov-fold-all ov-qr-toggle" id="ov-fold-btn" onclick="toggleOvFold()">${_ovf ? '▸ 展開細項' : '▾ 收起細項'}</button>${isAdmin() ? `<button class="ov-fold-all ov-qr-toggle" onclick="downloadAllBoxLabels()">📦 全部整箱 QR</button>` : ''}</div>` : '';
             document.body.classList.remove('ov-qr-on');
             if (false) html += `<div class="ov-qr-sum">🏷️ 全部要印 <b>${_qr.all}</b> 張 QR<small>耐久品 ${_qr.dur} 張（每件一張）・耗材 ${_qr.con} 張（每種一張）</small></div>`;
             pages.forEach(p => {
