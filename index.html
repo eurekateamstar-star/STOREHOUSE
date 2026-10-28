@@ -3716,40 +3716,59 @@
         showToast(`✅ ${box.name}\n${isOut ? '出庫' : '入庫'} ${count} 件`, 'success', 1200);
         refreshLiveViews();
     }
-    window.downloadBoxLabel = function () {
-        const b = boxesCache.find(x => x.id === currentBoxId); if (!b) return;
-        const page = pages.find(p => p.id === b.pageId);
-        const tmp = document.createElement('div'); tmp.style.cssText = 'position:absolute;left:-9999px;top:-9999px;'; document.body.appendChild(tmp);
-        new QRCode(tmp, { text: 'BOX_' + b.id, width: 400, height: 400, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
-        setTimeout(() => {
-            const q = tmp.querySelector('canvas') || tmp.querySelector('img');
-            const render = el => {
-                // 箱名太長：照「/」或字數自動換行，字體依行數縮小
-                const meas = document.createElement('canvas').getContext('2d');
-                const wrapLines = (text, font, maxW) => {
-                    meas.font = font; const parts = String(text).split(/\s*[\/／、]\s*/).filter(Boolean); const lines = []; let cur = '';
-                    const push = t => { if (meas.measureText(t).width <= maxW) { lines.push(t); return; } let c2 = ''; for (const ch of t) { if (meas.measureText(c2 + ch).width > maxW) { lines.push(c2); c2 = ch; } else c2 += ch; } if (c2) lines.push(c2); };
-                    parts.forEach(pt => { const t = cur ? cur + ' / ' + pt : pt; if (meas.measureText(t).width <= maxW) cur = t; else { if (cur) push(cur); cur = ''; if (meas.measureText(pt).width <= maxW) cur = pt; else push(pt); } });
-                    if (cur) push(cur); return lines;
+    // 產生一張箱子 QR 標籤（固定尺寸）
+    function makeBoxLabel(b) {
+        return new Promise(resolve => {
+            const page = pages.find(p => p.id === b.pageId);
+            const tmp = document.createElement('div'); tmp.style.cssText = 'position:absolute;left:-9999px;top:-9999px;'; document.body.appendChild(tmp);
+            new QRCode(tmp, { text: 'BOX_' + b.id, width: 400, height: 400, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+            setTimeout(() => {
+                const q = tmp.querySelector('canvas') || tmp.querySelector('img');
+                const render = el => {
+                    // 箱名太長：照「/」或字數自動換行，字體依行數縮小
+                    const meas = document.createElement('canvas').getContext('2d');
+                    const wrapLines = (text, font, maxW) => {
+                        meas.font = font; const parts = String(text).split(/\s*[\/／、]\s*/).filter(Boolean); const lines = []; let cur = '';
+                        const push = t => { if (meas.measureText(t).width <= maxW) { lines.push(t); return; } let c2 = ''; for (const ch of t) { if (meas.measureText(c2 + ch).width > maxW) { lines.push(c2); c2 = ch; } else c2 += ch; } if (c2) lines.push(c2); };
+                        parts.forEach(pt => { const t = cur ? cur + ' / ' + pt : pt; if (meas.measureText(t).width <= maxW) cur = t; else { if (cur) push(cur); cur = ''; if (meas.measureText(pt).width <= maxW) cur = pt; else push(pt); } });
+                        if (cur) push(cur); return lines;
+                    };
+                    // 每張標籤固定同樣大小；箱名放在固定區塊裡，太長就縮小字
+                    const AREA_TOP = 515, AREA_H = 190;
+                    let fs = 44, lines;
+                    while (true) { lines = wrapLines(b.name, `bold ${fs}px sans-serif`, 420); if (lines.length * fs * 1.22 <= AREA_H || fs <= 20) break; fs -= 2; }
+                    const lh = Math.round(fs * 1.22), textH = lines.length * lh, y0 = AREA_TOP + Math.max(0, (AREA_H - textH) / 2);
+                    const c = document.createElement('canvas'); c.width = 460; c.height = 770; const x = c.getContext('2d');
+                    x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+                    x.drawImage(el, 30, 30, 400, 400);
+                    x.fillStyle = '#c2410c'; x.textAlign = 'center'; x.font = 'bold 40px sans-serif'; x.fillText('📦 整箱 QR', 230, 485);
+                    x.fillStyle = '#000'; x.font = `bold ${fs}px sans-serif`;
+                    lines.forEach((ln, i) => x.fillText(ln, 230, y0 + lh * (i + 1) - Math.round(lh * 0.22)));
+                    if (page) { x.fillStyle = '#666'; x.font = 'bold 30px sans-serif'; x.fillText(page.name, 230, 745); }
+                    tmp.remove();
+                    resolve({ dataUrl: c.toDataURL('image/png'), filename: `箱子_${String(b.name).replace(/[\/／\\:*?"<>|\s]+/g, '_').slice(0, 30)}.png` });
                 };
-                // 每張標籤固定同樣大小；箱名放在固定區塊裡，太長就縮小字
-                const AREA_TOP = 515, AREA_H = 190;
-                let fs = 44, lines;
-                while (true) { lines = wrapLines(b.name, `bold ${fs}px sans-serif`, 420); if (lines.length * fs * 1.22 <= AREA_H || fs <= 20) break; fs -= 2; }
-                const lh = Math.round(fs * 1.22), textH = lines.length * lh, y0 = AREA_TOP + Math.max(0, (AREA_H - textH) / 2);
-                const c = document.createElement('canvas'); c.width = 460; c.height = 770; const x = c.getContext('2d');
-                x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
-                x.drawImage(el, 30, 30, 400, 400);
-                x.fillStyle = '#c2410c'; x.textAlign = 'center'; x.font = 'bold 40px sans-serif'; x.fillText('📦 整箱 QR', 230, 485);
-                x.fillStyle = '#000'; x.font = `bold ${fs}px sans-serif`;
-                lines.forEach((ln, i) => x.fillText(ln, 230, y0 + lh * (i + 1) - Math.round(lh * 0.22)));
-                if (page) { x.fillStyle = '#666'; x.font = 'bold 30px sans-serif'; x.fillText(page.name, 230, 745); }
-                tmp.remove();
-                deliverLabels([{ dataUrl: c.toDataURL('image/png'), filename: `箱子_${String(b.name).replace(/[\/／\\:*?"<>|\s]+/g, '_').slice(0, 30)}.png` }]);
-            };
-            if (!q) { tmp.remove(); return showToast('❌ 產生失敗，請重試', 'error', 900); }
-            if (q.tagName === 'CANVAS' || q.complete) render(q); else q.onload = () => render(q);
-        }, 100);
+                if (!q) { tmp.remove(); resolve(null); return; }
+                if (q.tagName === 'CANVAS' || q.complete) render(q); else q.onload = () => render(q);
+            }, 60);
+        });
+    }
+    window.downloadBoxLabel = async function () {
+        const b = boxesCache.find(x => x.id === currentBoxId); if (!b) return;
+        const l = await makeBoxLabel(b);
+        if (!l) return showToast('❌ 產生失敗，請重試', 'error', 900);
+        deliverLabels([l]);
+    };
+    // 一鍵下載所有箱子的整箱 QR（依排的順序）
+    window.downloadAllBoxLabels = async function () {
+        if (!isAdmin()) return showToast('🔒 只有管理員可以下載', 'error', 1200);
+        const order = id => { const i = pages.findIndex(p => p.id === id); return i < 0 ? 999 : i; };
+        const list = (boxesCache || []).slice().sort((a, b) => order(a.pageId) - order(b.pageId) || String(a.name).localeCompare(String(b.name), 'zh-Hant'));
+        if (!list.length) return showToast('還沒有箱子', 'info', 900);
+        showToast(`產生中… 共 ${list.length} 個箱子`, 'info', 1500);
+        const out = [];
+        for (const [i, b] of list.entries()) { const l = await makeBoxLabel(b); if (l) { l.filename = String(i + 1).padStart(2, '0') + '_' + l.filename; out.push(l); } }
+        deliverLabels(out);
     };
 
     async function initApp() {
@@ -4886,7 +4905,7 @@
             const _anyOpen = _ids.some(id => !ovCollapsed.has(id));
             const _qr = { all: 0, dur: 0, con: 0 };
             (boxesCache || []).filter(b => pages.some(p => p.id === b.pageId)).forEach(b => (b.items || []).forEach(it => { const n = qrCount(it); _qr.all += n; if (it.itemType === 'consumable') _qr.con += n; else _qr.dur += n; }));
-            let html = _ids.length ? `<div class="ov-toolbar">${isAdmin() ? `<button class="ov-fold-all ov-qr-toggle" onclick="toggleOvQr()">🏷️ ${ovShowQr ? '隱藏 QR 張數' : 'QR 張數'}</button>` : ''}<button class="ov-fold-all" onclick="toggleOvAll()">${_anyOpen ? '全部收起 ▴' : '全部展開 ▾'}</button></div>` : '';
+            let html = _ids.length ? `<div class="ov-toolbar">${isAdmin() ? `<button class="ov-fold-all ov-qr-toggle" onclick="toggleOvQr()">🏷️ ${ovShowQr ? '隱藏 QR 張數' : 'QR 張數'}</button>` : ''}${isAdmin() ? `<button class="ov-fold-all ov-qr-toggle" onclick="downloadAllBoxLabels()">📦 全部整箱 QR</button>` : ''}<button class="ov-fold-all" onclick="toggleOvAll()">${_anyOpen ? '全部收起 ▴' : '全部展開 ▾'}</button></div>` : '';
             document.body.classList.toggle('ov-qr-on', ovShowQr && isAdmin());
             if (_ids.length && ovShowQr && isAdmin()) html += `<div class="ov-qr-sum">🏷️ 全部要印 <b>${_qr.all}</b> 張 QR<small>耐久品 ${_qr.dur} 張（每件一張）・耗材 ${_qr.con} 張（每種一張）</small></div>`;
             pages.forEach(p => {
