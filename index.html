@@ -616,6 +616,15 @@
         .hp-scan{all:unset;box-sizing:border-box;display:block;width:100%;text-align:center;cursor:pointer;font-size:15px;font-weight:900;padding:12px;border-radius:12px;background:linear-gradient(90deg,#ea580c,#f59e0b);color:#fff;margin-bottom:10px;}
         .hp-btn{all:unset;flex:none;cursor:pointer;font-size:12.5px;font-weight:800;padding:7px 12px;border-radius:10px;border:1.5px solid #fed7aa;color:#c2410c;background:#fff;}
         .hp-btn.on{background:#ea580c;border-color:#ea580c;color:#fff;}
+        #lookup-item-chips{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:start;}
+        #lookup-item-chips>*{min-width:0;}
+        #lookup-item-chips>.lk-switch,#lookup-item-chips>.lk-sec.open,#lookup-item-chips>:not(.lk-sec){grid-column:1/-1;}
+        #lookup-item-chips .lk-sec{margin:0;}
+        #lookup-item-chips .lk-head{padding:12px 12px;font-size:14px;gap:6px;}
+        #lookup-item-chips .lk-head>span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        #lookup-item-chips .lk-n{white-space:nowrap;flex:none;}
+        .lk-switch{margin-bottom:2px !important;}
+        .lk-switch button{white-space:nowrap;}
         .lk-switch{display:flex;gap:6px;margin-bottom:10px;background:#f1ece9;border-radius:12px;padding:4px;}
         .lk-switch button{all:unset;flex:1;text-align:center;padding:8px 4px;border-radius:9px;font-size:13px;font-weight:800;color:#6b625e;cursor:pointer;}
         .lk-switch button.on{background:#fff;color:#c2410c;box-shadow:0 1px 4px rgba(0,0,0,.08);}
