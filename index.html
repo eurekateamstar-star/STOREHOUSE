@@ -624,6 +624,7 @@
         #lookup-item-chips .lk-head>span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
         #lookup-item-chips .lk-n{white-space:nowrap;flex:none;}
         .lk-switch{margin-bottom:2px !important;}
+        .lk-fold{all:unset;grid-column:1/-1;box-sizing:border-box;text-align:center;padding:9px;border-radius:12px;background:#fff7ed;color:#c2410c;font-size:13.5px;font-weight:800;cursor:pointer;}
         .lk-switch button{white-space:nowrap;}
         .lk-switch{display:flex;gap:6px;margin-bottom:10px;background:#f1ece9;border-radius:12px;padding:4px;}
         .lk-switch button{all:unset;flex:1;text-align:center;padding:8px 4px;border-radius:9px;font-size:13px;font-weight:800;color:#6b625e;cursor:pointer;}
@@ -3074,6 +3075,13 @@
         sw.innerHTML = `<button type="button" data-m="cat" class="${lookupMode === 'cat' ? 'on' : ''}">✨ 依品項（AI 分類）</button><button type="button" data-m="loc" class="${lookupMode === 'loc' ? 'on' : ''}">📍 依位置</button>`;
         sw.querySelectorAll('button').forEach(b => b.onclick = () => { lookupMode = b.dataset.m; lookupOpen = null; try { localStorage.setItem('lk_mode', lookupMode); } catch (e) {} renderLookupItemChips(); });
         el.appendChild(sw);
+        // 整區可以縮起來／打開（記住上次狀態）
+        let lkFold = false; try { lkFold = localStorage.getItem('lk_fold') === '1'; } catch (e) {}
+        const tg = document.createElement('button'); tg.type = 'button'; tg.className = 'lk-fold';
+        tg.innerHTML = lkFold ? `▸ 展開分類（${groups.length} 類）` : '▾ 收起分類';
+        tg.onclick = () => { try { localStorage.setItem('lk_fold', lkFold ? '0' : '1'); } catch (e) {} renderLookupItemChips(); };
+        el.appendChild(tg);
+        if (lkFold) return;
         if (!groups.length) { el.insertAdjacentHTML('beforeend', `<div style="color:#8e8e93; font-size:12px;">尚無任何物品資料</div>`); return; }
         groups.forEach(g => {
             const sec = document.createElement('div'); sec.className = 'lk-sec' + (lookupOpen === g.key ? ' open' : '');
