@@ -606,12 +606,21 @@
         .ovp-t{font-size:11px;font-weight:800;color:#1f2937;line-height:1.25;padding:5px 6px 0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-all;}
         .ovp-list{padding:3px 5px 5px;}
         body.ov-fold .ovp-list{display:none;}
-        .ov-pg .ov-page-title{cursor:pointer;user-select:none;}
-        .ov-pg-meta{margin-left:auto;font-size:12px;font-weight:700;color:#a8a29e;display:flex;align-items:center;gap:6px;}
-        .ov-pg-meta i{font-style:normal;display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;border-radius:50%;background:#fde8ea;color:#d65a68;font-size:12px;transition:transform .2s;}
-        .ov-pg.closed .ov-pg-meta i{transform:rotate(-90deg);}
+        #overview-view{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
+        .ov-pg{margin:10px 0 12px;}
+        .ov-pg-head{display:flex;align-items:center;gap:12px;background:#fff;border-radius:16px;padding:10px 12px;box-shadow:0 1px 4px rgba(60,40,30,.07);cursor:pointer;user-select:none;-webkit-user-select:none;}
+        .ov-pg-head:active{transform:scale(.985);}
+        .ov-pg-no{flex:none;width:42px;height:42px;border-radius:12px;background:linear-gradient(145deg,#e46b78,#c94a5a);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;box-shadow:0 2px 6px rgba(214,90,104,.3);}
+        .ov-pg-no b{font-size:19px;font-weight:900;}
+        .ov-pg-no small{font-size:9.5px;font-weight:700;opacity:.9;margin-top:2px;}
+        .ov-pg-txt{flex:1;min-width:0;display:flex;flex-direction:column;}
+        .ov-pg-txt b{font-size:16px;font-weight:900;color:#1f2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .ov-pg-txt small{font-size:12px;color:#a8a29e;font-weight:600;margin-top:2px;}
+        .ov-pg-chev{flex:none;font-style:normal;font-size:22px;font-weight:700;color:#d65a68;width:30px;height:30px;line-height:28px;text-align:center;border-radius:50%;background:#fdf0f1;transform:rotate(90deg);transition:transform .2s;}
+        .ov-pg.closed .ov-pg-chev{transform:rotate(0);}
+        .ov-pg.closed{margin:8px 0;}
         .ov-pg.closed .ov-pg-body{display:none;}
-        .ov-pg.closed .ov-page-title{background:#fff !important;border-radius:12px;padding:10px 12px !important;margin:8px 0 !important;box-shadow:0 1px 3px rgba(60,40,30,.06);}
+        .ov-pg-body{padding-top:2px;}
         body.ov-fold .ovp-t{padding-bottom:6px;}
         .ovp-i{display:flex;align-items:flex-end;gap:3px;font-size:9.5px;color:#57534e;padding:2px 0;border-top:1px solid #f5ecea;line-height:1.25;}
         .ovp-i span{flex:1;min-width:0;word-break:break-all;}
@@ -5130,7 +5139,10 @@
                 const boxes = (boxesCache || []).filter(b => b.pageId === p.id);
                 const pageQr = boxes.reduce((a, b) => a + (b.items || []).reduce((x, it) => x + qrCount(it), 0), 0);
                 const _pgc = ovPgClosed().includes(p.id);
-                html += `<div class="ov-pg${_pgc ? ' closed' : ''}" data-pg="${p.id}"><div class="ov-page-title" onclick="toggleOvPage('${p.id}')">📍 ${escapeHtml(p.name)}<span class="ov-pg-meta">${boxes.length} 箱 <i>▾</i></span></div><div class="ov-pg-body">`;
+                const _pm = String(p.name || '').match(/第\s*(\d+)\s*排\s*[（(]?\s*([^）)]*)[）)]?/);
+                const _pn = _pm ? _pm[1] : '', _pc = _pm ? (_pm[2].trim() || p.name) : p.name;
+                const _itN = boxes.reduce((a, b) => a + (b.items || []).length, 0);
+                html += `<div class="ov-pg${_pgc ? ' closed' : ''}" data-pg="${p.id}"><div class="ov-pg-head" onclick="toggleOvPage('${p.id}')"><span class="ov-pg-no">${_pn ? `<b>${_pn}</b><small>排</small>` : '📍'}</span><span class="ov-pg-txt"><b>${escapeHtml(_pc)}</b><small>${boxes.length} 箱・${_itN} 項物品</small></span><i class="ov-pg-chev">›</i></div><div class="ov-pg-body">`;
                 if (boxes.length === 0) html += `<div class="ov-empty-page">（無箱子）</div>`;
                 const tiers = [...new Set(boxes.map(b => Number(b.tier) || 0))].sort((a, b) => (b || 99) - (a || 99)); // 高層在上、第一層在最下面；未分層放最上
                 const showTierTitles = !(tiers.length === 1 && tiers[0] === 0);
