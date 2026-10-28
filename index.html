@@ -594,26 +594,27 @@
         .header-btns.compact button{padding:0 2px !important;}
         .page-nav{top:42px !important;}
         #overview-view{padding-top:50px !important;}
-        /* 總覽：一層一排的「貨架」，箱子並排成小卡，物品一行一個（小字） */
-        #overview-view{padding-left:10px !important;padding-right:10px !important;}
-        #overview-view .ov-tier-row,#overview-view .ov-tier-wrap{display:grid !important;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;align-items:stretch;
-            padding:6px 6px 10px;margin-bottom:4px;background:linear-gradient(#fff,#fff) padding-box;border-radius:12px;border-bottom:5px solid #d9c3a5;box-shadow:0 1px 3px rgba(60,40,20,.08);}
-        #overview-view .ov-box{min-height:0 !important;margin:0 !important;padding:7px 8px !important;border-radius:9px !important;background:#f8f4f1 !important;border:1px solid #efe7e2 !important;box-shadow:none !important;}
-        #overview-view .ov-box:active{background:#f1e9e4 !important;}
-        #overview-view .ov-box-title{display:flex !important;flex-direction:row !important;align-items:center;gap:4px !important;margin:0 0 4px !important;font-size:12.5px !important;line-height:1.3;}
-        #overview-view .ov-box-title{align-items:flex-start !important;}
-        #overview-view .ov-box-title>span:first-child{flex:1;min-width:0;height:auto !important;display:-webkit-box !important;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-all;font-weight:800;}
-        #overview-view .ov-fold-row{flex:none;}
-        #overview-view .ov-fold{font-size:10px !important;padding:1px 5px !important;border-radius:8px !important;}
-        #overview-view .ov-item{display:flex !important;flex-wrap:nowrap !important;justify-content:space-between;gap:4px;padding:2px 0 !important;margin:0 !important;border:none !important;border-top:1px dashed #e8dfda !important;font-size:11.5px !important;line-height:1.35;background:none !important;}
-        #overview-view .ov-item:first-of-type{border-top:none !important;}
-        #overview-view .ov-item .ov-n{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#4b5563;}
-        #overview-view .ov-item .ov-q{flex:none;font-size:11.5px;margin:0;}
+        /* 總覽：一層一列，四箱並排的標籤卡 */
+        #overview-view{padding-left:8px !important;padding-right:8px !important;}
+        #overview-view .ov-tier-row,#overview-view .ov-tier-wrap{display:grid !important;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;align-items:start;margin-bottom:2px;background:none;border:none;padding:0;}
+        #overview-view .ov-box{min-height:0 !important;margin:0 !important;padding:0 !important;border-radius:10px !important;background:#fff !important;border:1px solid #ece4df !important;
+            box-shadow:0 1px 2px rgba(60,40,30,.05) !important;overflow:hidden;}
+        #overview-view .ov-box:active{background:#faf6f3 !important;}
+        #overview-view .ov-box-title{display:block !important;margin:0 !important;padding:6px 6px 5px !important;background:#fdf1ec;border-bottom:1px solid #f3e3dc;font-size:11.5px !important;line-height:1.25;position:relative;}
+        #overview-view .ov-box-title>span:first-child{display:-webkit-box !important;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-all;font-weight:800;color:#9a3412;height:auto !important;padding-right:16px;}
+        #overview-view .ov-fold-row{position:absolute;top:5px;right:4px;}
+        #overview-view .ov-fold{font-size:0 !important;padding:0 !important;width:16px;height:16px;border-radius:50% !important;background:#fff !important;border:1px solid #f0d9cf !important;}
+        #overview-view .ov-fold::after{content:attr(data-n);font-size:9.5px;font-weight:800;color:#c2410c;line-height:14px;display:block;text-align:center;}
+        #overview-view .ov-box-count{display:none;}
+        #overview-view .ov-item{display:flex !important;align-items:baseline;gap:3px;padding:3px 5px 3px 6px !important;margin:0 !important;border:none !important;border-top:1px solid #f5efec !important;background:none !important;line-height:1.25;}
+        #overview-view .ov-box-title + .ov-item{border-top:none !important;}
+        #overview-view .ov-item .ov-n{flex:1;min-width:0;display:block;font-size:10.5px;color:#57534e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        #overview-view .ov-item .ov-q{flex:none;margin:0;font-size:10.5px;font-weight:900;color:#1f2937;white-space:nowrap;}
         #overview-view .ov-item .ov-b{display:none;}
-        #overview-view .ov-item.checked-out .ov-n{color:#dc2626;}
-        #overview-view .ov-tier-title{margin:10px 4px 4px !important;font-size:12px;}
+        #overview-view .ov-item.checked-out .ov-q{color:#dc2626;}
+        #overview-view .ov-tier-title{margin:10px 2px 4px !important;font-size:12px;}
         #overview-view .ov-page-title{margin:14px 2px 6px !important;font-size:16px;}
-        #overview-view .ov-tier-chips{margin-top:6px;}
+        #overview-view .ov-tier-chips{margin:4px;}
         /* 換頁箭頭移到最下方（地板那一帶），不要擋到架子上的標籤 */
         .side-arrow{top:auto !important;margin-top:0 !important;bottom:calc(112px + env(safe-area-inset-bottom));width:40px;height:40px;border-radius:50%;opacity:.88;}
         .side-arrow svg{width:18px;height:18px;}
@@ -5116,7 +5117,7 @@
                         const itemsN = (b.items || []).length;
                         const folded = ovCollapsed.has(b.id);
                         const countHtml = itemsN > 0
-                            ? `<div class="ov-fold-row"><button class="ov-fold" onclick="event.stopPropagation(); toggleOvBox('${b.id}')">${itemsN} 項 ${folded ? '▸' : '▾'}</button><span class="ov-qr-box">🏷️${(b.items || []).reduce((x, it) => x + qrCount(it), 0)}</span></div>`
+                            ? `<div class="ov-fold-row"><button class="ov-fold" data-n="${itemsN}" onclick="event.stopPropagation(); toggleOvBox('${b.id}')">${itemsN} 項 ${folded ? '▸' : '▾'}</button><span class="ov-qr-box">🏷️${(b.items || []).reduce((x, it) => x + qrCount(it), 0)}</span></div>`
                             : `<span class="ov-box-count">0 項</span>`;
                         html += `<div class="ov-box" onclick="openBoxModal('${b.id}')"><div class="ov-box-title"><span>${escapeHtml(b.name)}</span>${countHtml}</div>`;
                         if (isContentEditActive) {
