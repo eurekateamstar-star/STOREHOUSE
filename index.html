@@ -606,6 +606,20 @@
         .ovp-t{font-size:11px;font-weight:800;color:#1f2937;line-height:1.25;padding:5px 6px 0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;word-break:break-all;}
         .ovp-list{padding:3px 5px 5px;}
         body.ov-fold .ovp-list{display:none;}
+        /* 總覽 R：盤點表格 */
+        table.ovr{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;font-size:12.5px;margin:4px 0 14px;box-shadow:0 1px 4px rgba(60,40,30,.08);table-layout:fixed;}
+        table.ovr th{background:#d65a68;color:#fff;font-weight:800;padding:7px 6px;text-align:left;font-size:12px;}
+        table.ovr th:nth-child(1){width:44px;text-align:center;} table.ovr th:nth-child(2){width:28%;} table.ovr th:nth-child(4){width:64px;text-align:right;}
+        table.ovr td{padding:5px 6px;border-bottom:1px solid #f3e9e6;vertical-align:top;line-height:1.35;word-break:break-all;}
+        table.ovr tr{cursor:pointer;}
+        table.ovr tr.ovr-first td{border-top:1px solid #ead9d4;}
+        table.ovr tbody.ovr-tier{border-top:3px solid #f6dfe2;}
+        .ovr-t{text-align:center;color:#c2410c;font-weight:900;background:#fffaf8;font-size:11.5px;vertical-align:middle !important;}
+        .ovr-b{color:#374151;font-weight:800;background:#fdfbfa;}
+        .ovr-b em{display:block;font-style:normal;font-size:10px;color:#dc2626;font-weight:800;margin-top:2px;}
+        .ovr-n{color:#1f2937;} .ovr-dim{color:#a8a29e;}
+        .ovr-q{text-align:right;font-weight:800;color:#c2410c;white-space:nowrap;}
+        .ovr-n.co,.ovr-q.co{color:#dc2626;}
         body.ov-fold .ovp-t{padding-bottom:6px;}
         .ovp-i{display:flex;align-items:flex-end;gap:3px;font-size:9.5px;color:#57534e;padding:2px 0;border-top:1px solid #f5ecea;line-height:1.25;}
         .ovp-i span{flex:1;min-width:0;word-break:break-all;}
@@ -5025,7 +5039,7 @@
         const on = !document.body.classList.contains('ov-fold');
         document.body.classList.toggle('ov-fold', on);
         try { localStorage.setItem('ov_fold', on ? '1' : '0'); } catch (e) {}
-        const b = document.getElementById('ov-fold-btn'); if (b) b.textContent = on ? '▸ 展開細項' : '▾ 收起細項';
+        try { setOverviewMode(true); } catch (e) {}
     }
     window.toggleOvFold = toggleOvFold;
     function groupLogs(arr) {
@@ -5111,7 +5125,35 @@
             let html = _ids.length ? `<div class="ov-toolbar"><button class="ov-fold-all ov-qr-toggle" id="ov-fold-btn" onclick="toggleOvFold()">${_ovf ? '▸ 展開細項' : '▾ 收起細項'}</button>${isAdmin() ? `<button class="ov-fold-all ov-qr-toggle" onclick="downloadAllBoxLabels()">📦 全部整箱 QR</button>` : ''}</div>` : '';
             document.body.classList.remove('ov-qr-on');
             if (false) html += `<div class="ov-qr-sum">🏷️ 全部要印 <b>${_qr.all}</b> 張 QR<small>耐久品 ${_qr.dur} 張（每件一張）・耗材 ${_qr.con} 張（每種一張）</small></div>`;
-            pages.forEach(p => {
+            if (!isContentEditActive) pages.forEach(p => {   // R 盤點表格：層｜箱子｜物品｜數量
+                const boxes = (boxesCache || []).filter(b => b.pageId === p.id);
+                html += `<div class="ov-page-title">📍 ${escapeHtml(p.name)}</div>`;
+                if (!boxes.length) { html += `<div class="ov-empty-page">（無箱子）</div>`; return; }
+                const tiers = [...new Set(boxes.map(b => Number(b.tier) || 0))].sort((a, b) => (b || 99) - (a || 99));
+                html += `<table class="ovr"><thead><tr><th>層</th><th>箱子</th><th>物品</th><th>數量</th></tr></thead>`;
+                tiers.forEach(t => {
+                    const inTier = boxes.filter(b => (Number(b.tier) || 0) === t).sort((a, b) => geomOf(a).fx - geomOf(b).fx);
+                    const span = inTier.reduce((a, b) => a + (_ovf ? 1 : Math.max(1, (b.items || []).length)), 0);
+                    html += `<tbody class="ovr-tier">`;
+                    inTier.forEach((b, bi) => {
+                        const its = b.items || [], n = _ovf ? 1 : Math.max(1, its.length);
+                        const out = its.reduce((a, it) => a + (Number(it.checkedOutCount) || 0) + (it.itemType === 'consumable' ? heldOf(it) : 0), 0);
+                        const rows = _ovf ? [null] : (its.length ? its : [null]);
+                        rows.forEach((it, j) => {
+                            const co = it && ((Number(it.checkedOutCount) || 0) > 0 || (it.itemType === 'consumable' && heldOf(it) > 0));
+                            html += `<tr class="${j === 0 ? 'ovr-first' : ''}" onclick="openBoxModal('${b.id}')">`
+                                + (bi === 0 && j === 0 ? `<td class="ovr-t" rowspan="${span}">${t ? escapeHtml(tierLabel(t)) : '—'}</td>` : '')
+                                + (j === 0 ? `<td class="ovr-b" rowspan="${n}">${escapeHtml(b.name)}${out ? `<em>外出 ${out}</em>` : ''}</td>` : '')
+                                + (it ? `<td class="ovr-n${co ? ' co' : ''}">${escapeHtml(it.name)}</td><td class="ovr-q${co ? ' co' : ''}">${it.qty || 0} ${escapeHtml(UNIT(it))}</td>`
+                                      : `<td class="ovr-n ovr-dim">${its.length ? its.length + ' 項' : '（空）'}</td><td class="ovr-q"></td>`)
+                                + `</tr>`;
+                        });
+                    });
+                    html += `</tbody>`;
+                });
+                html += `</table>`;
+            });
+            else pages.forEach(p => {
                 const boxes = (boxesCache || []).filter(b => b.pageId === p.id);
                 const pageQr = boxes.reduce((a, b) => a + (b.items || []).reduce((x, it) => x + qrCount(it), 0), 0);
                 html += `<div class="ov-page-title">📍 ${escapeHtml(p.name)}${pageQr ? `<span class="ov-qr-page">🏷️ ${pageQr} 張</span>` : ''}</div>`;
