@@ -1060,6 +1060,9 @@
                 <button class="apple-btn secondary" style="width:100%; padding:12px; font-size:13px;" onclick="openTierPicker()">🗂 設定所在層（第一層／第二層…）</button>
             </div>
 
+            <div id="box-qr-section" style="display:none; margin-bottom:12px;">
+                <button class="apple-btn secondary" style="width:100%; padding:12px; font-size:13px;" onclick="downloadBoxLabel()">🏷️ 下載這個箱子的 QR（掃了可整箱進出庫）</button>
+            </div>
             <div id="delete-box-section" style="display:none; margin-bottom:12px;">
                 <button class="apple-btn danger" style="width:100%; padding:12px; font-size:13px;" onclick="deleteCurrentBox()">🗑️ 刪除此箱子</button>
             </div>
@@ -3230,8 +3233,8 @@
         let title = '掃描 QR Code';
         let hint = '請將鏡頭對準 QR Code';
         if (mode === 'locate') { title = '🔍 掃 QR 找位置'; hint = '對準箱子或物品 QR Code 尋找位置'; }
-        else if (mode === 'in') { title = '📥 快速進貨 (還回)'; hint = '連續掃描物品 QR Code 進行還回/補貨'; }
-        else if (mode === 'out') { title = `📤 快速出貨`; hint = '連續掃描物品 QR Code 出庫；掃成員 QR 可換對象'; }
+        else if (mode === 'in') { title = '📥 快速進貨 (還回)'; hint = '掃物品 QR 還回；掃箱子 QR 可整箱一次入庫'; }
+        else if (mode === 'out') { title = `📤 快速出貨`; hint = '掃物品 QR 出庫；掃箱子 QR 可勾選整箱帶走；掃成員 QR 換對象'; }
         else if (mode === 'pickperson') { title = '👤 掃成員 QR 選人'; hint = '請對準成員手機上的「我的 QR」'; }
         else if (mode === 'helper') { title = '🧰 掃 QR 設定小幫手'; hint = '請對方打開「我的 QR 與持有物品」，對準他的個人 QR'; }
 
@@ -3310,6 +3313,13 @@
     async function handleGlobalScanInner(scannedText, now) {
         if (!boxesCache) boxesCache = [];
         if (scannedText.startsWith('USER_')) { await handleUserQr(scannedText); return; }
+        if (batchOpen) return;
+        {   // 箱子 QR：BOX_<id>（舊的直接是箱子 id 也可以）
+            const bid = scannedText.startsWith('BOX_') ? scannedText.slice(4) : (!scannedText.startsWith('ITEM_') ? scannedText : '');
+            const bx = bid && boxesCache.find(b => b.id === bid);
+            if (bx && (scannerMode === 'in' || scannerMode === 'out')) { playBeep(2700, 90); vibrateFeedback(60); openBoxBatch(bx); return; }
+            if (bx && scannerMode === 'locate') { closeScanner(); await locateAndOpenBox(bx); return; }
+        }
 
         let targetBoxId = null;
         let scannedItemInfo = null;
@@ -3589,6 +3599,146 @@
             showToast('❌ 查無此 QR Code 對應的倉儲位置', 'error', 900);
         }
     }
+
+    // ===== 箱子 QR：整箱進出庫 =====
+    let batchOpen = false;
+    async function locateAndOpenBox(box) {
+        document.getElementById('main-menu-view').style.display = 'none';
+        document.getElementById('warehouse-system-view').style.display = 'block';
+        const pi = pages.findIndex(p => p.id === box.pageId);
+        if (pi !== -1) await switchToPage(pi);
+        highlightedBoxId = box.id; renderBoxes();
+        playBeep(2700, 90); vibrateFeedback(60);
+        openBoxModal(box.id);
+    }
+    function nowTimeStr() { const d = new Date(); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+    function openBoxBatch(box) {
+        const isOut = scannerMode === 'out';
+        if (isOut && !currentBorrowTarget) { showToast('請先選擇領用對象', 'error', 1200); return; }
+        batchOpen = true;
+        const items = box.items || [];
+        // 每一行：{ key, label, sub, max, def, kind, idx, holder }
+        const rows = [];
+        items.forEach((it, idx) => {
+            const cons = it.itemType === 'consumable';
+            if (!cons) ensureUnits(it);
+            if (isOut) {
+                const max = cons ? (Number(it.qty) || 0) : it.units.filter(u => u.status === 'in').length;
+                rows.push({ key: 'o' + idx, idx, kind: cons ? 'c' : 'd', name: it.name, img: it.imageUrl, max, unit: UNIT(it), sub: `在庫 ${max} ${UNIT(it)}` });
+            } else if (cons) {
+                Object.entries(it.holdings || {}).filter(([, n]) => n > 0).forEach(([h, n]) =>
+                    rows.push({ key: 'c' + idx + '|' + h, idx, kind: 'c', holder: h, name: it.name, img: it.imageUrl, max: n, unit: UNIT(it), sub: `${targetName(h)} 帶出 ${n} ${UNIT(it)}` }));
+            } else {
+                const by = {};
+                it.units.filter(u => u.status === 'out').forEach(u => { const h = u.borrower || '不詳'; (by[h] = by[h] || []).push(u.uid); });
+                Object.entries(by).forEach(([h, uids]) =>
+                    rows.push({ key: 'd' + idx + '|' + h, idx, kind: 'd', holder: h, uids, name: it.name, img: it.imageUrl, max: uids.length, unit: UNIT(it), sub: `${targetName(h)} 借出 ${uids.length} ${UNIT(it)}` }));
+            }
+        });
+        const val = {}; rows.forEach(r => val[r.key] = isOut ? 0 : r.max);   // 入庫：預設全部還回
+        const ov = document.createElement('div'); ov.className = 'exp-ov'; ov.id = 'box-batch-ov'; ov.style.zIndex = 9500;
+        const close = () => { ov.remove(); batchOpen = false; lastScannedCode = null; scanGateUntil = Date.now() + 800; };
+        const draw = () => {
+            const total = rows.reduce((a, r) => a + (val[r.key] || 0), 0);
+            ov.innerHTML = `<div class="exp-card">
+                <div class="exp-h" style="color:${isOut ? '#c2410c' : '#15803d'}">${isOut ? '📤 整箱出庫' : '📥 整箱入庫'}・${escapeHtml(box.name)}<button type="button" class="exp-x">✕</button></div>
+                <div style="font-size:13px;color:#6b625e;margin:0 4px 10px">${isOut ? `領用對象：<b style="color:#c2410c">${escapeHtml(currentBorrowTarget)}</b>　點 ＋ 選要帶走的數量` : '選要還回來的東西（預設全數，沒回來的耗材記消耗）'}</div>
+                ${rows.length ? `<button type="button" class="bb-all" style="all:unset;box-sizing:border-box;display:block;width:100%;text-align:center;padding:10px;border-radius:12px;background:#fff7ed;color:#c2410c;font-weight:800;margin-bottom:10px;cursor:pointer">${total ? '全部清除' : (isOut ? '整箱全部帶走' : '全部還回')}</button>` : ''}
+                ${rows.length ? rows.map(r => `<div class="bb-row" style="display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:12px;border:1px solid ${val[r.key] ? '#86efac' : '#f0e6e3'};background:${val[r.key] ? '#f0fdf4' : '#fff'};margin-bottom:8px;${r.max ? '' : 'opacity:.45'}">
+                    <img src="${escapeHtml(r.img || '')}" onerror="this.style.visibility='hidden'" style="width:42px;height:42px;border-radius:8px;object-fit:cover;background:#f3efed;flex:none">
+                    <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14.5px;color:#1f2937;word-break:break-all">${escapeHtml(r.name)}</div><div style="font-size:12px;color:#8a7f7a">${escapeHtml(r.sub)}</div></div>
+                    ${r.max ? `<div style="display:flex;align-items:center;gap:6px;flex:none">
+                        <button type="button" data-k="${escapeHtml(r.key)}" data-d="-1" style="all:unset;width:34px;height:34px;border-radius:10px;background:#f3efed;text-align:center;line-height:34px;font-size:20px;font-weight:900;cursor:pointer">−</button>
+                        <b style="min-width:26px;text-align:center;font-size:17px">${val[r.key]}</b>
+                        <button type="button" data-k="${escapeHtml(r.key)}" data-d="1" style="all:unset;width:34px;height:34px;border-radius:10px;background:${isOut ? '#f08339' : '#22c55e'};color:#fff;text-align:center;line-height:34px;font-size:20px;font-weight:900;cursor:pointer">＋</button>
+                        <button type="button" data-k="${escapeHtml(r.key)}" data-d="max" style="all:unset;padding:0 6px;height:34px;line-height:34px;font-size:12px;color:#8a7f7a;cursor:pointer">全</button></div>` : '<span style="font-size:12px;color:#aaa">沒有</span>'}
+                </div>`).join('') : `<div style="text-align:center;color:#8e8e93;padding:24px">${isOut ? '箱子裡沒有東西' : '這箱沒有借出中的東西'}</div>`}
+                <div style="display:flex;gap:10px;margin-top:6px">
+                    <button type="button" class="bb-cancel" style="all:unset;flex:1;text-align:center;padding:13px;border-radius:14px;background:#f3efed;font-weight:800;cursor:pointer">取消</button>
+                    <button type="button" class="bb-ok" ${total ? '' : 'disabled'} style="all:unset;flex:2;text-align:center;padding:13px;border-radius:14px;background:${total ? (isOut ? '#f08339' : '#22c55e') : '#d6d3d1'};color:#fff;font-weight:900;cursor:pointer">${isOut ? '確認出庫' : '確認入庫'}（${total}）</button>
+                </div></div>`;
+            ov.querySelector('.exp-x').onclick = close; ov.querySelector('.bb-cancel').onclick = close;
+            ov.querySelectorAll('[data-k]').forEach(b => b.onclick = () => {
+                const r = rows.find(x => x.key === b.dataset.k); if (!r) return;
+                val[r.key] = b.dataset.d === 'max' ? r.max : Math.max(0, Math.min(r.max, val[r.key] + Number(b.dataset.d)));
+                draw();
+            });
+            const all = ov.querySelector('.bb-all');
+            if (all) all.onclick = () => { const any = rows.some(r => val[r.key]); rows.forEach(r => val[r.key] = any ? 0 : r.max); draw(); };
+            const ok = ov.querySelector('.bb-ok');
+            if (ok && total) ok.onclick = async () => { ok.onclick = null; ok.innerText = '處理中…'; await applyBoxBatch(box, rows, val, isOut); close(); };
+        };
+        ov.onclick = e => { if (e.target === ov) close(); };
+        document.body.appendChild(ov); draw();
+    }
+    async function applyBoxBatch(box, rows, val, isOut) {
+        const items = box.items || [], logs = [], ts = Date.now(), timeStr = nowTimeStr(), who = (currentUser && currentUser.account) || '';
+        let count = 0;
+        rows.forEach(r => {
+            const n = val[r.key] || 0; if (!n) return;
+            const it = items[r.idx]; if (!it) return;
+            if (isOut) {
+                if (r.kind === 'c') {
+                    const q = Number(it.qty) || 0, m = Math.min(n, q); if (!m) return;
+                    it.qty = q - m; it.holdings = it.holdings || {}; it.holdings[currentBorrowTarget] = (it.holdings[currentBorrowTarget] || 0) + m;
+                    logs.push({ type: '出庫', itemName: it.name, qty: m, boxName: box.name, target: currentBorrowTarget }); count += m;
+                } else {
+                    ensureUnits(it);
+                    const ins = it.units.filter(u => u.status === 'in').slice(0, n);
+                    ins.forEach(u => { u.status = 'out'; u.borrower = currentBorrowTarget; u.outAt = ts; u.outBy = who; u.outByHelper = !isAdmin() && isHelper();
+                        logs.push({ type: '出庫', itemName: it.name, qty: 1, boxName: box.name, target: currentBorrowTarget, unitLabel: `第 ${it.units.indexOf(u) + 1}/${it.units.length} 件`, unitUid: u.uid }); });
+                    syncItemCounts(it); count += ins.length;
+                }
+            } else {
+                if (r.kind === 'c') {
+                    const held = (it.holdings || {})[r.holder] || 0, back = Math.min(n, held); if (!held) return;
+                    it.qty = (Number(it.qty) || 0) + back;
+                    let used = 0;
+                    if (it.mustReturn) { const left = held - back; if (left > 0) it.holdings[r.holder] = left; else delete it.holdings[r.holder]; }
+                    else { used = held - back; delete it.holdings[r.holder]; }
+                    if (back) logs.push({ type: '進貨', itemName: it.name, qty: back, boxName: box.name, target: `還回 (原持有: ${r.holder})` });
+                    if (used) logs.push({ type: '消耗', itemName: it.name, qty: used, boxName: box.name, target: r.holder });
+                    count += back;
+                } else {
+                    ensureUnits(it);
+                    r.uids.slice(0, n).forEach(uid => { const u = it.units.find(x => x.uid === uid); if (!u || u.status !== 'out') return;
+                        const old = u.borrower || '不詳'; u.status = 'in'; u.borrower = ''; u.outAt = null; u.outBy = ''; u.outByHelper = false;
+                        logs.push({ type: '進貨', itemName: it.name, qty: 1, boxName: box.name, target: `還回 (原借用: ${old})`, unitLabel: `第 ${it.units.indexOf(u) + 1}/${it.units.length} 件`, unitUid: uid }); count++; });
+                    syncItemCounts(it);
+                }
+            }
+        });
+        if (!logs.length) return;
+        try { await updateDoc(doc(db, "warehouse_boxes", box.id), { items }); }
+        catch (e) { scanErrorFeedback('⚠️', '儲存失敗\n請再試一次'); showToast('❌ 儲存失敗：' + ((e && e.code) || e), 'error', 1600); return; }
+        for (const l of logs) { try { await addDoc(collection(db, "warehouse_logs"), { ...opInfo(), ...l, timestamp: ts, timeStr }); } catch (e) {} }
+        scanSuccessFeedback(isOut ? '📤' : '📥', `${isOut ? '已出庫' : '已入庫'} ${count} 件\n${box.name}${isOut ? `\n→ ${currentBorrowTarget}` : ''}`);
+        showToast(`✅ ${box.name}\n${isOut ? '出庫' : '入庫'} ${count} 件`, 'success', 1200);
+        refreshLiveViews();
+    }
+    window.downloadBoxLabel = function () {
+        const b = boxesCache.find(x => x.id === currentBoxId); if (!b) return;
+        const page = pages.find(p => p.id === b.pageId);
+        const tmp = document.createElement('div'); tmp.style.cssText = 'position:absolute;left:-9999px;top:-9999px;'; document.body.appendChild(tmp);
+        new QRCode(tmp, { text: 'BOX_' + b.id, width: 400, height: 400, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+        setTimeout(() => {
+            const q = tmp.querySelector('canvas') || tmp.querySelector('img');
+            const render = el => {
+                const c = document.createElement('canvas'); c.width = 460; c.height = 700; const x = c.getContext('2d');
+                x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+                x.drawImage(el, 30, 30, 400, 400);
+                x.fillStyle = '#c2410c'; x.textAlign = 'center'; x.font = 'bold 40px sans-serif'; x.fillText('📦 整箱 QR', 230, 490);
+                x.fillStyle = '#000'; let fs = 72; x.font = `bold ${fs}px sans-serif`;
+                while (x.measureText(b.name).width > 430 && fs > 34) { fs -= 2; x.font = `bold ${fs}px sans-serif`; }
+                x.fillText(b.name, 230, 580);
+                if (page) { x.fillStyle = '#666'; x.font = 'bold 32px sans-serif'; x.fillText(page.name, 230, 640); }
+                tmp.remove();
+                deliverLabels([{ dataUrl: c.toDataURL('image/png'), filename: `箱子_${b.name}.png` }]);
+            };
+            if (!q) { tmp.remove(); return showToast('❌ 產生失敗，請重試', 'error', 900); }
+            if (q.tagName === 'CANVAS' || q.complete) render(q); else q.onload = () => render(q);
+        }, 100);
+    };
 
     async function initApp() {
         await loadPanorama();
@@ -4983,6 +5133,7 @@
         const devEdit = isContentEditActive && isDev();
         if (tierSec) tierSec.style.display = devEdit ? 'block' : 'none';
         document.getElementById('delete-box-section').style.display = devEdit ? 'block' : 'none';
+        { const q = document.getElementById('box-qr-section'); if (q) q.style.display = (isContentEditActive && isAdmin()) ? 'block' : 'none'; }
         document.getElementById('add-item-trigger-section').style.display = devEdit ? 'block' : 'none';
 
         const container = document.getElementById('item-list-container');
