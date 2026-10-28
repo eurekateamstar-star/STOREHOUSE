@@ -2594,6 +2594,7 @@
                     itemsHtml += `
                         <div style="display:flex; gap:6px; margin-top:4px;">
                             <input type="text" class="apple-input" value="${escapeHtml(item)}" id="edit-item-${gIdx}-${iIdx}" style="padding:4px 8px; font-size:12px; flex:1;">
+                            <button class="apple-btn secondary" style="padding:2px 6px; font-size:11px; display:flex; align-items:center;" title="上傳圖片" onclick="pickGroupImage(${gIdx}, ${iIdx})">${(group.images || {})[item] ? `<img src="${group.images[item]}" style="width:26px;height:26px;border-radius:6px;object-fit:cover">` : '📷'}</button>
                             <button class="apple-btn success" style="padding:4px 8px; font-size:11px;" onclick="saveGroupItem(${gIdx}, ${iIdx})">儲存</button>
                             <button class="apple-btn danger" style="padding:4px 8px; font-size:11px;" onclick="deleteGroupItem(${gIdx}, ${iIdx})">刪</button>
                         </div>
@@ -2602,6 +2603,7 @@
 
                 groupCard.innerHTML = `
                     <div style="display:flex; gap:6px; margin-bottom:6px;">
+                        <button class="apple-btn secondary" style="padding:2px 6px; font-size:11px; display:flex; align-items:center;" title="群組圖片" onclick="pickGroupImage(${gIdx}, -1)">${group.icon ? `<img src="${group.icon}" style="width:28px;height:28px;border-radius:6px;object-fit:cover">` : '📷'}</button>
                         <input type="text" class="apple-input" value="${escapeHtml(group.groupName)}" id="edit-group-${gIdx}" style="padding:6px 8px; font-size:13px; font-weight:600; flex:1;">
                         <button class="apple-btn success" style="padding:4px 10px; font-size:11px;" onclick="saveGroupName(${gIdx})">改名</button>
                         <button class="apple-btn danger" style="padding:4px 10px; font-size:11px;" onclick="deleteGroup(${gIdx})">刪除群組</button>
@@ -2631,7 +2633,7 @@
                     const card = document.createElement('div');
                     card.className = 'borrower-card';
                     card.innerHTML = `
-                        <div class="borrower-card-icon">📁</div>
+                        <div class="borrower-card-icon">${group.icon ? `<img src="${group.icon}" alt="" style="width:46px;height:46px;border-radius:12px;object-fit:cover;display:block;margin:0 auto">` : '📁'}</div>
                         <div class="borrower-card-name">${escapeHtml(group.groupName)}</div>
                         <div style="font-size:10px; color:#8e8e93; margin-top:2px;">${group.items.length} 項 ›</div>
                     `;
@@ -2681,7 +2683,7 @@
                     card.dataset.person = '1';
                     card.dataset.name = itemName.toLowerCase();
                     card.innerHTML = `
-                        <div class="borrower-card-icon">${avatarHtml(itemName, 40)}</div>
+                        <div class="borrower-card-icon">${(currentGroup.images || {})[itemName] ? `<img src="${currentGroup.images[itemName]}" alt="" style="width:46px;height:46px;border-radius:12px;object-fit:cover;display:block;margin:0 auto">` : avatarHtml(itemName, 40)}</div>
                         <div class="borrower-card-name">${escapeHtml(itemName)}</div>
                     `;
                     card.onclick = () => {
@@ -2752,17 +2754,48 @@
         showToast(`✅ 已匯入 ${addedCount} 位新名單至「${groupName}」\n（共偵測到 ${names.length} 筆，${names.length - addedCount} 筆重複已略過）`, 'success', 1400);
     };
 
+    // 群組／細項圖片（存小圖，跟群組設定放一起）
+    window.pickGroupImage = function (gIdx, iIdx) {
+        const g = borrowerGroupsCache[gIdx]; if (!g) return;
+        const name = iIdx < 0 ? g.groupName : g.items[iIdx];
+        const has = iIdx < 0 ? !!g.icon : !!(g.images || {})[name];
+        const run = () => {
+            const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+            inp.onchange = async () => {
+                const f = inp.files[0]; if (!f) return;
+                try {
+                    showToast('上傳中…', 'info', 900);
+                    const b64 = await compressImage(f, 240, 0.75);
+                    if (iIdx < 0) g.icon = b64; else { g.images = g.images || {}; g.images[name] = b64; }
+                    await saveBorrowerGroupsToCloud(); renderBorrowerSelectorUI();
+                    showToast('✅ 圖片已更新', 'success', 900);
+                } catch (e) { showToast('❌ 上傳失敗', 'error', 1200); }
+            };
+            inp.click();
+        };
+        if (!has) return run();
+        showConfirmDialog(`「${name}」已經有圖片。\n按確定＝換一張\n按取消＝不動`, '圖片').then(async ok => {
+            if (ok) return run();
+            if (!(await showConfirmDialog('要把這張圖片移除嗎？', '移除圖片'))) return;
+            if (iIdx < 0) delete g.icon; else delete g.images[name];
+            await saveBorrowerGroupsToCloud(); renderBorrowerSelectorUI(); showToast('已移除圖片', 'info', 900);
+        });
+    };
+
     window.saveGroupItem = async function(gIdx, iIdx) {
         const val = document.getElementById(`edit-item-${gIdx}-${iIdx}`).value.trim();
         if (!val) return;
-        borrowerGroupsCache[gIdx].items[iIdx] = val;
+        const g = borrowerGroupsCache[gIdx], old = g.items[iIdx];
+        g.items[iIdx] = val;
+        if (g.images && g.images[old] && old !== val) { g.images[val] = g.images[old]; delete g.images[old]; }
         await saveBorrowerGroupsToCloud();
         renderBorrowerSelectorUI();
     };
 
     window.deleteGroupItem = async function(gIdx, iIdx) {
         if (borrowerGroupsCache[gIdx].items.length <= 1) return showToast('群組內至少需保留一個細項', 'error', 900);
-        borrowerGroupsCache[gIdx].items.splice(iIdx, 1);
+        const gi = borrowerGroupsCache[gIdx], gone = gi.items.splice(iIdx, 1)[0];
+        if (gi.images && gone in gi.images && !gi.items.includes(gone)) delete gi.images[gone];
         await saveBorrowerGroupsToCloud();
         renderBorrowerSelectorUI();
     };
@@ -4662,6 +4695,7 @@
     // ===== 成員（人）＝可領用對象；個人 QR；目前持有 =====
     // 依名字找已註冊成員的 LINE 頭貼；找不到就用預設圖示
     function avatarOf(name) {
+        for (const g of (borrowerGroupsCache || [])) { if (g.images && g.images[name]) return g.images[name]; }
         const u = (usersCache || []).find(x => uStatus(x) === 'approved' && x.account === name && x.pictureUrl);
         return u ? u.pictureUrl : '';
     }
