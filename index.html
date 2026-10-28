@@ -624,6 +624,19 @@
         #lookup-item-chips .lk-head>span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
         #lookup-item-chips .lk-n{white-space:nowrap;flex:none;}
         .lk-switch{margin-bottom:2px !important;}
+        .lg-row{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #f0e8e4;border-left:4px solid #ccc;border-radius:12px;padding:9px 10px;margin-bottom:7px;}
+        .lg-ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex:none;}
+        .lg-main{flex:1;min-width:0;}
+        .lg-top{display:flex;align-items:baseline;gap:8px;font-size:15px;}
+        .lg-item{font-weight:800;color:#1f2937;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .lg-amt{margin-left:auto;font-weight:900;font-size:16px;flex:none;}
+        .lg-sub{font-size:12px;color:#8a7f7a;margin-top:2px;line-height:1.45;}
+        .lg-time{font-size:11px;color:#a8a29e;text-align:right;line-height:1.3;flex:none;min-width:38px;}
+        .lg-del{all:unset;display:block;margin:4px 0 0 auto;width:22px;height:22px;line-height:22px;text-align:center;border-radius:7px;background:#fee2e2;color:#dc2626;font-size:12px;cursor:pointer;}
+        .lg-sum{display:flex;gap:6px;margin-bottom:8px;}
+        .lg-sum span{flex:1;text-align:center;background:#fff;border-radius:10px;padding:7px 2px;font-size:12px;color:#6b625e;border:1px solid #f0e8e4;}
+        .lg-sum b{display:block;font-size:17px;color:#1f2937;}
+        .lg-date{font-size:12px;font-weight:800;color:#c2410c;margin:10px 2px 6px;}
         .lk-fold{all:unset;grid-column:1/-1;box-sizing:border-box;text-align:center;padding:9px;border-radius:12px;background:#fff7ed;color:#c2410c;font-size:13.5px;font-weight:800;cursor:pointer;}
         .lk-switch button{white-space:nowrap;}
         .lk-switch{display:flex;gap:6px;margin-bottom:10px;background:#f1ece9;border-radius:12px;padding:4px;}
@@ -880,6 +893,7 @@
                 <button class="apple-btn secondary logs-tab" data-type="轉交" onclick="setLogsTypeFilter('轉交')" style="flex:1; padding:8px; font-size:12px;">🔄 轉交</button>
                 <button class="apple-btn secondary logs-tab" data-type="消耗" onclick="setLogsTypeFilter('消耗')" style="flex:1; padding:8px; font-size:12px;">🟣 消耗</button>
                 <button class="apple-btn secondary logs-tab" data-type="進貨" onclick="setLogsTypeFilter('進貨')" style="flex:1; padding:8px; font-size:12px;">📥 進貨</button>
+                <button class="apple-btn secondary logs-tab" data-type="調整" onclick="setLogsTypeFilter('調整')" style="flex:1; padding:8px; font-size:12px;">✏️ 修改</button>
             </div>
 
             <div style="display:flex; gap:8px; margin-bottom:12px; align-items:center;">
@@ -2918,24 +2932,10 @@
         filtered.forEach(l => {
             const dateKey = getLogDateKey(l.timestamp);
             if (dateKey !== lastDateKey) {
-                html += `<div style="font-size:12px; color:#0a84ff; font-weight:700; margin:16px 0 8px; padding-bottom:6px; border-bottom:1px solid rgba(255,255,255,0.1);">📅 ${getLogDateLabel(l.timestamp)}</div>`;
+                html += `<div class="lg-date">📅 ${getLogDateLabel(l.timestamp)}</div>`;
                 lastDateKey = dateKey;
             }
-            const badgeColor = l.type === '出庫' ? '#ff3b30' : (l.type === '轉交' ? '#ff9500' : (l.type === '消耗' ? '#bf5af2' : '#34c759'));
-            html += `
-                <div class="log-card">
-                    <div class="log-header">
-                        <span style="color: ${badgeColor};">● ${l.type}：${escapeHtml(l.itemName)} (x${l.qty})</span>
-                        <span style="display:flex; align-items:center; gap:8px;">
-                            <span class="log-time">${l.timeStr}</span>
-                            ${isLogsEditMode ? `<button onclick="deleteLog('${l.id}')" style="background:rgba(255,59,48,0.15); border:1px solid rgba(255,59,48,0.35); color:#ff3b30; border-radius:8px; width:22px; height:22px; font-size:11px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0;">✕</button>` : ''}
-                        </span>
-                    </div>
-                    <div style="color: #d1d1d6; margin-top: 4px;">📦 箱子位置：${escapeHtml(l.boxName)}</div>
-                    <div style="margin-top: 2px;">👤 出庫去向 / 來源：${formatTargetDisplay(l.target)}</div>
-                    ${l.operator ? `<div style="margin-top: 2px; color:#ff9f0a; font-weight:600;">🧑‍💼 ${escapeHtml(opLabel(l))}</div>` : ''}
-                </div>
-            `;
+            html += logRowHtml(l, { showItem: true, showBox: true, del: isLogsEditMode });
         });
         container.innerHTML = html;
     };
@@ -4895,17 +4895,41 @@
             rows.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
             if (!personViewUser || personViewUser.account !== account) return;
             if (!rows.length) { el.innerHTML = '<div style="color:#8e8e93; text-align:center; padding:16px; font-size:13px;">還沒有紀錄</div>'; return; }
-            el.innerHTML = rows.slice(0, 20).map(l => {
-                const c = l.type === '出庫' ? '#ff3b30' : (l.type === '轉交' ? '#ff9500' : (l.type === '消耗' ? '#bf5af2' : '#34c759'));
-                return `<div class="log-card">
-                    <div class="log-header"><span style="color:${c};">● ${escapeHtml(l.type)}：${escapeHtml(l.itemName)} (x${l.qty})</span><span class="log-time">${escapeHtml(l.timeStr || '')}</span></div>
-                    <div style="color:#d1d1d6; margin-top:4px;">📦 ${escapeHtml(l.boxName || '')}</div>
-                    ${l.operator ? `<div style="margin-top:2px; color:#ff9f0a; font-weight:600;">🧑‍💼 ${escapeHtml(opLabel(l))}</div>` : ''}
-                </div>`;
-            }).join('');
+            el.innerHTML = rows.slice(0, 20).map(l => logRowHtml(l, { showItem: true, showBox: true })).join('');
         } catch (e) {
             el.innerHTML = '<div style="color:#ff3b30; text-align:center; padding:16px; font-size:13px;">載入紀錄失敗</div>';
         }
+    }
+
+    // ===== 紀錄：簡潔一行式 =====
+    function logKind(l) {
+        const t = l.type, tg = String(l.target || '');
+        if (t === '出庫') return { ic: '📤', c: '#dc2626', bg: '#fef2f2', verb: '出庫', sign: '−' };
+        if (t === '轉交') return { ic: '🔄', c: '#d97706', bg: '#fffbeb', verb: '轉交', sign: '' };
+        if (t === '消耗') return { ic: '🔥', c: '#9333ea', bg: '#faf5ff', verb: '用掉', sign: '' };
+        if (t === '調整') return { ic: '✏️', c: '#2563eb', bg: '#eff6ff', verb: '後台修改', sign: '' };
+        if (tg.startsWith('還回')) return { ic: '📥', c: '#16a34a', bg: '#f0fdf4', verb: '還回', sign: '+' };
+        return { ic: '📦', c: '#16a34a', bg: '#f0fdf4', verb: '入庫', sign: '+' };
+    }
+    function logWho(l) {
+        let tg = String(l.target || '');
+        const m = tg.match(/^還回 \(原(?:借用|持有): (.+)\)$/); if (m) tg = m[1];
+        if (tg === '補貨/進貨' || tg === '後台修改庫存') return '';
+        return tg.split(' → ').map(targetName).join(' → ');
+    }
+    function logRowHtml(l, opt = {}) {
+        const k = logKind(l), who = logWho(l);
+        const amount = l.type === '調整' ? `${l.fromQty ?? '?'} → ${l.toQty ?? '?'}` : `${k.sign}${l.qty}`;
+        const role = l.operatorRole === 'helper' ? '小幫手' : '';
+        const sub = [opt.showBox && l.boxName ? `📦 ${escapeHtml(l.boxName)}` : '', who ? escapeHtml(who) : '', l.unitLabel ? escapeHtml(l.unitLabel) : '', l.operator ? `經手 ${escapeHtml(l.operator)}${role ? '（小幫手）' : ''}` : ''].filter(Boolean).join(' · ');
+        return `<div class="lg-row" style="border-left-color:${k.c}">
+            <div class="lg-ic" style="background:${k.bg}">${k.ic}</div>
+            <div class="lg-main">
+                <div class="lg-top"><b style="color:${k.c}">${k.verb}</b>${opt.showItem ? `<span class="lg-item">${escapeHtml(l.itemName || '')}</span>` : ''}<span class="lg-amt" style="color:${k.c}">${amount}</span></div>
+                ${sub ? `<div class="lg-sub">${sub}</div>` : ''}
+            </div>
+            <div class="lg-time">${escapeHtml(String(l.timeStr || '').replace(' ', '<br>')).replace('&lt;br&gt;', '<br>')}${opt.del ? `<button onclick="deleteLog('${l.id}')" class="lg-del">✕</button>` : ''}</div>
+        </div>`;
     }
 
     // 紀錄上的「經手管理員」文字
@@ -5642,22 +5666,11 @@
                 return;
             }
 
-            let html = '';
-            itemLogs.forEach(l => {
-                const badgeColor = l.type === '出庫' ? '#ff3b30' : (l.type === '轉交' ? '#ff9500' : (l.type === '消耗' ? '#bf5af2' : '#34c759'));
-                html += `
-                    <div style="background:rgba(44,44,46,0.65); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:12px; font-size:12px;">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-weight:600;">
-                            <span style="color: ${badgeColor};">● ${l.type} (x${l.qty})</span>
-                            <span style="color:#8e8e93;">${l.timeStr}</span>
-                        </div>
-                        <div style="color:#d1d1d6;">📦 所在箱子：${escapeHtml(l.boxName)}</div>
-                        <div style="margin-top:2px;">👤 對象/去向：${formatTargetDisplay(l.target)}</div>
-                        ${l.operator ? `<div style="margin-top:2px; color:#ff9f0a; font-weight:600;">🧑‍💼 ${escapeHtml(opLabel(l))}</div>` : ''}
-                        ${l.unitLabel ? `<div style="color:#ff9500; margin-top:2px;">🔖 ${escapeHtml(l.unitLabel)}</div>` : ''}
-                    </div>
-                `;
-            });
+            const sum = { out: 0, back: 0, used: 0 };
+            itemLogs.forEach(l => { if (l.type === '出庫') sum.out += l.qty || 0; else if (l.type === '消耗') sum.used += l.qty || 0; else if (l.type === '進貨') sum.back += l.qty || 0; });
+            let html = `<div class="lg-sum"><span>📤 出庫 <b>${sum.out}</b></span><span>📥 入庫/還回 <b>${sum.back}</b></span><span>🔥 用掉 <b>${sum.used}</b></span></div>`;
+            let lastD = '';
+            itemLogs.forEach(l => { const dk = getLogDateLabel(l.timestamp); if (dk !== lastD) { html += `<div class="lg-date">${dk}</div>`; lastD = dk; } html += logRowHtml(l, {}); });
             container.innerHTML = html;
         } catch (e) {
             container.innerHTML = '<div style="color: #ff3b30; text-align: center; padding: 20px;">載入紀錄失敗</div>';
@@ -6185,6 +6198,7 @@
         if (isNaN(newQty) || newQty < 0) return showToast('數量必須為 0 或正整數', 'error', 900);
 
         const it = b.items[editingItemIndex];
+        const oldQty = it.itemType === 'consumable' ? (Number(it.qty) || 0) : (ensureUnits(it), it.units.length), oldName = it.name;
         it.name = newName;
         { const u = (document.getElementById('edit-item-unit').value || '').trim().slice(0, 3); if (u && u !== '個') it.unit = u; else delete it.unit; }
 
@@ -6205,6 +6219,11 @@
         }
 
         await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
+        const newTotal = it.itemType === 'consumable' ? (Number(it.qty) || 0) : it.units.length;
+        if (newTotal !== oldQty) {   // 後台改庫存也要留紀錄
+            try { await addDoc(collection(db, "warehouse_logs"), { ...opInfo(), type: '調整', itemName: it.name, qty: Math.abs(newTotal - oldQty), fromQty: oldQty, toQty: newTotal,
+                boxName: b.name, target: '後台修改庫存', timestamp: Date.now(), timeStr: nowTimeStr() }); } catch (e) {}
+        }
         closeEditItemModal();
         renderBoxModal(b);
         showToast('💾 儲存成功！', 'success', 900);
