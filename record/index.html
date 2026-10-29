@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, minimal-ui">
     <title>白沙屯醫護團 - 救護紀錄表</title>
     <!-- 截圖套件 -->
-    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="/record/html2canvas.min.js" defer></script>
     <!-- 傷患地圖（Leaflet + OpenStreetMap） -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -2363,7 +2363,12 @@
         await Promise.all([...el.querySelectorAll('img')].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r; setTimeout(r, 4000); })));
         const ok = await Promise.all([...el.querySelectorAll('img')].map(im => new Promise(r => { if (im.complete && im.naturalWidth) return r(true); im.onload = () => r(true); im.onerror = () => r(false); setTimeout(() => r(!!im.naturalWidth), 6000); })));
         if (ok.includes(false)) console.warn('rpToImage: 有圖片沒載入');
-        const c = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false, windowWidth: el.scrollWidth });
+        const t0 = Date.now();
+        const job = html2canvas(el, { scale: Math.min(2, window.devicePixelRatio || 2), useCORS: true, backgroundColor: '#ffffff', logging: false, imageTimeout: 8000,
+          // 只複製紀錄表本身（其他畫面、地圖、主控台都略過），速度才快
+          ignoreElements: n => { if (n.tagName === 'HEAD' || (n.closest && n.closest('head')) || n.tagName === 'STYLE' || n.tagName === 'LINK') return false; return !(n === el || n.contains(el) || el.contains(n)) || n.tagName === 'IFRAME'; } });
+        const c = await Promise.race([job, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 20000))]);
+        console.log('rpToImage ms', Date.now() - t0);
         if (!document.body.contains(el)) return;
         const img = new Image(); img.className = 'rp-img'; img.alt = '救護紀錄表';
         img.src = c.toDataURL('image/jpeg', 0.92);
@@ -2380,7 +2385,7 @@
             } catch (e) { if (e && e.name !== 'AbortError') window.showNotice && window.showNotice('info', '請改用長按', '這個瀏覽器不支援直接儲存，請長按紀錄表圖片儲存'); }
           };
         }
-      } catch (e) { console.warn('rpToImage', e); if (st) st.textContent = '💡 圖片產生失敗，可直接用手機截圖保存'; }
+      } catch (e) { console.warn('rpToImage', e); if (st) st.textContent = e && e.message === 'timeout' ? '💡 圖片產生太久，請直接用手機截圖保存' : '💡 圖片產生失敗，可直接用手機截圖保存'; }
     };
     function rpChecks(name, picked) {
       const list = String(picked || '').split(/,\s*/).map(x => x.trim()).filter(x => x && x !== '無');
