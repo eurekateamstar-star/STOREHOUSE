@@ -1,0 +1,17 @@
+name: fetch-body-image
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          curl -fsSL -A "Mozilla/5.0" -o record/body.jpg "https://i.ibb.co/6JFnSZp7/image.jpg"
+          file record/body.jpg
+          git config user.name "eurekateamstar-star"; git config user.email "eurekateamstar@gmail.com"
+          git rm -q .github/workflows/fetch-body.yml
+          git add record/body.jpg
+          git commit -m "人體圖改放自家網站（record/body.jpg）"
+          git push
