@@ -599,6 +599,9 @@
       .n-inj .preview-body-container{flex:none;margin:0;width:120px;}
       .n-parts{flex:1;min-width:0;font-size:12.5px;line-height:1.6;}
       .n-parts b{color:#b4434f;}
+      .rp-img{width:100%;display:block;-webkit-touch-callout:default;user-select:auto;-webkit-user-select:auto;}
+      .rp-imgstate{text-align:center;font-size:11.5px;color:#999;margin:8px 0;}
+      .rp-imgstate.ok{color:#0369a1;font-weight:700;}
       .n-sub{font-size:12px;font-weight:800;color:#111;margin:10px 0 4px;border-left:4px solid #222;padding-left:6px;}
       .preview-btns { height: auto; flex-shrink: 0; padding-bottom: max(10px, env(safe-area-inset-bottom)); background: #fff; }
       .preview-btns .p-btn { min-height: 54px; }
@@ -2348,6 +2351,25 @@
         ${v.Note ? `<div class="rp-box rp-note"><span>備註</span>${rpE(v.Note)}</div>` : ''}`;
     }
     // N｜到院前緊急救護紀錄表格式
+    // 把紀錄表轉成一張圖片，手機可長按儲存
+    window.rpToImage = async function() {
+      const el = document.getElementById('rpCapture'), st = document.getElementById('rpImgState');
+      if (!el) return;
+      if (!window.html2canvas) { if (st) st.textContent = '💡 可用手機截圖保存'; return; }
+      try {
+        await Promise.all([...el.querySelectorAll('img')].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r; setTimeout(r, 4000); })));
+        // 外部圖片（人體圖）若不允許跨網域，畫進圖片會變空白 → 這時保留原本畫面
+        const ext = [...new Set([...el.querySelectorAll('img[src^="http"]')].map(im => im.src))];
+        const okCors = await Promise.all(ext.map(u => new Promise(r => { const t = new Image(); t.crossOrigin = 'anonymous'; t.onload = () => r(true); t.onerror = () => r(false); t.src = u + (u.includes('?') ? '&' : '?') + 'cors=1'; setTimeout(() => r(false), 5000); })));
+        if (okCors.includes(false)) { if (st) st.textContent = '💡 可直接用手機截圖保存'; return; }
+        const c = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false, windowWidth: el.scrollWidth });
+        if (!document.body.contains(el)) return;
+        const img = new Image(); img.className = 'rp-img'; img.alt = '救護紀錄表';
+        img.src = c.toDataURL('image/jpeg', 0.92);
+        el.parentNode.insertBefore(img, el); el.style.display = 'none';
+        if (st) { st.textContent = '👆 長按上方圖片即可「儲存圖片」或分享'; st.classList.add('ok'); }
+      } catch (e) { console.warn('rpToImage', e); if (st) st.textContent = '💡 圖片產生失敗，可直接用手機截圖保存'; }
+    };
     function rpChecks(name, picked) {
       const list = String(picked || '').split(/,\s*/).map(x => x.trim()).filter(x => x && x !== '無');
       const opts = [...new Set([...document.querySelectorAll(`input[name="${name}"]`)].map(i => i.value).filter(v => v !== '其他'))];
@@ -2370,7 +2392,7 @@
         : v ? `<tr><td class="${bad.GCS ? 'nr' : ''}">${v.GCS || '—'}</td><td>${v.E || '—'}</td><td>${v.V || '—'}</td><td>${v.M || '—'}</td>${cell('RR')}${cell('HR')}${cell('BP')}${cell('SpO2')}${cell('BS')}${cell('BT')}</tr>`
         : `<tr><td colspan="10" style="text-align:left">${rpV(r.vitalsText)}</td></tr>`;
       const parts = (r.injured || []).length ? r.injured.map(i => `<div><b>${rpE(i.part)}</b>　${rpE(i.desc)}</div>`).join('') : '<i class="rp-na">無標記傷處</i>';
-      return `<div class="n-tt"><div>白沙屯拱天宮醫護團</div><b>到院前緊急救護紀錄表</b>${r.id ? `<small>案件編號 ${rpE(String(r.id).slice(-8).toUpperCase())}</small>` : ''}</div>
+      return `<div id="rpCapture"><div class="n-tt"><div>白沙屯拱天宮醫護團</div><b>到院前緊急救護紀錄表</b>${r.id ? `<small>案件編號 ${rpE(String(r.id).slice(-8).toUpperCase())}</small>` : ''}</div>
         ${crit ? '<div class="n-alert">⚠ 危急個案</div>' : ''}
         <table class="n-t">
           <tr><th>時間</th><td colspan="3">${rpV(t.replace(/-/g, '/'))}</td><th>人員</th><td>${rpV(r.personnel)}</td></tr>
@@ -2391,8 +2413,9 @@
           <tr><th>簽章</th><td colspan="3">救護人員：${rpV(r.personnel)}</td><td colspan="2">接手單位：</td></tr>
         </table>
         <div class="n-sub">現場照片</div><div class="preview-photos-grid">${r.photosHtml}</div>
-        ${r.mapHtml ? '<div class="n-sub">發生地點</div>' + r.mapHtml : ''}
-        <div class="rp-foot">白沙屯拱天宮醫護團（慈昕醫護協會）・本紀錄含個人醫療資料，僅供醫療交班與統計使用</div>`;
+        <div class="rp-foot">白沙屯拱天宮醫護團（慈昕醫護協會）・本紀錄含個人醫療資料，僅供醫療交班與統計使用</div></div>
+        <div id="rpImgState" class="rp-imgstate">📸 正在產生圖片，完成後可長按儲存…</div>
+        ${r.mapHtml ? '<div class="n-sub">發生地點</div>' + r.mapHtml : ''}`;
     }
 
     window.showPreview = function() {
@@ -2430,9 +2453,10 @@
         injured: selectedPartsData, dotsHtml, actions: getCheckedValuesWithHidden('treatment', 'treatmentOtherValue'),
         vitals: window.pvData(), vitalsText: window.pvText(), handover: fd.get('handoverInfo'), photosHtml,
         mapHtml: (fd.get('gps_lat') || effLoc(fd)) ? mapEmbedHtml(fd.get('gps_lat'), fd.get('gps_lng'), effLoc(fd), 150) : ''
-      }) + `<div style="text-align:center; font-size:10px; color:#999; margin-top:6px;">💡 可長按上方紀錄表存成圖片</div>`;
+      });
 
       document.getElementById('pDataArea').innerHTML = html;
+      setTimeout(() => window.rpToImage(), 60);
       document.getElementById('previewOverlay').style.display = 'flex';
     };
 
@@ -3182,6 +3206,7 @@
       });
 
       document.getElementById('pDataArea').innerHTML = html;
+      setTimeout(() => window.rpToImage(), 60);
       
       const btnsArea = document.querySelector('#previewOverlay .preview-btns');
       btnsArea.innerHTML = `
