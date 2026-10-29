@@ -599,10 +599,12 @@
       .n-inj .preview-body-container{flex:none;margin:0;width:120px;}
       .n-parts{flex:1;min-width:0;font-size:12.5px;line-height:1.6;}
       .n-parts b{color:#b4434f;}
+      #rpCapture{padding:6px;background:#fff;}
       .rp-img{width:100%;display:block;-webkit-touch-callout:default !important;user-select:auto;-webkit-user-select:auto;}
       #rpCapture img{-webkit-touch-callout:none;}
       .rp-imgstate{text-align:center;font-size:11.5px;color:#999;margin:8px 0;}
       .rp-imgstate.ok{color:#0369a1;font-weight:700;}
+      .rp-save{border:none;background:#0284c7;color:#fff;font-family:inherit;font-size:15px;font-weight:800;border-radius:12px;padding:11px 22px;margin:4px 0 6px;cursor:pointer;box-shadow:0 4px 12px rgba(2,132,199,.3);}
       .n-sub{font-size:12px;font-weight:800;color:#111;margin:10px 0 4px;border-left:4px solid #222;padding-left:6px;}
       .preview-btns { height: auto; flex-shrink: 0; padding-bottom: max(10px, env(safe-area-inset-bottom)); background: #fff; }
       .preview-btns .p-btn { min-height: 54px; }
@@ -832,7 +834,7 @@
           <div class="section-header stp-head" data-step="body"><span class="stp">9</span><span>受傷部位</span><small>點圖示標記，可不填</small></div>
           <div class="body-map-scroll" id="bodyMapScroll">
           <div class="body-map-container" id="bodyMapContainer">
-            <img src="https://i.ibb.co/6JFnSZp7/image.jpg" class="body-map-img" alt="body chart">
+            <img src="/record/body.jpg" class="body-map-img" alt="body chart">
             <!-- ★ 受傷部位：多邊形區塊（座標為圖片的百分比，任何裝置都一致） -->
             <svg id="bodyZonesSvg" class="body-zones-svg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
             <div id="bodyHandles" class="body-handles"></div>
@@ -2359,16 +2361,25 @@
       if (!window.html2canvas) { if (st) st.textContent = '💡 可用手機截圖保存'; return; }
       try {
         await Promise.all([...el.querySelectorAll('img')].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r; setTimeout(r, 4000); })));
-        // 外部圖片（人體圖）改走自家代理，才能畫進圖片
-        el.querySelectorAll('img[src^="https://i.ibb.co/"]').forEach(im => { im.crossOrigin = 'anonymous'; im.src = AUTH_URL + '/pic?u=' + encodeURIComponent(im.src); });
         const ok = await Promise.all([...el.querySelectorAll('img')].map(im => new Promise(r => { if (im.complete && im.naturalWidth) return r(true); im.onload = () => r(true); im.onerror = () => r(false); setTimeout(() => r(!!im.naturalWidth), 6000); })));
-        if (ok.includes(false)) { if (st) st.textContent = '💡 可直接用手機截圖保存'; return; }
+        if (ok.includes(false)) console.warn('rpToImage: 有圖片沒載入');
         const c = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false, windowWidth: el.scrollWidth });
         if (!document.body.contains(el)) return;
         const img = new Image(); img.className = 'rp-img'; img.alt = '救護紀錄表';
         img.src = c.toDataURL('image/jpeg', 0.92);
         el.parentNode.insertBefore(img, el); el.style.display = 'none';
-        if (st) { st.textContent = '👆 長按上方圖片即可「儲存圖片」或分享'; st.classList.add('ok'); }
+        if (st) {
+          st.classList.add('ok');
+          st.innerHTML = `<button type="button" class="rp-save">💾 存到相簿／分享</button><div>或長按上方紀錄表儲存圖片</div>`;
+          st.querySelector('.rp-save').onclick = async () => {
+            try {
+              const blob = await (await fetch(img.src)).blob();
+              const file = new File([blob], '救護紀錄表.jpg', { type: 'image/jpeg' });
+              if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: '救護紀錄表' });
+              else { const a = document.createElement('a'); a.href = img.src; a.download = '救護紀錄表.jpg'; document.body.appendChild(a); a.click(); a.remove(); }
+            } catch (e) { if (e && e.name !== 'AbortError') window.showNotice && window.showNotice('info', '請改用長按', '這個瀏覽器不支援直接儲存，請長按紀錄表圖片儲存'); }
+          };
+        }
       } catch (e) { console.warn('rpToImage', e); if (st) st.textContent = '💡 圖片產生失敗，可直接用手機截圖保存'; }
     };
     function rpChecks(name, picked) {
@@ -2406,7 +2417,7 @@
         </table>
         <table class="n-t n-vs"><tr><th rowspan="2" class="n-vh">生命<br>徵象</th><th>GCS</th><th>E</th><th>V</th><th>M</th><th>RR</th><th>HR</th><th>BP</th><th>SpO₂</th><th>BS</th><th>BT</th></tr>${vitalsRow.replace('<tr>', '<tr>')}</table>
         <table class="n-t">
-          <tr><th>傷情</th><td colspan="5"><div class="n-inj"><div class="preview-body-container"><img src="https://i.ibb.co/6JFnSZp7/image.jpg" class="preview-body-img">${r.dotsHtml || ''}</div><div class="n-parts">${parts}</div></div></td></tr>
+          <tr><th>傷情</th><td colspan="5"><div class="n-inj"><div class="preview-body-container"><img src="/record/body.jpg" class="preview-body-img">${r.dotsHtml || ''}</div><div class="n-parts">${parts}</div></div></td></tr>
           <tr><th>處置</th><td colspan="5" class="nck">${rpChecks('treatment', r.actions)}</td></tr>
           ${v && v.Note ? `<tr><th>備註</th><td colspan="5">${rpE(v.Note)}</td></tr>` : ''}
           <tr><th>危急</th><td colspan="5" class="nck"><span class="nk${crit ? ' on' : ''}">是</span><span class="nk${v && !crit ? ' on' : ''}">否</span></td></tr>
@@ -3062,7 +3073,7 @@
           html += `
             <div class="cc-card" onclick="window.openDetailById('${d.id}')">
               ${listViewMode === 'large' ? `<div class="cc-media-tabs"><button type="button" data-m="map" class="active" onclick="event.stopPropagation(); window.setCardMedia(this,'map')">🧍 傷情圖</button><button type="button" data-m="photo" onclick="event.stopPropagation(); window.setCardMedia(this,'photo')">📷 現場照片 (${photoCountOf(d)})</button></div>` : ''}
-              <div class="cc-thumb"><div class="cc-map"><img src="https://i.ibb.co/6JFnSZp7/image.jpg" loading="lazy">${dots}</div>${listViewMode === 'large' ? `<div class="cc-pane-photo" data-pid="${d.id}">${photoCountOf(d) ? '<div class="cc-nophoto">照片載入中…</div>' : '<div class="cc-nophoto">未上傳照片</div>'}</div>` : ''}</div>
+              <div class="cc-thumb"><div class="cc-map"><img src="/record/body.jpg" loading="lazy">${dots}</div>${listViewMode === 'large' ? `<div class="cc-pane-photo" data-pid="${d.id}">${photoCountOf(d) ? '<div class="cc-nophoto">照片載入中…</div>' : '<div class="cc-nophoto">未上傳照片</div>'}</div>` : ''}</div>
               <div class="cc-body">
                 <div class="cc-top"><div class="cc-who"><b>${rpE(pName)}</b><span class="cc-mid">${rpE(ga)}</span>${P.armband && P.armband !== '無' ? `<span class="cc-arm">臂章 ${rpE(P.armband)}</span>` : ''}</div><div class="cc-time">${timeShort}</div></div>
                 <div class="cc-tags">${d.followUp && d.followUp.critical ? '<span class="cc-crit">⚠ 危急</span>' : ''}${String(problem || '').split(/,\s*/).filter(x => x && x !== '無').map(x => `<span>${rpE(x)}</span>`).join('')}</div>
