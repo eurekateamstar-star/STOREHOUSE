@@ -3281,9 +3281,10 @@
       
       // 保留已經帶入的人員姓名
       const cachedUserStr = localStorage.getItem('sfc_user_cache');
-      if (cachedUserStr) {
-        document.getElementById('personnelInput').value = JSON.parse(cachedUserStr).realName;
-      }
+      { let nm = ''; try { nm = cachedUserStr ? JSON.parse(cachedUserStr).realName : ''; } catch (e) {}
+        nm = nm || (currentUserData && currentUserData.realName) || '';
+        if (nm) document.getElementById('personnelInput').value = nm;
+        setTimeout(() => { const el = document.getElementById('personnelInput'); if (el && !el.value && nm) el.value = nm; }, 50); }
 
       window.compressedImagesArray = [];
       renderImagePreviews();
