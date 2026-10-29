@@ -599,7 +599,8 @@
       .n-inj .preview-body-container{flex:none;margin:0;width:120px;}
       .n-parts{flex:1;min-width:0;font-size:12.5px;line-height:1.6;}
       .n-parts b{color:#b4434f;}
-      .rp-img{width:100%;display:block;-webkit-touch-callout:default;user-select:auto;-webkit-user-select:auto;}
+      .rp-img{width:100%;display:block;-webkit-touch-callout:default !important;user-select:auto;-webkit-user-select:auto;}
+      #rpCapture img{-webkit-touch-callout:none;}
       .rp-imgstate{text-align:center;font-size:11.5px;color:#999;margin:8px 0;}
       .rp-imgstate.ok{color:#0369a1;font-weight:700;}
       .n-sub{font-size:12px;font-weight:800;color:#111;margin:10px 0 4px;border-left:4px solid #222;padding-left:6px;}
@@ -2358,10 +2359,10 @@
       if (!window.html2canvas) { if (st) st.textContent = '💡 可用手機截圖保存'; return; }
       try {
         await Promise.all([...el.querySelectorAll('img')].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r; setTimeout(r, 4000); })));
-        // 外部圖片（人體圖）若不允許跨網域，畫進圖片會變空白 → 這時保留原本畫面
-        const ext = [...new Set([...el.querySelectorAll('img[src^="http"]')].map(im => im.src))];
-        const okCors = await Promise.all(ext.map(u => new Promise(r => { const t = new Image(); t.crossOrigin = 'anonymous'; t.onload = () => r(true); t.onerror = () => r(false); t.src = u + (u.includes('?') ? '&' : '?') + 'cors=1'; setTimeout(() => r(false), 5000); })));
-        if (okCors.includes(false)) { if (st) st.textContent = '💡 可直接用手機截圖保存'; return; }
+        // 外部圖片（人體圖）改走自家代理，才能畫進圖片
+        el.querySelectorAll('img[src^="https://i.ibb.co/"]').forEach(im => { im.crossOrigin = 'anonymous'; im.src = AUTH_URL + '/pic?u=' + encodeURIComponent(im.src); });
+        const ok = await Promise.all([...el.querySelectorAll('img')].map(im => new Promise(r => { if (im.complete && im.naturalWidth) return r(true); im.onload = () => r(true); im.onerror = () => r(false); setTimeout(() => r(!!im.naturalWidth), 6000); })));
+        if (ok.includes(false)) { if (st) st.textContent = '💡 可直接用手機截圖保存'; return; }
         const c = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false, windowWidth: el.scrollWidth });
         if (!document.body.contains(el)) return;
         const img = new Image(); img.className = 'rp-img'; img.alt = '救護紀錄表';

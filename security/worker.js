@@ -32,7 +32,7 @@ export default {
     if (new URL(req.url).pathname === '/pic' && req.method === 'GET') {   // LINE 大頭貼代理（讓 canvas 可以存圖）
       const u = new URL(req.url).searchParams.get('u') || '';
       let h = ''; try { h = new URL(u).hostname; } catch (e) {}
-      if (!/^https:/.test(u) || !/(^|\.)line-scdn\.net$/.test(h)) return new Response('bad url', { status: 400 });
+      if (!/^https:/.test(u) || !/(^|\.)line-scdn\.net$|^i\.ibb\.co$/.test(h)) return new Response('bad url', { status: 400 });
       const r = await fetch(u, { cf: { cacheTtl: 3600 } }); if (!r.ok) return new Response('not found', { status: 404 });
       return new Response(r.body, { headers: { 'Content-Type': r.headers.get('Content-Type') || 'image/jpeg', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=3600' } });
     }
