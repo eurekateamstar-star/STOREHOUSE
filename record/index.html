@@ -104,6 +104,8 @@
       .pv-stable input:checked+span{border-color:#16a34a;color:#15803d;background:#f0fdf4;}
       .pv-stable input:checked+span i{background:#16a34a;border-color:#16a34a;color:#fff;}
       .pv-card.pv-off{display:none;}
+      .g-pick{width:100%;border:none;background:none;font-family:inherit;font-size:17px;font-weight:800;color:var(--ssc-primary);padding:8px 0;cursor:pointer;}
+      .g-pick::after{content:' ▾';font-size:11px;color:#bbb;}
       .pv-sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9999;display:flex;align-items:flex-end;justify-content:center;}
       .pv-sheet{width:100%;max-width:520px;background:#fff;border-radius:22px 22px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));animation:pvUp .2s ease-out;}
       @keyframes pvUp{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
@@ -765,11 +767,12 @@
                 <input type="text" name="pName" placeholder="患者姓名">
               </div>
               <div class="col-box col-gender">
-                <select name="gender" class="clean-select">
+                <select name="gender" class="clean-select" id="genderSelect" style="display:none">
                   <option value="男">男</option>
                   <option value="女">女</option>
                   <option value="不詳">?</option>
                 </select>
+                <button type="button" class="g-pick" id="genderPick" onclick="window.pickGender()">男</button>
               </div>
               <div class="col-box col-age">
                 <input type="number" name="age" placeholder="歲">
@@ -2069,6 +2072,21 @@
       document.body.appendChild(bg);
     };
     // 血壓：只打數字，自動補上「/」（1、2 開頭收縮壓三位數，其他兩位數）
+    // 性別：點了跳出選單
+    window.syncGender = function() { const s = document.getElementById('genderSelect'), b = document.getElementById('genderPick'); if (s && b) { const v = s.value || '男'; b.textContent = v === '不詳' ? '?' : v; b.dataset.v = v; } };
+    window.pickGender = function() {
+      document.querySelectorAll('.pv-sheet-bg').forEach(e => e.remove());
+      const sel = document.getElementById('genderSelect'), cur = sel.value;
+      const bg = document.createElement('div'); bg.className = 'pv-sheet-bg';
+      bg.innerHTML = `<div class="pv-sheet"><h4>性別<small>點一下選擇</small></h4>${[['男', '♂'], ['女', '♀'], ['不詳', '?']].map(([v, ic]) => `<button type="button" class="pv-opt${cur === v ? ' on' : ''}" data-v="${v}"><b>${ic}</b>${v}</button>`).join('')}<div class="pv-x"><button type="button" data-close="1">取消</button></div></div>`;
+      bg.onclick = ev => {
+        if (ev.target === bg || ev.target.closest('[data-close]')) return bg.remove();
+        const o = ev.target.closest('[data-v]'); if (!o) return;
+        sel.value = o.dataset.v; sel.dispatchEvent(new Event('change', { bubbles: true })); window.syncGender(); bg.remove();
+      };
+      document.body.appendChild(bg);
+    };
+    setInterval(() => { try { window.syncGender(); } catch (e) {} }, 500);
     window.pvBPfmt = function(el) {
       const raw = el.value, hasSlash = raw.includes('/');
       let out;
