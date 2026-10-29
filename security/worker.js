@@ -36,6 +36,10 @@ export default {
       const r = await fetch(u, { cf: { cacheTtl: 3600 } }); if (!r.ok) return new Response('not found', { status: 404 });
       return new Response(r.body, { headers: { 'Content-Type': r.headers.get('Content-Type') || 'image/jpeg', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=3600' } });
     }
+    if (new URL(req.url).pathname === '/body-zones' && req.method === 'GET') {   // 救護紀錄表人體圖的部位輪廓（公開、不含個資）
+      try { const d = await fsGet(await saToken(env), 'system_configs/body_map_polygons'); return json({ ok: true, zones: d ? fobj(d.fields).zones || null : null }); }
+      catch (e) { return json({ error: 'failed' }, 500); }
+    }
     if (new URL(req.url).pathname === '/share-get' && req.method === 'GET') {   // 分享卡片內容（公開，給 LIFF 分享頁用）
       const id = new URL(req.url).searchParams.get('id') || '';
       if (!/^[A-Za-z0-9_-]{6,40}$/.test(id)) return json({ error: 'bad id' }, 400);

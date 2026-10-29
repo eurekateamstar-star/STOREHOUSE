@@ -1,0 +1,7 @@
+name: peek-body-zones
+on: workflow_dispatch
+jobs:
+  peek:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -s https://bst-auth.eurekateamstar.workers.dev/body-zones
