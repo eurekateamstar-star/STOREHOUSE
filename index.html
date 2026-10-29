@@ -5138,6 +5138,8 @@
         if (fab) fab.style.display = (active || !isContentEditActive || !isDev()) ? 'none' : 'block';
         const ovView = document.getElementById('overview-view');
         if (ovView) ovView.style.display = active ? 'block' : 'none';
+        // 從總覽回到地圖：地圖在總覽時是隱藏的（量不到大小），回來要重畫這一排（底圖、標題、箱子位置）
+        if (!active) setTimeout(() => { try { if (pages && pages.length && !isPanoActive && !isOverviewActive) switchToPage(currentPageIndex || 0); } catch (e) {} }, 0);
         
         const btn = document.getElementById('btn-toggle-overview');
         if (btn) {
