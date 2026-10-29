@@ -547,6 +547,35 @@
       .rp-stable small{font-weight:700;font-size:11px;margin-left:4px;color:#4b9b6a;}
       .rp-foot{margin-top:14px;padding-top:8px;border-top:1px solid #e5e7eb;text-align:center;font-size:9.5px;color:#a3a3a3;line-height:1.5;}
       .preview-photo{max-height:140px !important;}
+
+      /* ===== N 到院前緊急救護紀錄表 ===== */
+      #previewCaptureArea .report-header{display:none !important;}
+      .n-tt{text-align:center;margin:4px 0 8px;font-family:"Noto Serif TC","PMingLiU",serif;}
+      .n-tt div{font-size:12px;color:#333;}
+      .n-tt b{display:block;font-size:19px;letter-spacing:3px;color:#111;margin:1px 0;}
+      .n-tt small{font-size:10px;color:#666;}
+      .n-alert{background:#c00;color:#fff;text-align:center;font-weight:900;letter-spacing:3px;padding:5px;margin-bottom:6px;}
+      .n-t{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:-1px;table-layout:fixed;}
+      .n-t th,.n-t td{border:1px solid #222;padding:5px 5px;color:#111;word-break:break-all;}
+      .n-t th{background:#e8eef6;font-weight:800;width:40px;white-space:nowrap;font-size:12px;}
+      .n-t td{font-weight:600;}
+      .nck{line-height:1.9;}
+      .nk{display:inline-block;margin-right:9px;white-space:nowrap;font-weight:500;color:#555;}
+      .nk::before{content:"□";margin-right:1px;}
+      .nk.on{color:#111;font-weight:800;}
+      .nk.on::before{content:"■";}
+      table.n-vs{table-layout:auto;}
+      .n-vs td{white-space:nowrap;}
+      .n-vs th{width:auto;font-size:10px;text-align:center;padding:3px 1px;}
+      .n-vs th.n-vh{width:40px;font-size:11.5px;}
+      .n-vs td{text-align:center;font-weight:800;font-size:13px;padding:6px 1px;}
+      .n-vs td.nr{color:#c00;}
+      .nstable{color:#15803d !important;font-size:13px !important;}
+      .n-inj{display:flex;gap:8px;align-items:center;}
+      .n-inj .preview-body-container{flex:none;margin:0;width:120px;}
+      .n-parts{flex:1;min-width:0;font-size:12.5px;line-height:1.6;}
+      .n-parts b{color:#b4434f;}
+      .n-sub{font-size:12px;font-weight:800;color:#111;margin:10px 0 4px;border-left:4px solid #222;padding-left:6px;}
       .preview-btns { height: auto; flex-shrink: 0; padding-bottom: max(10px, env(safe-area-inset-bottom)); background: #fff; }
       .preview-btns .p-btn { min-height: 54px; }
 
@@ -2278,37 +2307,52 @@
         <div class="rp-crit ${v.critical === '是' ? 'yes' : 'no'}">危急個案：<b>${rpE(v.critical || '—')}</b></div>
         ${v.Note ? `<div class="rp-box rp-note"><span>備註</span>${rpE(v.Note)}</div>` : ''}`;
     }
+    // N｜到院前緊急救護紀錄表格式
+    function rpChecks(name, picked) {
+      const list = String(picked || '').split(/,\s*/).map(x => x.trim()).filter(x => x && x !== '無');
+      const opts = [...new Set([...document.querySelectorAll(`input[name="${name}"]`)].map(i => i.value).filter(v => v !== '其他'))];
+      const other = list.filter(x => !opts.includes(x));
+      return opts.map(o => `<span class="nk${list.includes(o) ? ' on' : ''}">${rpE(o)}</span>`).join('')
+        + `<span class="nk${other.length ? ' on' : ''}">其他${other.length ? '：' + rpE(other.map(x => x.replace(/^其他:\s*/, '')).join('、')) : ''}</span>`;
+    }
     function reportHtml(r) {
-      const crit = r.vitals && r.vitals.critical === '是';
-      const parts = (r.injured || []).length
-        ? `<table class="rp-tbl"><tr><th>部位</th><th>傷情</th></tr>${r.injured.map(i => `<tr><td>${rpE(i.part)}</td><td>${rpE(i.desc)}</td></tr>`).join('')}</table>`
-        : '<div class="rp-box"><i class="rp-na">無標記傷處</i></div>';
-      const sec = (no, t, en) => `<div class="rp-sec"><em>${no}</em>${t}<small>${en}</small></div>`;
-      return `${crit ? '<div class="rp-alert">⚠ 危急個案</div>' : ''}
-        ${sec('01', '病患資料', 'PATIENT')}
-        <table class="rp-kv">
-          <tr><th>姓名</th><td>${rpV(r.name)}</td><th>性別</th><td>${rpV(r.gender)}</td></tr>
-          <tr><th>年齡</th><td>${r.age && r.age !== '無' ? rpE(r.age) + ' 歲' : '<i class="rp-na">—</i>'}</td><th>電話</th><td>${rpV(r.phone)}</td></tr>
-          <tr><th>臂章</th><td colspan="3">${rpV(r.armband)}</td></tr>
-          <tr><th>地點</th><td colspan="3">${rpV(r.address)}</td></tr>
+      const v = r.vitals, stable = (v && v.stable) || (!v && /^意識清楚生命徵象穩定/.test(r.vitalsText || ''));
+      const t = String(r.caseTime || '').replace('T', ' '), [dDate, dTime] = [t.split(' ')[0] || '', t.split(' ')[1] || ''];
+      const n = x => parseFloat(x), bad = {
+        GCS: v && v.GCS && +v.GCS < 15, RR: v && (n(v.RR) < 10 || n(v.RR) > 24), HR: v && (n(v.HR) < 50 || n(v.HR) > 120),
+        BP: v && (n(String(v.BP || '').split('/')[0]) < 90 || n(String(v.BP || '').split('/')[0]) > 180 || n(String(v.BP || '').split('/')[1]) > 110),
+        SpO2: v && n(v.SpO2) < 94, BS: v && (n(v.BS) < 70 || n(v.BS) > 250), BT: v && (n(v.BT) < 35 || n(v.BT) >= 38) };
+      const cell = k => `<td class="${bad[k] ? 'nr' : ''}">${v && v[k] ? rpE(v[k]) : '—'}</td>`;
+      const avpu = [['清', 'A 清醒'], ['聲', 'V 聲音'], ['痛', 'P 疼痛'], ['否', 'U 無反應']].map(([k, l]) => `<span class="nk${v && (v.consc === k || (stable && k === '清')) ? ' on' : ''}">${l}</span>`).join('');
+      const crit = v && v.critical === '是';
+      const vitalsRow = stable
+        ? `<tr><td colspan="10" class="nstable">意識清楚，生命徵象穩定（未量測數值）</td></tr>`
+        : v ? `<tr><td class="${bad.GCS ? 'nr' : ''}">${v.GCS || '—'}</td><td>${v.E || '—'}</td><td>${v.V || '—'}</td><td>${v.M || '—'}</td>${cell('RR')}${cell('HR')}${cell('BP')}${cell('SpO2')}${cell('BS')}${cell('BT')}</tr>`
+        : `<tr><td colspan="10" style="text-align:left">${rpV(r.vitalsText)}</td></tr>`;
+      const parts = (r.injured || []).length ? r.injured.map(i => `<div><b>${rpE(i.part)}</b>　${rpE(i.desc)}</div>`).join('') : '<i class="rp-na">無標記傷處</i>';
+      return `<div class="n-tt"><div>白沙屯拱天宮醫護團</div><b>到院前緊急救護紀錄表</b>${r.id ? `<small>案件編號 ${rpE(String(r.id).slice(-8).toUpperCase())}</small>` : ''}</div>
+        ${crit ? '<div class="n-alert">⚠ 危急個案</div>' : ''}
+        <table class="n-t">
+          <tr><th>時間</th><td colspan="3">${rpV(t.replace(/-/g, '/'))}</td><th>人員</th><td>${rpV(r.personnel)}</td></tr>
+          <tr><th>姓名</th><td>${rpV(r.name)}</td><th>性別</th><td>${rpV(r.gender)}</td><th>年齡</th><td>${r.age && r.age !== '無' ? rpE(r.age) : '—'}</td></tr>
+          <tr><th>臂章</th><td colspan="2">${rpV(r.armband)}</td><th>電話</th><td colspan="2">${rpV(r.phone)}</td></tr>
+          <tr><th>地點</th><td colspan="5">${rpV(r.address)}</td></tr>
+          <tr><th>主訴</th><td colspan="5">${rpV(r.complaint)}</td></tr>
+          <tr><th>類別</th><td colspan="5" class="nck">${rpChecks('problems', r.problems)}</td></tr>
+          <tr><th>意識</th><td colspan="5" class="nck">${avpu}</td></tr>
         </table>
-        ${sec('02', '現場評估', 'ASSESSMENT')}
-        <table class="rp-kv">
-          <tr><th>問題類型</th><td>${rpTags(r.problems)}</td></tr>
-          <tr><th>主訴</th><td>${rpV(r.complaint)}</td></tr>
+        <table class="n-t n-vs"><tr><th rowspan="2" class="n-vh">生命<br>徵象</th><th>GCS</th><th>E</th><th>V</th><th>M</th><th>RR</th><th>HR</th><th>BP</th><th>SpO₂</th><th>BS</th><th>BT</th></tr>${vitalsRow.replace('<tr>', '<tr>')}</table>
+        <table class="n-t">
+          <tr><th>傷情</th><td colspan="5"><div class="n-inj"><div class="preview-body-container"><img src="https://i.ibb.co/6JFnSZp7/image.jpg" class="preview-body-img">${r.dotsHtml || ''}</div><div class="n-parts">${parts}</div></div></td></tr>
+          <tr><th>處置</th><td colspan="5" class="nck">${rpChecks('treatment', r.actions)}</td></tr>
+          ${v && v.Note ? `<tr><th>備註</th><td colspan="5">${rpE(v.Note)}</td></tr>` : ''}
+          <tr><th>危急</th><td colspan="5" class="nck"><span class="nk${crit ? ' on' : ''}">是</span><span class="nk${v && !crit ? ' on' : ''}">否</span></td></tr>
+          <tr><th>交班</th><td colspan="5">${rpV(r.handover)}</td></tr>
+          <tr><th>簽章</th><td colspan="3">救護人員：${rpV(r.personnel)}</td><td colspan="2">接手單位：</td></tr>
         </table>
-        ${sec('03', '傷情部位', 'INJURIES')}
-        <div class="rp-body"><div class="preview-body-container"><img src="https://i.ibb.co/6JFnSZp7/image.jpg" class="preview-body-img">${r.dotsHtml || ''}</div><div class="rp-body-list">${parts}</div></div>
-        ${sec('04', '處置', 'TREATMENT')}
-        <div class="rp-box">${rpTags(r.actions)}</div>
-        ${sec('05', '處置後生命徵象', 'VITAL SIGNS')}
-        ${rpVitalsHtml(r.vitals, r.vitalsText)}
-        ${sec('06', '交班', 'HANDOVER')}
-        <div class="rp-box">${rpV(r.handover)}</div>
-        ${sec('07', '現場照片', 'PHOTOS')}
-        <div class="preview-photos-grid">${r.photosHtml}</div>
-        ${r.mapHtml ? sec('08', '發生地點', 'LOCATION') + r.mapHtml : ''}
-        <div class="rp-foot">白沙屯拱天宮醫護團（慈昕醫護協會）・本紀錄供醫療交班與統計使用，請妥善保管個資</div>`;
+        <div class="n-sub">現場照片</div><div class="preview-photos-grid">${r.photosHtml}</div>
+        ${r.mapHtml ? '<div class="n-sub">發生地點</div>' + r.mapHtml : ''}
+        <div class="rp-foot">白沙屯拱天宮醫護團（慈昕醫護協會）・本紀錄含個人醫療資料，僅供醫療交班與統計使用</div>`;
     }
 
     window.showPreview = function() {
@@ -2340,6 +2384,7 @@
       }
 
       const html = reportHtml({
+        caseTime: fd.get('caseTime'), personnel: fd.get('personnel'), id: editingId || '',
         name: fd.get('pName') || '不詳', gender: fd.get('gender'), age: String(fd.get('age') || '').trim(), phone: fd.get('pPhone'), armband: fd.get('armband'), address: effLoc(fd),
         problems: getCheckedValuesWithHidden('problems', 'problemOtherValue'), complaint: fd.get('mainComplaint'),
         injured: selectedPartsData, dotsHtml, actions: getCheckedValuesWithHidden('treatment', 'treatmentOtherValue'),
@@ -3089,6 +3134,7 @@
       }
 
       const html = reportHtml({
+        caseTime: d.caseTime, personnel: d.personnel, id: d.id,
         name: d.patient.name, gender: d.patient.gender, age: d.patient.age, phone: d.patient.phone, armband: d.patient.armband, address: d.location && (typeof d.location === 'string' ? d.location : d.location.address),
         problems: d.scene.problems, complaint: d.scene.mainComplaint, injured: injuredParts, dotsHtml, actions: d.treatment.actions,
         vitals: d.followUp.vitals || null, vitalsText: d.followUp.postVitals, handover: d.followUp.handoverInfo, photosHtml,
