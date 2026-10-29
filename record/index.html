@@ -104,6 +104,9 @@
       .pv-stable input:checked+span{border-color:#16a34a;color:#15803d;background:#f0fdf4;}
       .pv-stable input:checked+span i{background:#16a34a;border-color:#16a34a;color:#fff;}
       .pv-card.pv-off{display:none;}
+      .pv-opt.g-m b{background:#dbeafe;color:#2563eb;} .pv-opt.g-m.on{border-color:#2563eb;background:#eff6ff;} .pv-opt.g-m.on b{background:#2563eb;color:#fff;}
+      .pv-opt.g-f b{background:#fce7f3;color:#db2777;} .pv-opt.g-f.on{border-color:#db2777;background:#fdf2f8;} .pv-opt.g-f.on b{background:#db2777;color:#fff;}
+      .pv-opt.g-u b{background:#f1f5f9;color:#64748b;} .pv-opt.g-u.on{border-color:#64748b;background:#f8fafc;} .pv-opt.g-u.on b{background:#64748b;color:#fff;}
       .g-pick{width:100%;border:none;background:none;font-family:inherit;font-size:17px;font-weight:800;color:var(--ssc-primary);padding:8px 0;cursor:pointer;}
       .g-pick::after{content:' ▾';font-size:11px;color:#bbb;}
       .pv-sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9999;display:flex;align-items:flex-end;justify-content:center;}
@@ -2078,7 +2081,7 @@
       document.querySelectorAll('.pv-sheet-bg').forEach(e => e.remove());
       const sel = document.getElementById('genderSelect'), cur = sel.value;
       const bg = document.createElement('div'); bg.className = 'pv-sheet-bg';
-      bg.innerHTML = `<div class="pv-sheet"><h4>性別<small>點一下選擇</small></h4>${[['男', '♂'], ['女', '♀'], ['不詳', '?']].map(([v, ic]) => `<button type="button" class="pv-opt${cur === v ? ' on' : ''}" data-v="${v}"><b>${ic}</b>${v}</button>`).join('')}<div class="pv-x"><button type="button" data-close="1">取消</button></div></div>`;
+      bg.innerHTML = `<div class="pv-sheet"><h4>性別<small>點一下選擇</small></h4>${[['男', 'm', `<svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><circle cx="12" cy="4.5" r="2.8"/><path d="M8.5 8.5h7a1.5 1.5 0 0 1 1.5 1.5v5.5h-2V22h-2.5v-6h-1v6H9v-6.5H7V10a1.5 1.5 0 0 1 1.5-1.5z"/></svg>`], ['女', 'f', `<svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><circle cx="12" cy="4.5" r="2.8"/><path d="M9.6 8.5h4.8a1.4 1.4 0 0 1 1.35 1.05L17.8 17h-3v5h-2v-5h-1.6v5h-2v-5h-3l2.05-7.45A1.4 1.4 0 0 1 9.6 8.5z"/></svg>`], ['不詳', 'u', `<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 9a3 3 0 1 1 4.2 2.75c-.75.35-1.2 1-1.2 1.85V14.5"/><circle cx="12" cy="18.5" r=".6" fill="currentColor"/></svg>`]].map(([v, k, ic]) => `<button type="button" class="pv-opt g-${k}${cur === v ? ' on' : ''}" data-v="${v}"><b>${ic}</b>${v}</button>`).join('')}<div class="pv-x"><button type="button" data-close="1">取消</button></div></div>`;
       bg.onclick = ev => {
         if (ev.target === bg || ev.target.closest('[data-close]')) return bg.remove();
         const o = ev.target.closest('[data-v]'); if (!o) return;
