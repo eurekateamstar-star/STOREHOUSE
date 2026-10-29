@@ -2359,6 +2359,7 @@
       const el = document.getElementById('rpCapture'), st = document.getElementById('rpImgState');
       if (!el) return;
       if (!window.html2canvas) { if (st) st.textContent = '💡 可用手機截圖保存'; return; }
+      for (let i = 0; i < 100 && document.getElementById('pvPhotos'); i++) await new Promise(r => setTimeout(r, 100));   // 等照片載完再轉圖
       try {
         await Promise.all([...el.querySelectorAll('img')].map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r; setTimeout(r, 4000); })));
         const ok = await Promise.all([...el.querySelectorAll('img')].map(im => new Promise(r => { if (im.complete && im.naturalWidth) return r(true); im.onload = () => r(true); im.onerror = () => r(false); setTimeout(() => r(!!im.naturalWidth), 6000); })));
@@ -3095,6 +3096,8 @@
         }
       });
       listContainer.innerHTML = html;
+      // 預先把前面幾筆的照片抓下來，點開檢視時就不用等
+      setTimeout(() => records.slice(0, 12).forEach(d => { if (photoCountOf(d)) getPhotos(d).catch(() => {}); }), 300);
     }
 
     let statsYear = null;   // null = 尚未選擇（預設最新年度）；'all' = 全部年度
@@ -3207,6 +3210,8 @@
         d.photos.forEach(b64 => {
           photosHtml += `<img src="${b64}" class="preview-photo">`;
         });
+      } else if (d.photoCount && photoCache[d.id]) {
+        photosHtml = photoCache[d.id].map(b => `<img src="${b}" class="preview-photo">`).join('') || '<span style="color:#888; font-size:10px;">未上傳照片</span>';
       } else if (d.photoCount) {
         photosHtml = `<span id="pvPhotos" style="color:#888; font-size:11px;">照片載入中…</span>`;
         getPhotos(d).then(ph => { const el = document.getElementById('pvPhotos'); if (el) el.outerHTML = ph.map(b => `<img src="${b}" class="preview-photo">`).join('') || '<span style="color:#888; font-size:10px;">未上傳照片</span>'; });
