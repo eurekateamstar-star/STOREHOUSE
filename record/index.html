@@ -447,6 +447,25 @@
       .cc-media-tabs { display: flex; gap: 6px; padding: 6px 8px 0 8px; background: #fff; }
       .cc-media-tabs button { flex: 1; border: 1px solid #bae6fd; background: #fff; color: #0369a1; border-radius: 6px; padding: 5px 0; font-size: 12px; font-weight: bold; cursor: pointer; }
       .cc-media-tabs button.active { background: #0284c7; color: #fff; border-color: #0284c7; }
+
+      /* 主控台卡片資訊 */
+      .cc-top{display:flex;align-items:flex-start;gap:6px;}
+      .cc-who{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 6px;}
+      .cc-who b{font-size:1.15em;color:#0f172a;}
+      .cc-who .cc-mid{color:#64748b;font-size:.92em;}
+      .cc-arm{font-size:.82em;color:#475569;background:#f1f5f9;border-radius:5px;padding:0 5px;}
+      .cc-time{flex:none;font-weight:900;color:#0369a1;font-size:1.1em;font-variant-numeric:tabular-nums;}
+      .cc-tags{display:flex;flex-wrap:wrap;gap:3px;margin:4px 0;}
+      .cc-tags span{background:#fdf2f3;color:#b4434f;border:1px solid #f6d3d7;border-radius:5px;padding:0 6px;font-size:.88em;font-weight:700;}
+      .cc-tags .cc-crit{background:#c00;color:#fff;border-color:#c00;}
+      .cc-meta2{color:#64748b;font-size:.9em;}
+      .view-large .cc-extra{margin-top:8px;padding-top:6px;border-top:1px solid #eef2f6;}
+      .cc-row{display:flex;gap:8px;padding:4px 0;border-bottom:1px dashed #eef2f6;}
+      .cc-row:last-child{border-bottom:none;}
+      .cc-row em{flex:none;width:34px;font-style:normal;font-size:.82em;font-weight:800;color:#0369a1;background:#e0f2fe;border-radius:4px;text-align:center;height:1.6em;line-height:1.6em;}
+      .cc-row span{flex:1;min-width:0;color:#1e293b;}
+      .cc-row b{color:#b4434f;}
+      .view-small .cc-time{font-size:.95em;} .view-small .cc-tags span{font-size:.85em;padding:0 3px;} .view-small .cc-meta2{display:none;}
       .cc-pane-photo { display: none; width: 100%; height: 100%; gap: 4px; padding: 4px; background: #f1f5f9; }
       .cc-pane-photo img { flex: 1; min-width: 0; height: 100%; object-fit: cover; border-radius: 8px; display: block; }
       .cc-nophoto { width: 100%; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 14px; }
@@ -2926,7 +2945,7 @@
         return matchDate && matchKey;
       });
 
-      filtered.sort((a, b) => (a.sortKey || '').localeCompare(b.sortKey || ''));
+      filtered.sort((a, b) => (b.sortKey || '').localeCompare(a.sortKey || ''));   // 最新的在最前面
       renderConsoleList(filtered, activeDate);
     };
 
@@ -2999,14 +3018,14 @@
               ${listViewMode === 'large' ? `<div class="cc-media-tabs"><button type="button" data-m="map" class="active" onclick="event.stopPropagation(); window.setCardMedia(this,'map')">🧍 傷情圖</button><button type="button" data-m="photo" onclick="event.stopPropagation(); window.setCardMedia(this,'photo')">📷 現場照片 (${photoCountOf(d)})</button></div>` : ''}
               <div class="cc-thumb"><div class="cc-map"><img src="https://i.ibb.co/6JFnSZp7/image.jpg" loading="lazy">${dots}</div>${listViewMode === 'large' ? `<div class="cc-pane-photo" data-pid="${d.id}">${photoCountOf(d) ? '<div class="cc-nophoto">照片載入中…</div>' : '<div class="cc-nophoto">未上傳照片</div>'}</div>` : ''}</div>
               <div class="cc-body">
-                <div><b>${pName}</b> <span class="cc-mid">${ga}</span> <span class="cc-armband">${armband}</span></div>
-                <div class="cc-problem">${problem}</div>
-                <div class="cc-meta">⏰ ${timeShort} · 👤 ${personnel}</div>
-                <div class="cc-addr">📍 ${addr || '無地址'}</div>
+                <div class="cc-top"><div class="cc-who"><b>${rpE(pName)}</b><span class="cc-mid">${rpE(ga)}</span>${P.armband && P.armband !== '無' ? `<span class="cc-arm">臂章 ${rpE(P.armband)}</span>` : ''}</div><div class="cc-time">${timeShort}</div></div>
+                <div class="cc-tags">${d.followUp && d.followUp.critical ? '<span class="cc-crit">⚠ 危急</span>' : ''}${String(problem || '').split(/,\s*/).filter(x => x && x !== '無').map(x => `<span>${rpE(x)}</span>`).join('')}</div>
+                <div class="cc-meta2">👤 ${rpE(personnel)}<span class="cc-addr">　📍 ${rpE(addr || '無地址')}</span></div>
                 <div class="cc-extra">
-                  <div><b>主訴：</b>${complaint}</div>
-                  <div><b>處置：</b>${actions}</div>
-                  <div><b>傷情：</b><br>${partsText}</div>
+                  <div class="cc-row"><em>主訴</em><span>${rpE(complaint)}</span></div>
+                  <div class="cc-row"><em>處置</em><span>${rpE(actions)}</span></div>
+                  <div class="cc-row"><em>傷情</em><span>${parts.length ? parts.map(i => `<b>${rpE(i.part)}</b> ${rpE(i.desc)}`).join('<br>') : '無標記'}</span></div>
+                  ${d.followUp && d.followUp.postVitals ? `<div class="cc-row"><em>徵象</em><span>${rpE(d.followUp.postVitals)}</span></div>` : ''}
                 </div>
               </div>
             </div>
