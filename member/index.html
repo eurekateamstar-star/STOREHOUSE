@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#ffffff">
-<title>白沙屯醫護團 - 會員中心</title>
-<script>/* 分享卡片頁：不顯示「會員中心」標題 */try{if(/[?&]share=|share%3D/.test(location.search)){document.title='白沙屯醫護團';document.documentElement.classList.add('share-mode');}}catch(e){}</script>
+<title>白沙屯拱天宮醫護團 - 團員專區</title>
+<script>/* 分享卡片頁：不顯示「團員專區」標題 */try{if(/[?&]share=|share%3D/.test(location.search)){document.title='白沙屯拱天宮醫護團';document.documentElement.classList.add('share-mode');}}catch(e){}</script>
 <style>html.share-mode .top{display:none!important}</style>
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <style>
@@ -348,8 +348,8 @@
 <div class="wrap">
   <div class="top">
     <div>
-      <div class="org">白沙屯醫護團</div>
-      <div class="title" id="page-title">會員中心</div>
+      <div class="org">白沙屯拱天宮醫護團</div>
+      <div class="title" id="page-title">團員專區</div>
     </div>
     <button class="top-btn hidden" id="btn-admin">🛠 管理員<span class="dot hidden" id="admin-dot"></span></button>
   </div>
@@ -410,7 +410,7 @@
             <div class="badges" id="m-badges"></div>
           </div>
         </div>
-        <div class="member-foot"><span id="m-since"></span><span id="m-pos">白沙屯醫護團 團員</span></div>
+        <div class="member-foot"><span id="m-since"></span><span id="m-pos">白沙屯拱天宮醫護團 團員</span></div>
       </div>
 
       <div id="attend-cards"></div>
@@ -597,7 +597,7 @@
     return /^[A-Za-z0-9_-]{6,40}$/.test(v || '') ? v : ''; } catch (e) { return ''; } })();
   const GUARDIAN_URL = 'https://liff.line.me/2011820105-k0FCAoxQ';   // 全民醫護證 LIFF
   const pendingDevClaim = (() => { try { const q = new URLSearchParams(location.search); return q.get('dev') === 'claim' || /dev=claim/.test(q.get('liff.state') || ''); } catch (e) { return false; } })();
-  const pendingCard = (() => { try { const q = new URLSearchParams(location.search); return q.get('card') === '1' || /card=1/.test(q.get('liff.state') || ''); } catch (e) { return false; } })();   // 會員中心專用 LIFF（Endpoint: /STOREHOUSE/member/）
+  const pendingCard = (() => { try { const q = new URLSearchParams(location.search); return q.get('card') === '1' || /card=1/.test(q.get('liff.state') || ''); } catch (e) { return false; } })();   // 團員專區專用 LIFF（Endpoint: /STOREHOUSE/member/）
   const CERTS = ['EMT-1', 'EMT-2', 'EMT-P', '護理師', '醫師', '無證照'];
   const ROSTER = 'member_roster';            // 團員名冊（舊資料匯入）；文件 ID = SHA-256(身分證|生日)
 
@@ -693,7 +693,7 @@
   // 一般會員畫面
   // =========================================================
   // 管理員權限：role == 'admin' = 三個系統都是；否則看 adminMember / adminWarehouse / adminRecord
-  const ADMIN_APPS = [['adminMember', '會員中心'], ['adminWarehouse', '倉庫'], ['adminRecord', '救護紀錄表']];
+  const ADMIN_APPS = [['adminMember', '團員專區'], ['adminWarehouse', '倉庫'], ['adminRecord', '救護紀錄表']];
   const adminOf = (u, k) => !!u && (u.role === 'admin' || u[k] === true);
   const adminList = u => ADMIN_APPS.filter(([k]) => adminOf(u, k)).map(([, t]) => t);
   const isAdmin = () => !!(user && user.status === 'approved' && adminOf(user, 'adminMember'));
@@ -719,7 +719,7 @@
     if (adminOn && isAdmin()) { show('v-admin'); renderAdmin(); return; }
     adminOn = false;
     $('btn-admin').firstChild.textContent = meDev() ? '⚙️' : '🛠 管理員';
-    $('page-title').textContent = '會員中心';
+    $('page-title').textContent = '團員專區';
 
     if (!user) {
       if (!$('v-register').classList.contains('hidden')) return;
@@ -755,7 +755,7 @@
       + (user.rosterId ? '<span class="badge">✔ 名冊已驗證</span>' : '')
       + (adminList(user).length && !meDev() ? '<span class="badge">⭐ 管理員</span>' : '');
     const created = tsMs(user.createdAt);
-    $('m-pos').textContent = '白沙屯醫護團 ' + (myRoster ? (rv(myRoster, 'position') || '團員') : '會員');
+    $('m-pos').textContent = '白沙屯拱天宮醫護團 ' + (myRoster ? (rv(myRoster, 'position') || '團員') : '會員');
     $('m-since').textContent = joinText(myRoster && myRoster.joinYear) || (created ? '加入於 ' + new Date(created).toLocaleDateString('zh-TW') : '');
     $('f-name').innerHTML = `<b>${esc(name || '—')}</b>`;
     $('f-id').textContent = showId ? (user.idCard || '—') : maskId(user.idCard);
@@ -847,7 +847,7 @@
   $('btn-admin').onclick = () => {
     adminOn = !adminOn;
     $('btn-admin').firstChild.textContent = adminOn ? '← 我的資料' : (meDev() ? '⚙️' : '🛠 管理員');
-    $('page-title').textContent = adminOn ? '會員管理' : '會員中心';
+    $('page-title').textContent = adminOn ? '會員管理' : '團員專區';
     if (adminOn) startAdminWatch();
     render();
     window.scrollTo(0, 0);
@@ -1162,7 +1162,7 @@
       catch (e) { toast('❌ 刪除失敗'); }
     });
     if ($('sh-reconfirm')) $('sh-reconfirm').onclick = async () => {
-      if (!(await dialog({ title: '請本人重新確認？', msg: `「${r.name}」下次打開會員中心時，會跳出確認資料的畫面。`, okText: '送出' }))) return;
+      if (!(await dialog({ title: '請本人重新確認？', msg: `「${r.name}」下次打開團員專區時，會跳出確認資料的畫面。`, okText: '送出' }))) return;
       const by = user.realName || profile.displayName || '';
       try {
         await updateDoc(doc(db, 'users', r.boundUserId), { profileConfirmedAt: deleteField(), confirmRequestedAt: serverTimestamp(), confirmRequestedBy: by });
@@ -1523,7 +1523,7 @@
     const rosterPill = u => { const r = u.rosterId && rosterById(u.rosterId); return r ? `<span class="pill bound">📋 ${esc(r.name)}</span>` : '<span class="pill unbound">未對應名冊</span>'; };
     let list = usersCache.slice().sort((a, b) => String(a.realName || '').localeCompare(String(b.realName || ''), 'zh-Hant'));
     if (usQuery) list = list.filter(u => [u.realName, u.lineDisplayName, u.certification, u.category].join(' ').toLowerCase().includes(usQuery));
-    $('us-table').innerHTML = `<thead><tr><th style="width:44px"></th><th>姓名</th><th>證照</th><th>LINE 名稱</th><th>狀態</th><th>名冊</th><th>救護紀錄表</th><th>倉庫</th><th>會員中心</th></tr></thead><tbody>`
+    $('us-table').innerHTML = `<thead><tr><th style="width:44px"></th><th>姓名</th><th>證照</th><th>LINE 名稱</th><th>狀態</th><th>名冊</th><th>救護紀錄表</th><th>倉庫</th><th>團員專區</th></tr></thead><tbody>`
       + (list.map(u => `<tr data-u="${u.id}"><td>${miniAv(u.pictureUrl, u.realName)}</td><td><b>${esc(u.realName || '—')}</b></td>
           <td>${u.certification ? `<span class="pill cert">${esc(u.certification)}</span>` : '—'}</td><td>${esc(u.lineDisplayName || '—')}</td>
           <td>${statusPill(u)}</td><td>${rosterPill(u)}</td>
@@ -1543,7 +1543,7 @@
   const ATT = [['yes', '✅ 出席', ''], ['join', '⚠️ 無法出席，但要參與團隊進香', '有不可抗力原因，請在下方說明，交由幹部團決議通融方案'], ['no', '❌ 不出席，也不參與團隊進香', '']];
   const ATT_SHORT = { yes: '✅ 出席', join: '⚠️ 不出席但參與進香', no: '❌ 不參與' };
   const LUNCH = ['葷', '素（方便素）', '自行處理'];
-  const eventLink = id => `https://tsushin-buishatun.pages.dev/attend/?e=${encodeURIComponent(id)}`;   // 公開表單：不用先綁會員中心
+  const eventLink = id => `https://tsushin-buishatun.pages.dev/attend/?e=${encodeURIComponent(id)}`;   // 公開表單：不用先綁團員專區
   let evPaid = {}, drPayMode = false, evSched = {}, schedOpen = false, schSel = null, schPk = null, attOpen = false, attBrush = null, schFold = (() => { try { return JSON.parse(localStorage.getItem('schFold') || '{}'); } catch (e) { return {}; } })(), carOpen = false, mealOpen = false, evSelf = {};
   let evDraw = {}, evDrawBy = {}, evOver = {}, drawSheetEid = null, drSel = null;
   let eventsCache = [], eventsUnsub = null, myResp = {}, evRespCache = {}, evRespUnsub = null, evOpenId = null, evFilter = 'all';
@@ -1563,7 +1563,7 @@
 
   function renderAttendCards() {
     const el = $('attend-cards'); if (!el) return;
-    // 會員中心首頁先不顯示出席調查卡片（改用公開連結填寫）；要恢復把 SHOW_ATTEND_CARD 改成 true
+    // 團員專區首頁先不顯示出席調查卡片（改用公開連結填寫）；要恢復把 SHOW_ATTEND_CARD 改成 true
     const SHOW_ATTEND_CARD = false;
     const list = SHOW_ATTEND_CARD ? eventsCache.filter(e => e.open) : [];
     el.innerHTML = list.map(e => {
@@ -1978,7 +1978,7 @@
       <div class="dr-top"><div>
       <div class="dr-ed" style="margin-top:10px;background:${e.selfDraw ? '#ecfdf5' : '#f8fafc'};border-color:${e.selfDraw ? '#86efac' : '#e2e8f0'};">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
-          <div><b>${e.selfDraw ? '🟢 團員可以自己抽籤' : '⚪ 團員自己抽籤：關閉'}</b><div style="font-size:12px;color:var(--sub);margin-top:2px;">開啟後，有綁定會員中心、已回覆出席的人，會在會員中心首頁看到「🎲 抽籤」</div></div>
+          <div><b>${e.selfDraw ? '🟢 團員可以自己抽籤' : '⚪ 團員自己抽籤：關閉'}</b><div style="font-size:12px;color:var(--sub);margin-top:2px;">開啟後，有綁定團員專區、已回覆出席的人，會在團員專區首頁看到「🎲 抽籤」</div></div>
           <button class="sbtn ${e.selfDraw ? 'red' : 'green'}" id="dr-self">${e.selfDraw ? '關閉自己抽籤' : '開放自己抽籤'}</button></div></div></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-content:flex-start;">
         ${missing ? `<button class="sbtn" id="dr-go" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">🎲 管理員代抽：還沒抽的 ${missing} 人</button>` : ''}
@@ -1989,7 +1989,7 @@
       </div></div>
       ${drPayMode ? '<div style="margin-top:10px;padding:10px 14px;border-radius:12px;background:#16a34a;color:#fff;font-weight:800;">💰 繳費模式：直接點名字 → 變綠底＝已繳；再點一次取消。完成後按上面的按鈕結束。</div>' : ''}
       <div class="dr-grid" style="margin-top:10px;">${DRAW_GROUPS.map(grp).join('') || '<div class="card empty">還沒有人回覆出席</div>'}</div>
-      <div style="font-size:12px;color:var(--sub);margin:10px 2px;line-height:1.7;">※ 分組依名冊的「職位」與「證照」：團長／秘書長／教官團／顧問 → 教官及長官；指揮官／車輛組／機車組 → 指揮官及汽機車組；其他依證照。標「手動」的是你換過組的人。<br>※ 標「代抽」是管理員幫忙抽或指定的，沒標的是團員自己在會員中心抽的。建議回覆截止、名單確定後再開放抽籤，名額才準。</div>`;
+      <div style="font-size:12px;color:var(--sub);margin:10px 2px;line-height:1.7;">※ 分組依名冊的「職位」與「證照」：團長／秘書長／教官團／顧問 → 教官及長官；指揮官／車輛組／機車組 → 指揮官及汽機車組；其他依證照。標「手動」的是你換過組的人。<br>※ 標「代抽」是管理員幫忙抽或指定的，沒標的是團員自己在團員專區抽的。建議回覆截止、名單確定後再開放抽籤，名額才準。</div>`;
     document.querySelectorAll('[data-dk]').forEach(b => b.onclick = async () => {
       if (drPayMode) {
         const k = b.dataset.dk, pd = { ...(evPaid[eid] || {}) };
@@ -2441,7 +2441,7 @@
     if ($('sc-shotall')) $('sc-shotall').onclick = () => shotAll();
     if ($('sc-pub')) $('sc-pub').onclick = async () => {
       const on = !e.schedPublic;
-      if (!(await dialog({ title: on ? '公開排班給團員？' : '隱藏排班？', msg: on ? '團員在會員中心首頁會看到「我的排班」：自己每天在哪一組、同組有誰、裝備、備註、值日生。' : '團員首頁的「我的排班」會消失。', okText: on ? '公開' : '隱藏' }))) return;
+      if (!(await dialog({ title: on ? '公開排班給團員？' : '隱藏排班？', msg: on ? '團員在團員專區首頁會看到「我的排班」：自己每天在哪一組、同組有誰、裝備、備註、值日生。' : '團員首頁的「我的排班」會消失。', okText: on ? '公開' : '隱藏' }))) return;
       try { await updateDoc(doc(db, 'events', eid), { schedPublic: on, schedPublicAt: serverTimestamp() }); e.schedPublic = on; toast(on ? '✅ 已公開' : '已隱藏'); renderSched(eid); } catch (err) { toast('❌ 失敗'); }
     };
     if ($('sc-att')) $('sc-att').onclick = () => { attOpen = true; attBrush = null; renderAtt(eid); $('sheet').scrollTop = 0; };
@@ -2820,7 +2820,7 @@
       <button class="sbtn" id="meal-back">← 回排班表</button>
       <h3 style="margin-top:10px;">🍱 用餐統計</h3>
       
-      <div style="font-size:13px;color:var(--sub);line-height:1.7;">${esc(e.title || '')}　團員在會員中心「我的排班」自己登記中餐／晚餐（紫框「自」＝還沒確認）。點格子可以改；灰底＝那天沒出勤也沒住宿。點日期看當天用餐名單。</div>
+      <div style="font-size:13px;color:var(--sub);line-height:1.7;">${esc(e.title || '')}　團員在團員專區「我的排班」自己登記中餐／晚餐（紫框「自」＝還沒確認）。點格子可以改；灰底＝那天沒出勤也沒住宿。點日期看當天用餐名單。</div>
       <div class="at-tools">${(() => { const n = selfPending(eid); return n ? `<button class="at-b" id="meal-okself" style="background:#7c3aed;color:#fff">✓ 確認團員登記（${n} 格）</button>` : ''; })()}<span style="font-size:12px;color:#7c3aed;font-weight:700"><span style="display:inline-block;width:12px;height:12px;box-shadow:inset 0 0 0 1px #a855f7;border-radius:3px;vertical-align:-1px"></span> 紫框「自」＝團員自己登記、還沒確認</span></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0"><button class="sbtn" id="meal-test" style="background:#fef3c7;color:#92400e;font-size:12px;padding:6px 10px">🧪 有排班的人隨機填用餐（測試）</button><button class="sbtn" id="meal-clear" style="background:#f1f5f9;color:#475569;font-size:12px;padding:6px 10px">🗑 清除全部用餐</button></div>
       <div class="at-wrap"><table class="at" style="width:${84 + days.length * 84}px"><colgroup><col style="width:84px">${days.map(() => '<col style="width:42px"><col style="width:42px">').join('')}</colgroup><thead>
@@ -3320,7 +3320,7 @@
         ${row('名冊', r ? `📋 ${esc(r.name)}（序號 ${esc(r.serial || '—')}）` : '未對應名冊')}
         ${row('救護紀錄表 上次登入', esc(fmt(tsMs(u.bstLastLoginAt))))}
         ${row('倉庫 上次登入', esc(fmt(tsMs(u.warehouseLastLoginAt))))}
-        ${row('會員中心 上次登入', esc(fmt(tsMs(u.memberLastLoginAt))))}
+        ${row('團員專區 上次登入', esc(fmt(tsMs(u.memberLastLoginAt))))}
       </div>
 
       ${devHidden(u) ? '' : `<div class="grp">⭐ 管理員權限</div>
@@ -3329,7 +3329,7 @@
         ${ADMIN_APPS.map(([k, t]) => `<label><input type="checkbox" data-adm="${k}" ${adminOf(u, k) ? 'checked' : ''}> ${t}</label>`).join('')}
         <button class="sbtn violet" id="adm-save">儲存權限</button>
       </div>
-      <div style="font-size:12px;color:var(--sub);margin:4px 2px 0;">會員中心管理員可以審核、編輯名冊、管理所有帳號；倉庫／救護紀錄表管理員只管各自的系統。</div>`}
+      <div style="font-size:12px;color:var(--sub);margin:4px 2px 0;">團員專區管理員可以審核、編輯名冊、管理所有帳號；倉庫／救護紀錄表管理員只管各自的系統。</div>`}
 
       <div class="grp">🏷️ 分類</div>
       <div class="cat-row">${[...CATS, ''].map(c => `<button class="chip-s ${cat === c ? 'on' : ''}" data-cat="${esc(c)}">${c || '未分類'}</button>`).join('')}</div>
@@ -3353,9 +3353,9 @@
     if ($('adm-save')) $('adm-save').onclick = async () => {
       const v = {}; document.querySelectorAll('[data-adm]').forEach(c => v[c.dataset.adm] = c.checked);
       const all = Object.values(v).every(Boolean);
-      if (isMe && !v.adminMember && !(await dialog({ title: '取消自己的會員中心管理員？', msg: '取消後你會馬上失去會員管理的權限，需要請其他管理員幫你恢復。', okText: '確定取消', danger: true }))) return;
+      if (isMe && !v.adminMember && !(await dialog({ title: '取消自己的團員專區管理員？', msg: '取消後你會馬上失去會員管理的權限，需要請其他管理員幫你恢復。', okText: '確定取消', danger: true }))) return;
       const supers = usersCache.filter(x => x.status === 'approved' && adminOf(x, 'adminMember'));
-      if (!v.adminMember && supers.length <= 1 && adminOf(u, 'adminMember')) return toast('至少要保留一位會員中心管理員');
+      if (!v.adminMember && supers.length <= 1 && adminOf(u, 'adminMember')) return toast('至少要保留一位團員專區管理員');
       const data = all ? { role: 'admin', adminMember: deleteField(), adminWarehouse: deleteField(), adminRecord: deleteField() }
         : { role: 'user', adminMember: v.adminMember, adminWarehouse: v.adminWarehouse, adminRecord: v.adminRecord };
       const names = ADMIN_APPS.filter(([k]) => v[k]).map(([, t]) => t);
@@ -3379,7 +3379,7 @@
       patch({ status: 'rejected', rejectReason: reason || '' }, '已退回');
     };
     if ($('us-wh-out')) $('us-wh-out').onclick = async () => {
-      if (!(await dialog({ title: `把「${u.realName || ''}」移出倉庫？`, msg: '只影響倉庫，救護紀錄表和會員中心照常可以用。', okText: '移出', danger: true }))) return;
+      if (!(await dialog({ title: `把「${u.realName || ''}」移出倉庫？`, msg: '只影響倉庫，救護紀錄表和團員專區照常可以用。', okText: '移出', danger: true }))) return;
       patch({ warehouseRemoved: true, warehouseRemovedBy: by, warehouseRemovedAt: serverTimestamp() }, '已移出倉庫');
     };
     if ($('us-wh-in')) $('us-wh-in').onclick = () => patch({ warehouseRemoved: false }, '✅ 已恢復倉庫使用');
@@ -3397,7 +3397,7 @@
   // 發佈 LINE 圖文選單（只有最高管理員）：建立訪客／團員兩種選單，再把所有已開通的人換成團員選單
   $('btn-richmenu').onclick = async () => {
     if (!user || user.role !== 'admin') return toast('只有最高管理員（全部系統）可以發佈');
-    const ok = await dialog({ title: '發佈 LINE 圖文選單？', msg: '會建立 LINE 圖文選單：\n・一般民眾：認識醫護團／衛教須知／醫護足跡／全民醫護證\n・團員：兩頁可左右切換\n　「團員專區」會員中心／救護紀錄表／倉儲管理\n　「一般資訊」同一般民眾那頁\n\n之後審核、停權、踢出都會自動切換。', okText: '發佈' });
+    const ok = await dialog({ title: '發佈 LINE 圖文選單？', msg: '會建立 LINE 圖文選單：\n・一般民眾：認識醫護團／衛教須知／醫護足跡／全民醫護證\n・團員：兩頁可左右切換\n　「團員專區」團員專區／救護紀錄表／倉儲管理\n　「一般資訊」同一般民眾那頁\n\n之後審核、停權、踢出都會自動切換。', okText: '發佈' });
     if (!ok) return;
     const btn = $('btn-richmenu'); btn.disabled = true; btn.textContent = '發佈中…';
     try {
@@ -3491,7 +3491,7 @@
       <img src="${c.imgUrl || AUTH_URL + '/c/' + c.id + '.jpg'}" style="display:block;width:100%;aspect-ratio:${Math.min(3, Math.max(1 / 3, (c.w || 1) / (c.h || 1)))};object-fit:cover">
       <div style="padding:14px 16px">${c.title ? `<div style="color:#fff;font-weight:800;font-size:17px">${esc(c.title)}</div>` : ''}
       ${c.text ? `<div style="color:#ffffffcc;font-size:13px;margin-top:4px;white-space:pre-wrap;line-height:1.6">${esc(c.text)}</div>` : ''}
-      <div style="background:#fff;color:#1e3a5f;border-radius:10px;padding:11px;text-align:center;font-weight:800;margin-top:12px">${esc(c.btn || '🏥 到白沙屯醫護團 LINE 看更多')}</div>
+      <div style="background:#fff;color:#1e3a5f;border-radius:10px;padding:11px;text-align:center;font-weight:800;margin-top:12px">${esc(c.btn || '🏥 到白沙屯拱天宮醫護團 LINE 看更多')}</div>
       <div style="color:#fff;text-align:center;margin-top:10px;font-weight:700">➦ 分享給親友</div></div></div>`;
   }
   async function openSharePage(id) {
@@ -3519,7 +3519,7 @@
         <span id="sc-fname" style="font-size:13px;color:var(--sub);margin-left:8px">（直的、橫的都可以）</span>
         <input class="inp" id="sc-title" maxlength="60" placeholder="標題（可不填）" style="width:100%;margin-top:10px;box-sizing:border-box">
         <textarea class="inp" id="sc-text" maxlength="300" rows="2" placeholder="說明文字（可不填）" style="width:100%;margin-top:8px;box-sizing:border-box;font:inherit"></textarea>
-        <input class="inp" id="sc-btn" maxlength="30" placeholder="按鈕文字（預設：🏥 到白沙屯醫護團 LINE 看更多）" style="width:100%;margin-top:8px;box-sizing:border-box">
+        <input class="inp" id="sc-btn" maxlength="30" placeholder="按鈕文字（預設：🏥 到白沙屯拱天宮醫護團 LINE 看更多）" style="width:100%;margin-top:8px;box-sizing:border-box">
         <input class="inp" id="sc-url" placeholder="按鈕連結（預設：加入官方帳號 @393geitc）" style="width:100%;margin-top:8px;box-sizing:border-box">
         <button class="sbtn" id="sc-add" style="background:#06c755;color:#fff;margin-top:10px">＋ 建立卡片</button>
         <span id="sc-amsg" style="font-size:13px;color:var(--sub);margin-left:8px"></span>

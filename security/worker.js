@@ -1,4 +1,4 @@
-// 白沙屯醫護團｜LINE → Firebase 登入驗證（Cloudflare Worker）
+// 白沙屯拱天宮醫護團｜LINE → Firebase 登入驗證（Cloudflare Worker）
 // 收到 LIFF 的 access token → 向 LINE 確認是本頻道、取得 userId → 簽發 Firebase 自訂權杖
 // 需要的密鑰（Settings → Variables and Secrets → 類型選 Secret）：
 //   SERVICE_ACCOUNT = Firebase 服務帳戶 JSON 檔「整個內容」
@@ -181,14 +181,14 @@ const PUBLIC = [
   { type: 'message', label: '全民醫護證', text: '全民醫護證' },
 ];
 const MEMBER = [
-  { type: 'uri', label: '會員中心', uri: LIFF('2011820105-x1KU6xLW') },
+  { type: 'uri', label: '團員專區', uri: LIFF('2011820105-x1KU6xLW') },
   { type: 'uri', label: '救護紀錄表', uri: LIFF('2011820105-6oXAxIEi') },
   { type: 'uri', label: '倉儲管理', uri: LIFF('2011820105-ofRs4ehy') },
 ];
 const MENUS = {
-  guest:   { alias: 'bst-guest',    name: '白沙屯醫護團｜一般民眾', img: 'guest.jpg',   h: MH, areas: grid3(PUBLIC, 0) },
-  member:  { alias: 'bst-member',   name: '白沙屯醫護團｜團員專區', img: 'member.jpg',  h: MH, areas: [...tabs(), ...grid3(MEMBER, TAB)] },
-  member2: { alias: 'bst-member-b', name: '白沙屯醫護團｜一般資訊', img: 'member2.jpg', h: MH, areas: [...tabs(), ...grid3(PUBLIC, TAB)] },
+  guest:   { alias: 'bst-guest',    name: '白沙屯拱天宮醫護團｜一般民眾', img: 'guest.jpg',   h: MH, areas: grid3(PUBLIC, 0) },
+  member:  { alias: 'bst-member',   name: '白沙屯拱天宮醫護團｜團員專區', img: 'member.jpg',  h: MH, areas: [...tabs(), ...grid3(MEMBER, TAB)] },
+  member2: { alias: 'bst-member-b', name: '白沙屯拱天宮醫護團｜一般資訊', img: 'member2.jpg', h: MH, areas: [...tabs(), ...grid3(PUBLIC, TAB)] },
 };
 const lineApi = (env, path, opt = {}) => fetch((opt.data ? 'https://api-data.line.me' : 'https://api.line.me') + path, {
   method: opt.method || 'GET',
@@ -207,7 +207,7 @@ async function fsUser(idToken, uid) {
 }
 const memberAdmin = u => !!u && u.status === 'approved' && (u.role === 'admin' || u.adminMember);
 
-// 依會員狀態切換某人的選單：{ idToken, uid? }，uid 省略＝自己；改別人要會員中心管理員
+// 依會員狀態切換某人的選單：{ idToken, uid? }，uid 省略＝自己；改別人要團員專區管理員
 async function menuRoute(req, env, json) {
   try {
     if (!env.LINE_BOT_TOKEN) return json({ error: 'LINE_BOT_TOKEN 尚未設定' }, 501);
@@ -465,7 +465,7 @@ async function fsList(tok, path) {
 const normName = s => String(s || '').replace(/[\s　]+/g, '');
 const SLOTS = ['前', '中', '後'];
 const slotTargets = n => { const b = Math.floor(n / 3), m = n % 3; return { 前: b, 中: b + (m >= 2 ? 1 : 0), 後: b + (m >= 1 ? 1 : 0) }; };
-function groupOf(ro) {     // 要跟會員中心的 groupOf 一樣
+function groupOf(ro) {     // 要跟團員專區的 groupOf 一樣
   if (!ro) return '未對應名冊';
   const pos = ro.position || '團員', c = String(ro.cert || '').toUpperCase().replace(/[-\s]/g, '');
   if (['團長', '秘書長', '教官團', '顧問'].includes(pos)) return '教官及長官';
@@ -525,7 +525,7 @@ async function lotRoute(req, env, json) {
     return json({ error: String((e && e.message) || e) }, 500);
   }
 }
-// ===== 醫護足跡照片：會員中心管理員上傳，LINE 點「醫護足跡」輪播 =====
+// ===== 醫護足跡照片：團員專區管理員上傳，LINE 點「醫護足跡」輪播 =====
 // journey/{id}：{ caption, order, at }；journey_img/{id}：{ data: JPEG base64 }（用服務帳戶讀寫，不用改資料庫規則）
 async function journeyImg(id, env, req, coll = 'journey_img') {
   try {
@@ -543,7 +543,7 @@ async function journeyRoute(req, env, json) {
     const body = await req.json(), { idToken, action } = body;
     if (!idToken) return json({ error: 'missing' }, 400);
     const me = await fsUser(idToken, uidOfToken(idToken));
-    if (!memberAdmin(me)) return json({ error: '只有會員中心管理員可以管理照片' }, 403);
+    if (!memberAdmin(me)) return json({ error: '只有團員專區管理員可以管理照片' }, 403);
     const tok = await saToken(env), H = { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' };
     const list = async () => (await fsList(tok, 'journey')).sort((x, y) => (x.order ?? 0) - (y.order ?? 0));
     const patch = (path, fields) => fetch(`${FS}/${path}?${Object.keys(fields).map(k => 'updateMask.fieldPaths=' + k).join('&')}`, { method: 'PATCH', headers: H, body: JSON.stringify({ fields: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, tv(v)])) }) });
@@ -590,9 +590,9 @@ function shareFlex(c, origin) {
   if (c.text) body.push({ type: 'text', text: c.text, size: 'sm', color: '#ffffffcc', wrap: true, margin: c.title ? 'sm' : 'none', lineSpacing: '4px' });
   body.push({ type: 'box', layout: 'vertical', backgroundColor: '#ffffff', cornerRadius: '10px', paddingAll: '11px', margin: body.length ? 'lg' : 'none',
     action: { type: 'uri', label: '看更多', uri: c.url || OA_URL },
-    contents: [{ type: 'text', text: c.btn || '🏥 到白沙屯醫護團 LINE 看更多', weight: 'bold', size: 'sm', color: '#1e3a5f', align: 'center', wrap: true }] });
+    contents: [{ type: 'text', text: c.btn || '🏥 到白沙屯拱天宮醫護團 LINE 看更多', weight: 'bold', size: 'sm', color: '#1e3a5f', align: 'center', wrap: true }] });
   body.push({ type: 'text', text: '➦ 分享給親友', size: 'sm', color: '#ffffff', align: 'center', margin: 'lg', action: { type: 'uri', label: '分享給親友', uri: `${SHARE_LIFF}?share=${c.id}` } });
-  return { type: 'flex', altText: c.alt || c.title || '白沙屯醫護團', contents: { type: 'bubble', size: 'mega',
+  return { type: 'flex', altText: c.alt || c.title || '白沙屯拱天宮醫護團', contents: { type: 'bubble', size: 'mega',
     hero: { type: 'image', url: heroUrl, size: 'full', aspectMode: 'cover', aspectRatio: `${W}:${H}` },
     body: { type: 'box', layout: 'vertical', paddingAll: '13px', backgroundColor: '#1e3a5f', contents: body } } };
 }
@@ -687,7 +687,7 @@ async function guardianNoRoute(req, env, json) {
 // 6 張衛教小卡排成一排（carousel），一次分享
 function eduAllFlex(origin) {
   const bubbles = EDU.map(e => shareFlex({ ...EDU_CARDS['edu-' + e.img], id: 'edu-all' }, origin).contents);
-  return { type: 'flex', altText: '【白沙屯醫護團】衛教小卡 6 張（左右滑動看更多）', contents: { type: 'carousel', contents: bubbles } };
+  return { type: 'flex', altText: '【白沙屯拱天宮醫護團】衛教小卡 6 張（左右滑動看更多）', contents: { type: 'carousel', contents: bubbles } };
 }
 const cardFlex = (c, origin) => c.id === 'guardian' ? guardianFlex() : c.id === 'edu-all' ? eduAllFlex(origin) : shareFlex(c, origin);
 // 全民醫護證邀請卡（跟證件同風格：米白底、紅框、紅按鈕）
@@ -716,7 +716,7 @@ async function shareCardRoute(req, env, json) {
     const body = await req.json(), { idToken, action } = body;
     if (!idToken) return json({ error: 'missing' }, 400);
     const me = await fsUser(idToken, uidOfToken(idToken));
-    if (!memberAdmin(me)) return json({ error: '只有會員中心管理員可以管理分享卡片' }, 403);
+    if (!memberAdmin(me)) return json({ error: '只有團員專區管理員可以管理分享卡片' }, 403);
     const tok = await saToken(env), H = { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' };
     const patch = (path, fields) => fetch(`${FS}/${path}?${Object.keys(fields).map(k => 'updateMask.fieldPaths=' + k).join('&')}`, { method: 'PATCH', headers: H, body: JSON.stringify({ fields: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, tv(v)])) }) });
     const clean = b => ({ title: String(b.title || '').slice(0, 60), text: String(b.text || '').slice(0, 300), btn: String(b.btn || '').slice(0, 30),
@@ -740,7 +740,7 @@ async function shareCardRoute(req, env, json) {
     return json({ error: 'unknown action' }, 400);
   } catch (e) { return json({ error: String((e && e.message) || e) }, e && e.code || 500); }
 }
-// ===== 會員中心：我的排班（管理員在排班表打開「公開給團員看」才會回傳）=====
+// ===== 團員專區：我的排班（管理員在排班表打開「公開給團員看」才會回傳）=====
 async function mySchedRoute(req, env, json) {
   try {
     const { idToken } = await req.json();
@@ -829,26 +829,26 @@ async function remindRoute(req, env, json) {
     const { idToken, names, text } = await req.json();
     if (!idToken || !Array.isArray(names) || !names.length) return json({ error: 'missing' }, 400);
     const me = await fsUser(idToken, uidOfToken(idToken));
-    if (!memberAdmin(me)) return json({ error: '只有會員中心管理員可以催促' }, 403);
+    if (!memberAdmin(me)) return json({ error: '只有團員專區管理員可以催促' }, 403);
     if (!env.LINE_BOT_TOKEN) return json({ error: 'LINE_BOT_TOKEN 尚未設定' }, 501);
     const tok = await saToken(env), want = new Set(names.map(normName));
     const ids = [], found = new Set();
     (await fsList(tok, 'member_roster')).forEach(x => { const k = normName(x.name); if (want.has(k) && x.boundUserId && !found.has(k)) { found.add(k); ids.push(x.boundUserId); } });
     const noLine = [...want].filter(k => !found.has(k));
     if (!ids.length) return json({ ok: true, sent: 0, noLine });
-    const msg = { type: 'flex', altText: String(text || '請到會員中心登記').slice(0, 300), contents: { type: 'bubble', size: 'kilo',
+    const msg = { type: 'flex', altText: String(text || '請到團員專區登記').slice(0, 300), contents: { type: 'bubble', size: 'kilo',
       body: { type: 'box', layout: 'vertical', paddingAll: '18px', spacing: 'md', contents: [
         { type: 'text', text: '📣 醫護團提醒', weight: 'bold', size: 'lg', color: '#c2414f' },
         { type: 'text', text: String(text || '').slice(0, 300), wrap: true, size: 'sm', color: '#374151' } ] },
       footer: { type: 'box', layout: 'vertical', paddingAll: '12px', contents: [
-        { type: 'button', style: 'primary', color: '#D65A68', action: { type: 'uri', label: '打開會員中心登記', uri: 'https://liff.line.me/2011820105-x1KU6xLW' } } ] } } };
+        { type: 'button', style: 'primary', color: '#D65A68', action: { type: 'uri', label: '打開團員專區登記', uri: 'https://liff.line.me/2011820105-x1KU6xLW' } } ] } } };
     const r = await fetch('https://api.line.me/v2/bot/message/multicast', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + env.LINE_BOT_TOKEN },
       body: JSON.stringify({ to: ids.slice(0, 500), messages: [msg] }) });
     if (!r.ok) return json({ error: 'LINE 傳送失敗：' + (await r.text()).slice(0, 200) }, 502);
     return json({ ok: true, sent: ids.length, noLine });
   } catch (e) { return json({ error: String((e && e.message) || e) }, e && e.code || 500); }
 }
-// 管理員催團員登記：LINE 推播提醒（只有會員中心管理員可以用）
+// 管理員催團員登記：LINE 推播提醒（只有團員專區管理員可以用）
 function noticeFlex(body, ttl, msg, btn, link) {
   // 版型：衛教小卡同色系漸層抬頭＋白底資訊表格（正式通知風格）
   const kind = String(body.kind || '通知').slice(0, 10), sub = String(body.sub || '').slice(0, 60);
@@ -859,7 +859,7 @@ function noticeFlex(body, ttl, msg, btn, link) {
     { type: 'text', text: v, size: 'sm', color: '#111827', weight: 'bold', flex: 5, align: 'end', wrap: true, gravity: 'center' }] });
   const table = [];
   rows.forEach((r, i) => { if (i) table.push({ type: 'separator', color: '#EEF0F3' }); table.push(rowBox(r, i)); });
-  return { type: 'flex', altText: `【白沙屯醫護團】${ttl}`, contents: { type: 'bubble', size: 'mega',
+  return { type: 'flex', altText: `【白沙屯拱天宮醫護團】${ttl}`, contents: { type: 'bubble', size: 'mega',
     header: { type: 'box', layout: 'vertical', paddingAll: '20px', paddingBottom: '18px', background: { type: 'linearGradient', angle: '135deg', startColor: c1, endColor: c2 }, contents: [
       { type: 'text', text: en, size: 'xxs', color: '#FFFFFFD9', weight: 'bold' },
       { type: 'box', layout: 'vertical', width: '24px', height: '3px', backgroundColor: '#FFFFFFD9', cornerRadius: '2px', margin: 'sm', contents: [] },
@@ -883,7 +883,7 @@ async function nudgeRoute(req, env, json) {
     const body = await req.json(), { idToken, uids, text, title, url, action, btn } = body;
     if (!idToken) return json({ error: 'missing' }, 400);
     const me = await fsUser(idToken, uidOfToken(idToken));
-    if (!memberAdmin(me)) return json({ error: '只有會員中心管理員可以催' }, 403);
+    if (!memberAdmin(me)) return json({ error: '只有團員專區管理員可以催' }, 403);
     const quota = async () => {
       const [q, c] = await Promise.all([lineApi(env, '/v2/bot/message/quota'), lineApi(env, '/v2/bot/message/quota/consumption')]);
       const qj = q.ok ? await q.json() : {}, cj = c.ok ? await c.json() : {};
@@ -907,7 +907,7 @@ async function viewSchedRoute(req, env, json) {
     if (!idToken || !/^[A-Za-z0-9_-]{1,64}$/.test(eid || '')) return json({ error: 'missing' }, 400);
     const uid = uidOfToken(idToken);
     const me = await fsUser(idToken, uid);
-    if (!me || me.status !== 'approved') return json({ error: '請先登入會員中心' }, 403);
+    if (!me || me.status !== 'approved') return json({ error: '請先登入團員專區' }, 403);
     const tok = await saToken(env);
     const ev = await fsGet(tok, `events/${eid}`); if (!ev) return json({ error: '找不到這個活動' }, 404);
     const e = fobj(ev.fields);

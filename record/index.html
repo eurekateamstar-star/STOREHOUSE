@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, minimal-ui">
-    <title>白沙屯醫護團 - 救護紀錄表</title>
+    <title>白沙屯拱天宮醫護團 - 救護紀錄表</title>
     <!-- 截圖套件 -->
     <script src="/record/html2canvas.min.js" defer></script>
     <!-- 傷患地圖（Leaflet + OpenStreetMap） -->
@@ -729,7 +729,7 @@
         <button type="button" class="admin-console-btn" onclick="window.openAdminConsole()">📊 主控台</button>
         <button type="button" class="admin-top-btn" onclick="window.toggleAdminMode()">⚙️ 管理員調整</button>
         <div>
-          <div class="header-org-name">白沙屯醫護團</div>
+          <div class="header-org-name">白沙屯拱天宮醫護團</div>
           <div class="header-title">救護紀錄表</div>
         </div>
         <div class="header-sub" id="headerTime">--:--</div>
@@ -1223,7 +1223,7 @@
     const db = initializeFirestore(app, IOS_WV ? { experimentalAutoDetectLongPolling: true } : { localCache: persistentLocalCache(), experimentalAutoDetectLongPolling: true });   // iPhone 不用 IndexedDB 快取（LINE 背景回來會卡死）
     const recAdmin = d => !!d && (d.role === 'admin' || d.adminRecord === true);
     const recViewer = d => !!d && !recAdmin(d) && d.recordViewer === true;   // 主控台唯讀（教官團等）：只能看不能改
-    const canConsole = d => recAdmin(d) || recViewer(d);   // 救護紀錄表管理員（權限在會員中心設定）
+    const canConsole = d => recAdmin(d) || recViewer(d);   // 救護紀錄表管理員（權限在團員專區設定）
 
     // ===== Firebase 身分驗證：LINE → 驗證伺服器（Cloudflare）→ Firebase，資料庫規則靠這個認人 =====
     const AUTH_URL = 'https://bst-auth.eurekateamstar.workers.dev';   // Cloudflare Worker 網址
@@ -1533,7 +1533,7 @@
     };
 
 
-    // ===== 團員名冊比對（與「會員中心」相同規則）=====
+    // ===== 團員名冊比對（與「團員專區」相同規則）=====
     // 名冊文件 ID = SHA-256(身分證|生日)；姓名也要相符、且尚未被別的 LINE 綁定，才算驗證通過
     const ROSTER = 'member_roster';
     const _normId = s => String(s || '').replace(/\s+/g, '').toUpperCase();
@@ -3583,7 +3583,7 @@
       const statusOrder = { 'pending': 1, 'approved': 2, 'rejected': 3, 'banned': 4 };
       return list.sort((a, b) => (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99));
     }
-    // 開發者帳號（會員中心 meta/developer）：不顯示管理員身分、不能被停權／踢出／改權限
+    // 開發者帳號（團員專區 meta/developer）：不顯示管理員身分、不能被停權／踢出／改權限
     let DEV_UID = '';
     const isDevU = u => !!u && !!DEV_UID && u.id === DEV_UID;
     const devLocked = u => isDevU(u) && !(currentUserProfile && u.id === currentUserProfile.userId);

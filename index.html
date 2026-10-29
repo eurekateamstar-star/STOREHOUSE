@@ -514,7 +514,7 @@
         .cert-btn.on{background:#0a84ff;border-color:#0a84ff;color:#fff;}
 
         /* ================================================================
-           淺色主題：跟會員中心一致（米白底、白色卡片、紅橘漸層）
+           淺色主題：跟團員專區一致（米白底、白色卡片、紅橘漸層）
            ================================================================ */
         :root{--primary:#D65A68;--accent:#F08339;--ink:#1f2430;--sub:#6b7280;--line:rgba(0,0,0,.07);
               --card:rgba(255,255,255,.88);--card-border:rgba(255,255,255,.95);--shadow:0 10px 30px rgba(31,38,135,.07);--soft:#f3efed;}
@@ -1881,7 +1881,7 @@
         return { ...d, id, userId: id,
             account: d.realName || '',
             displayName: d.lineDisplayName || '',
-            role: (d.role === 'admin' || d.adminWarehouse === true) ? 'admin' : 'member',   // 倉庫管理員（權限在會員中心設定）
+            role: (d.role === 'admin' || d.adminWarehouse === true) ? 'admin' : 'member',   // 倉庫管理員（權限在團員專區設定）
             createdAt: tsMs(d.createdAt),
             lastLoginAt: tsMs(d.warehouseLastLoginAt),
             bstLoginAt: tsMs(d.bstLastLoginAt),
@@ -2015,7 +2015,7 @@
 
     // 送出實名資料（欄位與驗證都和白沙屯救護紀錄表一致）
 
-    // ===== 團員名冊比對（與「會員中心」相同規則）=====
+    // ===== 團員名冊比對（與「團員專區」相同規則）=====
     // 名冊文件 ID = SHA-256(身分證|生日)；姓名也要相符、且尚未被別的 LINE 綁定，才算驗證通過
     const ROSTER = 'member_roster';
     const _normId = s => String(s || '').replace(/\s+/g, '').toUpperCase();
@@ -2132,7 +2132,7 @@
         const admin = isAdmin();
         const setDisp = (id, on) => { const e = _el(id); if (e) e.style.display = on ? '' : 'none'; };
         setDisp('mode-btn-edit', admin);
-        setDisp('menu-card-users', false);   // 會員的踢除／停權／管理員權限統一在會員中心管理
+        setDisp('menu-card-users', false);   // 會員的踢除／停權／管理員權限統一在團員專區管理
         setDisp('btn-logs-edit', admin);
         setDisp('btn-edit-groups', admin);
         ['logs', 'lookup'].forEach(k => setDisp('menu-card-' + k, admin));
@@ -2177,7 +2177,7 @@
 
     // ===== 使用者管理（僅管理員） =====
     let usersCache = [], usersUnsub = null, usersFirstLoad = true;
-    // 開發者帳號（會員中心 meta/developer）：不顯示管理員身分、不能被移出／踢出／改權限
+    // 開發者帳號（團員專區 meta/developer）：不顯示管理員身分、不能被移出／踢出／改權限
     const isDevU = u => !!u && !!DEV_UID && u.id === DEV_UID;
     function startUsersWatch() {
         if (usersUnsub) return;
