@@ -1164,7 +1164,7 @@
   // 團服領取清單：一人一列（尺寸不同就用「、」列出）
   const uniReceipt = groups => DRAW_GROUPS.flatMap(g => groups[g]).filter(p => p.r.uniform && p.r.attend !== 'no').map(p => {
     const d = p.r.uniform, it = uniItems(d); if (!it.shirts.length && !it.pants.length) return null;
-    return { name: p.name, line: p.r.lineName || '', shirt: cntTxt(it.shirts), sq: it.shirts.length, pant: cntTxt(it.pants), pq: it.pants.length, note: d.member === 'new' ? '新團員' : '舊團員加購', total: +d.total || 0 };
+    return { name: p.name, line: p.r.lineName || '', shirt: cntTxt(it.shirts), sq: it.shirts.length, pant: cntTxt(it.pants), pq: it.pants.length, note: d.member === 'new' ? '新團員' : '加購', total: +d.total || 0 };
   }).filter(Boolean);
   function testUniform() {   // 測試回覆用：隨機新團員／舊團員加購／不加購
     const SS = ['XS', 'S', 'M', 'M', 'L', 'L', 'XL', '2XL', '3XL', '5XL'], PS = ['S', 'M', 'M', 'L', 'L', 'XL', '2L', '3L', '4L', '5L', '6L'];
@@ -1952,7 +1952,7 @@
           const b = writeBatch(db);
           pick.slice(i, i + 400).forEach(ro => {
             const x = Math.random(), attend = x < 0.75 ? 'yes' : x < 0.85 ? 'join' : 'no';
-            const y = Math.random(), lunch = attend === 'no' || e.askLunch === false ? '' : y < 0.55 ? '葷' : y < 0.85 ? '素（方便素）' : '自行處理';
+            const y = Math.random(), lunch = attend !== 'yes' || e.askLunch === false ? '' : y < 0.55 ? '葷' : y < 0.85 ? '素（方便素）' : '自行處理';
             b.set(doc(collection(db, 'events', e.id, 'responses')), { name: ro.name || '', lineName: ro.lineName || ro.name || '', attend, lunch,
               reason: attend === 'join' ? rnd(REASONS) : '', comment: rnd(COMMENTS), createdAt: serverTimestamp(), src: 'test', ...(e.askUniform && attend !== 'no' ? { uniform: testUniform() } : {}) });
           });
@@ -2187,7 +2187,8 @@
     DRAW_GROUPS.forEach(g => {
       const ppl = groups[g]; if (!ppl.length) return;
       let hun = 0, veg = 0;
-      const r1 = ppl.map((p, i) => { const l = p.r.lunch || '', h = l.startsWith('葷'), v = l.startsWith('素'); if (h) hun++; if (v) veg++;
+      const r1 = ppl.map((p, i) => { const lv = p.r.attend === 'join', l = lv ? '' : (p.r.lunch || ''), h = l.startsWith('葷'), v = l.startsWith('素'); if (h) hun++; if (v) veg++;
+        if (lv) return `<tr><td>${i + 1}</td><td>${esc(p.name)}</td><td colspan="3" style="color:#b91c1c;font-weight:900;letter-spacing:6px">請假</td><td></td></tr>`;
         return `<tr><td>${i + 1}</td><td>${esc(p.name)}</td><td>${p.r.attend === 'join' ? '請假' : ''}</td>${l === '自行處理' ? '<td colspan="2">不訂餐</td>' : `<td>${h ? 1 : ''}</td><td>${v ? 1 : ''}</td>`}<td></td></tr>`; });
       paged('行前教育訓練簽到表', g, [['序號', 9], ['姓名', 19], ['簽　　到', 32], ['葷食', 11], ['素食', 11], ['領年曆', 18]], r1, ['', '合計', '', hun, veg, '']);
       let uSum = 0;
@@ -3329,7 +3330,7 @@
       const ppl = groups[g]; if (!ppl.length) return;
       // 每組一個工作表：先簽到表、再繳費紀錄。每頁 20 人，換頁時標題和表頭會重印一次；一張表印完才換下一張
       const PER = 20;
-      const nHun = ppl.filter(p => (p.r.lunch || '').startsWith('葷')).length, nVeg = ppl.filter(p => (p.r.lunch || '').startsWith('素')).length, nFee = 2500 * ppl.length;
+      const nHun = ppl.filter(p => p.r.attend !== 'join' && (p.r.lunch || '').startsWith('葷')).length, nVeg = ppl.filter(p => p.r.attend !== 'join' && (p.r.lunch || '').startsWith('素')).length, nFee = 2500 * ppl.length;
       const ws = wb.addWorksheet(g.replace(/[\\/?*[\]:]/g, '').slice(0, 31), { pageSetup: { orientation: 'portrait', paperSize: 9, fitToPage: false, scale: 100, horizontalCentered: true,
         margins: { left: .35, right: .35, top: .45, bottom: .5, header: .2, footer: .25 } }, headerFooter: { oddFooter: '&C第 &P 頁，共 &N 頁' } });
       ws.columns = [8, 18, 26, 15, 15, 16].map(w => ({ width: w }));
@@ -3347,7 +3348,7 @@
           const hr = ws.getRow(cur + 2); hr.height = 28;
           H.forEach((h, i) => { const c = hr.getCell(i + 1); cellSet(c, h, { bold: true }); c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3EDEA' } }; });
           cur += 3;
-          ppl.slice(pg * PER, (pg + 1) * PER).forEach((p, j) => { const i = pg * PER + j, row = ws.getRow(cur); row.height = 32; const vals = rowVals(p, i, cur); vals.forEach((v, k) => cellSet(row.getCell(k + 1), v)); if (vals[3] === '不訂餐') ws.mergeCells(`D${cur}:E${cur}`); dataRows.push(cur); cur++; });
+          ppl.slice(pg * PER, (pg + 1) * PER).forEach((p, j) => { const i = pg * PER + j, row = ws.getRow(cur); row.height = 32; const vals = rowVals(p, i, cur); vals.forEach((v, k) => cellSet(row.getCell(k + 1), v)); if (vals[3] === '不訂餐') ws.mergeCells(`D${cur}:E${cur}`); if (vals[2] === '請假') { ws.mergeCells(`C${cur}:E${cur}`); ws.getCell(`C${cur}`).font = font({ size: 14, bold: true, color: { argb: 'FFB91C1C' } }); } dataRows.push(cur); cur++; });
         }
         const tr = cur, row = ws.getRow(tr); row.height = 30;
         totalVals(dataRows[0], dataRows[dataRows.length - 1]).forEach((v, k) => cellSet(row.getCell(k + 1), v, { bold: true }));
@@ -3356,7 +3357,8 @@
       };
       const tr = block('行前教育訓練簽到表', ['序 號', '姓名', '簽　　到', '葷食', '素食', '領年曆'], (p, i) => {
         const lunch = p.r.lunch || '';
-        return [i + 1, p.name, p.r.attend === 'join' ? '請假' : '', lunch.startsWith('葷') ? 1 : lunch === '自行處理' ? '不訂餐' : null, lunch.startsWith('素') ? 1 : null, ''];
+        if (p.r.attend === 'join') return [i + 1, p.name, '請假', null, null, ''];
+        return [i + 1, p.name, '', lunch.startsWith('葷') ? 1 : lunch === '自行處理' ? '不訂餐' : null, lunch.startsWith('素') ? 1 : null, ''];
       }, (a, z) => [null, '合計', null, { formula: `SUM(D${a}:D${z})`, result: nHun }, { formula: `SUM(E${a}:E${z})`, result: nVeg }, null]);
       block('繳費紀錄表', ['序 號', '姓名', '團費', '服裝', '合計', '收費確認'],
         (p, i, rn) => { const u = uniAmt(p.r); return [i + 1, p.name, 2500, u || null, { formula: `SUM(C${rn}:D${rn})`, result: 2500 + u }, (evPaid[eid] || {})[p.key] ? '✔ 已繳' : '']; },

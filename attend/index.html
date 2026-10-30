@@ -256,7 +256,7 @@
     attend = b.dataset.v; document.querySelectorAll('.opt').forEach(x => x.classList.toggle('on', x === b));
     $('reason-box').classList.toggle('hidden', attend !== 'join');
     b.closest('.field').classList.remove('bad');
-    $('lunch-card').classList.toggle('hidden', attend === 'no' || (ev && ev.askLunch === false));
+    $('lunch-card').classList.toggle('hidden', attend !== 'yes' || (ev && ev.askLunch === false));
     uRender();
   });
   document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { const was = U.mem; U.mem = b.dataset.m; b.closest('.field').classList.remove('bad'); uRender(); if (U.mem === 'new' && was !== 'new') uOpen(); });
@@ -305,14 +305,14 @@
     const btn = $('btn-submit'); btn.disabled = true; btn.textContent = '送出中…';
     try {
       await addDoc(collection(db, 'events', eid, 'responses'), {
-        name: v('name'), lineName: v('lineName'), attend, lunch: attend === 'no' ? '' : lunch,
+        name: v('name'), lineName: v('lineName'), attend, lunch: attend === 'yes' ? lunch : '',
         reason: attend === 'join' ? v('reason') : '', comment: v('comment'), createdAt: serverTimestamp(), src: 'form',
         ...(uData() ? { uniform: uData() } : {})
       });
       try { localStorage.setItem('attend_me', JSON.stringify({ name: v('name'), lineName: v('lineName') })); } catch (err) {}
       f.classList.add('hidden'); window.scrollTo(0, 0);
       const label = { yes: '✅ 出席', join: '⚠️ 無法出席，但參與團隊進香', no: '❌ 不出席，亦不參與進香' }[attend];
-      msg('✅', '已收到你的回覆，謝謝！', `<b>${v('name').replace(/</g, '&lt;')}</b>：${label}${lunch && attend !== 'no' ? '<br>午膳：' + lunch : ''}${uData() ? '<br>團服：' + uText(uData()) : ''}<br><span style="font-size:12px">要更改的話，重新填寫一次即可，以最後一次為準。</span>`
+      msg('✅', '已收到你的回覆，謝謝！', `<b>${v('name').replace(/</g, '&lt;')}</b>：${label}${lunch && attend === 'yes' ? '<br>午膳：' + lunch : ''}${uData() ? '<br>團服：' + uText(uData()) : ''}<br><span style="font-size:12px">要更改的話，重新填寫一次即可，以最後一次為準。</span>`
         );
       $('done-act').classList.remove('hidden');
     } catch (err) {
