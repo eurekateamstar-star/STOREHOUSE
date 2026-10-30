@@ -199,7 +199,7 @@
   // ===== 團服訂購 =====
   const SHIRT_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '5XL'], PANTS_SIZES = ['S', 'M', 'L', 'XL', '2L', '3L', '4L', '5L', '6L'];
   const U = { mem: '', buy: '', shirt: '', pants: '', sq: 0, pq: 0 };
-  const uOn = () => !!(ev && ev.askUniform) && attend && attend !== 'no';
+  const uOn = () => !!(ev && ev.askUniform) && attend !== 'no';
   const uNeedPick = () => U.mem === 'new' || (U.mem === 'old' && U.buy === 'yes');
   function uRender() {
     $('uni-card').classList.toggle('hidden', !uOn());
@@ -244,6 +244,7 @@
     if (!ev.open) return msg('🔒', '已截止回覆', '這個出席調查已經截止，如需更改請直接聯絡管理員。');
     if (ev.askLunch === false) $('lunch-card').classList.add('hidden');
     $('msg').classList.add('hidden'); f.classList.remove('hidden');
+    uRender(); uMaybePop();
     try { const last = JSON.parse(localStorage.getItem('attend_me') || '{}'); if (last.name) f.elements.name.value = last.name; if (last.lineName) f.elements.lineName.value = last.lineName; } catch (e) {}
   })();
 
@@ -268,6 +269,7 @@
 
   $('btn-again').onclick = () => {
     $('msg').classList.add('hidden'); f.classList.remove('hidden');
+    uRender(); uMaybePop();
     const btn = $('btn-submit'); btn.disabled = false; btn.textContent = '送出回覆';
     window.scrollTo(0, 0);
   };
