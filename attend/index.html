@@ -52,6 +52,24 @@
   .field .err { display: none; color: var(--red); font-size: 12px; font-weight: 700; margin: 5px 2px 0; }
   .field.bad .err { display: block; }
 
+  .u-info{margin-left:auto;border:0;background:#fff4ef;color:#c2410c;border-radius:999px;padding:5px 10px;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+  .u-note{background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:10px 12px;font-size:13.5px;line-height:1.8;color:#7c2d12;margin-bottom:14px}
+  .u-item{display:flex;gap:10px;align-items:center;margin-bottom:8px}.u-item img{width:72px;height:56px;object-fit:cover;border-radius:10px;border:1px solid #eee;background:#fff}
+  .u-item b{display:block;font-size:15px}.u-item small{font-size:12px;color:#9a3412;font-weight:700}
+  .chips.sz .chip{padding:8px 0;min-width:52px;text-align:center}
+  .u-qty{display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:800;color:#4b5563;margin:-4px 2px 6px}
+  .qty{display:flex;align-items:center;gap:10px}.qty button{width:34px;height:34px;border-radius:50%;border:1.5px solid #e5e7eb;background:#fff;font-size:17px;font-weight:900;cursor:pointer}.qty b{min-width:20px;text-align:center;font-size:18px}
+  .u-total{margin:12px 0 14px;padding:12px;border-radius:14px;background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;font-weight:900;font-size:15px;line-height:1.6}
+  .u-total small{display:block;font-weight:600;font-size:12px;opacity:.9}
+  .u-ov{position:fixed;inset:0;background:rgba(20,15,15,.5);z-index:999;display:flex;align-items:flex-end;justify-content:center}
+  .u-box{width:100%;max-width:560px;max-height:92vh;overflow:auto;background:#fff;border-radius:22px 22px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom))}
+  .u-hd{display:flex;align-items:center;margin-bottom:6px}.u-hd b{font-size:18px}.u-hd button{margin-left:auto;border:0;background:#f3f4f6;border-radius:50%;width:32px;height:32px;font-size:15px;cursor:pointer}
+  .u-lead{font-size:14px;line-height:1.8;color:#374151;margin:4px 0 10px}
+  .u-box h4{margin:16px 0 6px;font-size:14px;color:var(--gold)}.u-box img{width:100%;border-radius:12px;border:1px solid #eee;display:block}
+  .u-small{font-size:12px;color:#be185d;margin-top:4px}
+  .u-hd2{font-weight:900;font-size:15px;margin:18px 0 8px}
+  .u-pick2{display:flex;gap:8px}.u-pick2 button{flex:1;border:0;border-radius:14px;padding:14px;font:inherit;font-size:16px;font-weight:900;color:#fff;background:linear-gradient(90deg,#D65A68,#F08339);cursor:pointer}
+  .u-pick2 button+button{background:#fff;color:#374151;border:1.5px solid #e5e7eb}
   .chips { display: flex; flex-wrap: wrap; gap: 8px; border-radius: 14px; border: 1.5px solid transparent; }
   .chip { border: 1.5px solid #e5e7eb; background: #fff; color: #374151; border-radius: 999px; padding: 9px 14px; font-size: 14px; font-weight: 800;
     cursor: pointer; font-family: inherit; min-width: 48px; }
@@ -119,6 +137,29 @@
         <button type="button" class="chip">葷</button><button type="button" class="chip">素（方便素）</button><button type="button" class="chip">自行處理</button>
       </div><div class="err">請選擇午膳</div></div>
     </div>
+    <div class="card hidden" id="uni-card">
+      <h2>👕 團服訂購<span class="req">*</span><button type="button" class="u-info" id="u-info">📏 尺寸表・說明</button></h2>
+      <div class="field" data-f="umem"><label>你是新團員還是舊團員？</label><div class="chips">
+        <button type="button" class="chip" data-m="new">🆕 新團員</button><button type="button" class="chip" data-m="old">舊團員</button>
+      </div><div class="err">請選擇新團員或舊團員</div></div>
+      <div id="u-new" class="hidden">
+        <div class="u-note">新加入的團員配發 <b>兩套團服</b>：<br>・上衣由醫護團提供（加購每件 400 元）<br>・褲子需自費：每件 400 元，共兩件，合計 <b>800 元</b></div>
+      </div>
+      <div id="u-old" class="hidden">
+        <div class="field" data-f="ubuy"><label>是否加購？</label><div class="chips">
+          <button type="button" class="chip" data-b="no">不加購</button><button type="button" class="chip" data-b="yes">要加購</button>
+        </div><div class="err">請選擇是否加購</div></div>
+      </div>
+      <div id="u-pick" class="hidden">
+        <div class="u-item"><img src="img/shirt.jpg" alt="上衣"><div><b>上衣</b><small id="u-shirt-sub"></small></div></div>
+        <div class="field" data-f="ushirt"><label>上衣尺寸</label><div class="chips sz" id="u-shirt"></div><div class="err">請選擇上衣尺寸</div></div>
+        <div class="u-qty"><span id="u-shirt-ql">加購上衣件數</span><div class="qty"><button type="button" data-q="shirt" data-d="-1">－</button><b id="u-shirt-q">0</b><button type="button" data-q="shirt" data-d="1">＋</button></div></div>
+        <div class="u-item" style="margin-top:14px"><img src="img/pants.jpg" alt="褲子" style="object-position:center 30%"><div><b>工作褲</b><small id="u-pants-sub"></small></div></div>
+        <div class="field" data-f="upants"><label>褲子尺寸</label><div class="chips sz" id="u-pants"></div><div class="err">請選擇褲子尺寸</div></div>
+        <div class="u-qty" id="u-pants-qrow"><span>褲子件數</span><div class="qty"><button type="button" data-q="pants" data-d="-1">－</button><b id="u-pants-q">0</b><button type="button" data-q="pants" data-d="1">＋</button></div></div>
+        <div class="u-total" id="u-total"></div>
+      </div>
+    </div>
     <div class="card">
       <h2>💬 其他意見及建議</h2>
       <div class="field"><label>如對團隊運作有任何建議，或行前教育訓練想加強學習的內容，請在此留言（選填）</label><textarea name="comment" maxlength="500"></textarea></div>
@@ -128,6 +169,17 @@
   </form>
 </div>
 <div class="toast" id="toast"></div>
+<div class="u-ov hidden" id="u-ov"><div class="u-box">
+  <div class="u-hd"><b>👕 團服訂購說明</b><button type="button" id="u-x">✕</button></div>
+  <p class="u-lead">醫護團即將向廠商訂購團體服裝，團服皆由<b>台灣廠商客製製作</b>。請依照下方上衣與褲子尺寸表選擇。</p>
+  <div class="u-note">新加入的團員將配發 <b>兩套團服</b>：<br>・上衣由醫護團提供（若欲再加購每件 400 元）<br>・褲子需自費：每件 400 元，共需訂製兩件，合計 <b>800 元</b></div>
+  <h4>上衣款式</h4><img src="img/shirt.jpg" alt="上衣款式">
+  <h4>上衣尺寸表（POLO・公分）</h4><img src="img/shirt-size.jpg" alt="上衣尺寸表">
+  <h4>工作褲尺寸表（英吋）</h4><img src="img/pants-size.jpg" alt="褲子尺寸表"><div class="u-small">4L、5L、6L 為特殊尺寸，須加價，且需事先詢問是否有貨。</div>
+  <h4>工作褲</h4><img src="img/pants.jpg" alt="工作褲">
+  <div class="u-hd2">你是？</div>
+  <div class="u-pick2"><button type="button" data-m2="new">🆕 我是新團員</button><button type="button" data-m2="old">我是舊團員</button></div>
+</div></div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -144,6 +196,38 @@
   const msg = (ic, t, d) => { $('done-act').classList.add('hidden'); $('msg-ic').textContent = ic; $('msg-t').textContent = t; $('msg-d').innerHTML = d || ''; $('msg').classList.remove('hidden'); };
   const eid = new URLSearchParams(location.search).get('e') || '';
   let ev = null, attend = '', lunch = '';
+  // ===== 團服訂購 =====
+  const SHIRT_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '5XL'], PANTS_SIZES = ['S', 'M', 'L', 'XL', '2L', '3L', '4L', '5L', '6L'];
+  const U = { mem: '', buy: '', shirt: '', pants: '', sq: 0, pq: 0 };
+  const uOn = () => !!(ev && ev.askUniform) && attend && attend !== 'no';
+  const uNeedPick = () => U.mem === 'new' || (U.mem === 'old' && U.buy === 'yes');
+  function uRender() {
+    $('uni-card').classList.toggle('hidden', !uOn());
+    document.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === U.mem));
+    document.querySelectorAll('[data-b]').forEach(b => b.classList.toggle('on', b.dataset.b === U.buy));
+    $('u-new').classList.toggle('hidden', U.mem !== 'new'); $('u-old').classList.toggle('hidden', U.mem !== 'old'); $('u-pick').classList.toggle('hidden', !uNeedPick());
+    const isNew = U.mem === 'new';
+    if (isNew) U.pq = 2;
+    $('u-shirt-sub').textContent = isNew ? '配發 2 件（免費）・加購每件 400 元' : '每件 400 元';
+    $('u-pants-sub').textContent = isNew ? '必須訂 2 件・每件 400 元，共 800 元' : '每件 400 元';
+    $('u-shirt-ql').textContent = isNew ? '另外加購上衣件數' : '上衣件數';
+    $('u-pants-qrow').style.display = isNew ? 'none' : '';
+    $('u-shirt').innerHTML = SHIRT_SIZES.map(z => `<button type="button" class="chip${U.shirt === z ? ' on' : ''}" data-sz="shirt" data-v="${z}">${z}</button>`).join('');
+    $('u-pants').innerHTML = PANTS_SIZES.map(z => `<button type="button" class="chip${U.pants === z ? ' on' : ''}" data-sz="pants" data-v="${z}">${z}${/^[456]L$/.test(z) ? '*' : ''}</button>`).join('');
+    $('u-shirt-q').textContent = U.sq; $('u-pants-q').textContent = U.pq;
+    const shirtCost = U.sq * 400, pantsCost = U.pq * 400, total = shirtCost + pantsCost;
+    $('u-total').innerHTML = isNew
+      ? `應繳金額：NT$ ${total.toLocaleString()}<small>上衣 2 件（醫護團提供）${U.sq ? `＋加購 ${U.sq} 件 ${shirtCost} 元` : ''}・褲子 2 件 800 元${/^[456]L$/.test(U.pants) ? '・特殊尺寸另加價' : ''}</small>`
+      : `加購金額：NT$ ${total.toLocaleString()}<small>上衣 ${U.sq} 件 ${shirtCost} 元・褲子 ${U.pq} 件 ${pantsCost} 元${/^[456]L$/.test(U.pants) ? '・特殊尺寸另加價' : ''}</small>`;
+    document.querySelectorAll('[data-sz]').forEach(b => b.onclick = () => { U[b.dataset.sz] = b.dataset.v; b.closest('.field').classList.remove('bad'); if (/^[456]L$/.test(b.dataset.v)) toast('4L、5L、6L 為特殊尺寸，須加價且需先確認有貨', 3200); uRender(); });
+  }
+  const uData = () => !uOn() ? null : { member: U.mem, buy: U.mem === 'new' ? true : U.buy === 'yes', shirtSize: uNeedPick() ? U.shirt : '', shirtQty: uNeedPick() ? U.sq : 0,
+    pantsSize: uNeedPick() ? U.pants : '', pantsQty: uNeedPick() ? U.pq : 0, total: uNeedPick() ? (U.sq + U.pq) * 400 : 0 };
+  const uText = d => !d ? '' : d.member === 'new' ? `新團員・上衣 ${d.shirtSize}（2 件${d.shirtQty ? '＋加購 ' + d.shirtQty : ''}）・褲子 ${d.pantsSize} ×2・NT$${d.total}`
+    : d.buy ? `舊團員加購・上衣 ${d.shirtQty ? d.shirtSize + '×' + d.shirtQty : '無'}・褲子 ${d.pantsQty ? d.pantsSize + '×' + d.pantsQty : '無'}・NT$${d.total}` : '舊團員・不加購';
+  function uOpen() { $('u-ov').classList.remove('hidden'); $('u-ov').querySelector('.u-box').scrollTop = 0; }
+  let uShown = false;
+  const uMaybePop = () => { if (uOn() && !uShown && !U.mem) { uShown = true; setTimeout(uOpen, 250); } };
 
   (async () => {
     msg('⏳', '載入中…');
@@ -168,7 +252,14 @@
     $('reason-box').classList.toggle('hidden', attend !== 'join');
     b.closest('.field').classList.remove('bad');
     $('lunch-card').classList.toggle('hidden', attend === 'no' || (ev && ev.askLunch === false));
+    uRender(); uMaybePop();
   });
+  document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { U.mem = b.dataset.m; b.closest('.field').classList.remove('bad'); if (U.mem === 'new') U.pq = 2; else if (U.pq === 2 && !U.buy) U.pq = 0; uRender(); });
+  document.querySelectorAll('[data-b]').forEach(b => b.onclick = () => { U.buy = b.dataset.b; b.closest('.field').classList.remove('bad'); uRender(); });
+  document.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { const k = b.dataset.q === 'shirt' ? 'sq' : 'pq'; U[k] = Math.max(0, Math.min(10, U[k] + +b.dataset.d)); uRender(); });
+  $('u-info').onclick = uOpen;
+  $('u-x').onclick = () => $('u-ov').classList.add('hidden');
+  $('u-ov').onclick = ev2 => { if (ev2.target.id === 'u-ov') $('u-ov').classList.add('hidden'); const m = ev2.target.closest('[data-m2]'); if (m) { U.mem = m.dataset.m2; if (U.mem === 'new') U.pq = 2; $('u-ov').classList.add('hidden'); uRender(); $('uni-card').scrollIntoView({ behavior: 'smooth', block: 'start' }); } };
   document.querySelectorAll('[data-f="lunch"] .chip').forEach(c => c.onclick = () => {
     lunch = c.textContent; c.closest('.field').classList.remove('bad');
     document.querySelectorAll('[data-f="lunch"] .chip').forEach(x => x.classList.toggle('on', x === c));
@@ -195,17 +286,27 @@
     mark(document.querySelector('[data-f="attend"]'), !!attend);
     if (attend === 'join') mark($('reason-box'), !!v('reason'));
     if (!$('lunch-card').classList.contains('hidden')) mark(document.querySelector('[data-f="lunch"]'), !!lunch);
+    if (uOn()) {
+      mark(document.querySelector('[data-f="umem"]'), !!U.mem);
+      if (U.mem === 'old') mark(document.querySelector('[data-f="ubuy"]'), !!U.buy);
+      if (uNeedPick()) {
+        if (U.mem === 'new' || U.sq) mark(document.querySelector('[data-f="ushirt"]'), !!U.shirt);
+        if (U.mem === 'new' || U.pq) mark(document.querySelector('[data-f="upants"]'), !!U.pants);
+        if (U.mem === 'old' && !U.sq && !U.pq) { toast('要加購的話，請選擇件數'); bad.push($('u-pick')); }
+      }
+    }
     if (bad.length) { bad[0].scrollIntoView({ behavior: 'smooth', block: 'center' }); return toast('還有欄位沒填好'); }
     const btn = $('btn-submit'); btn.disabled = true; btn.textContent = '送出中…';
     try {
       await addDoc(collection(db, 'events', eid, 'responses'), {
         name: v('name'), lineName: v('lineName'), attend, lunch: attend === 'no' ? '' : lunch,
-        reason: attend === 'join' ? v('reason') : '', comment: v('comment'), createdAt: serverTimestamp(), src: 'form'
+        reason: attend === 'join' ? v('reason') : '', comment: v('comment'), createdAt: serverTimestamp(), src: 'form',
+        ...(uData() ? { uniform: uData() } : {})
       });
       try { localStorage.setItem('attend_me', JSON.stringify({ name: v('name'), lineName: v('lineName') })); } catch (err) {}
       f.classList.add('hidden'); window.scrollTo(0, 0);
       const label = { yes: '✅ 出席', join: '⚠️ 無法出席，但參與團隊進香', no: '❌ 不出席，亦不參與進香' }[attend];
-      msg('✅', '已收到你的回覆，謝謝！', `<b>${v('name').replace(/</g, '&lt;')}</b>：${label}${lunch && attend !== 'no' ? '<br>午膳：' + lunch : ''}<br><span style="font-size:12px">要更改的話，重新填寫一次即可，以最後一次為準。</span>`
+      msg('✅', '已收到你的回覆，謝謝！', `<b>${v('name').replace(/</g, '&lt;')}</b>：${label}${lunch && attend !== 'no' ? '<br>午膳：' + lunch : ''}${uData() ? '<br>團服：' + uText(uData()) : ''}<br><span style="font-size:12px">要更改的話，重新填寫一次即可，以最後一次為準。</span>`
         );
       $('done-act').classList.remove('hidden');
     } catch (err) {

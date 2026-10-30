@@ -1151,6 +1151,19 @@
       const c = ev.target.closest('[data-c]'); if (c) showList(c.dataset.c, groups[c.dataset.c] || []);
     };
   }
+  const uniText = d => !d ? '' : d.member === 'new' ? `🆕 新團員・上衣 ${d.shirtSize}（2 件${d.shirtQty ? '＋加購 ' + d.shirtQty : ''}）・褲子 ${d.pantsSize}×2・$${d.total}`
+    : d.buy ? `舊團員加購・上衣 ${d.shirtQty ? d.shirtSize + '×' + d.shirtQty : '無'}・褲子 ${d.pantsQty ? d.pantsSize + '×' + d.pantsQty : '無'}・$${d.total}` : '舊團員・不加購';
+  function uniSummary(rs) {
+    const list = rs.filter(r => r.uniform && r.attend !== 'no'); if (!list.length) return '';
+    const shirt = {}, pants = {}; let money = 0, nNew = 0, nBuy = 0;
+    list.forEach(r => { const d = r.uniform; money += +d.total || 0; if (d.member === 'new') nNew++; else if (d.buy) nBuy++;
+      const sq = d.member === 'new' ? 2 + (+d.shirtQty || 0) : +d.shirtQty || 0, pq = +d.pantsQty || 0;
+      if (sq && d.shirtSize) shirt[d.shirtSize] = (shirt[d.shirtSize] || 0) + sq; if (pq && d.pantsSize) pants[d.pantsSize] = (pants[d.pantsSize] || 0) + pq; });
+    const ord = (o, keys) => keys.filter(k => o[k]).map(k => `<span class="ev-tag" style="background:#fff7ed;color:#9a3412">${k} × ${o[k]}</span>`).join(' ') || '—';
+    return `<div class="card" style="padding:14px 16px;margin-top:10px;"><div style="font-weight:900;font-size:15px;margin-bottom:6px;">👕 團服訂購統計</div>
+      <div style="font-size:13px;color:var(--sub);margin-bottom:8px;">新團員 ${nNew} 人・舊團員加購 ${nBuy} 人・應收合計 <b style="color:var(--primary)">NT$ ${money.toLocaleString()}</b></div>
+      <div style="font-size:13px;line-height:2.1;"><b>上衣</b>　${ord(shirt, ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '5XL'])}<br><b>褲子</b>　${ord(pants, ['S', 'M', 'L', 'XL', '2L', '3L', '4L', '5L', '6L'])}</div></div>`;
+  }
   function renderRoster() {
     const certs = {}; rosterCache.forEach(r => { const c = r.cert || '未填'; certs[c] = (certs[c] || 0) + 1; });
     const bound = rosterCache.filter(r => r.boundUserId).length;
@@ -1852,7 +1865,7 @@
     const lotTag = r => { if (r.attend === 'no') return ''; const v = dmap[normName(r.name)]; return v ? `<span class="ev-tag lot">🎲 ${esc(v)}</span>` : '<span class="ev-tag none">未抽籤</span>'; };
     const payTag = r => r.attend === 'no' ? '' : pmap[normName(r.name)] ? '<span class="ev-tag paid">✅ 已繳</span>' : '<span class="ev-tag unpaid">未繳</span>';
     const card = r => { const ro = rosterOf(r); return `<div class="ev-rc"><div class="n">${avR(ro)}<b>${esc(r.name || '')}</b> <span class="a">${ATT_SHORT[r.attend] || ''}</span> ${lotTag(r)} ${payTag(r)}</div>
-        <div class="s">${ro ? esc(rv(ro, 'position')) + '・' + esc(ro.cert || '') : '<span style="color:#b45309">未對應名冊</span>'}${r.lunch ? '　🍱 ' + esc(r.lunch) : ''}${r.lineName ? '　LINE：' + esc(r.lineName) : ''}</div>
+        <div class="s">${ro ? esc(rv(ro, 'position')) + '・' + esc(ro.cert || '') : '<span style="color:#b45309">未對應名冊</span>'}${r.lunch ? '　🍱 ' + esc(r.lunch) : ''}${r.lineName ? '　LINE：' + esc(r.lineName) : ''}</div>${r.uniform ? `<div class="x">👕 ${esc(uniText(r.uniform))}</div>` : ''}
         ${r.reason ? `<div class="x">原因：${esc(r.reason)}</div>` : ''}${r.comment ? `<div class="x">意見：${esc(r.comment)}</div>` : ''}
         <div class="t">${esc(fmtAt(tsMs(r.createdAt || r.updatedAt)))}<span style="float:right"><button class="sbtn" data-rede="${r.id}" style="padding:4px 10px;font-size:12px;">編輯</button> <button class="sbtn red" data-rdel="${r.id}" style="padding:4px 10px;font-size:12px;">刪除</button></span></div></div>`; };
     const row = r => { const ro = rosterOf(r); return `<tr><td><div style="display:flex;align-items:center;gap:8px;">${avR(ro)}<div><b>${esc(r.name || '')}</b>${ro ? `<div style="font-size:11px;color:var(--sub)">${esc(rv(ro, 'position'))}・${esc(ro.cert || '')}</div>` : '<div style="font-size:11px;color:#b45309">未對應名冊</div>'}</div></div></td>
@@ -1877,7 +1890,7 @@
           ${e.askLunch === false ? '' : LUNCH.map(l => st('l:' + l, '午膳・' + l, lc(l))).join('')}
         </div>
         <div style="font-size:12px; color:var(--sub);">👆 點上面的數字，下方就只列出那一類的人</div>
-      </div>
+      </div>${e.askUniform ? uniSummary(rs) : ''}
       <div class="grp-t">📋 ${esc(fTitle)}（${evFilter === 'none' ? notYet.length : shown.length}）</div>
       ${evFilter === 'none' ? `<div class="card" style="padding:12px 14px; font-size:14px; line-height:2;">${notYet.map(r => esc(r.name || '')).join('、') || '全部都回覆了 🎉'}</div>` : `
       <div class="ev-cards">${shown.map(card).join('') || '<div class="card empty">沒有資料</div>'}</div>
@@ -1931,8 +1944,9 @@
       } catch (err) { console.error(err); toast('❌ 清除失敗'); }
     };
     $('ev-csv').onclick = () => {
-      const head = ['序號', '職位', '姓名', '證照', '出席', '午膳', '無法出席原因', '意見', 'LINE名稱', '回覆時間'];
-      const lines = [head].concat(rs.map(r => { const ro = rosterOf(r); return [ro ? ro.serial || '' : '', ro ? rv(ro, 'position') : '', r.name || '', ro ? ro.cert || '' : '', ATT_SHORT[r.attend] || '', r.lunch || '', r.reason || '', r.comment || '', r.lineName || '', fmtAt(tsMs(r.createdAt || r.updatedAt))]; }))
+      const head = ['序號', '職位', '姓名', '證照', '出席', '午膳', '無法出席原因', '意見', 'LINE名稱', '回覆時間', '新/舊團員', '上衣尺寸', '上衣件數', '褲子尺寸', '褲子件數', '團服金額'];
+      const U = r => { const d = r.uniform; if (!d) return ['', '', '', '', '', '']; const sq = d.member === 'new' ? 2 + (+d.shirtQty || 0) : +d.shirtQty || 0; return [d.member === 'new' ? '新團員' : d.buy ? '舊團員加購' : '舊團員不加購', d.shirtSize || '', sq || '', d.pantsSize || '', d.pantsQty || '', d.total || 0]; };
+      const lines = [head].concat(rs.map(r => { const ro = rosterOf(r); return [ro ? ro.serial || '' : '', ro ? rv(ro, 'position') : '', r.name || '', ro ? ro.cert || '' : '', ATT_SHORT[r.attend] || '', r.lunch || '', r.reason || '', r.comment || '', r.lineName || '', fmtAt(tsMs(r.createdAt || r.updatedAt)), ...U(r)]; }))
         .concat(notYet.map(r => [r.serial || '', rv(r, 'position'), r.name || '', r.cert || '', '未回覆', '', '', '', r.lineName || '', '']));
       const csv = '﻿' + lines.map(l => l.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
       const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = `${e.title || '出席調查'}.csv`; a.click();
@@ -3352,13 +3366,14 @@
         <div class="field"><label>日期／時間</label><input id="ev-date" value="${esc(e.date)}" placeholder="例如：115/01/10（六）09:00"></div>
         <div class="field"><label>說明（選填）</label><textarea id="ev-desc" placeholder="地點、注意事項…">${esc(e.desc || '')}</textarea></div>
         <label style="display:flex; gap:8px; align-items:center; font-size:14px; font-weight:800; margin:6px 2px 12px;"><input type="checkbox" id="ev-lunch" ${e.askLunch === false ? '' : 'checked'} style="width:18px;height:18px;"> 詢問午膳（葷／素／自行處理）</label>
+        <label style="display:flex; gap:8px; align-items:center; font-size:14px; font-weight:800; margin:-4px 2px 12px;"><input type="checkbox" id="ev-uni" ${e.askUniform ? 'checked' : ''} style="width:18px;height:18px;"> 詢問團服訂購（新團員配發／舊團員加購）</label>
       </div>
       <button class="btn" id="ev-save">${isNew ? '建立並取得連結' : '儲存'}</button>
       ${isNew ? '' : '<button class="btn ghost" id="ev-del" style="margin-top:8px; color:var(--red);">刪除這個出席調查</button>'}`;
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open'); $('sheet').scrollTop = 0;
     $('ev-save').onclick = async () => {
       const title = $('ev-title').value.trim(); if (!title) return toast('請填寫標題');
-      const data = { title, date: $('ev-date').value.trim(), desc: $('ev-desc').value.trim(), askLunch: $('ev-lunch').checked };
+      const data = { title, date: $('ev-date').value.trim(), desc: $('ev-desc').value.trim(), askLunch: $('ev-lunch').checked, askUniform: $('ev-uni').checked };
       try {
         if (isNew) { const id = 'ev' + Date.now().toString(36); await setDoc(doc(db, 'events', id), { ...data, open: true, createdAt: serverTimestamp(), createdBy: user.realName || '' }); evOpenId = id; }
         else await updateDoc(doc(db, 'events', e.id), data);

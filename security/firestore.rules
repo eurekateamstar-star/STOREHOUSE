@@ -137,7 +137,9 @@ service cloud.firestore {
       allow write: if isAdmin();
       match /responses/{rid} {
         allow create: if get(/databases/$(database)/documents/events/$(eid)).data.get('open', false) == true
-          && request.resource.data.keys().hasOnly(['name', 'lineName', 'attend', 'lunch', 'reason', 'comment', 'createdAt', 'src'])
+          && request.resource.data.keys().hasOnly(['name', 'lineName', 'attend', 'lunch', 'reason', 'comment', 'createdAt', 'src', 'uniform'])
+          && (!('uniform' in request.resource.data) || (request.resource.data.uniform is map
+              && request.resource.data.uniform.keys().hasOnly(['member', 'buy', 'shirtSize', 'shirtQty', 'pantsSize', 'pantsQty', 'total'])))
           && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 20
           && request.resource.data.attend in ['yes', 'join', 'no']
           && request.resource.data.createdAt == request.time
