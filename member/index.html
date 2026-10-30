@@ -1161,6 +1161,11 @@
   const uniAmt = r => (r && r.uniform && r.attend !== 'no') ? (+r.uniform.total || 0) : 0;
   const uniCell = d => { const it = uniItems(d); if (!it.shirts.length && !it.pants.length) return d.member === 'old' ? '<span style="color:#9ca3af">不加購</span>' : '';
     return `${d.member === 'new' ? '<b style="color:#be123c">新</b> ' : ''}${it.shirts.length ? '👕 ' + esc(cntTxt(it.shirts)) : ''}${it.shirts.length && it.pants.length ? '<br>' : ''}${it.pants.length ? '👖 ' + esc(cntTxt(it.pants)) : ''}${d.total ? `<br><b style="color:#c2410c">$${d.total}</b>` : ''}`; };
+  // 團服領取清單：一人一列（尺寸不同就用「、」列出）
+  const uniReceipt = groups => DRAW_GROUPS.flatMap(g => groups[g]).filter(p => p.r.uniform && p.r.attend !== 'no').map(p => {
+    const d = p.r.uniform, it = uniItems(d); if (!it.shirts.length && !it.pants.length) return null;
+    return { name: p.name, line: p.r.lineName || '', shirt: cntTxt(it.shirts), sq: it.shirts.length, pant: cntTxt(it.pants), pq: it.pants.length, note: d.member === 'new' ? '新團員' : '舊團員加購', total: +d.total || 0 };
+  }).filter(Boolean);
   const uniText = d => { if (!d) return ''; const it = uniItems(d);
     return (d.member === 'new' ? '🆕 新團員' : d.buy ? '舊團員加購' : '舊團員・不加購') + (it.shirts.length ? `・上衣 ${cntTxt(it.shirts)}` : '') + (it.pants.length ? `・褲子 ${cntTxt(it.pants)}` : '') + (d.total ? `・$${d.total}` : ''); };
   function uniSummary(rs) {
@@ -2180,15 +2185,15 @@
       sum.push([g, hun, veg, ppl.length]);
     });
     if (!pages.length) return toast('還沒有人回覆出席');
-    // 團服訂購明細（每個人的尺寸）＋各尺寸件數
-    { const all = DRAW_GROUPS.flatMap(g => groups[g]).filter(p => p.r.uniform && (uniItems(p.r.uniform).shirts.length || uniItems(p.r.uniform).pants.length));
-      if (all.length) {
-        let sh = [], pa = [], money = 0;
-        const rows = all.map((p, i) => { const d = p.r.uniform, it = uniItems(d); sh = sh.concat(it.shirts); pa = pa.concat(it.pants); money += +d.total || 0;
-          return `<tr><td>${i + 1}</td><td>${esc(p.name)}</td><td>${d.member === 'new' ? '新團員' : '加購'}</td><td>${esc(cntTxt(it.shirts)) || '—'}</td><td>${esc(cntTxt(it.pants)) || '—'}</td><td>${d.total || 0}</td></tr>`; });
+    // 團服領取清單（每個人的尺寸、數量、領取簽名）＋各尺寸件數
+    { const rc = uniReceipt(groups);
+      if (rc.length) {
+        let sh = [], pa = [];
+        DRAW_GROUPS.flatMap(g => groups[g]).forEach(p => { if (p.r.uniform && p.r.attend !== 'no') { const it = uniItems(p.r.uniform); sh = sh.concat(it.shirts); pa = pa.concat(it.pants); } });
+        const rows = rc.map((x, i) => `<tr><td>${i + 1}</td><td>${esc(x.name)}</td><td style="font-size:15px">${esc(x.line)}</td><td>${esc(x.shirt)}</td><td>${x.sq || ''}</td><td>${esc(x.pant)}</td><td>${x.pq || ''}</td><td></td><td style="font-size:14px">${x.note === '新團員' ? '' : esc(x.note)}</td></tr>`);
         const n = Math.max(1, Math.ceil(rows.length / PER));
-        for (let i = 0; i < n; i++) pages.push(page(yt + '團服訂購明細', n > 1 ? `第 ${i + 1}／${n} 頁` : '', [['序號', 8], ['姓名', 16], ['身分', 12], ['上衣尺寸', 24], ['褲子尺寸', 24], ['金額', 16]], rows.slice(i * PER, (i + 1) * PER),
-          i === n - 1 ? ['', '合計', `${all.length} 人`, `${sh.length} 件`, `${pa.length} 件`, money] : null));
+        for (let i = 0; i < n; i++) pages.push(page(yt + '團服領取簽收表', n > 1 ? `第 ${i + 1}／${n} 頁` : '', [['序', 6], ['姓名', 13], ['Line名稱', 17], ['衣服尺寸', 13], ['數量', 7], ['褲子尺寸', 13], ['數量', 7], ['領取簽名', 14], ['備註', 10]], rows.slice(i * PER, (i + 1) * PER),
+          i === n - 1 ? ['', '合計', `${rc.length} 人`, '', sh.length, '', pa.length, '', ''] : null));
         const so = sizeCnt(sh), po = sizeCnt(pa), SK = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '5XL'], PK = ['S', 'M', 'L', 'XL', '2L', '3L', '4L', '5L', '6L'];
         const keys = (o, k) => k.filter(x => o[x]).concat(Object.keys(o).filter(x => !k.includes(x)));
         pages.push(page(yt + '團服訂購統計（給廠商）', '', [['品項', 30], ['尺寸', 35], ['件數', 35]],
@@ -3345,6 +3350,20 @@
       totals.push([g, ws.name, tr, ppl.length, nHun, nVeg]);
     });
     // 便當統計
+    { const rc = uniReceipt(groups);
+      if (rc.length) {
+        const ws = wb.addWorksheet('團服領取簽收表', { pageSetup: { orientation: 'portrait', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, horizontalCentered: true, margins: { left: .3, right: .3, top: .45, bottom: .5, header: .2, footer: .25 } },
+          headerFooter: { oddFooter: '&C第 &P 頁，共 &N 頁' }, views: [{ state: 'frozen', ySplit: 2 }] });
+        ws.columns = [5, 11, 20, 10, 6, 10, 6, 16, 14].map(w => ({ width: w }));
+        ws.mergeCells('A1:I1'); Object.assign(ws.getCell('A1'), { value: `白沙屯拱天宮進香醫護團 ${yt}團服領取簽收表`, font: font({ size: 16, bold: true }), alignment: { horizontal: 'center', vertical: 'middle' } }); ws.getRow(1).height = 32;
+        const H = ['序', '姓名', 'Line名稱', '衣服尺寸', '數量', '褲子尺寸', '數量', '領取簽名', '備註'];
+        const put = (row, vals, f = {}) => vals.forEach((v, k) => { const c = row.getCell(k + 1); c.value = v; c.font = font({ size: 13, ...f }); c.border = border; c.alignment = { horizontal: k === 2 ? 'left' : 'center', vertical: 'middle', wrapText: true }; });
+        put(ws.getRow(2), H, { bold: true }); ws.getRow(2).eachCell(c => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3EDEA' } }); ws.getRow(2).height = 24;
+        rc.forEach((x, i) => { const r = ws.getRow(3 + i); r.height = 30; put(r, [i + 1, x.name, x.line, x.shirt, x.sq || null, x.pant, x.pq || null, '', x.note === '新團員' ? '' : x.note]); });
+        const L = 2 + rc.length, tr = ws.getRow(L + 1); tr.height = 26;
+        put(tr, ['', '合計', `${rc.length} 人`, '', { formula: `SUM(E3:E${L})` }, '', { formula: `SUM(G3:G${L})` }, '', ''], { bold: true });
+        ws.pageSetup.printTitlesRow = '2:2';
+      } }
     const sm = wb.addWorksheet('便當統計');
     sm.columns = [{ width: 20 }, { width: 10 }, { width: 10 }, { width: 10 }];
     sm.mergeCells('A1:D1'); Object.assign(sm.getCell('A1'), { value: `${e.date || ''} ${e.title || ''} 便當統計`, font: font({ size: 14, bold: true }), alignment: { horizontal: 'center' } });
