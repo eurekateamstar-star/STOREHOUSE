@@ -1158,6 +1158,9 @@
     return { shirts: Array(sq).fill(d.shirtSize || '?'), pants: Array(pq).fill(d.pantsSize || '?') }; };
   const sizeCnt = a => { const o = {}; a.forEach(z => o[z] = (o[z] || 0) + 1); return o; };
   const cntTxt = a => Object.entries(sizeCnt(a)).map(([z, n]) => n > 1 ? `${z}×${n}` : z).join('、');
+  const uniAmt = r => (r && r.uniform && r.attend !== 'no') ? (+r.uniform.total || 0) : 0;
+  const uniCell = d => { const it = uniItems(d); if (!it.shirts.length && !it.pants.length) return d.member === 'old' ? '<span style="color:#9ca3af">不加購</span>' : '';
+    return `${d.member === 'new' ? '<b style="color:#be123c">新</b> ' : ''}${it.shirts.length ? '👕 ' + esc(cntTxt(it.shirts)) : ''}${it.shirts.length && it.pants.length ? '<br>' : ''}${it.pants.length ? '👖 ' + esc(cntTxt(it.pants)) : ''}${d.total ? `<br><b style="color:#c2410c">$${d.total}</b>` : ''}`; };
   const uniText = d => { if (!d) return ''; const it = uniItems(d);
     return (d.member === 'new' ? '🆕 新團員' : d.buy ? '舊團員加購' : '舊團員・不加購') + (it.shirts.length ? `・上衣 ${cntTxt(it.shirts)}` : '') + (it.pants.length ? `・褲子 ${cntTxt(it.pants)}` : '') + (d.total ? `・$${d.total}` : ''); };
   function uniSummary(rs) {
@@ -1874,7 +1877,7 @@
         ${r.reason ? `<div class="x">原因：${esc(r.reason)}</div>` : ''}${r.comment ? `<div class="x">意見：${esc(r.comment)}</div>` : ''}
         <div class="t">${esc(fmtAt(tsMs(r.createdAt || r.updatedAt)))}<span style="float:right"><button class="sbtn" data-rede="${r.id}" style="padding:4px 10px;font-size:12px;">編輯</button> <button class="sbtn red" data-rdel="${r.id}" style="padding:4px 10px;font-size:12px;">刪除</button></span></div></div>`; };
     const row = r => { const ro = rosterOf(r); return `<tr><td><div style="display:flex;align-items:center;gap:8px;">${avR(ro)}<div><b>${esc(r.name || '')}</b>${ro ? `<div style="font-size:11px;color:var(--sub)">${esc(rv(ro, 'position'))}・${esc(ro.cert || '')}</div>` : '<div style="font-size:11px;color:#b45309">未對應名冊</div>'}</div></div></td>
-        <td>${ATT_SHORT[r.attend] || ''}</td><td>${lotTag(r)}</td><td>${payTag(r)}</td><td>${esc(r.lunch || '')}</td><td>${esc(r.reason || '')}</td><td>${esc(r.comment || '')}</td><td style="font-size:12px">${esc(r.lineName || '')}</td><td style="font-size:11px;color:var(--sub);white-space:nowrap">${esc(fmtAt(tsMs(r.createdAt || r.updatedAt)))}</td>
+        <td>${ATT_SHORT[r.attend] || ''}</td><td>${lotTag(r)}</td><td>${payTag(r)}</td><td>${esc(r.lunch || '')}</td><td style="font-size:12px;min-width:120px">${r.uniform ? uniCell(r.uniform) : ''}</td><td>${esc(r.reason || '')}</td><td>${esc(r.comment || '')}</td><td style="font-size:12px">${esc(r.lineName || '')}</td><td style="font-size:11px;color:var(--sub);white-space:nowrap">${esc(fmtAt(tsMs(r.createdAt || r.updatedAt)))}</td>
         <td style="white-space:nowrap"><button class="sbtn" data-rede="${r.id}" style="padding:4px 10px;font-size:12px;">編輯</button> <button class="sbtn red" data-rdel="${r.id}" style="padding:4px 10px;font-size:12px;">刪除</button></td></tr>`; };
     $('ev-list').innerHTML = `
       <button class="sbtn" id="ev-back" style="margin-bottom:10px;">← 所有出席調查</button>
@@ -1900,7 +1903,7 @@
       ${evFilter === 'none' ? `<div class="card" style="padding:12px 14px; font-size:14px; line-height:2;">${notYet.map(r => esc(r.name || '')).join('、') || '全部都回覆了 🎉'}</div>` : `
       <div class="ev-cards">${shown.map(card).join('') || '<div class="card empty">沒有資料</div>'}</div>
       <div class="card ev-tbl-wrap" style="padding:8px 10px; overflow-x:auto;">
-        <table class="ev-tbl"><thead><tr><th>姓名</th><th>出席</th><th>抽籤</th><th>團費</th><th>午膳</th><th>無法出席原因</th><th>意見</th><th>LINE 名稱</th><th>回覆時間</th><th></th></tr></thead>
+        <table class="ev-tbl"><thead><tr><th>姓名</th><th>出席</th><th>抽籤</th><th>團費</th><th>午膳</th><th>團服</th><th>無法出席原因</th><th>意見</th><th>LINE 名稱</th><th>回覆時間</th><th></th></tr></thead>
         <tbody>${shown.map(row).join('') || '<tr><td colspan="10"><div class="empty">沒有資料</div></td></tr>'}</tbody></table>
       </div>`}
       <div style="font-size:12px; color:var(--sub); margin:8px 4px;">※ 依「姓名」自動對應名冊；同一人重複填寫以最後一次為準。顯示「未對應名冊」的，可能是名字寫法不同或尚未加入名冊。</div>`;
@@ -2169,11 +2172,29 @@
       const r1 = ppl.map((p, i) => { const l = p.r.lunch || '', h = l.startsWith('葷'), v = l.startsWith('素'); if (h) hun++; if (v) veg++;
         return `<tr><td>${i + 1}</td><td>${esc(p.name)}</td><td>${p.r.attend === 'join' ? '請假' : ''}</td>${l === '自行處理' ? '<td colspan="2">不訂餐</td>' : `<td>${h ? 1 : ''}</td><td>${v ? 1 : ''}</td>`}<td></td></tr>`; });
       paged('行前教育訓練簽到表', g, [['序號', 9], ['姓名', 19], ['簽　　到', 32], ['葷食', 11], ['素食', 11], ['領年曆', 18]], r1, ['', '合計', '', hun, veg, '']);
-      const r2 = ppl.map((p, i) => `<tr><td>${i + 1}</td><td>${esc(p.name)}</td><td>2500</td><td></td><td>2500</td><td>${paid[p.key] ? '✔ 已繳' : ''}</td></tr>`);
-      paged('繳費紀錄表', g, [['序號', 9], ['姓名', 19], ['團費', 16], ['服裝', 16], ['合計', 18], ['收費確認', 22]], r2, ['', '合計', 2500 * ppl.length, '', 2500 * ppl.length, `已繳 ${ppl.filter(p => paid[p.key]).length}`]);
+      let uSum = 0;
+      const r2 = ppl.map((p, i) => { const u = uniAmt(p.r), it = p.r.uniform ? uniItems(p.r.uniform) : { shirts: [], pants: [] }; uSum += u;
+        const sz = [it.shirts.length ? '衣 ' + cntTxt(it.shirts) : '', it.pants.length ? '褲 ' + cntTxt(it.pants) : ''].filter(Boolean).join('<br>');
+        return `<tr><td>${i + 1}</td><td>${esc(p.name)}</td><td>2500</td><td>${u ? u : ''}${sz ? `<div class="sz">${esc(sz).replace(/&lt;br&gt;/g, '<br>')}</div>` : ''}</td><td>${2500 + u}</td><td>${paid[p.key] ? '✔ 已繳' : ''}</td></tr>`; });
+      paged('繳費紀錄表', g, [['序號', 9], ['姓名', 19], ['團費', 14], ['服裝', 22], ['合計', 16], ['收費確認', 20]], r2, ['', '合計', 2500 * ppl.length, uSum || '', 2500 * ppl.length + uSum, `已繳 ${ppl.filter(p => paid[p.key]).length}`]);
       sum.push([g, hun, veg, ppl.length]);
     });
     if (!pages.length) return toast('還沒有人回覆出席');
+    // 團服訂購明細（每個人的尺寸）＋各尺寸件數
+    { const all = DRAW_GROUPS.flatMap(g => groups[g]).filter(p => p.r.uniform && (uniItems(p.r.uniform).shirts.length || uniItems(p.r.uniform).pants.length));
+      if (all.length) {
+        let sh = [], pa = [], money = 0;
+        const rows = all.map((p, i) => { const d = p.r.uniform, it = uniItems(d); sh = sh.concat(it.shirts); pa = pa.concat(it.pants); money += +d.total || 0;
+          return `<tr><td>${i + 1}</td><td>${esc(p.name)}</td><td>${d.member === 'new' ? '新團員' : '加購'}</td><td>${esc(cntTxt(it.shirts)) || '—'}</td><td>${esc(cntTxt(it.pants)) || '—'}</td><td>${d.total || 0}</td></tr>`; });
+        const n = Math.max(1, Math.ceil(rows.length / PER));
+        for (let i = 0; i < n; i++) pages.push(page(yt + '團服訂購明細', n > 1 ? `第 ${i + 1}／${n} 頁` : '', [['序號', 8], ['姓名', 16], ['身分', 12], ['上衣尺寸', 24], ['褲子尺寸', 24], ['金額', 16]], rows.slice(i * PER, (i + 1) * PER),
+          i === n - 1 ? ['', '合計', `${all.length} 人`, `${sh.length} 件`, `${pa.length} 件`, money] : null));
+        const so = sizeCnt(sh), po = sizeCnt(pa), SK = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '5XL'], PK = ['S', 'M', 'L', 'XL', '2L', '3L', '4L', '5L', '6L'];
+        const keys = (o, k) => k.filter(x => o[x]).concat(Object.keys(o).filter(x => !k.includes(x)));
+        pages.push(page(yt + '團服訂購統計（給廠商）', '', [['品項', 30], ['尺寸', 35], ['件數', 35]],
+          keys(so, SK).map(z => `<tr><td>上衣</td><td>${esc(z)}</td><td>${so[z]}</td></tr>`).concat(keys(po, PK).map(z => `<tr><td>工作褲</td><td>${esc(z)}</td><td>${po[z]}</td></tr>`)),
+          ['合計', '', `上衣 ${sh.length} 件・褲子 ${pa.length} 件`]));
+      } }
     const tot = sum.reduce((a, x) => [a[0] + x[1], a[1] + x[2], a[2] + x[3]], [0, 0, 0]);
     pages.push(page(esc((e.date || '') + ' ' + (e.title || '')) + '<br>便當統計', '', [['類別', 40], ['葷食', 20], ['素食', 20], ['人數', 20]],
       sum.map(x => `<tr><td>${esc(x[0])}</td><td>${x[1]}</td><td>${x[2]}</td><td>${x[3]}</td></tr>`), ['小計', tot[0], tot[1], tot[2]]));
@@ -2183,7 +2204,7 @@
       .pdfp .pg{width:794px;height:1123px;padding:46px 42px;box-sizing:border-box;background:#fff;color:#000;font-family:"Microsoft JhengHei","PingFang TC","Noto Sans TC","Noto Sans CJK TC",sans-serif}
       .pdfp .tt{text-align:center;font-size:25px;font-weight:900;line-height:1.4;margin-bottom:8px}.pdfp .gp{font-size:19px;font-weight:900;margin:0 0 6px}
       .pdfp table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:19px}.pdfp th,.pdfp td{border:1.5px solid #333;text-align:center;height:43px;padding:0 4px;overflow:hidden;white-space:nowrap}
-      .pdfp th{background:#f1ebe8;font-size:17px;height:36px}.pdfp tr.ft td{font-weight:900}</style><div class="pdfp">${pages.join('')}</div>`;
+      .pdfp th{background:#f1ebe8;font-size:17px;height:36px}.pdfp tr.ft td{font-weight:900}.pdfp .sz{font-size:12px;line-height:1.25;color:#555;white-space:normal}</style><div class="pdfp">${pages.join('')}</div>`;
     document.body.appendChild(box);
     try {
       const { jsPDF } = window.jspdf, pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
@@ -3318,8 +3339,8 @@
         return [i + 1, p.name, p.r.attend === 'join' ? '請假' : '', lunch.startsWith('葷') ? 1 : lunch === '自行處理' ? '不訂餐' : null, lunch.startsWith('素') ? 1 : null, ''];
       }, (a, z) => [null, '合計', null, { formula: `SUM(D${a}:D${z})`, result: nHun }, { formula: `SUM(E${a}:E${z})`, result: nVeg }, null]);
       block('繳費紀錄表', ['序 號', '姓名', '團費', '服裝', '合計', '收費確認'],
-        (p, i, rn) => [i + 1, p.name, 2500, null, { formula: `SUM(C${rn}:D${rn})`, result: 2500 }, (evPaid[eid] || {})[p.key] ? '✔ 已繳' : ''],
-        (a, z) => [null, '合計', { formula: `SUM(C${a}:C${z})`, result: nFee }, { formula: `SUM(D${a}:D${z})`, result: 0 }, { formula: `SUM(E${a}:E${z})`, result: nFee }, null]);
+        (p, i, rn) => { const u = uniAmt(p.r); return [i + 1, p.name, 2500, u || null, { formula: `SUM(C${rn}:D${rn})`, result: 2500 + u }, (evPaid[eid] || {})[p.key] ? '✔ 已繳' : '']; },
+        (a, z) => { const uT = ppl.reduce((x, p) => x + uniAmt(p.r), 0); return [null, '合計', { formula: `SUM(C${a}:C${z})`, result: nFee }, { formula: `SUM(D${a}:D${z})`, result: uT }, { formula: `SUM(E${a}:E${z})`, result: nFee + uT }, null]; });
       ws.pageSetup.printArea = `A1:F${cur}`;
       totals.push([g, ws.name, tr, ppl.length, nHun, nVeg]);
     });
