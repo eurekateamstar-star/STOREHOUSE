@@ -1151,18 +1151,23 @@
       const c = ev.target.closest('[data-c]'); if (c) showList(c.dataset.c, groups[c.dataset.c] || []);
     };
   }
-  const uniText = d => !d ? '' : d.member === 'new' ? `🆕 新團員・上衣 ${d.shirtSize}（2 件${d.shirtQty ? '＋加購 ' + d.shirtQty : ''}）・褲子 ${d.pantsSize}×2・$${d.total}`
-    : d.buy ? `舊團員加購・上衣 ${d.shirtQty ? d.shirtSize + '×' + d.shirtQty : '無'}・褲子 ${d.pantsQty ? d.pantsSize + '×' + d.pantsQty : '無'}・$${d.total}` : '舊團員・不加購';
+  // 團服：新格式 shirts/pants 是尺寸陣列（每件一筆）；舊格式 shirtSize+shirtQty 也相容
+  const uniItems = d => { if (!d) return { shirts: [], pants: [] };
+    if (Array.isArray(d.shirts) || Array.isArray(d.pants)) return { shirts: d.shirts || [], pants: d.pants || [] };
+    const sq = d.member === 'new' ? 2 + (+d.shirtQty || 0) : +d.shirtQty || 0, pq = +d.pantsQty || 0;
+    return { shirts: Array(sq).fill(d.shirtSize || '?'), pants: Array(pq).fill(d.pantsSize || '?') }; };
+  const sizeCnt = a => { const o = {}; a.forEach(z => o[z] = (o[z] || 0) + 1); return o; };
+  const cntTxt = a => Object.entries(sizeCnt(a)).map(([z, n]) => n > 1 ? `${z}×${n}` : z).join('、');
+  const uniText = d => { if (!d) return ''; const it = uniItems(d);
+    return (d.member === 'new' ? '🆕 新團員' : d.buy ? '舊團員加購' : '舊團員・不加購') + (it.shirts.length ? `・上衣 ${cntTxt(it.shirts)}` : '') + (it.pants.length ? `・褲子 ${cntTxt(it.pants)}` : '') + (d.total ? `・$${d.total}` : ''); };
   function uniSummary(rs) {
     const list = rs.filter(r => r.uniform && r.attend !== 'no'); if (!list.length) return '';
-    const shirt = {}, pants = {}; let money = 0, nNew = 0, nBuy = 0;
-    list.forEach(r => { const d = r.uniform; money += +d.total || 0; if (d.member === 'new') nNew++; else if (d.buy) nBuy++;
-      const sq = d.member === 'new' ? 2 + (+d.shirtQty || 0) : +d.shirtQty || 0, pq = +d.pantsQty || 0;
-      if (sq && d.shirtSize) shirt[d.shirtSize] = (shirt[d.shirtSize] || 0) + sq; if (pq && d.pantsSize) pants[d.pantsSize] = (pants[d.pantsSize] || 0) + pq; });
-    const ord = (o, keys) => keys.filter(k => o[k]).map(k => `<span class="ev-tag" style="background:#fff7ed;color:#9a3412">${k} × ${o[k]}</span>`).join(' ') || '—';
+    let shirts = [], pants = [], money = 0, nNew = 0, nBuy = 0;
+    list.forEach(r => { const d = r.uniform, it = uniItems(d); money += +d.total || 0; if (d.member === 'new') nNew++; else if (d.buy) nBuy++; shirts = shirts.concat(it.shirts); pants = pants.concat(it.pants); });
+    const ord = (o, keys) => keys.filter(k => o[k]).concat(Object.keys(o).filter(k => !keys.includes(k))).map(k => `<span class="ev-tag" style="background:#fff7ed;color:#9a3412">${k} × ${o[k]}</span>`).join(' ') || '—';
     return `<div class="card" style="padding:14px 16px;margin-top:10px;"><div style="font-weight:900;font-size:15px;margin-bottom:6px;">👕 團服訂購統計</div>
-      <div style="font-size:13px;color:var(--sub);margin-bottom:8px;">新團員 ${nNew} 人・舊團員加購 ${nBuy} 人・應收合計 <b style="color:var(--primary)">NT$ ${money.toLocaleString()}</b></div>
-      <div style="font-size:13px;line-height:2.1;"><b>上衣</b>　${ord(shirt, ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '5XL'])}<br><b>褲子</b>　${ord(pants, ['S', 'M', 'L', 'XL', '2L', '3L', '4L', '5L', '6L'])}</div></div>`;
+      <div style="font-size:13px;color:var(--sub);margin-bottom:8px;">新團員 ${nNew} 人・舊團員加購 ${nBuy} 人・上衣共 ${shirts.length} 件・褲子共 ${pants.length} 件・應收合計 <b style="color:var(--primary)">NT$ ${money.toLocaleString()}</b></div>
+      <div style="font-size:13px;line-height:2.1;"><b>上衣</b>　${ord(sizeCnt(shirts), ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '5XL'])}<br><b>褲子</b>　${ord(sizeCnt(pants), ['S', 'M', 'L', 'XL', '2L', '3L', '4L', '5L', '6L'])}</div></div>`;
   }
   function renderRoster() {
     const certs = {}; rosterCache.forEach(r => { const c = r.cert || '未填'; certs[c] = (certs[c] || 0) + 1; });
@@ -1944,8 +1949,8 @@
       } catch (err) { console.error(err); toast('❌ 清除失敗'); }
     };
     $('ev-csv').onclick = () => {
-      const head = ['序號', '職位', '姓名', '證照', '出席', '午膳', '無法出席原因', '意見', 'LINE名稱', '回覆時間', '新/舊團員', '上衣尺寸', '上衣件數', '褲子尺寸', '褲子件數', '團服金額'];
-      const U = r => { const d = r.uniform; if (!d) return ['', '', '', '', '', '']; const sq = d.member === 'new' ? 2 + (+d.shirtQty || 0) : +d.shirtQty || 0; return [d.member === 'new' ? '新團員' : d.buy ? '舊團員加購' : '舊團員不加購', d.shirtSize || '', sq || '', d.pantsSize || '', d.pantsQty || '', d.total || 0]; };
+      const head = ['序號', '職位', '姓名', '證照', '出席', '午膳', '無法出席原因', '意見', 'LINE名稱', '回覆時間', '新/舊團員', '上衣（每件尺寸）', '上衣件數', '褲子（每件尺寸）', '褲子件數', '團服金額'];
+      const U = r => { const d = r.uniform; if (!d) return ['', '', '', '', '', '']; const it = uniItems(d); return [d.member === 'new' ? '新團員' : d.buy ? '舊團員加購' : '舊團員不加購', cntTxt(it.shirts), it.shirts.length || '', cntTxt(it.pants), it.pants.length || '', d.total || 0]; };
       const lines = [head].concat(rs.map(r => { const ro = rosterOf(r); return [ro ? ro.serial || '' : '', ro ? rv(ro, 'position') : '', r.name || '', ro ? ro.cert || '' : '', ATT_SHORT[r.attend] || '', r.lunch || '', r.reason || '', r.comment || '', r.lineName || '', fmtAt(tsMs(r.createdAt || r.updatedAt)), ...U(r)]; }))
         .concat(notYet.map(r => [r.serial || '', rv(r, 'position'), r.name || '', r.cert || '', '未回覆', '', '', '', r.lineName || '', '']));
       const csv = '﻿' + lines.map(l => l.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
