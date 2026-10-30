@@ -79,7 +79,7 @@
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .row2 .btn{margin-top:0}
   .cardv{padding:14px 14px 0}
-  canvas{width:100%;display:block;border-radius:6px;box-shadow:0 10px 30px rgba(0,0,0,.18);touch-action:none;background:#FBF4EA}
+  canvas{width:100%;display:block;border-radius:6px;box-shadow:0 10px 30px rgba(0,0,0,.18);touch-action:pan-y pinch-zoom;background:#FBF4EA}
   .zoom{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--sub);margin:14px 4px 4px}
   .zoom input{flex:1;accent-color:var(--red)}
   .copy{text-align:center;font-size:12px;letter-spacing:2px;color:#A39690;margin:26px 0 8px}
@@ -263,6 +263,9 @@
     const cv = $('cv'), pts = new Map(); let last = null, pinch = null;
     const pos = ev => { const r = cv.getBoundingClientRect(), f = W / r.width; return [(ev.clientX - r.left) * f, (ev.clientY - r.top) * f]; };
     const inPhoto = p => Math.hypot(p[0] - PH.x, p[1] - PH.y) < PH.r + 40;
+    // 只有手指放在大頭照圓框上才拖照片；其他地方照常上下滑動頁面
+    cv.addEventListener('touchstart', ev => { const t = ev.touches[0]; if (st.photo && t && (ev.touches.length > 1 || inPhoto(pos(t)))) ev.preventDefault(); }, { passive: false });
+    cv.addEventListener('touchmove', ev => { if (pts.size) ev.preventDefault(); }, { passive: false });
     cv.addEventListener('pointerdown', ev => { const p = pos(ev); if (!st.photo || (!pts.size && !inPhoto(p))) return; cv.setPointerCapture(ev.pointerId); pts.set(ev.pointerId, p); last = p; pinch = null; });
     cv.addEventListener('pointermove', ev => { if (!pts.has(ev.pointerId)) return; ev.preventDefault(); pts.set(ev.pointerId, pos(ev));
       if (pts.size >= 2) { const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
