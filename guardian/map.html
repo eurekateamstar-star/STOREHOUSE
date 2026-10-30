@@ -19,6 +19,7 @@
   .stat div{flex:1;background:#fff;border:2px solid var(--red);border-radius:14px;padding:10px;text-align:center}
   .stat b{display:block;font-size:28px;font-weight:900;color:var(--red);font-variant-numeric:tabular-nums}
   .stat span{font-size:12px;color:var(--sub);font-weight:700}
+  .miss{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:12px;padding:9px 12px;font-size:13px;line-height:1.6;margin:-2px 0 10px;text-align:center}.miss b{color:var(--red)}
   .card{background:#fff;border-radius:18px;box-shadow:0 4px 18px rgba(120,60,40,.08);padding:10px;position:relative}
   svg{width:100%;height:auto;display:block}
   path.c,circle.c{stroke:#fff;stroke-width:1.2;cursor:pointer;transition:fill .3s}
@@ -89,7 +90,7 @@
     document.getElementById('s-city').textContent = list.length;
   }
   draw();
-  fetch(AUTH_URL + '/guardian-map').then(r => r.json()).then(j => { if (!j.ok) return; counts = j.counts || {}; document.getElementById('s-total').textContent = j.total || 0; draw(); })
+  fetch(AUTH_URL + '/guardian-map').then(r => r.json()).then(j => { if (!j.ok) return; counts = j.counts || {}; document.getElementById('s-total').textContent = j.total || 0; draw(); const miss = (j.total || 0) - (j.withCity || 0); if (miss > 0) { const n = document.createElement('div'); n.className = 'miss'; n.innerHTML = `還有 <b>${miss}</b> 位守護員還沒選縣市，打開「全民醫護證」選好縣市就會出現在地圖上 👉`; document.querySelector('.stat').after(n); } })
     .catch(() => { document.getElementById('rank').innerHTML = '<div class="r">讀取失敗，請稍後再試</div>'; });
 })();
 </script>
