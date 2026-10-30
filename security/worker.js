@@ -697,7 +697,7 @@ async function guardianNoRoute(req, env, json) {
     const canLock = cityOk && String(name || '').trim();
     if (have) {
       const h = fobj(have.fields);
-      if (!h.locked && canLock) {   // 第一次送出：記錄下來，之後不能再改
+      if (canLock) {   // 送出／修改：存下最新資料
         const f = lockFields();
         await fetch(`${FS}/guardian/${userId}?${Object.keys(f).map(k => 'updateMask.fieldPaths=' + k).join('&')}`, { method: 'PATCH', headers: H, body: JSON.stringify({ fields: f }) });
         return json({ ok: true, no: +h.no, at: +h.at, locked: true, name: String(name).trim().slice(0, 8), pos: posOk, city: cityOk, skills: (skills || []).map(Boolean) });

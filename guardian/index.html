@@ -131,7 +131,7 @@
     <button class="btn main" id="save">⬇ 存成圖片</button>
     <button class="btn line" id="invite">➦ 邀請親友一起領</button>
     <a class="btn ghost mapbtn" href="map.html">🗺️ 看看全台守護員分布</a>
-    <div class="note" id="lockNote" style="display:none">✅ 你的守護員資料已經記錄，無法再修改</div>
+    <div class="note" id="lockNote" style="display:none">✅ 資料已儲存，下次打開會直接顯示這張醫護證；要改請按「修改資料」</div>
     <div class="note">🔒 照片只在你的手機上合成，不會上傳</div>
     <div class="copy">© 2026 白沙屯慈昕醫護文化協會 版權所有</div>
   </div>
@@ -181,7 +181,7 @@
   }
   const applyLocked = j => { if (!j || !j.locked) return false; st.locked = true; st.name = j.name || st.name; st.pos = j.pos || st.pos; st.city = j.city || st.city;
     if (Array.isArray(j.skills) && j.skills.length) st.skills = j.skills.map(Boolean); if (j.no) st.no = j.no; remember(); lockUI(); return true; };
-  function lockUI() { const e = $('edit'); if (e) e.style.display = st.locked ? 'none' : ''; const n = $('lockNote'); if (n) n.style.display = st.locked ? 'block' : 'none'; }
+  function lockUI() { const n = $('lockNote'); if (n) n.style.display = st.locked ? 'block' : 'none'; }
   async function submitLock() {
     if (!hasLiff()) { st.locked = true; remember(); lockUI(); return true; }
     const at = liff.getAccessToken(); if (!at) return false;
@@ -208,13 +208,12 @@
     st.name = $('f-name').value.trim();
     if (!st.name) { $('f-name').focus(); return toast('請先填寫姓名'); }
     if (!st.city) { pickCity(); return toast('請選擇所在縣市'); }
-    if (!confirm(`確認送出？\n\n姓名：${st.name}\n縣市：${st.city}\n身分：${st.pos}\n\n送出後就會記錄下來，之後不能再修改。`)) return;
     const btn = $('f-next'); btn.disabled = true; btn.textContent = '送出中…';
-    try { await submitLock(); remember(); view('v-card'); draw(); }
+    try { await submitLock(); remember(); view('v-card'); draw(); toast('✅ 已儲存'); }
     catch (e) { toast('送出失敗，請再試一次：' + (e.message || e), 3500); }
     finally { btn.disabled = false; btn.textContent = '產生我的醫護證 →'; }
   };
-  $('edit').onclick = () => { if (st.locked) return toast('資料已經記錄，不能再修改'); drawForm(); view('v-form'); };
+  $('edit').onclick = () => { drawForm(); view('v-form'); };
 
   // ---------- 畫醫護證 ----------
   function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
