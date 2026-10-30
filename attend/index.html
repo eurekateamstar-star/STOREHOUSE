@@ -178,13 +178,12 @@
 <div class="u-ov hidden" id="u-ov"><div class="u-box">
   <div class="u-hd"><b>👕 團服訂購說明</b><button type="button" id="u-x">✕</button></div>
   <p class="u-lead">醫護團即將向廠商訂購團體服裝，團服皆由<b>台灣廠商客製製作</b>。請依照下方上衣與褲子尺寸表選擇。</p>
-  <div class="u-note">新加入的團員將配發 <b>兩套團服</b>：<br>・上衣由醫護團提供（若欲再加購每件 400 元）<br>・褲子需自費：每件 400 元，共需訂製兩件，合計 <b>800 元</b></div>
+  <div class="u-note" id="u-ov-note">新加入的團員將配發 <b>兩套團服</b>：<br>・上衣由醫護團提供（若欲再加購每件 400 元）<br>・褲子需自費：每件 400 元，共需訂製兩件，合計 <b>800 元</b></div>
   <h4>上衣款式</h4><img src="img/shirt.jpg" alt="上衣款式">
   <h4>上衣尺寸表（POLO・公分）</h4><img src="img/shirt-size.jpg" alt="上衣尺寸表">
   <h4>工作褲尺寸表（英吋）</h4><img src="img/pants-size.jpg" alt="褲子尺寸表"><div class="u-small">4L、5L、6L 為特殊尺寸，須加價，且需事先詢問是否有貨。</div>
   <h4>工作褲</h4><img src="img/pants.jpg" alt="工作褲">
-  <div class="u-hd2">你是？</div>
-  <div class="u-pick2"><button type="button" data-m2="new">🆕 我是新團員</button><button type="button" data-m2="old">我是舊團員</button></div>
+  <div class="u-pick2" style="margin-top:16px"><button type="button" id="u-ok">看好了，選尺寸 →</button></div>
 </div></div>
 
 <script type="module">
@@ -230,7 +229,7 @@
   const cnt = a => { const o = {}; a.forEach(z => o[z] = (o[z] || 0) + 1); return Object.entries(o).map(([z, n]) => n > 1 ? `${z}×${n}` : z).join('、'); };
   const uData = () => !uOn() ? null : { member: U.mem, buy: U.mem === 'new' ? true : U.buy === 'yes', shirts: uNeedPick() ? U.shirts.slice() : [], pants: uNeedPick() ? U.pants.slice() : [], total: uNeedPick() ? uCost().total : 0 };
   const uText = d => !d ? '' : (d.member === 'new' ? '新團員' : d.buy ? '舊團員加購' : '舊團員・不加購') + (d.shirts && d.shirts.length ? `・上衣 ${cnt(d.shirts)}` : '') + (d.pants && d.pants.length ? `・褲子 ${cnt(d.pants)}` : '') + (d.total ? `・NT$${d.total}` : '');
-  function uOpen() { $('u-ov').classList.remove('hidden'); $('u-ov').querySelector('.u-box').scrollTop = 0; }
+  function uOpen() { $('u-ov-note').style.display = U.mem === 'old' ? 'none' : ''; $('u-ov').classList.remove('hidden'); $('u-ov').querySelector('.u-box').scrollTop = 0; }
   let uShown = false;
   const uMaybePop = () => { if (uOn() && !uShown && !U.mem) { uShown = true; setTimeout(uOpen, 250); } };
 
@@ -249,7 +248,7 @@
     if (!ev.open) return msg('🔒', '已截止回覆', '這個出席調查已經截止，如需更改請直接聯絡管理員。');
     if (ev.askLunch === false) $('lunch-card').classList.add('hidden');
     $('msg').classList.add('hidden'); f.classList.remove('hidden');
-    uRender(); uMaybePop();
+    uRender();
     try { const last = JSON.parse(localStorage.getItem('attend_me') || '{}'); if (last.name) f.elements.name.value = last.name; if (last.lineName) f.elements.lineName.value = last.lineName; } catch (e) {}
   })();
 
@@ -258,14 +257,14 @@
     $('reason-box').classList.toggle('hidden', attend !== 'join');
     b.closest('.field').classList.remove('bad');
     $('lunch-card').classList.toggle('hidden', attend === 'no' || (ev && ev.askLunch === false));
-    uRender(); uMaybePop();
+    uRender();
   });
-  document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { U.mem = b.dataset.m; b.closest('.field').classList.remove('bad'); uRender(); });
-  document.querySelectorAll('[data-b]').forEach(b => b.onclick = () => { U.buy = b.dataset.b; b.closest('.field').classList.remove('bad'); uRender(); });
+  document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { const was = U.mem; U.mem = b.dataset.m; b.closest('.field').classList.remove('bad'); uRender(); if (U.mem === 'new' && was !== 'new') uOpen(); });
+  document.querySelectorAll('[data-b]').forEach(b => b.onclick = () => { const was = U.buy; U.buy = b.dataset.b; b.closest('.field').classList.remove('bad'); uRender(); if (U.buy === 'yes' && was !== 'yes') uOpen(); });
   document.querySelectorAll('[data-add]').forEach(b => b.onclick = () => { if (U[b.dataset.add].length >= 10) return toast('最多 10 件'); U[b.dataset.add].push(''); uRender(); });
   $('u-info').onclick = uOpen;
   $('u-x').onclick = () => $('u-ov').classList.add('hidden');
-  $('u-ov').onclick = ev2 => { if (ev2.target.id === 'u-ov') $('u-ov').classList.add('hidden'); const m = ev2.target.closest('[data-m2]'); if (m) { U.mem = m.dataset.m2; $('u-ov').classList.add('hidden'); uRender(); $('uni-card').scrollIntoView({ behavior: 'smooth', block: 'start' }); } };
+  $('u-ov').onclick = ev2 => { if (ev2.target.id === 'u-ov' || ev2.target.id === 'u-ok') { $('u-ov').classList.add('hidden'); $('u-pick').scrollIntoView({ behavior: 'smooth', block: 'start' }); } };
   document.querySelectorAll('[data-f="lunch"] .chip').forEach(c => c.onclick = () => {
     lunch = c.textContent; c.closest('.field').classList.remove('bad');
     document.querySelectorAll('[data-f="lunch"] .chip').forEach(x => x.classList.toggle('on', x === c));
@@ -274,7 +273,7 @@
 
   $('btn-again').onclick = () => {
     $('msg').classList.add('hidden'); f.classList.remove('hidden');
-    uRender(); uMaybePop();
+    uRender();
     const btn = $('btn-submit'); btn.disabled = false; btn.textContent = '送出回覆';
     window.scrollTo(0, 0);
   };
