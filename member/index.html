@@ -1166,6 +1166,19 @@
     const d = p.r.uniform, it = uniItems(d); if (!it.shirts.length && !it.pants.length) return null;
     return { name: p.name, line: p.r.lineName || '', shirt: cntTxt(it.shirts), sq: it.shirts.length, pant: cntTxt(it.pants), pq: it.pants.length, note: d.member === 'new' ? '新團員' : '舊團員加購', total: +d.total || 0 };
   }).filter(Boolean);
+  function testUniform() {   // 測試回覆用：隨機新團員／舊團員加購／不加購
+    const SS = ['XS', 'S', 'M', 'M', 'L', 'L', 'XL', '2XL', '3XL', '5XL'], PS = ['S', 'M', 'M', 'L', 'L', 'XL', '2L', '3L', '4L', '5L', '6L'];
+    const pick = a => a[Math.floor(Math.random() * a.length)], y = Math.random();
+    if (y < 0.3) { const s1 = pick(SS), p1 = pick(PS), shirts = [s1, Math.random() < .8 ? s1 : pick(SS)].concat(Math.random() < .2 ? [pick(SS)] : []), pants = [p1, Math.random() < .85 ? p1 : pick(PS)];
+      return { member: 'new', buy: true, shirts, pants, total: (shirts.length - 2) * 400 + pants.length * 400 }; }
+    if (y < 0.55) { const shirts = Array(Math.floor(Math.random() * 3)).fill(pick(SS)), pants = Array(shirts.length ? Math.floor(Math.random() * 3) : 1 + Math.floor(Math.random() * 2)).fill(pick(PS));
+      return { member: 'old', buy: true, shirts, pants, total: (shirts.length + pants.length) * 400 }; }
+    return { member: 'old', buy: false, shirts: [], pants: [], total: 0 };
+  }
+  const UNI_ROWS = ['XS', 'S', 'M', 'L', 'XL', '2L', '3L', '4L', '5L', '6L'];
+  const uniStatRows = (sh, pa) => { const norm = z => String(z).replace(/^(\d)XL$/, '$1L'); const so = sizeCnt(sh.map(norm)), po = sizeCnt(pa.map(norm));
+    const extra = [...new Set(Object.keys(so).concat(Object.keys(po)))].filter(z => !UNI_ROWS.includes(z));
+    return UNI_ROWS.concat(extra).map(z => ({ z, s: so[z] || 0, p: po[z] || 0 })); };
   const uniText = d => { if (!d) return ''; const it = uniItems(d);
     return (d.member === 'new' ? '🆕 新團員' : d.buy ? '舊團員加購' : '舊團員・不加購') + (it.shirts.length ? `・上衣 ${cntTxt(it.shirts)}` : '') + (it.pants.length ? `・褲子 ${cntTxt(it.pants)}` : '') + (d.total ? `・$${d.total}` : ''); };
   function uniSummary(rs) {
@@ -1941,7 +1954,7 @@
             const x = Math.random(), attend = x < 0.75 ? 'yes' : x < 0.85 ? 'join' : 'no';
             const y = Math.random(), lunch = attend === 'no' || e.askLunch === false ? '' : y < 0.55 ? '葷' : y < 0.85 ? '素（方便素）' : '自行處理';
             b.set(doc(collection(db, 'events', e.id, 'responses')), { name: ro.name || '', lineName: ro.lineName || ro.name || '', attend, lunch,
-              reason: attend === 'join' ? rnd(REASONS) : '', comment: rnd(COMMENTS), createdAt: serverTimestamp(), src: 'test' });
+              reason: attend === 'join' ? rnd(REASONS) : '', comment: rnd(COMMENTS), createdAt: serverTimestamp(), src: 'test', ...(e.askUniform && attend !== 'no' ? { uniform: testUniform() } : {}) });
           });
           await b.commit();
         }
@@ -2194,11 +2207,13 @@
         const n = Math.max(1, Math.ceil(rows.length / PER));
         for (let i = 0; i < n; i++) pages.push(page(yt + '團服領取簽收表', n > 1 ? `第 ${i + 1}／${n} 頁` : '', [['序', 6], ['姓名', 13], ['Line名稱', 17], ['衣服尺寸', 13], ['數量', 7], ['褲子尺寸', 13], ['數量', 7], ['領取簽名', 14], ['備註', 10]], rows.slice(i * PER, (i + 1) * PER),
           i === n - 1 ? ['', '合計', `${rc.length} 人`, '', sh.length, '', pa.length, '', ''] : null));
-        const so = sizeCnt(sh), po = sizeCnt(pa), SK = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '5XL'], PK = ['S', 'M', 'L', 'XL', '2L', '3L', '4L', '5L', '6L'];
-        const keys = (o, k) => k.filter(x => o[x]).concat(Object.keys(o).filter(x => !k.includes(x)));
-        pages.push(page(yt + '團服訂購統計（給廠商）', '', [['品項', 30], ['尺寸', 35], ['件數', 35]],
-          keys(so, SK).map(z => `<tr><td>上衣</td><td>${esc(z)}</td><td>${so[z]}</td></tr>`).concat(keys(po, PK).map(z => `<tr><td>工作褲</td><td>${esc(z)}</td><td>${po[z]}</td></tr>`)),
-          ['合計', '', `上衣 ${sh.length} 件・褲子 ${pa.length} 件`]));
+        // 團服製作統計表（照舊表格式：左邊直排標題，衣服／褲子各尺寸件數）
+        const st = uniStatRows(sh, pa);
+        pages.push(`<div class="pg"><div class="tt">白沙屯拱天宮進香醫護團<br>${yt}團服製作統計表</div>
+          <table><colgroup><col style="width:16%"><col style="width:24%"><col style="width:18%"><col style="width:24%"><col style="width:18%"></colgroup>
+          <thead><tr><th>${roc}年</th><th>尺寸</th><th style="background:#ffe600">衣服</th><th>尺寸</th><th style="background:#ffe600">褲子</th></tr></thead>
+          <tbody>${st.map((x, i) => `<tr>${i ? '' : `<td rowspan="${st.length + 1}" style="font-weight:900;font-size:22px;line-height:1.6;white-space:normal">團<br>服<br>製<br>作<br>統<br>計<br>表</td>`}<td><b>${x.z}</b></td><td>${x.s}</td><td>${x.z}</td><td>${x.p}</td></tr>`).join('')}
+          <tr class="ft"><td>合計</td><td>${sh.length}</td><td></td><td>${pa.length}</td></tr></tbody></table></div>`);
       } }
     const tot = sum.reduce((a, x) => [a[0] + x[1], a[1] + x[2], a[2] + x[3]], [0, 0, 0]);
     pages.push(page(esc((e.date || '') + ' ' + (e.title || '')) + '<br>便當統計', '', [['類別', 40], ['葷食', 20], ['素食', 20], ['人數', 20]],
@@ -3362,6 +3377,13 @@
         rc.forEach((x, i) => { const r = ws.getRow(3 + i); r.height = 30; put(r, [i + 1, x.name, x.line, x.shirt, x.sq || null, x.pant, x.pq || null, '', x.note === '新團員' ? '' : x.note]); });
         const L = 2 + rc.length, tr = ws.getRow(L + 1); tr.height = 26;
         put(tr, ['', '合計', `${rc.length} 人`, '', { formula: `SUM(E3:E${L})` }, '', { formula: `SUM(G3:G${L})` }, '', ''], { bold: true });
+        let sh = [], pa = []; DRAW_GROUPS.flatMap(g => groups[g]).forEach(p => { if (p.r.uniform && p.r.attend !== 'no') { const it = uniItems(p.r.uniform); sh = sh.concat(it.shirts); pa = pa.concat(it.pants); } });
+        const st = uniStatRows(sh, pa), T = L + 3;
+        put(ws.getRow(T), [`${roc}年`, '尺寸', '', '衣服', '尺寸', '褲子'], { bold: true }); ws.mergeCells(`B${T}:C${T}`);
+        ['D', 'F'].forEach(c => ws.getCell(`${c}${T}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE600' } });
+        st.forEach((x, i) => { const r = T + 1 + i; put(ws.getRow(r), [null, x.z, '', x.s, x.z, x.p]); ws.mergeCells(`B${r}:C${r}`); ws.getRow(r).height = 20; });
+        const E = T + st.length; put(ws.getRow(E + 1), [null, '合計', '', { formula: `SUM(D${T + 1}:D${E})` }, '', { formula: `SUM(F${T + 1}:F${E})` }], { bold: true }); ws.mergeCells(`B${E + 1}:C${E + 1}`);
+        ws.mergeCells(`A${T + 1}:A${E + 1}`); Object.assign(ws.getCell(`A${T + 1}`), { value: '團\n服\n製\n作\n統\n計\n表', font: font({ size: 13, bold: true }), alignment: { horizontal: 'center', vertical: 'middle', wrapText: true } });
         ws.pageSetup.printTitlesRow = '2:2';
       } }
     const sm = wb.addWorksheet('便當統計');
