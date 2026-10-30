@@ -9,6 +9,23 @@
 <style>html.share-mode .top{display:none!important}</style>
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <style>
+  .rm-ov{position:fixed;inset:0;background:rgba(20,15,15,.45);z-index:9000;display:flex;align-items:flex-end;justify-content:center}
+  .rm-box{width:100%;max-width:560px;max-height:92vh;overflow:auto;background:#fffaf7;border-radius:22px 22px 0 0;padding:14px 14px calc(20px + env(safe-area-inset-bottom))}
+  .rm-hd{display:flex;align-items:center}.rm-hd b{font-size:19px}.rm-x{margin-left:auto;border:0;background:#f1e7e3;border-radius:50%;width:32px;height:32px;font-size:15px;cursor:pointer}
+  .rm-sub{font-size:12px;color:#8a7f7a;margin:4px 2px 6px}.rm-sub a{color:#D65A68;font-weight:700}
+  .rm-svg{width:100%;height:auto;background:#fff;border-radius:16px;display:block}
+  .rm-svg .on{stroke:#1f2430 !important;stroke-width:2.4 !important}
+  .rm-l{font-size:10.5px;font-weight:800;fill:#3b2a26;text-anchor:middle;pointer-events:none;paint-order:stroke;stroke:#fff;stroke-width:3px;stroke-linejoin:round}.rm-n{font-size:13px;fill:#9f1d35}
+  .rm-rank{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+  .rm-rank button{border:1px solid #f0d5cd;background:#fff;border-radius:16px;padding:5px 11px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}.rm-rank button b{color:#D65A68;margin-left:2px}
+  .rm-rank button.on{background:#D65A68;color:#fff;border-color:#D65A68}.rm-rank button.on b{color:#fff}
+  .rm-list{background:#fff;border-radius:16px;padding:6px 12px 10px}
+  .rm-hint{text-align:center;color:#a8a29e;font-size:13px;padding:14px}
+  .rm-lh{display:flex;align-items:center;padding:8px 0;border-bottom:2px solid #f6e3dd;position:sticky;top:-14px;background:#fff}.rm-lh b{font-size:15px}
+  .rm-copy{margin-left:auto;border:0;background:#D65A68;color:#fff;border-radius:10px;padding:7px 11px;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+  .rm-p{padding:9px 0;border-bottom:1px dashed #f1e2dd}.rm-p:last-child{border-bottom:none}
+  .rm-pn{font-size:15px;font-weight:800;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}.rm-pn span{font-size:11.5px;color:#8a7f7a;font-weight:600}.rm-pn a{margin-left:auto;font-size:13px;color:#0369a1;text-decoration:none;font-weight:700}
+  .rm-pa{font-size:13px;color:#444;margin-top:2px;line-height:1.45}.rm-ps{font-size:12px;color:#8a7f7a;margin-top:2px}
   :root {
     --primary: #D65A68; --accent: #F08339; --gold: #B68D40;
     --ink: #1f2430; --sub: #6b7280; --line: rgba(0,0,0,0.06);
@@ -1076,18 +1093,77 @@
   const unseen = r => { const t = lastSelfEdit(r); return t > 0 && t > tsMs(r.adminSeenAt); };
   const redDot = r => unseen(r) ? '<span class="red-dot" title="本人有修改資料，尚未查看"></span>' : '';
   const isConfirmed = r => { const u = r.boundUserId && userById(r.boundUserId); return !!(u && u.profileConfirmedAt); };
+  // ===== 團員名冊：縣市分布地圖（從地址判斷縣市）=====
+  const TW_CITY_LIST = ['基隆市', '台北市', '新北市', '桃園市', '新竹市', '新竹縣', '苗栗縣', '台中市', '彰化縣', '南投縣', '雲林縣', '嘉義市', '嘉義縣', '台南市', '高雄市', '屏東縣', '宜蘭縣', '花蓮縣', '台東縣', '澎湖縣', '金門縣', '連江縣'];
+  function cityOf(addr) {
+    let a = String(addr || '').replace(/\s/g, '').replace(/臺/g, '台').replace(/^\d{3,6}/, '').replace(/^(台灣|臺灣)省?/, '');
+    const OLD = { '台北縣': '新北市', '桃園縣': '桃園市', '台中縣': '台中市', '台南縣': '台南市', '高雄縣': '高雄市' };
+    for (const [o, n] of Object.entries(OLD)) if (a.startsWith(o)) return n;
+    const hit = TW_CITY_LIST.find(c => a.startsWith(c)); if (hit) return hit;
+    const short = TW_CITY_LIST.find(c => a.startsWith(c.slice(0, 2)) && !/^(新竹|嘉義)/.test(a)); if (short) return short;
+    if (/^新竹/.test(a)) return /^新竹市|^新竹[東北香]/.test(a) ? '新竹市' : '新竹縣';
+    if (/^嘉義/.test(a)) return /^嘉義市/.test(a) ? '嘉義市' : '嘉義縣';
+    if (/^(板橋|三重|中和|永和|新莊|新店|土城|蘆洲|汐止|樹林|鶯歌|三峽|淡水|林口|泰山|五股)/.test(a)) return '新北市';
+    if (/^(通霄|苑裡|竹南|頭份|後龍)/.test(a)) return '苗栗縣';
+    if (/^(大甲|清水|沙鹿|梧棲|豐原|大里|太平)/.test(a)) return '台中市';
+    return '';
+  }
+  let twMapData = null, rmSel = null;
+  async function openRosterMap() {
+    if (!twMapData) { try { twMapData = await (await fetch('/guardian/twmap.json')).json(); } catch (e) { return toast('地圖載入失敗'); } }
+    const groups = {}; const none = [];
+    rosterCache.forEach(r => { const c = cityOf(rv(r, 'address')); if (c) (groups[c] = groups[c] || []).push(r); else none.push(r); });
+    const max = Math.max(1, ...Object.values(groups).map(g => g.length));
+    const color = n => { if (!n) return '#F1ECEA'; const t = Math.sqrt(n / max), st = [[255, 234, 226], [246, 160, 120], [214, 90, 104], [140, 30, 50]], x = Math.min(.999, t) * 3, i = Math.floor(x), f = x - i, a = st[i], b = st[i + 1]; return `rgb(${a.map((v, k) => Math.round(v + (b[k] - v) * f)).join(',')})`; };
+    const LBL = { '基隆市': [366, 34], '台北市': [316, 49], '新北市': [352, 84], '新竹市': [300, 104], '嘉義市': [210, 300] };
+    const M = twMapData;
+    const svg = Object.entries(M.counties).map(([name, c]) => {
+      const n = (groups[name] || []).length;
+      if (c.inset) { const [[x0, y0], [x1, y1]] = c.inset, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2 - 4;
+        return `<rect x="${x0 - 6}" y="${y0 - 6}" width="${x1 - x0 + 12}" height="${y1 - y0 + 12}" rx="8" fill="none" stroke="#E8CFCB" stroke-dasharray="3 3"/><circle data-c="${name}" cx="${cx}" cy="${cy}" r="13" fill="${color(n)}" stroke="#fff" stroke-width="1.2" style="cursor:pointer"/>`; }
+      return `<path data-c="${name}" d="${c.d}" fill="${color(n)}" stroke="#fff" stroke-width="1.2" style="cursor:pointer"/>`;
+    }).join('') + Object.entries(M.counties).map(([name, c]) => {
+      const n = (groups[name] || []).length; if (['嘉義市', '新竹市', '基隆市'].includes(name) && !n) return '';
+      const xy = c.inset ? [(c.inset[0][0] + c.inset[1][0]) / 2, (c.inset[0][1] + c.inset[1][1]) / 2 + 22] : (LBL[name] || c.c);
+      return `<text x="${xy[0]}" y="${xy[1] + (n ? -3 : 3)}" class="rm-l">${name.replace(/[縣市]$/, '')}</text>` + (n ? `<text x="${xy[0]}" y="${xy[1] + 11}" class="rm-l rm-n">${n}</text>` : '');
+    }).join('');
+    const ov = document.createElement('div'); ov.className = 'rm-ov';
+    const rank = Object.entries(groups).sort((a, b) => b[1].length - a[1].length);
+    ov.innerHTML = `<div class="rm-box"><div class="rm-hd"><b>🗺 團員縣市分布</b><button class="rm-x">✕</button></div>
+      <div class="rm-sub">依名冊「地址」判斷縣市・${rosterCache.length - none.length} 人有地址${none.length ? `，<a href="#" class="rm-none">${none.length} 人沒填或看不出縣市</a>` : ''}</div>
+      <svg viewBox="0 0 ${M.W} ${M.H}" class="rm-svg">${svg}</svg>
+      <div class="rm-rank">${rank.map(([c, g]) => `<button data-c="${c}">${c} <b>${g.length}</b></button>`).join('')}</div>
+      <div class="rm-list" id="rm-list"><div class="rm-hint">👆 點地圖上的縣市，看有哪些團員</div></div></div>`;
+    document.body.appendChild(ov);
+    const showList = (city, arr) => {
+      rmSel = city; ov.querySelectorAll('[data-c]').forEach(e => e.classList.toggle('on', e.dataset.c === city));
+      const L = ov.querySelector('#rm-list');
+      if (!arr.length) { L.innerHTML = `<div class="rm-hint">${esc(city)} 目前沒有團員</div>`; return; }
+      const line = r => `${rv(r, 'name') || ''}｜${r.phone || ''}｜${rv(r, 'address') || ''}`;
+      L.innerHTML = `<div class="rm-lh"><b>📍 ${esc(city)}　${arr.length} 人</b><button class="rm-copy">📋 複製寄送清單</button></div>`
+        + arr.map(r => `<div class="rm-p"><div class="rm-pn">${esc(rv(r, 'name') || '')} <span>${esc(rv(r, 'position'))}${r.cert ? '・' + esc(r.cert) : ''}</span>${r.phone ? `<a href="tel:${esc(r.phone)}">${esc(r.phone)}</a>` : ''}</div><div class="rm-pa">${esc(rv(r, 'address') || '（沒有地址）')}</div>${r.shirtSize || r.pantsSize ? `<div class="rm-ps">👕 ${esc(r.shirtSize || '-')}　👖 ${esc(r.pantsSize || '-')}</div>` : ''}</div>`).join('');
+      L.querySelector('.rm-copy').onclick = async () => { const txt = `【${city}】${arr.length} 人\n` + arr.map(line).join('\n'); try { await navigator.clipboard.writeText(txt); toast('已複製，可貼到 LINE 或 Excel'); } catch (e) { prompt('請長按複製', txt); } };
+      L.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    ov.onclick = ev => {
+      if (ev.target === ov || ev.target.closest('.rm-x')) return ov.remove();
+      if (ev.target.closest('.rm-none')) { ev.preventDefault(); return showList('沒填或看不出縣市', none); }
+      const c = ev.target.closest('[data-c]'); if (c) showList(c.dataset.c, groups[c.dataset.c] || []);
+    };
+  }
   function renderRoster() {
     const certs = {}; rosterCache.forEach(r => { const c = r.cert || '未填'; certs[c] = (certs[c] || 0) + 1; });
     const bound = rosterCache.filter(r => r.boundUserId).length;
     const chip = (k, t) => `<button class="chip ${rsFilter === k ? 'on' : ''}" data-f="${esc(k)}">${esc(t)}</button>`;
     const selfUpd = rosterCache.filter(r => r.updatedByRole === 'self').length;
     const nUnseen = rosterCache.filter(unseen).length;
-    $('rs-chips').innerHTML = (nUnseen ? chip('unseen', `🔴 未查看的修改 (${nUnseen})`) : '') + chip('all', `全部 (${rosterCache.length})`) + chip('bound', `已綁定 (${bound})`) + chip('unbound', `未綁定 (${rosterCache.length - bound})`)
+    $('rs-chips').innerHTML = `<button class="chip" id="rs-mapbtn" style="background:#fff4ef;border-color:#f6c9b6;color:#c2410c;font-weight:800">🗺 縣市分布</button>` + (nUnseen ? chip('unseen', `🔴 未查看的修改 (${nUnseen})`) : '') + chip('all', `全部 (${rosterCache.length})`) + chip('bound', `已綁定 (${bound})`) + chip('unbound', `未綁定 (${rosterCache.length - bound})`)
       + chip('updated', `✏️ 有更新 (${rosterCache.filter(r => r.updatedAt).length})`) + chip('confirmed', `✅ 已確認 (${rosterCache.filter(isConfirmed).length})`)
       + Object.keys(certs).sort().map(c => chip('c:' + c, `${c} (${certs[c]})`)).join('')
       + (() => { const pc = {}; rosterCache.forEach(r => { const p = rv(r, 'position'); if (p !== '團員') pc[p] = (pc[p] || 0) + 1; });
                  return POSITIONS.filter(p => pc[p]).concat(Object.keys(pc).filter(p => !POSITIONS.includes(p))).map(p => chip('p:' + p, `👔 ${p} (${pc[p]})`)).join(''); })();
     $('rs-chips').querySelectorAll('[data-f]').forEach(b => b.onclick = () => { rsFilter = b.dataset.f; renderRoster(); });
+    $('rs-mapbtn').onclick = () => openRosterMap();
 
     let list = rosterCache.slice();
     if (rsFilter === 'bound') list = list.filter(r => r.boundUserId);
