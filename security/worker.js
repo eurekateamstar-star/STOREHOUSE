@@ -15,7 +15,7 @@ const PROJECT_ID = 'linebot-firebase-b1242';
 const AI_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 
 export default {
-  async fetch(req, env) {
+  async fetch(req, env, ctx) {
     const origin = req.headers.get('Origin') || '';
     const cors = {
       'Access-Control-Allow-Origin': originOk(origin) ? origin : ALLOWED_ORIGINS[0],
@@ -66,6 +66,7 @@ export default {
         out['通知卡片'] = r.ok ? 'ok' : await r.text(); }
       return json(out);
     }
+    if (new URL(req.url).pathname === '/guardian-map' && req.method === 'GET') return guardianMapRoute(req, env, json, ctx);
     if (new URL(req.url).pathname === '/journey-list' && req.method === 'GET') {
       try { const ps = (await fsList(await saToken(env), 'journey')).sort((x, y) => (x.order ?? 0) - (y.order ?? 0)).map(p => ({ id: p.id, caption: p.caption || '' }));
         return new Response(JSON.stringify({ photos: ps }), { headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60' } }); }
@@ -663,11 +664,27 @@ async function whMembersRoute(req, env, json) {
     return json({ ok: true, list });
   } catch (e) { return json({ error: String((e && e.message) || e) }, e && e.code ? e.code : 500); }
 }
+const TW_CITIES = ['基隆市', '台北市', '新北市', '桃園市', '新竹市', '新竹縣', '苗栗縣', '台中市', '彰化縣', '南投縣', '雲林縣', '嘉義市', '嘉義縣', '台南市', '高雄市', '屏東縣', '宜蘭縣', '花蓮縣', '台東縣', '澎湖縣', '金門縣', '連江縣'];
+// ===== 全民醫護證：各縣市人數（只回傳統計數字，不含任何個資）=====
+async function guardianMapRoute(req, env, json, ctx) {
+  const cache = caches.default, key = new Request('https://cache.local/guardian-map-v1');
+  const hit = await cache.match(key); if (hit) return new Response(hit.body, { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=60' } });
+  try {
+    const list = await fsList(await saToken(env), 'guardian');
+    const counts = {}, pos = {}; let withCity = 0;
+    list.forEach(g => { if (g.city) { counts[g.city] = (counts[g.city] || 0) + 1; withCity++; } if (g.pos) pos[g.pos] = (pos[g.pos] || 0) + 1; });
+    const body = JSON.stringify({ ok: true, total: list.length, withCity, counts, pos, at: Date.now() });
+    const res = new Response(body, { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=60' } });
+    try { (ctx && ctx.waitUntil ? ctx.waitUntil(cache.put(key, res.clone())) : await cache.put(key, res.clone())); } catch (e) {}
+    return res;
+  } catch (e) { return json({ error: 'failed' }, 500); }
+}
 // ===== 全民醫護證：守護編號（同一個 LINE 帳號永遠拿到同一號，流水號）=====
 async function guardianNoRoute(req, env, json) {
   try {
-    const { accessToken } = await req.json();
+    const { accessToken, city, pos } = await req.json();
     if (!accessToken) return json({ error: 'missing token' }, 400);
+    const cityOk = TW_CITIES.includes(city) ? city : '', posOk = String(pos || '').slice(0, 10);
     const [v, p] = await Promise.all([
       fetch('https://api.line.me/oauth2/v2.1/verify?access_token=' + encodeURIComponent(accessToken)),
       fetch('https://api.line.me/v2/profile', { headers: { Authorization: 'Bearer ' + accessToken } })]);
@@ -676,14 +693,17 @@ async function guardianNoRoute(req, env, json) {
     const { userId } = await p.json(); if (!/^U[0-9a-f]{32}$/.test(userId || '')) return json({ error: 'no user' }, 401);
     const tok = await saToken(env), H = { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' };
     const have = await fsGet(tok, `guardian/${userId}`);
-    if (have) return json({ ok: true, no: +fobj(have.fields).no, at: +fobj(have.fields).at });
+    if (have) {
+      if (cityOk) await fetch(`${FS}/guardian/${userId}?updateMask.fieldPaths=city&updateMask.fieldPaths=pos&updateMask.fieldPaths=cityAt`, { method: 'PATCH', headers: H, body: JSON.stringify({ fields: { city: tv(cityOk), pos: tv(posOk), cityAt: tv(Date.now()) } }) });
+      return json({ ok: true, no: +fobj(have.fields).no, at: +fobj(have.fields).at, city: cityOk || fobj(have.fields).city || '' });
+    }
     const DOC = `projects/${PROJECT_ID}/databases/(default)/documents`;
     const c = await fetch(`https://firestore.googleapis.com/v1/${DOC}:commit`, { method: 'POST', headers: H, body: JSON.stringify({ writes: [
       { transform: { document: `${DOC}/meta/guardian`, fieldTransforms: [{ fieldPath: 'count', increment: { integerValue: '1' } }] } }] }) });
     const cj = await c.json(); const no = +(((cj.writeResults || [])[0] || {}).transformResults || [{}])[0].integerValue;
     if (!no) return json({ error: 'counter failed' }, 500);
     const at = Date.now();
-    const w = await fetch(`${FS}/guardian/${userId}?currentDocument.exists=false`, { method: 'PATCH', headers: H, body: JSON.stringify({ fields: { no: tv(no), at: tv(at) } }) });
+    const w = await fetch(`${FS}/guardian/${userId}?currentDocument.exists=false`, { method: 'PATCH', headers: H, body: JSON.stringify({ fields: { no: tv(no), at: tv(at), ...(cityOk ? { city: tv(cityOk), pos: tv(posOk), cityAt: tv(at) } : {}) } }) });
     if (!w.ok) { const again = await fsGet(tok, `guardian/${userId}`); if (again) return json({ ok: true, no: +fobj(again.fields).no, at: +fobj(again.fields).at }); }
     return json({ ok: true, no, at });
   } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }

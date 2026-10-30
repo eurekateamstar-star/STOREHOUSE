@@ -30,6 +30,18 @@
   .ttl b{font-size:27px;font-weight:900;color:var(--red);letter-spacing:3px}
   .en{text-align:center;font-size:11.5px;letter-spacing:5px;color:#3a3330;margin-top:2px}
   .lead{text-align:center;font-size:13.5px;color:var(--sub);line-height:1.75;margin:10px 0 2px}
+  .citybtn{width:100%;font:inherit;font-size:20px;font-weight:900;text-align:left;padding:8px 6px;border:0;border-bottom:2px dashed #E9B9B4;background:transparent;color:#CFC3BD;cursor:pointer;display:flex;align-items:center}
+  .citybtn::after{content:'▾';margin-left:auto;color:var(--red);font-size:16px}
+  .citybtn.on{color:var(--ink)}
+  .csheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;display:flex;align-items:flex-end;justify-content:center}
+  .csheet{width:100%;max-width:520px;max-height:82vh;overflow:auto;background:#fff;border-radius:22px 22px 0 0;padding:16px 16px calc(18px + env(safe-area-inset-bottom));animation:cup .2s ease-out}
+  @keyframes cup{from{transform:translateY(40px);opacity:.5}to{transform:none;opacity:1}}
+  .csheet h4{margin:0 2px 8px;font-size:18px;font-weight:900;display:flex;align-items:center}.csheet h4 small{margin-left:auto;font-size:12px;color:var(--sub);font-weight:600}
+  .cg{font-size:12px;font-weight:800;color:#EE6A62;margin:10px 2px 6px;letter-spacing:1px}
+  .cgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+  .cgrid button{font:inherit;font-size:15.5px;font-weight:800;padding:11px 0;border:2px solid #EED6D2;border-radius:10px;background:var(--cream);color:var(--ink);cursor:pointer}
+  .cgrid button.on{background:linear-gradient(#E83228,#C8161D);border-color:#9E1015;color:#fff}
+  .mapbtn{display:block;text-align:center;text-decoration:none;margin-top:10px}
   .box{border:2px solid var(--red);border-radius:12px;background:#fff;padding:11px 12px 12px;margin-top:12px}
   .bh{display:flex;align-items:baseline;gap:8px;margin-bottom:9px}
   .bh b{font-size:16px;font-weight:900}.bh em{font-style:normal;font-size:11.5px;font-weight:700;letter-spacing:1.5px;color:#EE6A62}
@@ -93,9 +105,11 @@
     <div class="sheet"><div class="frame">
       <div class="ttl"><b>我是守護員</b></div>
       <div class="en">I AM A GUARDIAN</div>
-      <div class="lead">不用證照，只要一顆願意幫忙的心。<br>填好下面三格，領取你的全民醫護證。</div>
+      <div class="lead">不用證照，只要一顆願意幫忙的心。<br>填好下面資料，領取你的全民醫護證。</div>
       <div class="box"><div class="bh"><b>姓名</b><em>NAME</em><small>會印在證件上</small></div>
         <input class="txt" id="f-name" maxlength="8" placeholder="請輸入你的名字" autocomplete="off"></div>
+      <div class="box"><div class="bh"><b>所在縣市</b><em>CITY</em><small>統計全台守護員分布</small></div>
+        <button type="button" class="citybtn" id="f-city">請選擇縣市</button></div>
       <div class="box"><div class="bh"><b>身分</b><em>POSITION</em><small>沒有證照選第一個</small></div>
         <div class="roles" id="f-pos"></div></div>
       <div class="box"><div class="bh"><b>我會的守護技能</b><em>SKILLS</em><small>可複選</small></div>
@@ -116,6 +130,7 @@
     </div>
     <button class="btn main" id="save">⬇ 存成圖片</button>
     <button class="btn line" id="invite">➦ 邀請親友一起領</button>
+    <a class="btn ghost mapbtn" href="map.html">🗺️ 看看全台守護員分布</a>
     <div class="note">🔒 照片只在你的手機上合成，不會上傳</div>
     <div class="copy">© 2026 白沙屯慈昕醫護文化協會 版權所有</div>
   </div>
@@ -154,7 +169,20 @@
   const st = { name: '', pos: '全民守護員', skills: [true, true, false, true], no: 0, date: '', photo: null, zoom: 1, ox: 0, oy: 0, tpl: null, badge: null, profile: null };
   const KEY = 'bst_guardian_v2';
   try { Object.assign(st, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {}
-  const remember = () => { try { localStorage.setItem(KEY, JSON.stringify({ name: st.name, pos: st.pos, skills: st.skills })); } catch (e) {} };
+  const remember = () => { try { localStorage.setItem(KEY, JSON.stringify({ name: st.name, pos: st.pos, skills: st.skills, city: st.city })); } catch (e) {} };
+  const CITY_GROUPS = [['北部', ['基隆市', '台北市', '新北市', '桃園市', '新竹市', '新竹縣']], ['中部', ['苗栗縣', '台中市', '彰化縣', '南投縣', '雲林縣']],
+    ['南部', ['嘉義市', '嘉義縣', '台南市', '高雄市', '屏東縣']], ['東部', ['宜蘭縣', '花蓮縣', '台東縣']], ['離島', ['澎湖縣', '金門縣', '連江縣']]];
+  function pickCity() {
+    const bg = document.createElement('div'); bg.className = 'csheet-bg';
+    bg.innerHTML = `<div class="csheet"><h4>你住在哪個縣市？<small>點一下選擇</small></h4>${CITY_GROUPS.map(([g, cs]) => `<div class="cg">${g}</div><div class="cgrid">${cs.map(c => `<button type="button" data-c="${c}" class="${st.city === c ? 'on' : ''}">${c}</button>`).join('')}</div>`).join('')}</div>`;
+    bg.onclick = ev => { if (ev.target === bg) return bg.remove(); const b = ev.target.closest('[data-c]'); if (!b) return; st.city = b.dataset.c; st.name = $('f-name').value.trim(); bg.remove(); drawForm(); };
+    document.body.appendChild(bg);
+  }
+  function sendCity() {
+    try { if (!hasLiff() || !st.city) return; const at = liff.getAccessToken(); if (!at) return;
+      fetch(AUTH_URL + '/guardian-no', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accessToken: at, city: st.city, pos: st.pos }) })
+        .then(r => r.json()).then(j => { if (j.ok && j.no && !st.no) { st.no = j.no; draw(); } }).catch(() => {}); } catch (e) {}
+  }
   function toast(m, ms) { const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), ms || 2200); }
   function view(id) { ['v-loading', 'v-form', 'v-card'].forEach(v => $(v).classList.toggle('hidden', v !== id)); window.scrollTo(0, 0); }
   const load = (src, cors) => new Promise((res, rej) => { const i = new Image(); if (cors) i.crossOrigin = 'anonymous'; i.onload = () => res(i); i.onerror = rej; i.src = src; });
@@ -164,6 +192,7 @@
   // ---------- 表單 ----------
   function drawForm() {
     $('f-name').value = st.name || '';
+    { const cb = $('f-city'); cb.textContent = st.city || '請選擇縣市'; cb.classList.toggle('on', !!st.city); cb.onclick = pickCity; }
     $('f-pos').innerHTML = ROLES.map((r, i) => `<button type="button" data-p="${r.k}" class="role${i ? '' : ' wide'}${st.pos === r.k ? ' on' : ''}"><span class="e">${BADGE[r.k] ? `<img src="roles/${BADGE[r.k]}.png?v=1" alt="">` : (ICON[r.k] || r.e)}</span><span><b>${r.k}</b><span>${r.d}</span></span><span class="ck">${st.pos === r.k ? '✓' : ''}</span></button>`).join('');
     const R = roleOf(st.pos);
     $('f-skills').innerHTML = R.sk.map((s, i) => `<button type="button" data-s="${i}" class="skill${st.skills[i] ? ' on' : ''}"><span class="c">${st.skills[i] ? '✓' : ''}</span>${s}</button>`).join('');
@@ -173,7 +202,8 @@
   $('f-next').onclick = () => {
     st.name = $('f-name').value.trim();
     if (!st.name) { $('f-name').focus(); return toast('請先填寫姓名'); }
-    remember(); view('v-card'); draw();
+    if (!st.city) { pickCity(); return toast('請選擇所在縣市'); }
+    remember(); sendCity(); view('v-card'); draw();
   };
   $('edit').onclick = () => { drawForm(); view('v-form'); };
 
