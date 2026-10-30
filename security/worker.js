@@ -682,7 +682,7 @@ async function guardianMapRoute(req, env, json, ctx) {
 // ===== 全民醫護證：守護編號（同一個 LINE 帳號永遠拿到同一號，流水號）=====
 async function guardianNoRoute(req, env, json) {
   try {
-    const { accessToken, city, pos } = await req.json();
+    const { accessToken, city, pos, name, skills } = await req.json();
     if (!accessToken) return json({ error: 'missing token' }, 400);
     const cityOk = TW_CITIES.includes(city) ? city : '', posOk = String(pos || '').slice(0, 10);
     const [v, p] = await Promise.all([
@@ -693,9 +693,16 @@ async function guardianNoRoute(req, env, json) {
     const { userId } = await p.json(); if (!/^U[0-9a-f]{32}$/.test(userId || '')) return json({ error: 'no user' }, 401);
     const tok = await saToken(env), H = { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' };
     const have = await fsGet(tok, `guardian/${userId}`);
+    const lockFields = () => ({ name: tv(String(name || '').trim().slice(0, 8)), pos: tv(posOk), city: tv(cityOk), skills: tv((Array.isArray(skills) ? skills : []).slice(0, 6).map(Boolean)), locked: tv(true), cityAt: tv(Date.now()) });
+    const canLock = cityOk && String(name || '').trim();
     if (have) {
-      if (cityOk) await fetch(`${FS}/guardian/${userId}?updateMask.fieldPaths=city&updateMask.fieldPaths=pos&updateMask.fieldPaths=cityAt`, { method: 'PATCH', headers: H, body: JSON.stringify({ fields: { city: tv(cityOk), pos: tv(posOk), cityAt: tv(Date.now()) } }) });
-      return json({ ok: true, no: +fobj(have.fields).no, at: +fobj(have.fields).at, city: cityOk || fobj(have.fields).city || '' });
+      const h = fobj(have.fields);
+      if (!h.locked && canLock) {   // 第一次送出：記錄下來，之後不能再改
+        const f = lockFields();
+        await fetch(`${FS}/guardian/${userId}?${Object.keys(f).map(k => 'updateMask.fieldPaths=' + k).join('&')}`, { method: 'PATCH', headers: H, body: JSON.stringify({ fields: f }) });
+        return json({ ok: true, no: +h.no, at: +h.at, locked: true, name: String(name).trim().slice(0, 8), pos: posOk, city: cityOk, skills: (skills || []).map(Boolean) });
+      }
+      return json({ ok: true, no: +h.no, at: +h.at, locked: !!h.locked, name: h.name || '', pos: h.pos || '', city: h.city || '', skills: h.skills || [] });
     }
     const DOC = `projects/${PROJECT_ID}/databases/(default)/documents`;
     const c = await fetch(`https://firestore.googleapis.com/v1/${DOC}:commit`, { method: 'POST', headers: H, body: JSON.stringify({ writes: [
@@ -703,9 +710,9 @@ async function guardianNoRoute(req, env, json) {
     const cj = await c.json(); const no = +(((cj.writeResults || [])[0] || {}).transformResults || [{}])[0].integerValue;
     if (!no) return json({ error: 'counter failed' }, 500);
     const at = Date.now();
-    const w = await fetch(`${FS}/guardian/${userId}?currentDocument.exists=false`, { method: 'PATCH', headers: H, body: JSON.stringify({ fields: { no: tv(no), at: tv(at), ...(cityOk ? { city: tv(cityOk), pos: tv(posOk), cityAt: tv(at) } : {}) } }) });
+    const w = await fetch(`${FS}/guardian/${userId}?currentDocument.exists=false`, { method: 'PATCH', headers: H, body: JSON.stringify({ fields: { no: tv(no), at: tv(at), ...(canLock ? lockFields() : {}) } }) });
     if (!w.ok) { const again = await fsGet(tok, `guardian/${userId}`); if (again) return json({ ok: true, no: +fobj(again.fields).no, at: +fobj(again.fields).at }); }
-    return json({ ok: true, no, at });
+    return json({ ok: true, no, at, locked: !!canLock, ...(canLock ? { name: String(name).trim().slice(0, 8), pos: posOk, city: cityOk, skills: (skills || []).map(Boolean) } : {}) });
   } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
 }
 // 6 張衛教小卡排成一排（carousel），一次分享

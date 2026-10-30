@@ -131,6 +131,7 @@
     <button class="btn main" id="save">⬇ 存成圖片</button>
     <button class="btn line" id="invite">➦ 邀請親友一起領</button>
     <a class="btn ghost mapbtn" href="map.html">🗺️ 看看全台守護員分布</a>
+    <div class="note" id="lockNote" style="display:none">✅ 你的守護員資料已經記錄，無法再修改</div>
     <div class="note">🔒 照片只在你的手機上合成，不會上傳</div>
     <div class="copy">© 2026 白沙屯慈昕醫護文化協會 版權所有</div>
   </div>
@@ -169,7 +170,7 @@
   const st = { name: '', pos: '全民守護員', skills: [true, true, false, true], no: 0, date: '', photo: null, zoom: 1, ox: 0, oy: 0, tpl: null, badge: null, profile: null };
   const KEY = 'bst_guardian_v2';
   try { Object.assign(st, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {}
-  const remember = () => { try { localStorage.setItem(KEY, JSON.stringify({ name: st.name, pos: st.pos, skills: st.skills, city: st.city })); } catch (e) {} };
+  const remember = () => { try { localStorage.setItem(KEY, JSON.stringify({ name: st.name, pos: st.pos, skills: st.skills, city: st.city, locked: !!st.locked })); } catch (e) {} };
   const CITY_GROUPS = [['北部', ['基隆市', '台北市', '新北市', '桃園市', '新竹市', '新竹縣']], ['中部', ['苗栗縣', '台中市', '彰化縣', '南投縣', '雲林縣']],
     ['南部', ['嘉義市', '嘉義縣', '台南市', '高雄市', '屏東縣']], ['東部', ['宜蘭縣', '花蓮縣', '台東縣']], ['離島', ['澎湖縣', '金門縣', '連江縣']]];
   function pickCity() {
@@ -178,12 +179,16 @@
     bg.onclick = ev => { if (ev.target === bg) return bg.remove(); const b = ev.target.closest('[data-c]'); if (!b) return; st.city = b.dataset.c; st.name = $('f-name').value.trim(); bg.remove(); drawForm(); };
     document.body.appendChild(bg);
   }
-  function sendCity() {
-    try { if (!hasLiff() || !st.city) return; const at = liff.getAccessToken(); if (!at) return;
-      fetch(AUTH_URL + '/guardian-no', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accessToken: at, city: st.city, pos: st.pos }) })
-        .then(r => r.json()).then(j => { if (j.ok && j.no && !st.no) { st.no = j.no; draw(); } }).catch(() => {}); } catch (e) {}
-  }
-  function toast(m, ms) { const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), ms || 2200); }
+  const applyLocked = j => { if (!j || !j.locked) return false; st.locked = true; st.name = j.name || st.name; st.pos = j.pos || st.pos; st.city = j.city || st.city;
+    if (Array.isArray(j.skills) && j.skills.length) st.skills = j.skills.map(Boolean); if (j.no) st.no = j.no; remember(); lockUI(); return true; };
+  function lockUI() { const e = $('edit'); if (e) e.style.display = st.locked ? 'none' : ''; const n = $('lockNote'); if (n) n.style.display = st.locked ? 'block' : 'none'; }
+  async function submitLock() {
+    if (!hasLiff()) { st.locked = true; remember(); lockUI(); return true; }
+    const at = liff.getAccessToken(); if (!at) return false;
+    const r = await fetch(AUTH_URL + '/guardian-no', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accessToken: at, city: st.city, pos: st.pos, name: st.name, skills: st.skills }) });
+    const j = await r.json(); if (!j.ok) throw new Error(j.error || '送出失敗');
+    if (j.no) st.no = j.no; applyLocked(j); return true;
+  }  function toast(m, ms) { const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), ms || 2200); }
   function view(id) { ['v-loading', 'v-form', 'v-card'].forEach(v => $(v).classList.toggle('hidden', v !== id)); window.scrollTo(0, 0); }
   const load = (src, cors) => new Promise((res, rej) => { const i = new Image(); if (cors) i.crossOrigin = 'anonymous'; i.onload = () => res(i); i.onerror = rej; i.src = src; });
   const today = () => { const d = new Date(); return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`; };
@@ -199,13 +204,17 @@
     document.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { if (st.pos === b.dataset.p) return; st.pos = b.dataset.p; st.skills = roleOf(st.pos).def.map(Boolean); st.name = $('f-name').value.trim(); drawForm(); });
     document.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { st.skills[+b.dataset.s] = !st.skills[+b.dataset.s]; st.name = $('f-name').value.trim(); drawForm(); });
   }
-  $('f-next').onclick = () => {
+  $('f-next').onclick = async () => {
     st.name = $('f-name').value.trim();
     if (!st.name) { $('f-name').focus(); return toast('請先填寫姓名'); }
     if (!st.city) { pickCity(); return toast('請選擇所在縣市'); }
-    remember(); sendCity(); view('v-card'); draw();
+    if (!confirm(`確認送出？\n\n姓名：${st.name}\n縣市：${st.city}\n身分：${st.pos}\n\n送出後就會記錄下來，之後不能再修改。`)) return;
+    const btn = $('f-next'); btn.disabled = true; btn.textContent = '送出中…';
+    try { await submitLock(); remember(); view('v-card'); draw(); }
+    catch (e) { toast('送出失敗，請再試一次：' + (e.message || e), 3500); }
+    finally { btn.disabled = false; btn.textContent = '產生我的醫護證 →'; }
   };
-  $('edit').onclick = () => { drawForm(); view('v-form'); };
+  $('edit').onclick = () => { if (st.locked) return toast('資料已經記錄，不能再修改'); drawForm(); view('v-form'); };
 
   // ---------- 畫醫護證 ----------
   function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
@@ -293,11 +302,12 @@
         if (!st.name) st.name = String(pf.displayName || '').slice(0, 8);
         if (pf.pictureUrl) load(AUTH_URL + '/pic?u=' + encodeURIComponent(pf.pictureUrl), true).then(i => { if (!st.photo) { st.photo = i; draw(); } }).catch(() => {});
         const at = liff.getAccessToken();
-        if (at) fetch(AUTH_URL + '/guardian-no', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accessToken: at }) })
-          .then(r => r.json()).then(j => { if (j.ok) { st.no = j.no; draw(); } }).catch(() => {});
+        if (at) { try { const r = await Promise.race([fetch(AUTH_URL + '/guardian-no', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accessToken: at }) }), new Promise((_, rj) => setTimeout(() => rj(new Error('逾時')), 8000))]);
+          const j = await r.json(); if (j.ok) { st.no = j.no; if (!j.locked) st.locked = false; applyLocked(j); } } catch (e) {} }
       } catch (e) {}
     }
-    await assets; drawForm(); view('v-form');
+    await assets; lockUI();
+    if (st.locked) { view('v-card'); draw(); } else { drawForm(); view('v-form'); }
   }
   start();
 })();
