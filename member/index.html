@@ -2175,8 +2175,8 @@
       let uSum = 0;
       const r2 = ppl.map((p, i) => { const u = uniAmt(p.r), it = p.r.uniform ? uniItems(p.r.uniform) : { shirts: [], pants: [] }; uSum += u;
         const sz = [it.shirts.length ? '衣 ' + cntTxt(it.shirts) : '', it.pants.length ? '褲 ' + cntTxt(it.pants) : ''].filter(Boolean).join('<br>');
-        return `<tr><td>${i + 1}</td><td>${esc(p.name)}</td><td>2500</td><td>${u ? u : ''}${sz ? `<div class="sz">${esc(sz).replace(/&lt;br&gt;/g, '<br>')}</div>` : ''}</td><td>${2500 + u}</td><td>${paid[p.key] ? '✔ 已繳' : ''}</td></tr>`; });
-      paged('繳費紀錄表', g, [['序號', 9], ['姓名', 19], ['團費', 14], ['服裝', 22], ['合計', 16], ['收費確認', 20]], r2, ['', '合計', 2500 * ppl.length, uSum || '', 2500 * ppl.length + uSum, `已繳 ${ppl.filter(p => paid[p.key]).length}`]);
+        return `<tr><td>${i + 1}</td><td>${esc(p.name)}</td><td>2500</td><td>${u ? u : ''}</td><td>${2500 + u}</td><td>${paid[p.key] ? '✔ 已繳' : ''}</td></tr>`; });
+      paged('繳費紀錄表', g, [['序號', 9], ['姓名', 19], ['團費', 16], ['服裝', 16], ['合計', 18], ['收費確認', 22]], r2, ['', '合計', 2500 * ppl.length, uSum || '', 2500 * ppl.length + uSum, `已繳 ${ppl.filter(p => paid[p.key]).length}`]);
       sum.push([g, hun, veg, ppl.length]);
     });
     if (!pages.length) return toast('還沒有人回覆出席');
