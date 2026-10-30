@@ -90,7 +90,7 @@
     document.getElementById('s-city').textContent = list.length;
   }
   draw();
-  fetch(AUTH_URL + '/guardian-map').then(r => r.json()).then(j => { if (!j.ok) return; counts = j.counts || {}; document.getElementById('s-total').textContent = j.total || 0; draw(); const miss = (j.total || 0) - (j.withCity || 0); if (miss > 0) { const n = document.createElement('div'); n.className = 'miss'; n.innerHTML = `還有 <b>${miss}</b> 位守護員還沒選縣市，打開「全民醫護證」選好縣市就會出現在地圖上 👉`; document.querySelector('.stat').after(n); } })
+  fetch(AUTH_URL + '/guardian-map').then(r => r.json()).then(j => { if (!j.ok) return; counts = j.counts || {}; document.getElementById('s-total').textContent = j.withCity || 0; draw(); })
     .catch(() => { document.getElementById('rank').innerHTML = '<div class="r">讀取失敗，請稍後再試</div>'; });
 })();
 </script>
