@@ -8,8 +8,10 @@
   st.textContent = `#g-lens{display:none;position:fixed;z-index:2147483600;border-radius:50%;overflow:hidden;pointer-events:none;border:4px solid #fff;
     box-shadow:0 0 0 2px rgba(214,90,104,.85),0 14px 34px rgba(0,0,0,.45);background:#fff}
     #g-lens .gl-in{position:absolute;left:0;top:0;transform-origin:0 0;overflow:hidden}
-    #g-lens *{animation:none!important;transition:none!important;caret-color:transparent}`;
+    #g-lens *{animation:none!important;transition:none!important;caret-color:transparent}
+    html.gl-hold,html.gl-hold *{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}`;
   document.head.appendChild(st);
+  const clearSel = () => { try { const g = getSelection(); g && g.rangeCount && g.removeAllRanges(); } catch (e) {} };
   const allowed = t => {
     if (typeof window.__lensOk === 'function' && !window.__lensOk(t)) return false;
     if (t && t.closest && t.closest('[data-nolens],input:not([readonly]):not([type=radio]):not([type=checkbox]):not([type=button]):not([type=submit]),textarea:not([readonly]),select,[contenteditable="true"],canvas')) return false;
@@ -52,23 +54,25 @@
     lx = Math.max(6, Math.min(innerWidth - R * 2 - 6, lx));
     lens.style.left = lx + 'px'; lens.style.top = ly + 'px';
   }
-  function show(x, y) { try { build(); } catch (e) { console.warn('lens', e); return; } lens.style.display = 'block'; on = true; try { navigator.vibrate && navigator.vibrate(15); } catch (e) {} move(x, y); }
-  function hide() { clearTimeout(timer); timer = null; if (on) { blockClick = Date.now(); on = false; if (lens) { lens.style.display = 'none'; lens.innerHTML = ''; } } }
+  function show(x, y) { try { build(); } catch (e) { console.warn('lens', e); return; } lens.style.display = 'block'; on = true; clearSel(); try { navigator.vibrate && navigator.vibrate(15); } catch (e) {} move(x, y); }
+  function hide() { clearTimeout(timer); timer = null; document.documentElement.classList.remove('gl-hold'); if (on) { blockClick = Date.now(); on = false; if (lens) { lens.style.display = 'none'; lens.innerHTML = ''; } } }
   addEventListener('touchstart', e => {
     if (e.touches.length !== 1 || !allowed(e.target)) return hide();
-    const t = e.touches[0]; sx = t.clientX; sy = t.clientY;
+    const t = e.touches[0]; sx = t.clientX; sy = t.clientY; document.documentElement.classList.add('gl-hold');
     clearTimeout(timer); timer = setTimeout(() => { timer = null; show(sx, sy); }, HOLD);
   }, { passive: true, capture: true });
   addEventListener('touchmove', e => {
     const t = e.touches[0]; if (!t) return;
     if (on) { e.preventDefault(); e.stopImmediatePropagation(); move(t.clientX, t.clientY); return; }
-    if (timer && Math.hypot(t.clientX - sx, t.clientY - sy) > 10) { clearTimeout(timer); timer = null; }
+    if (timer && Math.hypot(t.clientX - sx, t.clientY - sy) > 10) { clearTimeout(timer); timer = null; document.documentElement.classList.remove('gl-hold'); }
   }, { passive: false, capture: true });
   addEventListener('touchend', e => { if (on) { e.preventDefault(); e.stopImmediatePropagation(); } hide(); }, { passive: false, capture: true });
   addEventListener('touchcancel', hide, { capture: true });
-  addEventListener('scroll', () => { if (timer) { clearTimeout(timer); timer = null; } }, { capture: true, passive: true });
+  addEventListener('scroll', () => { if (timer) { clearTimeout(timer); timer = null; document.documentElement.classList.remove('gl-hold'); } }, { capture: true, passive: true });
   ['pointermove', 'pointerup'].forEach(t => addEventListener(t, e => { if (on) e.stopImmediatePropagation(); }, { capture: true }));
   addEventListener('click', e => { if (Date.now() - blockClick < 500) { e.preventDefault(); e.stopImmediatePropagation(); } }, { capture: true });
+  document.addEventListener('selectionchange', () => { if (on || timer) clearSel(); });
+  addEventListener('selectstart', e => { if (on || timer) e.preventDefault(); }, { capture: true });
   addEventListener('contextmenu', e => { if (on || timer) e.preventDefault(); }, { capture: true });
   const css = document.createElement('style'); css.textContent = 'body{-webkit-touch-callout:none}'; document.head.appendChild(css);
 })();
