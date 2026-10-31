@@ -2254,6 +2254,9 @@
   const defRanges = days => { const n = days.length; if (!n) return {}; const L = Math.min(3, n), mid = Math.max(0, Math.floor((n - L) / 2));
     return { 前: [days[0], days[L - 1]], 中: [days[mid], days[mid + L - 1]], 後: [days[n - L], days[n - 1]] }; };
   const NO_SCHED_GROUPS = ['教官及長官', '指揮官及汽機車組'];     // 預設不排入小組（可個別改）
+  // 日期小方塊：點任何地方都直接跳出日曆（電腦版原本只有點到右邊小圖示才會開）
+  document.addEventListener('click', ev => { const lab = ev.target.closest && ev.target.closest('.dchip'); if (!lab || lab.closest('.ro')) return;
+    const inp = lab.querySelector('input[type=date]'); if (!inp) return; ev.preventDefault(); try { inp.showPicker(); } catch (e) { inp.focus(); inp.click(); } });
   function schedPeople(eid) {      // 所有出席的人＋各自的值班日期（依抽籤時段／全程／自訂／不排班）
     const groups = drawPeople(eid), map = evDraw[eid] || {}, sc = evSched[eid] || {}, pm = sc.person || {};
     const days = dayList(sc.start, sc.end), rg = sc.ranges || defRanges(days), out = {};
