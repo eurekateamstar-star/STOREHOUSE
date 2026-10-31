@@ -2789,34 +2789,72 @@
       ov.querySelector('#eq-ok').onclick = () => { ov.querySelectorAll('[data-k]').forEach(x => I[x.dataset.k] = x.value.trim()); ov.remove(); save({ info: { ...info, [d]: I } }, '已儲存'); };
     };
     document.querySelectorAll('[data-lod2]').forEach(el => el.onclick = () => lodEdit(el.dataset.lod2));
-    // 點日期：當天出勤名單＋住宿名單（男／女），都有序號
-    document.querySelectorAll('[data-place]').forEach(el => el.onclick = () => {
-      const d = el.dataset.place, g = attVals(eid), I = info[d] || {};
-      const on = list.filter(p => { const v = g(p.key, d); return v.w || v.s; });
+    // 點日期：當天出勤名單＋住宿名單（男／女），都有序號；可只看住宿、看「沒出勤先來住」的人，點名字改住宿／備註
+    const dayNote = (k, d) => { const t = (((evSched[eid] || {}).days || {})[d] || []).find(t => t.m.includes(k)), a = (((evSched[eid] || {}).att || {})[k] || {}).n || {};
+      return [t && (t.pn || {})[k], a[d]].filter(Boolean).join('・'); };
+    let dayFilter = 'all';
+    const openDay = d => {
+      const g = attVals(eid), I = info[d] || {};
+      const early = p => { const v = g(p.key, d); return v.s && !v.w; };
+      const on0 = list.filter(p => { const v = g(p.key, d); return v.w || v.s; });
+      const on = dayFilter === 'stay' ? on0.filter(p => g(p.key, d).s) : dayFilter === 'early' ? on0.filter(early) : on0;
       const sexOf = p => g(p.key, d).s || genderOf(p);
       const M = on.filter(p => sexOf(p) === '7'), F = on.filter(p => sexOf(p) === '8'), U = on.filter(p => !['7', '8'].includes(sexOf(p)));
+      const ea = on0.filter(early), stayN = on0.filter(p => g(p.key, d).s).length;
       const tbl = (arr, t, col, bg) => { const nw = arr.filter(p => g(p.key, d).w).length, ns = arr.filter(p => g(p.key, d).s).length;
         return `<div class="dsec"><div class="dh" style="color:${col};background:${bg}">${t}<span>出勤 ${nw}・住宿 ${ns}</span></div>
-          <table class="dt"><thead><tr><th>#</th><th>姓名</th><th>出勤</th><th>住宿</th></tr></thead><tbody>${arr.map((p, i) => { const v = g(p.key, d);
-            return `<tr><td class="n">${i + 1}</td><td class="nm2" style="background:${CAT_BG[p.cat]}">${esc(p.name)}</td><td class="w">${esc(wTxt(v.w))}</td><td class="s" style="color:${col}">${v.s ? '✔' : ''}</td></tr>`; }).join('') || '<tr><td colspan="4" style="color:#9a8f8b">無</td></tr>'}</tbody></table></div>`; };
-      const ov = document.createElement('div'); ov.className = 'eq-ov';
+          <table class="dt"><thead><tr><th>#</th><th>姓名</th><th>出勤</th><th>住宿</th></tr></thead><tbody>${arr.map((p, i) => { const v = g(p.key, d), nt = dayNote(p.key, d), e1 = v.s && !v.w;
+            return `<tr data-dk="${esc(p.key)}" style="cursor:pointer;${e1 ? 'background:#fff7ed' : ''}"><td class="n">${i + 1}</td><td class="nm2" style="background:${e1 ? '#fed7aa' : CAT_BG[p.cat]}">${e1 ? '⭐' : ''}${esc(p.name)}${nt ? `<small>${esc(nt)}</small>` : ''}</td><td class="w">${e1 ? '<b style="color:#c2410c">先來住</b>' : esc(wTxt(v.w))}</td><td class="s" style="color:${col}">${v.s ? '✔' : ''}</td></tr>`; }).join('') || '<tr><td colspan="4" style="color:#9a8f8b">無</td></tr>'}</tbody></table></div>`; };
+      const chip = (k, t) => `<button data-df="${k}" style="border:1.5px solid ${dayFilter === k ? '#c2414f' : '#e5ddd9'};background:${dayFilter === k ? '#c2414f' : '#fff'};color:${dayFilter === k ? '#fff' : '#374151'};border-radius:20px;padding:6px 11px;font:inherit;font-size:13px;font-weight:800;cursor:pointer">${t}</button>`;
+      const tel = p => { const ph = String((p.ro && p.ro.phone) || '').trim(); return ph ? `<a href="tel:${esc(ph.replace(/[^0-9+]/g, ''))}" style="margin-left:auto;background:#16a34a;color:#fff;border-radius:16px;padding:4px 10px;font-size:12.5px;font-weight:800;text-decoration:none;white-space:nowrap">📞 ${esc(ph)}</a>` : '<span style="margin-left:auto;color:#9a8f8b;font-size:12px">沒有電話</span>'; };
+      const ov = document.createElement('div'); ov.className = 'eq-ov'; ov.id = 'day-ov';
       ov.innerHTML = `<div class="eq-box" style="max-width:640px;padding:14px 12px">
         <style>.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;align-items:start}
           .dsec{border:1px solid #efe4e0;border-radius:10px;overflow:hidden}.dh{padding:5px 6px;font-weight:900;font-size:13px;display:flex;justify-content:space-between;align-items:baseline;gap:4px}.dh span{color:#6b7280;font-size:10px;font-weight:700;white-space:nowrap}
           table.dt{width:100%;border-collapse:collapse;table-layout:fixed}.dt th{font-size:9.5px;color:#9a8f8b;font-weight:700;padding:2px 0;border-bottom:1px solid #f1e8e5}
           .dt td{font-size:12px;height:22px;padding:0 2px;border-bottom:1px solid #f6efec;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
           .dt th:nth-child(1),.dt td.n{width:18px}.dt td.n{color:#9a8f8b;font-size:10px}.dt th:nth-child(3),.dt td.w{width:40px}.dt th:nth-child(4),.dt td.s{width:26px}
-          .dt td.nm2{font-weight:700;text-align:left;padding-left:4px}.dt td.w{color:#15803d;font-size:10.5px;font-weight:700;letter-spacing:-.3px}.dt td.s{font-weight:900}</style>
+          .dt td.nm2{font-weight:700;text-align:left;padding-left:4px;white-space:normal;line-height:1.15;padding-top:2px;padding-bottom:2px}.dt td.nm2 small{display:block;font-size:9.5px;color:#dc2626;font-weight:800}
+          .dt td.w{color:#15803d;font-size:10.5px;font-weight:700;letter-spacing:-.3px}.dt td.s{font-weight:900}</style>
         <div class="eq-t" style="font-size:16px;margin-bottom:2px">${dLabel(d)}${I.tag ? '　' + esc(I.tag) : ''} 出勤／住宿</div>
         <div style="font-size:12px;color:#6b7280;margin-bottom:8px">${I.place ? '📍 ' + esc(I.place) + '　' : ''}${I.roomM || I.roomF ? '房號：男 ' + esc(I.roomM || '—') + '／女 ' + esc(I.roomF || '—') : ''}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">${chip('all', `全部 ${on0.length}`)}${chip('stay', `🛏 只看住宿 ${stayN}`)}${chip('early', `⭐ 沒出勤先來住 ${ea.length}`)}</div>
+        ${ea.length ? `<div style="border:1.5px solid #fdba74;background:#fff7ed;border-radius:12px;padding:8px 10px;margin-bottom:8px">
+          <div style="font-weight:900;color:#c2410c;font-size:14px;margin-bottom:4px">⭐ 今晚先來住、這天沒出勤（${ea.length} 人）— 要聯絡</div>
+          ${ea.map(p => { const nt = dayNote(p.key, d); return `<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-top:1px dashed #fed7aa"><b style="font-size:14px">${esc(p.name)}</b>${nt ? `<span style="color:#dc2626;font-size:12px;font-weight:800">${esc(nt)}</span>` : ''}${tel(p)}</div>`; }).join('')}</div>` : ''}
         <div class="dgrid">${tbl(M, '男', '#1d4ed8', '#eff6ff')}${tbl(F, '女', '#be185d', '#fdf2f8')}</div>
         ${U.length ? `<div style="margin-top:6px">${tbl(U, '未填身分證', '#475569', '#f1f5f9')}</div>` : ''}
-        <div class="eq-btn" style="margin-top:10px"><button id="eq-no">關閉</button><button id="d-edit" style="background:#fef9c3;color:#854d0e">✏️ 住宿地點／房號</button></div></div>`;
+        <div style="font-size:11.5px;color:#9a8f8b;margin-top:6px">👆 點名字：改住宿、加備註（幾點到、先來住…）</div>
+        <div class="eq-btn" style="margin-top:10px;flex-wrap:wrap"><button id="eq-no">關閉</button><button id="d-add" style="background:#ffedd5;color:#c2410c">＋ 加住宿的人</button><button id="d-edit" style="background:#fef9c3;color:#854d0e">✏️ 住宿地點／房號</button></div></div>`;
       document.body.appendChild(ov);
+      const reopen = () => { const sc0 = ov.querySelector('.eq-box').scrollTop; ov.remove(); openDay(d); const n = document.querySelector('#day-ov .eq-box'); if (n) n.scrollTop = sc0; };
       ov.onclick = e2 => { if (e2.target === ov) ov.remove(); };
       ov.querySelector('#eq-no').onclick = () => ov.remove();
       ov.querySelector('#d-edit').onclick = () => { ov.remove(); lodEdit(d); };
-    });
+      ov.querySelectorAll('[data-df]').forEach(b => b.onclick = () => { dayFilter = b.dataset.df; reopen(); });
+      // 點名字：住宿／備註
+      ov.querySelectorAll('[data-dk]').forEach(tr => tr.onclick = async () => {
+        const k = tr.dataset.dk, p = pmap[k], v = attVals(eid)(k, d), aN = ((((evSched[eid] || {}).att || {})[k] || {}).n || {})[d] || '';
+        const c = await codePicker(`${p.name}　${dLabel(d)}｜${v.w ? '出勤 ' + wTxt(v.w) : '沒出勤'}・${v.s ? '住' : '不住'}${aN ? '｜' + aN : ''}`, [['_s', v.s ? '🛏 改成不住' : '🛏 要住宿'], ['_n', aN ? '📝 改備註' : '📝 加備註']], '', '關閉');
+        if (c === '_s') { const gg = genderOf(p) || (await codePicker(`${p.name} 住宿`, [['7', '男'], ['8', '女']], '', '取消')); if (!v.s && !gg) return; putAtt(k, 's', d, v.s ? 'x' : gg); reopen(); renderAttKeep(); }
+        else if (c === '_n') { const nv = await pnPicker(`${p.name} ${dLabel(d)}`, aN); if (nv === null) return; putAtt(k, 'n', d, nv || null); reopen(); }
+      });
+      ov.querySelector('#d-add').onclick = async () => {
+        const off = list.filter(p => { const v = g(p.key, d); return !v.w && !v.s; });
+        if (!off.length) { toast('這天大家都已經在名單上了'); return; }
+        const pk = document.createElement('div'); pk.className = 'eq-ov'; pk.style.zIndex = 9600;
+        pk.innerHTML = `<div class="eq-box"><div class="eq-t">${dLabel(d)} 加住宿（沒出勤先來住）</div><input id="pk-q" placeholder="🔍 搜尋姓名" style="width:100%;padding:8px 10px;border-radius:10px;border:1.5px solid #e5ddd9;font:inherit;font-size:15px;box-sizing:border-box;margin-bottom:8px">
+          <div id="pk-l" style="display:flex;flex-wrap:wrap;gap:6px;max-height:50vh;overflow:auto"></div><div class="eq-btn" style="margin-top:12px"><button id="eq-no">取消</button></div></div>`;
+        document.body.appendChild(pk);
+        const draw = q => { pk.querySelector('#pk-l').innerHTML = off.filter(p => !q || p.name.includes(q)).map(p => `<button data-pk="${esc(p.key)}" style="border:1.5px solid #e5ddd9;background:${CAT_BG[p.cat]};border-radius:10px;padding:7px 10px;font:inherit;font-size:14px;font-weight:800;cursor:pointer">${esc(p.name)}</button>`).join('') || '<span style="color:#9a8f8b">找不到</span>';
+          pk.querySelectorAll('[data-pk]').forEach(b => b.onclick = async () => { const p = pmap[b.dataset.pk]; const gg = genderOf(p) || (await codePicker(`${p.name} 住宿`, [['7', '男'], ['8', '女']], '', '取消')); if (!gg) return;
+            pk.remove(); putAtt(p.key, 's', d, gg); const nv = await pnPicker(`${p.name} ${dLabel(d)}（例如：晚上到）`, ''); if (nv) putAtt(p.key, 'n', d, nv); reopen(); renderAttKeep(); }); };
+        pk.querySelector('#pk-q').oninput = e3 => draw(e3.target.value.trim()); draw('');
+        pk.querySelector('#eq-no').onclick = () => pk.remove();
+      };
+    };
+    const renderAttKeep = () => { clearTimeout(renderAttKeep._t); renderAttKeep._t = setTimeout(() => { if (!document.getElementById('day-ov')) renderAtt(eid); }, 50); };
+    document.querySelectorAll('[data-place]').forEach(el => el.onclick = () => openDay(el.dataset.place));
     $('at-auto').onclick = async () => {
       if (!(await dialog({ title: '自動帶住宿？', msg: '有出勤的天會依身分證填住宿（男 7、女 8），最後一天不住宿。\n已經填過的住宿不會被改。', okText: '套用' }))) return;
       const att = JSON.parse(JSON.stringify((evSched[eid] || {}).att || {})); let n = 0;
@@ -3133,7 +3171,7 @@
     return new Promise(res => {
       const ov = document.createElement('div'); ov.className = 'eq-ov';
       ov.innerHTML = `<div class="eq-box"><div class="eq-t">${esc(title)}</div>
-        <div class="cp-g" style="${codes.length < 3 ? 'grid-template-columns:repeat(' + codes.length + ',1fr)' : ''}">${codes.map(([v, t]) => `<button data-c="${v}" class="${cur === v ? 'on' : ''}" style="background:${(codes === CAR_CODES ? CAR_BG[v] : codes === MEAL_CODES ? MEAL_BG[v] : W_BG[v]) || (v === '7' ? '#dbeafe' : '#fce7f3')}">${v === '7' || v === '8' ? `<b>${v === '7' ? '🛏 男' : '🛏 女'}</b>${esc(t)}` : `<b style="font-size:16px">${esc(t)}</b><small style="color:#6b7280">代號 ${v}</small>`}</button>`).join('')}</div>
+        <div class="cp-g" style="${codes.length < 3 ? 'grid-template-columns:repeat(' + codes.length + ',1fr)' : ''}">${codes.map(([v, t]) => `<button data-c="${v}" class="${cur === v ? 'on' : ''}" style="background:${(codes === CAR_CODES ? CAR_BG[v] : codes === MEAL_CODES ? MEAL_BG[v] : W_BG[v]) || (v === '7' ? '#dbeafe' : '#fce7f3')}">${v === '7' || v === '8' ? `<b>${v === '7' ? '🛏 男' : '🛏 女'}</b>${esc(t)}` : `<b style="font-size:16px">${esc(t)}</b>${String(v).startsWith('_') ? '' : `<small style="color:#6b7280">代號 ${v}</small>`}`}</button>`).join('')}</div>
         <div class="eq-btn" style="margin-top:12px"><button id="eq-no">取消</button><button id="cp-clr" style="background:#f1f5f9;color:#334155">${clrTxt || '清除'}</button></div></div>`;
       document.body.appendChild(ov);
       ov.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { ov.remove(); res(b.dataset.c); });
