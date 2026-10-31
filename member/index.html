@@ -2264,9 +2264,10 @@
       const slot = SLOTS.includes(map[p.key]) ? map[p.key] : '', m = pm[p.key] || {};
       let mode = m.mode || (NO_SCHED_GROUPS.includes(g) || !slot ? 'off' : 'slot'), range = null;
       if (mode === 'all') range = days.length ? [days[0], days[days.length - 1]] : null;
-      else if (mode === 'range') range = m.a && m.b ? [m.a, m.b] : null;
+      else if (mode === 'range') { const ds = Array.isArray(m.days) && m.days.length ? m.days.slice().sort() : null; range = ds ? [ds[0], ds[ds.length - 1]] : m.a && m.b ? [m.a, m.b] : null; if (ds) out.__days = ds; }
       else if (mode === 'slot') range = slot && rg[slot] ? rg[slot] : null;
-      out[p.key] = { ...p, g, slot, mode, range, pos: p.ro ? rv(p.ro, 'position') : '', cat: CAT_OF(p) };
+      const pdays = out.__days || null; delete out.__days;
+      out[p.key] = { ...p, g, slot, mode, range, days: pdays, pos: p.ro ? rv(p.ro, 'position') : '', cat: CAT_OF(p) };
     }));
     return out;
   }
@@ -2302,11 +2303,12 @@
     const sc = evSched[eid] || {}, ppl = schedPeople(eid);
     const days = dayList(sc.start, sc.end), rg = sc.ranges || defRanges(days), dt = sc.days || {};
     const inRange = (sl, d) => rg[sl] && d >= rg[sl][0] && d <= rg[sl][1];
-    const presentOn = d => Object.values(ppl).filter(p => p.range && d >= p.range[0] && d <= p.range[1]).map(p => p.key);
+    const presentOn = d => Object.values(ppl).filter(p => p.days ? p.days.includes(d) : (p.range && d >= p.range[0] && d <= p.range[1])).map(p => p.key);
+    const rangeTxt = p => p.days ? (p.days.length > 2 && p.days.length === dayList(p.days[0], p.days[p.days.length - 1]).length ? `${dLabel(p.days[0])}～${dLabel(p.days[p.days.length - 1])}` : p.days.length <= 2 ? p.days.map(dLabel).join('、') : `${p.days.length} 天`) : `${dLabel(p.range[0])}～${dLabel(p.range[1])}`;
     const chip = (k, lead, d) => { const p = ppl[k]; if (!p) return '';
       return `<button class="sc-p ${schSel && schSel.k === k && schSel.d === d ? 'sel' : ''}" ${d ? `data-sd="${d}"` : ''} data-sk="${esc(k)}" style="background:${CAT_BG[p.cat]};${lead ? 'font-weight:900;' : ''}">${lead ? '★' : ''}${esc(p.name)}</button>`; };
-    const pchip = p => `<button class="sc-p ${schPk === p.key ? 'sel' : ''}" data-pk="${esc(p.key)}" style="background:${CAT_BG[p.cat]};">${esc(p.name)}${p.mode === 'off' && p.pos && p.pos !== '團員' ? `<i>${esc(p.pos)}</i>` : ''}${p.mode === 'range' && p.range ? `<i>${dLabel(p.range[0])}～${dLabel(p.range[1])}</i>` : ''}</button>`;
-    const pcell = (p, i) => p ? `<td class="n">${i + 1}</td><td class="nm ${schPk === p.key ? 'sel' : ''}" data-pk="${esc(p.key)}" style="background:${CAT_BG[p.cat]}">${esc(p.name)}${p.mode === 'off' && p.pos && p.pos !== '團員' ? `<i>${esc(p.pos)}</i>` : ''}${p.mode === 'range' && p.range ? `<i>${dLabel(p.range[0])}～${dLabel(p.range[1])}</i>` : ''}</td>` : '<td class="n"></td><td class="nm e"></td>';
+    const pchip = p => `<button class="sc-p ${schPk === p.key ? 'sel' : ''}" data-pk="${esc(p.key)}" style="background:${CAT_BG[p.cat]};">${esc(p.name)}${p.mode === 'off' && p.pos && p.pos !== '團員' ? `<i>${esc(p.pos)}</i>` : ''}${p.mode === 'range' && p.range ? `<i>${rangeTxt(p)}</i>` : ''}</button>`;
+    const pcell = (p, i) => p ? `<td class="n">${i + 1}</td><td class="nm ${schPk === p.key ? 'sel' : ''}" data-pk="${esc(p.key)}" style="background:${CAT_BG[p.cat]}">${esc(p.name)}${p.mode === 'off' && p.pos && p.pos !== '團員' ? `<i>${esc(p.pos)}</i>` : ''}${p.mode === 'range' && p.range ? `<i>${rangeTxt(p)}</i>` : ''}</td>` : '<td class="n"></td><td class="nm e"></td>';
     const box = (title, sub, list) => { const L = list.sort((a, b) => CAT_RANK[a.cat] - CAT_RANK[b.cat]), rows = [];
       for (let i = 0; i < L.length; i += 3) rows.push(`<tr>${[0, 1, 2].map(j => pcell(L[i + j], i + j)).join('')}</tr>`);
       const op = !schFold[title] && !(schFold[title] === undefined && list.length === 0);
@@ -2324,9 +2326,11 @@
         ${pe.slot ? opt('slot', `依抽籤（${pe.slot}）`, rg[pe.slot] ? dLabel(rg[pe.slot][0]) + '～' + dLabel(rg[pe.slot][1]) : '') : ''}
         ${opt('all', '全程', '每天都值班')}
         ${opt('off', '不排班', '指揮官、團長、車輛組…')}
-        <div class="pm-o ${pe.mode === 'range' ? 'on' : ''}" style="cursor:default"><b>自訂日期</b>
-          <div style="display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap">${dc('pm-a', pe.mode === 'range' && pe.range ? pe.range[0] : (sc.start || ''))}<span class="sc-til">～</span>${dc('pm-b', pe.mode === 'range' && pe.range ? pe.range[1] : '')}
-          <button class="sbtn" data-pm="range" style="background:var(--primary);color:#fff;padding:7px 14px">套用</button></div></div>
+        <div class="pm-o ${pe.mode === 'range' ? 'on' : ''}" style="cursor:default"><b>自訂日期</b><small>點選要值班的日子（可以跳著選）</small>
+          <div class="pm-days">${days.map(d => { const dd = new Date(d + 'T12:00:00'), on = pe.mode === 'range' && (pe.days ? pe.days.includes(d) : pe.range && d >= pe.range[0] && d <= pe.range[1]);
+            return `<button type="button" class="pm-d ${on ? 'on' : ''}" data-pd="${d}"><b>${dd.getMonth() + 1}/${dd.getDate()}</b><small>${WK[dd.getDay()]}</small></button>`; }).join('')}</div>
+          <div style="display:flex;gap:6px;margin-top:8px;align-items:center"><button type="button" class="sbtn" data-pdall="1" style="padding:6px 10px">全選</button><button type="button" class="sbtn" data-pdall="0" style="padding:6px 10px">全不選</button>
+          <span id="pm-dn" style="font-size:12px;color:var(--sub);margin-left:auto"></span><button class="sbtn" data-pm="range" style="background:var(--primary);color:#fff;padding:7px 14px">套用</button></div></div>
         <div style="font-size:12px;color:var(--sub);margin-top:10px">改完記得按「🔀 自動排班」重新排。</div></div></div>`; })() : '';
             const cmd = Object.values(ppl).filter(p => p.pos === '指揮官').map(p => p.name).join('、');
     const info = sc.info || {};
@@ -2485,6 +2489,7 @@
         .pm-x{border:none;background:#f1f5f9;border-radius:50%;width:34px;height:34px;font-size:16px;cursor:pointer;flex:none}
         .pm-l{font-size:12px;font-weight:800;color:#9a8f8b;margin:12px 0 6px}
         .pm-o{display:block;width:100%;text-align:left;border:1.5px solid #ece4e1;background:#fff;border-radius:14px;padding:10px 12px;margin-bottom:8px;font:inherit;cursor:pointer;box-sizing:border-box}
+        .pm-days{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-top:8px}.pm-d{border:1.5px solid #ece4e1;background:#fff;border-radius:10px;padding:6px 0;font:inherit;cursor:pointer;line-height:1.15}.pm-d b{display:block;font-size:14px;color:#1f2430}.pm-d small{font-size:10.5px;color:#9a8f8b}.pm-d.on{background:var(--primary);border-color:var(--primary)}.pm-d.on b,.pm-d.on small{color:#fff}
         .pm-o b{display:block;font-size:15px;color:#1f2430}.pm-o small{font-size:12px;color:var(--sub)}.pm-o.on{border-color:var(--primary);background:#fff5f5;box-shadow:0 0 0 2px #fbd5d9}
         .sz{display:inline-flex;align-items:center;height:30px;border-radius:999px;background:#f6f1ef;padding:0 3px;flex:none}.sz button{width:22px;height:22px;border-radius:50%;border:none;background:#fff;font-size:15px;font-weight:900;color:#c2414f;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:0}
         .sz b{display:inline-flex;align-items:baseline;padding:0 2px}.sz b input{width:18px!important;height:auto!important;border:none!important;background:none;font:inherit;font-size:16px!important;font-weight:900;text-align:center;padding:0;-moz-appearance:textfield}.sz b input::-webkit-inner-spin-button{-webkit-appearance:none}.sz small{font-size:10px;color:#9a8f8b;font-weight:700}
@@ -2513,10 +2518,13 @@
     document.querySelectorAll('[data-sz]').forEach(b => b.onclick = () => { const i = $('sc-size'); i.value = Math.max(3, Math.min(5, (+i.value || 5) + +b.dataset.sz)); });
     if ($('sc-share')) $('sc-share').onclick = () => shareSched(eid);
     if ($('pm-ov')) $('pm-ov').onclick = ev => { if (ev.target.id === 'pm-ov') { schPk = null; renderSched(eid); } };
+    { const cnt = () => { const n = document.querySelectorAll('.pm-d.on').length; if ($('pm-dn')) $('pm-dn').textContent = n ? `已選 ${n} 天` : ''; };
+      document.querySelectorAll('.pm-d').forEach(b => b.onclick = () => { b.classList.toggle('on'); cnt(); });
+      document.querySelectorAll('[data-pdall]').forEach(b => b.onclick = () => { document.querySelectorAll('.pm-d').forEach(x => x.classList.toggle('on', b.dataset.pdall === '1')); cnt(); }); cnt(); }
     document.querySelectorAll('[data-pm]').forEach(b => b.onclick = () => {
       const m = b.dataset.pm, k = schPk; if (m === 'close') { schPk = null; return renderSched(eid); }
       const pm = { ...(sc.person || {}) };
-      if (m === 'range') { const a = $('pm-a').value, bb = $('pm-b').value; if (!a || !bb || a > bb) return toast('請選開始和結束日期'); pm[k] = { mode: 'range', a, b: bb }; }
+      if (m === 'range') { const ds = [...document.querySelectorAll('.pm-d.on')].map(x => x.dataset.pd).sort(); if (!ds.length) return toast('請至少選一天'); pm[k] = { mode: 'range', days: ds, a: ds[0], b: ds[ds.length - 1] }; }
       else pm[k] = { mode: m };
       schPk = null; save({ person: pm }, '已更新，請重新按「自動排班」');
     });
