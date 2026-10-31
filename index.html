@@ -209,10 +209,6 @@
 
         .image-map-container { position: relative; width: 100%; height: 100%; background: #000; overflow: hidden; touch-action: none; }
         #map-container { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
-        #map-lens { display: none; position: fixed; z-index: 99999; width: var(--lens, 280px); height: var(--lens, 280px); border-radius: 50%; overflow: hidden; pointer-events: none;
-            border: 4px solid #fff; box-shadow: 0 0 0 2px rgba(214,90,104,.85), 0 14px 34px rgba(0,0,0,.45); background: #111; }
-        #map-lens .ml-in { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
-        #map-lens .ml-in > div { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform-origin: 0 0; }
         #map-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform-origin: 0 0; }
         
         #warehouse-img { width: 100%; height: 100%; object-fit: fill; display: block; }
@@ -4091,45 +4087,7 @@
         saveCurrentPageTransform();
     }, { passive: false });
 
-    // ===== 長按放大鏡：手指按住地圖不放 → 跳出圓形放大鏡，移動手指可看別處，放開就消失 =====
-    (() => {
-        const R = Math.min(140, Math.round((innerWidth - 24) / 2 * 0.78)), Z = 2.4;
-        let timer = null, on = false, sx = 0, sy = 0, lens = null, inner = null, blockClick = 0;
-        const ok = () => !isContentEditActive && !isLayoutMode && !isOverviewActive && !isPanoActive;
-        const show = (x, y) => {
-            const cvs = document.getElementById('map-canvas'), cr = mapContainer.getBoundingClientRect();
-            if (!lens) { lens = document.createElement('div'); lens.id = 'map-lens'; document.body.appendChild(lens); }
-            lens.innerHTML = ''; inner = document.createElement('div'); inner.className = 'ml-in';
-            inner.style.width = cr.width + 'px'; inner.style.height = cr.height + 'px';
-            const cl = cvs.cloneNode(true); cl.removeAttribute('id'); cl.querySelectorAll('[id]').forEach(e => e.removeAttribute('id'));
-            inner.appendChild(cl); lens.appendChild(inner); lens.style.setProperty('--lens', R * 2 + 'px'); lens.style.display = 'block'; on = true;
-            try { navigator.vibrate && navigator.vibrate(15); } catch (e) {}
-            move(x, y);
-        };
-        const move = (x, y) => {
-            if (!on) return; const cr = mapContainer.getBoundingClientRect();
-            inner.style.transform = `translate(${R - Z * (x - cr.left)}px, ${R - Z * (y - cr.top)}px) scale(${Z})`;
-            let lx = x - R, ly = y - R * 2 - 30; if (ly < 8) ly = y + 50;
-            lx = Math.max(6, Math.min(innerWidth - R * 2 - 6, lx));
-            lens.style.left = lx + 'px'; lens.style.top = ly + 'px';
-        };
-        const hide = () => { clearTimeout(timer); timer = null; if (on) { blockClick = Date.now(); on = false; if (lens) lens.style.display = 'none'; } };
-        mapContainer.addEventListener('touchstart', e => {
-            if (!ok() || e.touches.length !== 1) return hide();
-            const t = e.touches[0]; sx = t.clientX; sy = t.clientY;
-            clearTimeout(timer); timer = setTimeout(() => show(sx, sy), 420);
-        }, { passive: true, capture: true });
-        window.addEventListener('touchmove', e => {
-            const t = e.touches[0]; if (!t) return;
-            if (on) { e.preventDefault(); e.stopImmediatePropagation(); move(t.clientX, t.clientY); return; }
-            if (timer && Math.hypot(t.clientX - sx, t.clientY - sy) > 10) { clearTimeout(timer); timer = null; }
-        }, { passive: false, capture: true });
-        window.addEventListener('touchend', e => { if (on) { e.preventDefault(); e.stopImmediatePropagation(); } hide(); }, { passive: false, capture: true });
-        window.addEventListener('touchcancel', hide, { capture: true });
-        ['pointermove', 'pointerup'].forEach(t => window.addEventListener(t, e => { if (on) e.stopImmediatePropagation(); }, { capture: true }));
-        window.addEventListener('click', e => { if (Date.now() - blockClick < 500) { e.preventDefault(); e.stopImmediatePropagation(); } }, { capture: true });
-        mapContainer.addEventListener('contextmenu', e => { if (ok()) e.preventDefault(); });
-    })();
+    window.__lensOk = () => !isContentEditActive && !isLayoutMode;   // 長按放大鏡（lens.js）：編輯／佈局時不用
 
     async function saveCurrentPageTransform() {
         const p = pages[currentPageIndex];
@@ -6495,5 +6453,6 @@
   setInterval(check, 120000);
 })();
 </script>
+<script src="/lens.js" defer></script>
 </body>
 </html>
