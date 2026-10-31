@@ -1268,6 +1268,7 @@
                 <img id="view-item-img" src="" style="width: 70px; height: 70px; object-fit: contain; border-radius: 10px; background: #1c1c1e; margin-bottom: 8px; display:block; margin-left:auto; margin-right:auto;">
                 <div id="view-item-name" style="font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 4px;"></div>
                 <div id="view-item-qty" style="font-size: 13px; color: #ff9500; font-weight: 600;"></div>
+                <div id="view-item-contents"></div>
             </div>
 
             <button class="apple-btn secondary" style="width:100%; margin-bottom:14px; background:rgba(10, 132, 255, 0.2); border-color:rgba(10, 132, 255, 0.4);" id="btn-item-history" onclick="openItemHistoryModal()">📜 檢視此物品出入庫歷史紀錄</button>
@@ -1292,6 +1293,8 @@
                     <input type="checkbox" id="edit-must-return" style="width:20px; height:20px; accent-color:#ea580c;" onchange="saveMustReturn(this.checked)">
                     <span><b>🔁 一定要歸還</b>（衣服、帽子、包包…）<br><span style="font-size:11px; color:#9a3412;">勾選後，沒回來的不會記成消耗，會一直掛在領用人名下</span></span>
                 </label>
+                <div style="font-size: 13px; color:#8e8e93; margin-bottom:4px;">📋 包內有什麼（腰包、急救包用；一行一樣：名稱 數量）：</div>
+                <textarea id="edit-item-contents" class="apple-input" rows="5" maxlength="1000" placeholder="例如：&#10;瞳孔筆 1&#10;剪刀 1&#10;3*3 紗布 5&#10;（沒有就留空）" style="margin-bottom:10px; font-size:14px; padding:10px; resize:vertical; line-height:1.6;"></textarea>
             </div>
 
             <div style="font-size: 12px; color: #8e8e93; text-align: center; margin-bottom: 15px;" id="edit-mode-hint">
@@ -3522,7 +3525,8 @@
                     name: item.name,
                     checkedOutCount: Number(item.checkedOutCount) || 0,
                     borrower: item.borrower || '不詳',
-                    qty: Number(item.qty) || 0
+                    qty: Number(item.qty) || 0, unit: item.unit,
+                    contents: item.contents || '', imageUrl: item.imageUrl || ''
                 };
             }
 
@@ -3747,7 +3751,9 @@
             playBeep(2700, 90);
             vibrateFeedback(60);
 
-            if (scannedItemInfo) {
+            if (scannedItemInfo && contentsRows(scannedItemInfo.contents).length) {
+                showContentsSheet(scannedItemInfo, box.name);
+            } else if (scannedItemInfo) {
                 if (scannedItemInfo.checkedOutCount > 0) {
                     showToast(`📍 找到箱子：${box.name}\n\n🚨 【狀態：已出庫】\n物品：${scannedItemInfo.name}\n🔴 已外借未歸還：${scannedItemInfo.checkedOutCount} 件\n👤 出庫去向：${scannedItemInfo.borrower}\n\n💡 可至「進出貨紀錄」查詢詳細出貨單。`, 'out', 2000);
                 } else {
@@ -3761,6 +3767,34 @@
             vibrateFeedback([80, 60, 80]);
             showToast('❌ 查無此 QR Code 對應的倉儲位置', 'error', 900);
         }
+    }
+
+    // ===== 內含物（腰包、急救包裡有什麼）=====
+    function contentsRows(text) {
+        return String(text || '').split('\n').map(x => x.trim()).filter(Boolean).map(line => {
+            const m = line.match(/^(.+?)[\s:：xX×]+([0-9]+\s*\S{0,2}|選)$/);
+            return m ? { n: m[1].trim(), q: m[2].trim() } : { n: line, q: '' };
+        });
+    }
+    function contentsTable(text, big) {
+        const rows = contentsRows(text); if (!rows.length) return '';
+        const fs = big ? 18 : 14;
+        return `<div style="margin-top:12px;text-align:left;background:#fff;border:1px solid #f0e6e3;border-radius:14px;overflow:hidden">
+            <div style="padding:9px 12px;background:#fff7ed;color:#c2410c;font-weight:900;font-size:${fs}px">📋 裡面有什麼（${rows.length} 樣）</div>
+            ${rows.map((r, i) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:${big ? 11 : 8}px 12px;border-top:1px solid #f3efed;font-size:${fs}px;color:#1f2937;${i % 2 ? 'background:#fcfaf9' : ''}"><span>${escapeHtml(r.n)}</span><b style="color:#c2410c;white-space:nowrap">${escapeHtml(r.q)}</b></div>`).join('')}</div>`;
+    }
+    function showContentsSheet(info, boxName) {
+        const old = document.getElementById('contents-ov'); if (old) old.remove();
+        const ov = document.createElement('div'); ov.className = 'exp-ov'; ov.id = 'contents-ov'; ov.style.zIndex = 9600;
+        const st = info.checkedOutCount > 0
+            ? `<span style="color:#b42318">🔴 已外借 ${info.checkedOutCount} ${escapeHtml(UNIT(info))}</span>`
+            : `<span style="color:#15803d">🟢 在庫 ${info.qty} ${escapeHtml(UNIT(info))}</span>`;
+        ov.innerHTML = `<div class="exp-card">
+            <div class="exp-h" style="color:#1f2937">${info.imageUrl ? `<img src="${escapeHtml(info.imageUrl)}" alt="" style="width:46px;height:46px;border-radius:10px;object-fit:cover;margin-right:10px;flex:none">` : ''}<span style="flex:1;min-width:0">${escapeHtml(info.name)}<small style="display:block;font-size:12.5px;color:#8a7f7a;font-weight:600;margin-top:2px">📦 ${escapeHtml(boxName)}・${st}</small></span><button type="button" class="exp-x">✕</button></div>
+            ${contentsTable(info.contents, true)}
+            <button type="button" class="exp-ok" style="all:unset;box-sizing:border-box;display:block;width:100%;text-align:center;padding:14px;border-radius:14px;background:#f3efed;font-weight:800;margin-top:12px;cursor:pointer">知道了</button></div>`;
+        ov.onclick = e => { if (e.target === ov || e.target.closest('.exp-x') || e.target.closest('.exp-ok')) ov.remove(); };
+        document.body.appendChild(ov);
     }
 
     // ===== 箱子 QR：整箱進出庫 =====
@@ -5667,6 +5701,7 @@
             document.getElementById('edit-mode-hint').style.display = 'none';
             
             document.getElementById('edit-item-name-input').value = it.name || '';
+            document.getElementById('edit-item-contents').value = it.contents || '';
             { const dv = isDev(); const ni = document.getElementById('edit-item-name-input'), ui = document.getElementById('edit-item-unit');
               const tb = document.getElementById('edit-type-durable'); if (tb && tb.parentElement) { tb.parentElement.style.display = dv ? 'flex' : 'none'; if (tb.parentElement.previousElementSibling) tb.parentElement.previousElementSibling.style.display = dv ? '' : 'none'; } }
             document.getElementById('edit-item-qty-input').value = it.qty || 0;
@@ -5692,6 +5727,7 @@
                 ? stockText(it)
                 : `目前庫存數量: ${it.qty || 0} / ${it.units.length} ${UNIT(it)}`;
             document.getElementById('view-item-img').src = it.imageUrl || 'https://via.placeholder.com/70?text=No+Img';
+            document.getElementById('view-item-contents').innerHTML = contentsTable(it.contents);
 
             document.getElementById('btn-modal-del').style.display = 'none';
             document.getElementById('btn-modal-save').style.display = 'none';
@@ -6385,6 +6421,8 @@
         const it = b.items[editingItemIndex];
         const oldQty = it.itemType === 'consumable' ? (Number(it.qty) || 0) : (ensureUnits(it), it.units.length), oldName = it.name;
         it.name = newName;
+        { const c = (document.getElementById('edit-item-contents').value || '').replace(/\r/g, '').split('\n').map(x => x.trim()).filter(Boolean).join('\n').slice(0, 1000);
+          if (c) it.contents = c; else delete it.contents; }
         { const u = (document.getElementById('edit-item-unit').value || '').trim().slice(0, 3); if (u && u !== '個') it.unit = u; else delete it.unit; }
 
         if (it.itemType === 'consumable') {
