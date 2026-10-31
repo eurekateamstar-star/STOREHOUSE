@@ -3856,7 +3856,8 @@
                   <input data-g="${g}" data-r="${i}" data-f="n" value="${escapeHtml(r.n)}" placeholder="名稱" style="${inp};flex:1;min-width:0">
                   <input data-g="${g}" data-r="${i}" data-f="q" value="${escapeHtml(r.q)}" placeholder="數量" style="${inp};width:58px;text-align:center">
                   <button type="button" data-delr="${g}|${i}" style="all:unset;width:30px;text-align:center;color:#b42318;font-size:18px;cursor:pointer">✕</button></div>`; }).join('')}
-                <button type="button" data-addr="${g}" style="all:unset;box-sizing:border-box;display:block;width:100%;text-align:center;padding:9px;border-radius:10px;border:1px dashed #e0b8a8;color:#c2410c;font-weight:800;cursor:pointer">＋ 新增一樣</button></div>`).join('')}
+                <div style="display:flex;gap:6px"><button type="button" data-pick="${g}" style="all:unset;box-sizing:border-box;flex:3;text-align:center;padding:9px 4px;border-radius:10px;background:#f08339;color:#fff;font-weight:800;cursor:pointer">＋ 從倉庫選（附照片）</button>
+                <button type="button" data-addr="${g}" style="all:unset;box-sizing:border-box;flex:2;text-align:center;padding:9px 4px;border-radius:10px;border:1px dashed #e0b8a8;color:#c2410c;font-weight:800;cursor:pointer">＋ 自己輸入</button></div></div>`).join('')}
               ${total ? `<button type="button" class="kit-addg" style="all:unset;box-sizing:border-box;display:block;width:100%;text-align:center;padding:11px;border-radius:12px;background:#fff7ed;color:#c2410c;font-weight:800;margin-bottom:10px;cursor:pointer">＋ 新增一組（複製上一組再修改）</button>` : ''}
               <div style="display:flex;gap:10px"><button type="button" class="kit-cancel" style="all:unset;flex:1;text-align:center;padding:13px;border-radius:14px;background:#f3efed;font-weight:800;cursor:pointer">取消</button>
                 <button type="button" class="kit-save" style="all:unset;flex:2;text-align:center;padding:13px;border-radius:14px;background:#f08339;color:#fff;font-weight:900;cursor:pointer">💾 儲存</button></div></div>`;
@@ -3865,6 +3866,8 @@
             const t = e.target;
             if (t === ov || t.closest('.exp-x') || t.closest('.kit-cancel')) { ov.remove(); return; }
             if (t.closest('[data-addr]')) { sync(); ks[+t.closest('[data-addr]').dataset.addr].rows.push({ n: '', q: '' }); draw(); return; }
+            if (t.closest('[data-pick]')) { sync(); const g = +t.closest('[data-pick]').dataset.pick;
+                pickWarehouseItems(names => { const rows = ks[g].rows.filter(r => String(r.n || '').trim()); names.forEach(n => { if (!rows.some(r => r.n === n)) rows.push({ n, q: '1' }); }); ks[g].rows = rows.length ? rows : [{ n: '', q: '' }]; draw(); }); return; }
             if (t.closest('[data-delr]')) { sync(); const [g, i] = t.closest('[data-delr]').dataset.delr.split('|').map(Number); ks[g].rows.splice(i, 1); if (!ks[g].rows.length) ks[g].rows.push({ n: '', q: '' }); draw(); return; }
             if (t.closest('[data-delg]')) { sync(); ks.splice(+t.closest('[data-delg]').dataset.delg, 1); draw(); return; }
             if (t.closest('.kit-addg')) { sync(); const last = ks[ks.length - 1]; const n = last.to - last.from + 1; ks.push({ from: Math.min(total, last.to + 1), to: Math.min(total, last.to + n), rows: JSON.parse(JSON.stringify(last.rows)) }); draw(); return; }
@@ -3892,6 +3895,38 @@
         });
         document.body.appendChild(ov); draw();
     };
+    // 從倉庫挑物品（附照片），可多選
+    function pickWarehouseItems(done) {
+        const seen = new Map();
+        (boxesCache || []).forEach(b => (b.items || []).forEach(x => { const n = String(x.name || '').trim(); if (!n) return;
+            const cur = seen.get(n); if (!cur || (!cur.img && x.imageUrl)) seen.set(n, { n, img: x.imageUrl || '', box: b.name }); }));
+        const all = [...seen.values()].sort((a, b) => (b.img ? 1 : 0) - (a.img ? 1 : 0));
+        const sel = new Set(); let q = '';
+        const ov = document.createElement('div'); ov.className = 'exp-ov'; ov.id = 'kit-pick-ov'; ov.style.zIndex = 9750;
+        ov.innerHTML = `<div class="exp-card" style="max-height:92vh;display:flex;flex-direction:column">
+            <div class="exp-h" style="color:#c2410c">📦 從倉庫選物品<button type="button" class="exp-x">✕</button></div>
+            <input class="kp-q" placeholder="🔍 搜尋名稱，例如：紗布" style="box-sizing:border-box;width:100%;border:1px solid #e7dcd8;border-radius:12px;padding:10px 12px;font-size:15px;margin-bottom:8px">
+            <div class="kp-list" style="flex:1 1 auto;min-height:0;overflow:auto;display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:max-content;gap:6px;align-content:start"></div>
+            <div style="display:flex;gap:10px;margin-top:10px"><button type="button" class="kp-cancel" style="all:unset;flex:1;text-align:center;padding:13px;border-radius:14px;background:#f3efed;font-weight:800;cursor:pointer">取消</button>
+              <button type="button" class="kp-ok" style="all:unset;flex:2;text-align:center;padding:13px;border-radius:14px;background:#f08339;color:#fff;font-weight:900;cursor:pointer">加入</button></div></div>`;
+        const list = ov.querySelector('.kp-list'), ok = ov.querySelector('.kp-ok');
+        const draw = () => {
+            const k = q.replace(/\s/g, '').toLowerCase();
+            const rows = all.filter(r => !k || r.n.replace(/\s/g, '').toLowerCase().includes(k) || String(r.box || '').toLowerCase().includes(k));
+            list.innerHTML = rows.map(r => `<div data-n="${escapeHtml(r.n)}" style="position:relative;border:2px solid ${sel.has(r.n) ? '#f08339' : '#f0e6e3'};border-radius:12px;overflow:hidden;background:#fff;cursor:pointer;text-align:center">
+                <div style="position:relative;height:0;padding-bottom:100%;background:#f6f1ef">${r.img ? `<img src="${escapeHtml(r.img)}" loading="lazy" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">` : '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:22px;opacity:.5">📦</span>'}</div>
+                ${sel.has(r.n) ? '<b style="position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:#f08339;color:#fff;line-height:22px;font-size:14px">✓</b>' : ''}
+                <div style="font-size:11.5px;font-weight:700;padding:4px 2px;line-height:1.25;word-break:break-all">${escapeHtml(r.n)}</div></div>`).join('') || '<div style="grid-column:1/-1;text-align:center;color:#8e8e93;padding:20px">找不到，可以按「自己輸入」</div>';
+            ok.innerText = sel.size ? `加入 ${sel.size} 樣` : '加入';
+        };
+        ov.querySelector('.kp-q').oninput = e => { q = e.target.value; draw(); };
+        ov.onclick = e => {
+            if (e.target === ov || e.target.closest('.exp-x') || e.target.closest('.kp-cancel')) { ov.remove(); return; }
+            const c = e.target.closest('[data-n]'); if (c) { const n = c.dataset.n; sel.has(n) ? sel.delete(n) : sel.add(n); draw(); return; }
+            if (e.target.closest('.kp-ok')) { ov.remove(); if (sel.size) done([...sel]); }
+        };
+        document.body.appendChild(ov); draw();
+    }
     const kitSummary = it => { const ks = kitsOf(it); return ks.length ? `已設定 ${ks.length} 組・${ks.reduce((a, k) => a + k.rows.length, 0)} 樣` : '還沒設定'; };
 
     // ===== 箱子 QR：整箱進出庫 =====
