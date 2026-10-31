@@ -3818,12 +3818,61 @@
         const u = unitNo && Array.isArray(it.units) ? it.units[unitNo - 1] : null;
         const st = u ? (u.status === 'out' ? `<span style="color:#b42318">🔴 這件已外借：${escapeHtml(targetName(u.borrower || '不詳'))}</span>` : '<span style="color:#15803d">🟢 這件在庫</span>')
             : co > 0 ? `<span style="color:#b42318">🔴 已外借 ${co} ${escapeHtml(UNIT(it))}</span>` : `<span style="color:#15803d">🟢 在庫 ${Number(it.qty) || 0} ${escapeHtml(UNIT(it))}</span>`;
-        ov.innerHTML = `<div class="exp-card" style="max-height:92vh">
-            <div class="exp-h" style="color:#1f2937;margin-bottom:4px">${it.imageUrl ? `<img src="${escapeHtml(it.imageUrl)}" alt="" style="width:46px;height:46px;border-radius:10px;object-fit:cover;margin-right:10px;flex:none">` : ''}<span style="flex:1;min-width:0">${escapeHtml(it.name)}${unitNo ? ` <span style="color:#c2410c">第 ${unitNo} 件</span>` : ''}<small style="display:block;font-size:12.5px;color:#8a7f7a;font-weight:600;margin-top:2px">📦 ${escapeHtml(boxName)}・${st}</small></span><button type="button" class="exp-x">✕</button></div>
-            ${kitsHtml(it, unitNo, true)}
-            <button type="button" class="exp-ok" style="all:unset;box-sizing:border-box;display:block;width:100%;text-align:center;padding:13px;border-radius:14px;background:#f3efed;font-weight:800;margin-top:12px;cursor:pointer">知道了</button></div>`;
-        ov.onclick = e => { if (e.target === ov || e.target.closest('.exp-x') || e.target.closest('.exp-ok')) ov.remove(); };
-        document.body.appendChild(ov);
+        // 補包核對要用的清單（這一件那組；沒指定件數就全部合併）
+        let ks = kitsOf(it); if (unitNo) { const k = ks.find(k => !k.from || (unitNo >= k.from && unitNo <= k.to)); if (k) ks = [k]; }
+        const list = []; ks.forEach(k => k.rows.forEach(r => { if (!list.some(x => x.n === r.n)) list.push(r); }));
+        let tab = 'view', pos = 0, res = [];
+        ov.innerHTML = `<div class="exp-card" style="max-height:94vh">
+            <div class="exp-h" style="color:#1f2937;margin-bottom:6px">${it.imageUrl ? `<img src="${escapeHtml(it.imageUrl)}" alt="" style="width:46px;height:46px;border-radius:10px;object-fit:cover;margin-right:10px;flex:none">` : ''}<span style="flex:1;min-width:0">${escapeHtml(it.name)}${unitNo ? ` <span style="color:#c2410c">第 ${unitNo} 件</span>` : ''}<small style="display:block;font-size:12.5px;color:#8a7f7a;font-weight:600;margin-top:2px">📦 ${escapeHtml(boxName)}・${st}</small></span><button type="button" class="exp-x">✕</button></div>
+            <div class="ks-tabs" style="display:flex;background:#f3efed;border-radius:12px;padding:3px;margin-bottom:8px"><button type="button" data-tab="view" style="all:unset;flex:1;text-align:center;padding:8px;border-radius:9px;font-weight:800;font-size:14px;cursor:pointer">📋 看內容</button><button type="button" data-tab="check" style="all:unset;flex:1;text-align:center;padding:8px;border-radius:9px;font-weight:800;font-size:14px;cursor:pointer">✅ 補包核對</button></div>
+            <div class="ks-body"></div></div>`;
+        const body = ov.querySelector('.ks-body');
+        const paintTabs = () => ov.querySelectorAll('[data-tab]').forEach(b => { const on = b.dataset.tab === tab; b.style.background = on ? '#fff' : 'transparent'; b.style.color = on ? '#c2410c' : '#8a7f7a'; b.style.boxShadow = on ? '0 1px 4px rgba(0,0,0,.08)' : 'none'; });
+        const okN = () => res.filter(x => x === 'y').length, noN = () => res.filter(x => x === 'n').length;
+        const prog = () => `<div style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:13.5px;margin:0 2px 8px"><span style="color:#1f2937">${pos < list.length ? `第 ${pos + 1} / ${list.length} 樣` : `${list.length} 樣核對完`}</span><span style="color:#15803d">✓${okN()}</span><span style="color:#b42318">缺 ${noN()}</span><i style="flex:1;height:9px;border-radius:5px;background:#e5e7eb;overflow:hidden"><b style="display:block;height:100%;width:${Math.round(pos / list.length * 100)}%;background:#22c55e;transition:width .25s"></b></i></div>`;
+        const drawView = () => { body.innerHTML = kitsHtml(it, unitNo, true) + `<button type="button" class="exp-ok" style="all:unset;box-sizing:border-box;display:block;width:100%;text-align:center;padding:13px;border-radius:14px;background:#f3efed;font-weight:800;margin-top:12px;cursor:pointer">知道了</button>`; };
+        const drawCheck = () => {
+            if (pos >= list.length) {   // 結果
+                const miss = list.filter((_, i) => res[i] === 'n');
+                body.innerHTML = prog() + `<div style="text-align:center;padding:10px 0 4px">${miss.length ? `<div style="font-size:44px">📝</div><div style="font-size:20px;font-weight:900;color:#b42318;margin:4px 0 10px">缺 ${miss.length} 樣，要補：</div>` : `<div style="font-size:54px">🎉</div><div style="font-size:21px;font-weight:900;color:#15803d;margin:4px 0 10px">全部齊了！</div>`}</div>
+                    ${miss.length ? `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">${miss.map(r => { const im = kitImg(it, r.n); return `<div style="border:2px solid #fecaca;border-radius:12px;overflow:hidden;text-align:center;background:#fff;position:relative"><div style="position:relative;height:0;padding-bottom:100%;background:#f6f1ef">${im ? `<img src="${escapeHtml(im)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">` : '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:22px">📦</span>'}</div>${r.q ? `<b style="position:absolute;top:4px;right:4px;padding:0 6px;border-radius:9px;background:#ef4444;color:#fff;font-size:12px;line-height:19px">${escapeHtml(r.q)}</b>` : ''}<div style="font-size:12px;font-weight:800;padding:4px 2px">${escapeHtml(r.n)}</div></div>`; }).join('')}</div>` : ''}
+                    <div style="display:flex;gap:10px;margin-top:14px"><button type="button" class="ks-redo" style="all:unset;flex:1;text-align:center;padding:13px;border-radius:14px;background:#f3efed;font-weight:800;cursor:pointer">重來</button><button type="button" class="exp-ok" style="all:unset;flex:2;text-align:center;padding:13px;border-radius:14px;background:#22c55e;color:#fff;font-weight:900;cursor:pointer">完成</button></div>`;
+                return;
+            }
+            const card = (r, cls, z) => { const im = kitImg(it, r.n); return `<div class="ks-card ${cls}" style="position:absolute;left:18px;right:18px;top:0;height:100%;border-radius:22px;background:#fff;border:1px solid #eee;box-shadow:0 10px 26px rgba(0,0,0,.12);text-align:center;padding:14px;box-sizing:border-box;z-index:${z};touch-action:none;user-select:none;-webkit-user-select:none">
+                <div style="width:74%;margin:0 auto;aspect-ratio:1;border-radius:16px;background:#fff;overflow:hidden;display:flex;align-items:center;justify-content:center">${im ? `<img src="${escapeHtml(im)}" draggable="false" style="width:100%;height:100%;object-fit:contain;pointer-events:none">` : '<span style="font-size:60px">📦</span>'}</div>
+                <div style="font-size:26px;font-weight:900;margin-top:8px;color:#1f2937">${escapeHtml(r.n)}</div>${r.q ? `<div style="font-size:34px;font-weight:900;color:#c2410c;line-height:1.1">× ${escapeHtml(r.q)}</div>` : ''}
+                <span class="ks-y" style="position:absolute;top:18px;left:18px;border:4px solid #22c55e;color:#22c55e;font-size:24px;font-weight:900;padding:2px 12px;border-radius:10px;transform:rotate(-12deg);background:rgba(255,255,255,.85);opacity:0">有 ✓</span>
+                <span class="ks-n" style="position:absolute;top:18px;right:18px;border:4px solid #ef4444;color:#ef4444;font-size:24px;font-weight:900;padding:2px 12px;border-radius:10px;transform:rotate(12deg);background:rgba(255,255,255,.85);opacity:0">缺 ✗</span></div>`; };
+            const nx = list.slice(pos + 1, pos + 3);
+            body.innerHTML = prog() + `<div class="ks-stack" data-nolens style="position:relative;height:min(52vh,420px);margin:4px 0 10px">
+                ${nx[1] ? card(nx[1], '', 1).replace('top:0;', 'top:0;transform:translateY(22px) scale(.88);opacity:.35;') : ''}
+                ${nx[0] ? card(nx[0], '', 2).replace('top:0;', 'top:0;transform:translateY(11px) scale(.94);opacity:.65;') : ''}
+                ${card(list[pos], 'top', 3)}</div>
+                <div style="display:flex;gap:10px"><button type="button" class="ks-no" style="all:unset;flex:1;text-align:center;padding:15px 0;border-radius:16px;background:#ef4444;color:#fff;font-size:19px;font-weight:900;cursor:pointer">← 缺</button>
+                <button type="button" class="ks-back" style="all:unset;width:54px;text-align:center;padding:15px 0;border-radius:16px;background:#f3efed;font-size:18px;cursor:pointer;${pos ? '' : 'visibility:hidden'}">↶</button>
+                <button type="button" class="ks-yes" style="all:unset;flex:1.4;text-align:center;padding:15px 0;border-radius:16px;background:#22c55e;color:#fff;font-size:19px;font-weight:900;cursor:pointer">有 →</button></div>
+                <div style="text-align:center;font-size:12.5px;color:#8a7f7a;margin-top:8px">往右滑＝有，往左滑＝缺（也可以按按鈕）</div>`;
+            const top = body.querySelector('.ks-card.top'), sy = top.querySelector('.ks-y'), sn = top.querySelector('.ks-n');
+            let x0 = null, dx = 0, pid = null;
+            const set = (d, anim) => { top.style.transition = anim ? 'transform .28s ease, opacity .28s' : 'none'; top.style.transform = `translateX(${d}px) rotate(${d / 18}deg)`; sy.style.opacity = Math.max(0, Math.min(1, d / 90)); sn.style.opacity = Math.max(0, Math.min(1, -d / 90)); };
+            const decide = v => { const w = (v === 'y' ? 1 : -1) * (innerWidth + 120); set(w, true); top.style.opacity = '0'; try { navigator.vibrate && navigator.vibrate(v === 'y' ? 12 : [20, 40, 20]); } catch (e) {} res[pos] = v; setTimeout(() => { pos++; drawCheck(); }, 230); };
+            top.addEventListener('pointerdown', e => { x0 = e.clientX; dx = 0; pid = e.pointerId; try { top.setPointerCapture(pid); } catch (er) {} });
+            top.addEventListener('pointermove', e => { if (x0 === null) return; dx = e.clientX - x0; set(dx, false); });
+            const end = () => { if (x0 === null) return; x0 = null; if (dx > 90) decide('y'); else if (dx < -90) decide('n'); else set(0, true); };
+            top.addEventListener('pointerup', end); top.addEventListener('pointercancel', end);
+            body.querySelector('.ks-yes').onclick = () => decide('y');
+            body.querySelector('.ks-no').onclick = () => decide('n');
+            body.querySelector('.ks-back').onclick = () => { if (pos) { pos--; res.length = pos; drawCheck(); } };
+        };
+        const draw = () => { paintTabs(); tab === 'view' ? drawView() : drawCheck(); };
+        ov.onclick = e => {
+            if (e.target === ov || e.target.closest('.exp-x') || e.target.closest('.exp-ok')) { ov.remove(); return; }
+            const t = e.target.closest('[data-tab]'); if (t) { tab = t.dataset.tab; draw(); return; }
+            if (e.target.closest('.ks-redo')) { pos = 0; res = []; drawCheck(); }
+        };
+        if (!list.length) ov.querySelector('.ks-tabs').style.display = 'none';
+        document.body.appendChild(ov); draw();
     }
     // 小照片：裁成正方形，存起來很小
     function squareThumb(file, size = 200) {
