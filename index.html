@@ -1293,8 +1293,7 @@
                     <input type="checkbox" id="edit-must-return" style="width:20px; height:20px; accent-color:#ea580c;" onchange="saveMustReturn(this.checked)">
                     <span><b>🔁 一定要歸還</b>（衣服、帽子、包包…）<br><span style="font-size:11px; color:#9a3412;">勾選後，沒回來的不會記成消耗，會一直掛在領用人名下</span></span>
                 </label>
-                <div style="font-size: 13px; color:#8e8e93; margin-bottom:4px;">📋 包內有什麼（腰包、急救包用；一行一樣：名稱 數量）：</div>
-                <textarea id="edit-item-contents" class="apple-input" rows="5" maxlength="1000" placeholder="例如：&#10;瞳孔筆 1&#10;剪刀 1&#10;3*3 紗布 5&#10;（沒有就留空）" style="margin-bottom:10px; font-size:14px; padding:10px; resize:vertical; line-height:1.6;"></textarea>
+                <button type="button" class="apple-btn secondary" onclick="openKitEditor()" style="width:100%; margin-bottom:10px; padding:11px; font-size:14px; display:flex; justify-content:space-between; align-items:center;"><span>📋 包內物品（腰包、急救包）</span><small id="kit-summary" style="color:#8e8e93; font-weight:600;"></small></button>
             </div>
 
             <div style="font-size: 12px; color: #8e8e93; text-align: center; margin-bottom: 15px;" id="edit-mode-hint">
@@ -3526,7 +3525,7 @@
                     checkedOutCount: Number(item.checkedOutCount) || 0,
                     borrower: item.borrower || '不詳',
                     qty: Number(item.qty) || 0, unit: item.unit,
-                    contents: item.contents || '', imageUrl: item.imageUrl || ''
+                    item, unitNo: (unitUid && !consId && Array.isArray(item.units)) ? item.units.findIndex(u => u.uid === unitUid) + 1 : 0
                 };
             }
 
@@ -3751,8 +3750,8 @@
             playBeep(2700, 90);
             vibrateFeedback(60);
 
-            if (scannedItemInfo && contentsRows(scannedItemInfo.contents).length) {
-                showContentsSheet(scannedItemInfo, box.name);
+            if (scannedItemInfo && hasKits(scannedItemInfo.item)) {
+                showContentsSheet(scannedItemInfo.item, scannedItemInfo.unitNo, box.name);
             } else if (scannedItemInfo) {
                 if (scannedItemInfo.checkedOutCount > 0) {
                     showToast(`📍 找到箱子：${box.name}\n\n🚨 【狀態：已出庫】\n物品：${scannedItemInfo.name}\n🔴 已外借未歸還：${scannedItemInfo.checkedOutCount} 件\n👤 出庫去向：${scannedItemInfo.borrower}\n\n💡 可至「進出貨紀錄」查詢詳細出貨單。`, 'out', 2000);
@@ -3770,32 +3769,130 @@
     }
 
     // ===== 內含物（腰包、急救包裡有什麼）=====
+    // it.kits = [{ from, to, rows:[{n,q}] }]（第 from～to 件裝的東西；from 為 0＝全部）；it.kitImgs = { 名稱: 照片 }
+    // 舊資料 it.contents（一行一樣的文字）還是看得到
     function contentsRows(text) {
         return String(text || '').split('\n').map(x => x.trim()).filter(Boolean).map(line => {
             const m = line.match(/^(.+?)[\s:：xX×]+([0-9]+\s*\S{0,2}|選)$/);
             return m ? { n: m[1].trim(), q: m[2].trim() } : { n: line, q: '' };
         });
     }
-    function contentsTable(text, big) {
-        const rows = contentsRows(text); if (!rows.length) return '';
-        const fs = big ? 18 : 14;
-        return `<div style="margin-top:12px;text-align:left;background:#fff;border:1px solid #f0e6e3;border-radius:14px;overflow:hidden">
-            <div style="padding:9px 12px;background:#fff7ed;color:#c2410c;font-weight:900;font-size:${fs}px">📋 裡面有什麼（${rows.length} 樣）</div>
-            ${rows.map((r, i) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:${big ? 11 : 8}px 12px;border-top:1px solid #f3efed;font-size:${fs}px;color:#1f2937;${i % 2 ? 'background:#fcfaf9' : ''}"><span>${escapeHtml(r.n)}</span><b style="color:#c2410c;white-space:nowrap">${escapeHtml(r.q)}</b></div>`).join('')}</div>`;
+    function kitsOf(it) {
+        if (it && Array.isArray(it.kits) && it.kits.some(k => (k.rows || []).length)) return it.kits.filter(k => (k.rows || []).length);
+        const rows = contentsRows(it && it.contents);
+        return rows.length ? [{ from: 0, to: 0, rows }] : [];
     }
-    function showContentsSheet(info, boxName) {
+    const hasKits = it => kitsOf(it).length > 0;
+    function kitImg(it, name) {
+        const own = (it.kitImgs || {})[name]; if (own) return own;
+        const key = String(name).replace(/\s/g, ''); if (!key) return '';
+        let best = '';
+        (boxesCache || []).some(b => (b.items || []).some(x => {   // 倉庫裡同名的物品有照片就直接借用
+            if (!x.imageUrl) return false;
+            const xn = String(x.name || '').replace(/\s/g, '');
+            if (xn === key) { best = x.imageUrl; return true; }
+            if (!best && key.length >= 2 && (xn.startsWith(key) || key.startsWith(xn) && xn.length >= 2)) best = x.imageUrl;
+            return false;
+        }));
+        return best;
+    }
+    const kitRange = k => (k.from ? `第 ${k.from}～${k.to} ${'件'}` : '每一件');
+    function kitGrid(it, k, big) {
+        const rows = k.rows || [];
+        return `<div style="display:grid;grid-template-columns:repeat(${big ? 4 : 4},1fr);gap:6px">${rows.map(r => { const im = kitImg(it, r.n);
+            return `<div style="background:#fff;border:1px solid #f0e6e3;border-radius:12px;overflow:hidden;position:relative;text-align:center">
+                <div style="aspect-ratio:1;background:#f6f1ef;display:flex;align-items:center;justify-content:center">${im ? `<img src="${escapeHtml(im)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block">` : '<span style="font-size:24px;opacity:.5">📦</span>'}</div>
+                ${r.q ? `<b style="position:absolute;top:4px;right:4px;min-width:22px;padding:1px 6px;border-radius:10px;background:#c2410c;color:#fff;font-size:${big ? 14 : 12}px;line-height:20px">${escapeHtml(r.q)}</b>` : ''}
+                <div style="font-size:${big ? 13 : 11.5}px;font-weight:700;color:#1f2937;padding:4px 3px 5px;line-height:1.25;word-break:break-all">${escapeHtml(r.n)}</div></div>`; }).join('')}</div>`;
+    }
+    function kitsHtml(it, unitNo, big) {
+        let ks = kitsOf(it); if (!ks.length) return '';
+        if (unitNo) { const k = ks.find(k => !k.from || (unitNo >= k.from && unitNo <= k.to)); if (k) ks = [k]; }
+        return ks.map(k => `<div style="margin-top:10px;text-align:left">
+            <div style="font-weight:900;color:#c2410c;font-size:${big ? 15 : 13}px;margin:0 2px 6px">📋 ${ks.length > 1 || k.from ? escapeHtml(kitRange(k)) + ' 裝的東西' : '裡面有什麼'}（${k.rows.length} 樣）</div>${kitGrid(it, k, big)}</div>`).join('');
+    }
+    function showContentsSheet(it, unitNo, boxName) {
         const old = document.getElementById('contents-ov'); if (old) old.remove();
         const ov = document.createElement('div'); ov.className = 'exp-ov'; ov.id = 'contents-ov'; ov.style.zIndex = 9600;
-        const st = info.checkedOutCount > 0
-            ? `<span style="color:#b42318">🔴 已外借 ${info.checkedOutCount} ${escapeHtml(UNIT(info))}</span>`
-            : `<span style="color:#15803d">🟢 在庫 ${info.qty} ${escapeHtml(UNIT(info))}</span>`;
-        ov.innerHTML = `<div class="exp-card">
-            <div class="exp-h" style="color:#1f2937">${info.imageUrl ? `<img src="${escapeHtml(info.imageUrl)}" alt="" style="width:46px;height:46px;border-radius:10px;object-fit:cover;margin-right:10px;flex:none">` : ''}<span style="flex:1;min-width:0">${escapeHtml(info.name)}<small style="display:block;font-size:12.5px;color:#8a7f7a;font-weight:600;margin-top:2px">📦 ${escapeHtml(boxName)}・${st}</small></span><button type="button" class="exp-x">✕</button></div>
-            ${contentsTable(info.contents, true)}
-            <button type="button" class="exp-ok" style="all:unset;box-sizing:border-box;display:block;width:100%;text-align:center;padding:14px;border-radius:14px;background:#f3efed;font-weight:800;margin-top:12px;cursor:pointer">知道了</button></div>`;
+        const co = Number(it.checkedOutCount) || 0;
+        const u = unitNo && Array.isArray(it.units) ? it.units[unitNo - 1] : null;
+        const st = u ? (u.status === 'out' ? `<span style="color:#b42318">🔴 這件已外借：${escapeHtml(targetName(u.borrower || '不詳'))}</span>` : '<span style="color:#15803d">🟢 這件在庫</span>')
+            : co > 0 ? `<span style="color:#b42318">🔴 已外借 ${co} ${escapeHtml(UNIT(it))}</span>` : `<span style="color:#15803d">🟢 在庫 ${Number(it.qty) || 0} ${escapeHtml(UNIT(it))}</span>`;
+        ov.innerHTML = `<div class="exp-card" style="max-height:92vh">
+            <div class="exp-h" style="color:#1f2937;margin-bottom:4px">${it.imageUrl ? `<img src="${escapeHtml(it.imageUrl)}" alt="" style="width:46px;height:46px;border-radius:10px;object-fit:cover;margin-right:10px;flex:none">` : ''}<span style="flex:1;min-width:0">${escapeHtml(it.name)}${unitNo ? ` <span style="color:#c2410c">第 ${unitNo} 件</span>` : ''}<small style="display:block;font-size:12.5px;color:#8a7f7a;font-weight:600;margin-top:2px">📦 ${escapeHtml(boxName)}・${st}</small></span><button type="button" class="exp-x">✕</button></div>
+            ${kitsHtml(it, unitNo, true)}
+            <button type="button" class="exp-ok" style="all:unset;box-sizing:border-box;display:block;width:100%;text-align:center;padding:13px;border-radius:14px;background:#f3efed;font-weight:800;margin-top:12px;cursor:pointer">知道了</button></div>`;
         ov.onclick = e => { if (e.target === ov || e.target.closest('.exp-x') || e.target.closest('.exp-ok')) ov.remove(); };
         document.body.appendChild(ov);
     }
+    // 小照片：裁成正方形，存起來很小
+    function squareThumb(file, size = 200) {
+        return new Promise((res, rej) => { const r = new FileReader(); r.onerror = rej; r.onload = () => { const im = new Image(); im.onerror = rej; im.onload = () => {
+            const c = document.createElement('canvas'); c.width = c.height = size; const s = Math.min(im.width, im.height);
+            c.getContext('2d').drawImage(im, (im.width - s) / 2, (im.height - s) / 2, s, s, 0, 0, size, size); res(c.toDataURL('image/jpeg', 0.7)); }; im.src = r.result; }; r.readAsDataURL(file); });
+    }
+    // 管理員：編輯包內物品（可分好幾組：第 1～10 件、第 11～20 件…，每樣可放照片）
+    window.openKitEditor = function () {
+        const b = boxesCache.find(x => x.id === currentBoxId); if (!b || editingItemIndex === null) return;
+        const it = b.items[editingItemIndex]; if (!isAdmin()) return showToast('🔒 只有管理員可以編輯', 'error', 1200);
+        const total = it.itemType === 'consumable' ? 0 : (ensureUnits(it), it.units.length);
+        let ks = JSON.parse(JSON.stringify(kitsOf(it)));
+        if (!ks.length) ks = [{ from: total ? 1 : 0, to: total, rows: [{ n: '', q: '' }] }];
+        ks.forEach(k => { if (!k.from && total) { k.from = 1; k.to = total; } });
+        const imgs = { ...(it.kitImgs || {}) };
+        const ov = document.createElement('div'); ov.className = 'exp-ov'; ov.id = 'kit-ov'; ov.style.zIndex = 9700;
+        const inp = 'box-sizing:border-box;border:1px solid #e7dcd8;border-radius:10px;padding:8px;font-size:15px;background:#fff';
+        const sync = () => ov.querySelectorAll('[data-g]').forEach(el => { const g = +el.dataset.g, f = el.dataset.f;
+            if (f === 'from' || f === 'to') ks[g][f] = Math.max(1, parseInt(el.value, 10) || 1); else ks[g].rows[+el.dataset.r][f] = el.value; });
+        const draw = () => {
+            ov.innerHTML = `<div class="exp-card" style="max-height:92vh">
+              <div class="exp-h" style="color:#c2410c">📋 ${escapeHtml(it.name)}・包內物品<button type="button" class="exp-x">✕</button></div>
+              <div style="font-size:12.5px;color:#6b625e;margin:0 4px 10px;line-height:1.6">${total ? `共 ${total} 件。不同編號裝的東西不一樣，就分成好幾組。` : ''}點 📷 放照片；倉庫裡有同名物品的照片會自動帶入。</div>
+              ${ks.map((k, g) => `<div style="border:1px solid #f0e6e3;border-radius:14px;padding:10px;margin-bottom:10px;background:#fffaf8">
+                ${total ? `<div style="display:flex;align-items:center;gap:6px;font-weight:800;margin-bottom:8px;flex-wrap:wrap">第 <input data-g="${g}" data-f="from" type="number" min="1" max="${total}" value="${k.from}" style="${inp};width:64px"> ～ <input data-g="${g}" data-f="to" type="number" min="1" max="${total}" value="${k.to}" style="${inp};width:64px"> 件
+                  ${ks.length > 1 ? `<button type="button" data-delg="${g}" style="all:unset;margin-left:auto;color:#b42318;font-size:13px;cursor:pointer">刪除這組</button>` : ''}</div>` : ''}
+                ${k.rows.map((r, i) => { const im = imgs[r.n] || kitImg({ kitImgs: {} }, r.n); return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                  <label style="width:42px;height:42px;flex:none;border-radius:10px;overflow:hidden;background:#f3efed;display:flex;align-items:center;justify-content:center;cursor:pointer">${im ? `<img src="${escapeHtml(im)}" style="width:100%;height:100%;object-fit:cover">` : '📷'}<input type="file" accept="image/*" data-img="${g}|${i}" style="display:none"></label>
+                  <input data-g="${g}" data-r="${i}" data-f="n" value="${escapeHtml(r.n)}" placeholder="名稱" style="${inp};flex:1;min-width:0">
+                  <input data-g="${g}" data-r="${i}" data-f="q" value="${escapeHtml(r.q)}" placeholder="數量" style="${inp};width:58px;text-align:center">
+                  <button type="button" data-delr="${g}|${i}" style="all:unset;width:30px;text-align:center;color:#b42318;font-size:18px;cursor:pointer">✕</button></div>`; }).join('')}
+                <button type="button" data-addr="${g}" style="all:unset;box-sizing:border-box;display:block;width:100%;text-align:center;padding:9px;border-radius:10px;border:1px dashed #e0b8a8;color:#c2410c;font-weight:800;cursor:pointer">＋ 新增一樣</button></div>`).join('')}
+              ${total ? `<button type="button" class="kit-addg" style="all:unset;box-sizing:border-box;display:block;width:100%;text-align:center;padding:11px;border-radius:12px;background:#fff7ed;color:#c2410c;font-weight:800;margin-bottom:10px;cursor:pointer">＋ 新增一組（複製上一組再修改）</button>` : ''}
+              <div style="display:flex;gap:10px"><button type="button" class="kit-cancel" style="all:unset;flex:1;text-align:center;padding:13px;border-radius:14px;background:#f3efed;font-weight:800;cursor:pointer">取消</button>
+                <button type="button" class="kit-save" style="all:unset;flex:2;text-align:center;padding:13px;border-radius:14px;background:#f08339;color:#fff;font-weight:900;cursor:pointer">💾 儲存</button></div></div>`;
+        };
+        ov.addEventListener('click', async e => {
+            const t = e.target;
+            if (t === ov || t.closest('.exp-x') || t.closest('.kit-cancel')) { ov.remove(); return; }
+            if (t.closest('[data-addr]')) { sync(); ks[+t.closest('[data-addr]').dataset.addr].rows.push({ n: '', q: '' }); draw(); return; }
+            if (t.closest('[data-delr]')) { sync(); const [g, i] = t.closest('[data-delr]').dataset.delr.split('|').map(Number); ks[g].rows.splice(i, 1); if (!ks[g].rows.length) ks[g].rows.push({ n: '', q: '' }); draw(); return; }
+            if (t.closest('[data-delg]')) { sync(); ks.splice(+t.closest('[data-delg]').dataset.delg, 1); draw(); return; }
+            if (t.closest('.kit-addg')) { sync(); const last = ks[ks.length - 1]; const n = last.to - last.from + 1; ks.push({ from: Math.min(total, last.to + 1), to: Math.min(total, last.to + n), rows: JSON.parse(JSON.stringify(last.rows)) }); draw(); return; }
+            if (t.closest('.kit-save')) {
+                sync();
+                const clean = ks.map(k => ({ ...(total ? { from: Math.min(k.from, k.to), to: Math.max(k.from, k.to) } : { from: 0, to: 0 }), rows: k.rows.map(r => ({ n: String(r.n || '').trim().slice(0, 30), q: String(r.q || '').trim().slice(0, 8) })).filter(r => r.n) })).filter(k => k.rows.length);
+                const used = new Set(clean.flatMap(k => k.rows.map(r => r.n)));
+                const keep = {}; Object.keys(imgs).forEach(n => { if (used.has(n)) keep[n] = imgs[n]; });
+                if (clean.length) it.kits = clean; else delete it.kits;
+                if (Object.keys(keep).length) it.kitImgs = keep; else delete it.kitImgs;
+                delete it.contents;
+                t.innerText = '儲存中…';
+                try { await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items }); }
+                catch (err) { showToast('❌ 儲存失敗（照片可能太多太大）', 'error', 1600); t.innerText = '💾 儲存'; return; }
+                ov.remove(); showToast('💾 包內物品已儲存', 'success', 900);
+                const v = document.getElementById('kit-summary'); if (v) v.innerText = kitSummary(it);
+                return;
+            }
+        });
+        ov.addEventListener('change', async e => {
+            const f = e.target.dataset && e.target.dataset.img; if (!f || !e.target.files[0]) return;
+            sync(); const [g, i] = f.split('|').map(Number); const name = String(ks[g].rows[i].n || '').trim();
+            if (!name) { showToast('請先填名稱，再放照片', 'error', 1200); return; }
+            try { imgs[name] = await squareThumb(e.target.files[0]); draw(); } catch (err) { showToast('照片讀取失敗', 'error', 1200); }
+        });
+        document.body.appendChild(ov); draw();
+    };
+    const kitSummary = it => { const ks = kitsOf(it); return ks.length ? `已設定 ${ks.length} 組・${ks.reduce((a, k) => a + k.rows.length, 0)} 樣` : '還沒設定'; };
 
     // ===== 箱子 QR：整箱進出庫 =====
     let batchOpen = false;
@@ -5701,7 +5798,7 @@
             document.getElementById('edit-mode-hint').style.display = 'none';
             
             document.getElementById('edit-item-name-input').value = it.name || '';
-            document.getElementById('edit-item-contents').value = it.contents || '';
+            document.getElementById('kit-summary').innerText = kitSummary(it);
             { const dv = isDev(); const ni = document.getElementById('edit-item-name-input'), ui = document.getElementById('edit-item-unit');
               const tb = document.getElementById('edit-type-durable'); if (tb && tb.parentElement) { tb.parentElement.style.display = dv ? 'flex' : 'none'; if (tb.parentElement.previousElementSibling) tb.parentElement.previousElementSibling.style.display = dv ? '' : 'none'; } }
             document.getElementById('edit-item-qty-input').value = it.qty || 0;
@@ -5727,7 +5824,7 @@
                 ? stockText(it)
                 : `目前庫存數量: ${it.qty || 0} / ${it.units.length} ${UNIT(it)}`;
             document.getElementById('view-item-img').src = it.imageUrl || 'https://via.placeholder.com/70?text=No+Img';
-            document.getElementById('view-item-contents').innerHTML = contentsTable(it.contents);
+            document.getElementById('view-item-contents').innerHTML = kitsHtml(it, 0, false);
 
             document.getElementById('btn-modal-del').style.display = 'none';
             document.getElementById('btn-modal-save').style.display = 'none';
@@ -6421,8 +6518,6 @@
         const it = b.items[editingItemIndex];
         const oldQty = it.itemType === 'consumable' ? (Number(it.qty) || 0) : (ensureUnits(it), it.units.length), oldName = it.name;
         it.name = newName;
-        { const c = (document.getElementById('edit-item-contents').value || '').replace(/\r/g, '').split('\n').map(x => x.trim()).filter(Boolean).join('\n').slice(0, 1000);
-          if (c) it.contents = c; else delete it.contents; }
         { const u = (document.getElementById('edit-item-unit').value || '').trim().slice(0, 3); if (u && u !== '個') it.unit = u; else delete it.unit; }
 
         if (it.itemType === 'consumable') {
