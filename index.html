@@ -3750,7 +3750,7 @@
             playBeep(2700, 90);
             vibrateFeedback(60);
 
-            if (scannedItemInfo && hasKits(scannedItemInfo.item)) {
+            if (scannedItemInfo && kitsFor(scannedItemInfo.item, scannedItemInfo.unitNo).length) {
                 showContentsSheet(scannedItemInfo.item, scannedItemInfo.unitNo, box.name);
             } else if (scannedItemInfo) {
                 if (scannedItemInfo.checkedOutCount > 0) {
@@ -3783,6 +3783,10 @@
         return rows.length ? [{ from: 0, to: 0, rows }] : [];
     }
     const hasKits = it => kitsOf(it).length > 0;
+    function kitsFor(it, unitNo) {   // 掃到第幾件：只給那一件的那組；沒設定就沒有
+        const ks = kitsOf(it); if (!unitNo) return ks;
+        const k = ks.find(k => !k.from || (unitNo >= k.from && unitNo <= k.to)); return k ? [k] : [];
+    }
     function kitImg(it, name) {
         const own = (it.kitImgs || {})[name]; if (own) return own;
         const key = String(name).replace(/\s/g, ''); if (!key) return '';
@@ -3814,12 +3818,14 @@
             ${r.q ? `<b style="color:#c2410c;font-size:15px;white-space:nowrap">${/^[0-9]/.test(r.q) ? '×' : ''}${escapeHtml(r.q)}</b>` : ''}</div>`;
     }
     function kitsHtml(it, unitNo, big) {
-        let ks = kitsOf(it); if (!ks.length) return '';
-        if (unitNo) { const k = ks.find(k => !k.from || (unitNo >= k.from && unitNo <= k.to)); if (k) ks = [k]; }
+        const ks = kitsFor(it, unitNo); if (!ks.length) return '';
+        const all = !unitNo && kitsOf(it).length > 1;   // 物品頁一次看全部組：才標示是第幾件
         return ks.map(k => `<div style="margin-top:10px;text-align:left">
-            <div style="font-weight:900;color:#c2410c;font-size:${big ? 15 : 13}px;margin:0 2px 4px">📋 ${ks.length > 1 || k.from ? escapeHtml(kitRange(k)) + ' 裝的東西' : '裡面有什麼'}（${k.rows.length} 樣）</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 8px;border-top:1px solid #f0e6e3">${k.rows.map(r => kitRowB(it, r)).join('')}</div></div>`).join('');
+            <div style="font-weight:900;color:#c2410c;font-size:${big ? 16 : 13.5}px;margin:0 2px 4px">📋 ${escapeHtml(k.name || '裡面有什麼')}（${k.rows.length} 樣）${all && k.from ? `<small style="color:#8a7f7a;font-weight:700;margin-left:6px">${escapeHtml(kitRange(k))}</small>` : ''}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 8px;border-top:1px solid #f0e6e3">${k.rows.map(r => kitRowB(it, r)).join('')}</div>
+            ${kitNote(k)}</div>`).join('');
     }
+    const kitNote = k => k.note ? `<div style="margin-top:8px;padding:9px 12px;border-radius:12px;background:#fef2f2;border:1px solid #fecaca;color:#b42318;font-weight:900;font-size:15px;text-align:center">⚠️ ${escapeHtml(k.note)}</div>` : '';
     function showContentsSheet(it, unitNo, boxName) {
         const old = document.getElementById('contents-ov'); if (old) old.remove();
         const ov = document.createElement('div'); ov.className = 'exp-ov'; ov.id = 'contents-ov'; ov.style.zIndex = 9600;
@@ -3828,7 +3834,7 @@
         const st = u ? (u.status === 'out' ? `<span style="color:#b42318">🔴 這件已外借：${escapeHtml(targetName(u.borrower || '不詳'))}</span>` : '<span style="color:#15803d">🟢 這件在庫</span>')
             : co > 0 ? `<span style="color:#b42318">🔴 已外借 ${co} ${escapeHtml(UNIT(it))}</span>` : `<span style="color:#15803d">🟢 在庫 ${Number(it.qty) || 0} ${escapeHtml(UNIT(it))}</span>`;
         // 補包核對要用的清單（這一件那組；沒指定件數就全部合併）
-        let ks = kitsOf(it); if (unitNo) { const k = ks.find(k => !k.from || (unitNo >= k.from && unitNo <= k.to)); if (k) ks = [k]; }
+        const ks = kitsFor(it, unitNo);
         const list = []; ks.forEach(k => k.rows.forEach(r => { if (!list.some(x => x.n === r.n)) list.push(r); }));
         let tab = 'view', res = [];
         ov.innerHTML = `<div class="exp-card" style="max-height:94vh">
@@ -3848,7 +3854,7 @@
                 body.innerHTML = head + (miss.length
                     ? `<div style="text-align:center;font-size:21px;font-weight:900;color:#b42318;margin:6px 0 8px">📝 缺 ${miss.length} 樣，要補：</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 8px;border-top:1px solid #f0e6e3">${miss.map(r => kitRowB(it, r)).join('')}</div>`
                     : '<div style="text-align:center;padding:16px 0"><div style="font-size:56px">🎉</div><div style="font-size:22px;font-weight:900;color:#15803d;margin-top:4px">全部齊了！</div></div>')
-                    + dots + `<div style="display:flex;gap:10px;margin-top:14px"><button type="button" class="ks-redo" style="all:unset;flex:1;text-align:center;padding:14px;border-radius:14px;background:#f3efed;font-weight:800;cursor:pointer">重來</button><button type="button" class="exp-ok" style="all:unset;flex:2;text-align:center;padding:14px;border-radius:14px;background:#22c55e;color:#fff;font-weight:900;cursor:pointer">完成</button></div>`;
+                    + ks.map(kitNote).join('') + dots + `<div style="display:flex;gap:10px;margin-top:14px"><button type="button" class="ks-redo" style="all:unset;flex:1;text-align:center;padding:14px;border-radius:14px;background:#f3efed;font-weight:800;cursor:pointer">重來</button><button type="button" class="exp-ok" style="all:unset;flex:2;text-align:center;padding:14px;border-radius:14px;background:#22c55e;color:#fff;font-weight:900;cursor:pointer">完成</button></div>`;
             } else {
                 const r = list[pos], im = kitImg(it, r.n);
                 body.innerHTML = head + `<div style="border:1px solid #f0e6e3;border-radius:22px;padding:14px;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.06)">
@@ -3893,7 +3899,7 @@
         const ov = document.createElement('div'); ov.className = 'exp-ov'; ov.id = 'kit-ov'; ov.style.zIndex = 9700;
         const inp = 'box-sizing:border-box;border:1px solid #e7dcd8;border-radius:10px;padding:8px;font-size:15px;background:#fff';
         const sync = () => ov.querySelectorAll('[data-g]').forEach(el => { const g = +el.dataset.g, f = el.dataset.f;
-            if (f === 'from' || f === 'to') ks[g][f] = Math.max(1, parseInt(el.value, 10) || 1); else ks[g].rows[+el.dataset.r][f] = el.value; });
+            if (f === 'from' || f === 'to') ks[g][f] = Math.max(1, parseInt(el.value, 10) || 1); else if (f === 'name' || f === 'note') ks[g][f] = el.value; else ks[g].rows[+el.dataset.r][f] = el.value; });
         const draw = () => {
             ov.innerHTML = `<div class="exp-card" style="max-height:92vh">
               <div class="exp-h" style="color:#c2410c">📋 ${escapeHtml(it.name)}・包內物品<button type="button" class="exp-x">✕</button></div>
@@ -3901,11 +3907,13 @@
               ${ks.map((k, g) => `<div style="border:1px solid #f0e6e3;border-radius:14px;padding:10px;margin-bottom:10px;background:#fffaf8">
                 ${total ? `<div style="display:flex;align-items:center;gap:6px;font-weight:800;margin-bottom:8px;flex-wrap:wrap">第 <input data-g="${g}" data-f="from" type="number" min="1" max="${total}" value="${k.from}" style="${inp};width:64px"> ～ <input data-g="${g}" data-f="to" type="number" min="1" max="${total}" value="${k.to}" style="${inp};width:64px"> 件
                   ${ks.length > 1 ? `<button type="button" data-delg="${g}" style="all:unset;margin-left:auto;color:#b42318;font-size:13px;cursor:pointer">刪除這組</button>` : ''}</div>` : ''}
+                <input data-g="${g}" data-f="name" value="${escapeHtml(k.name || '')}" placeholder="這組叫什麼？例如：醫療包、器材包" style="${inp};width:100%;margin-bottom:8px;font-weight:800">
                 ${k.rows.map((r, i) => { const im = imgs[r.n] || kitImg({ kitImgs: {} }, r.n); return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
                   <label style="width:42px;height:42px;flex:none;border-radius:10px;overflow:hidden;background:#f3efed;display:flex;align-items:center;justify-content:center;cursor:pointer">${im ? `<img src="${escapeHtml(im)}" style="width:100%;height:100%;object-fit:cover">` : '📷'}<input type="file" accept="image/*" data-img="${g}|${i}" style="display:none"></label>
                   <input data-g="${g}" data-r="${i}" data-f="n" value="${escapeHtml(r.n)}" placeholder="名稱" style="${inp};flex:1;min-width:0">
                   <input data-g="${g}" data-r="${i}" data-f="q" value="${escapeHtml(r.q)}" placeholder="數量" style="${inp};width:58px;text-align:center">
                   <button type="button" data-delr="${g}|${i}" style="all:unset;width:30px;text-align:center;color:#b42318;font-size:18px;cursor:pointer">✕</button></div>`; }).join('')}
+                <input data-g="${g}" data-f="note" value="${escapeHtml(k.note || '')}" placeholder="⚠️ 警語（例如：食物請勿放入包內）" style="${inp};width:100%;margin-bottom:8px;color:#b42318">
                 <div style="display:flex;gap:6px"><button type="button" data-pick="${g}" style="all:unset;box-sizing:border-box;flex:3;text-align:center;padding:9px 4px;border-radius:10px;background:#f08339;color:#fff;font-weight:800;cursor:pointer">＋ 從倉庫選（附照片）</button>
                 <button type="button" data-addr="${g}" style="all:unset;box-sizing:border-box;flex:2;text-align:center;padding:9px 4px;border-radius:10px;border:1px dashed #e0b8a8;color:#c2410c;font-weight:800;cursor:pointer">＋ 自己輸入</button></div></div>`).join('')}
               ${total ? `<button type="button" class="kit-addg" style="all:unset;box-sizing:border-box;display:block;width:100%;text-align:center;padding:11px;border-radius:12px;background:#fff7ed;color:#c2410c;font-weight:800;margin-bottom:10px;cursor:pointer">＋ 新增一組（複製上一組再修改）</button>` : ''}
@@ -3920,10 +3928,11 @@
                 pickWarehouseItems(names => { const rows = ks[g].rows.filter(r => String(r.n || '').trim()); names.forEach(n => { if (!rows.some(r => r.n === n)) rows.push({ n, q: '1' }); }); ks[g].rows = rows.length ? rows : [{ n: '', q: '' }]; draw(); }); return; }
             if (t.closest('[data-delr]')) { sync(); const [g, i] = t.closest('[data-delr]').dataset.delr.split('|').map(Number); ks[g].rows.splice(i, 1); if (!ks[g].rows.length) ks[g].rows.push({ n: '', q: '' }); draw(); return; }
             if (t.closest('[data-delg]')) { sync(); ks.splice(+t.closest('[data-delg]').dataset.delg, 1); draw(); return; }
-            if (t.closest('.kit-addg')) { sync(); const last = ks[ks.length - 1]; const n = last.to - last.from + 1; ks.push({ from: Math.min(total, last.to + 1), to: Math.min(total, last.to + n), rows: JSON.parse(JSON.stringify(last.rows)) }); draw(); return; }
+            if (t.closest('.kit-addg')) { sync(); const last = ks[ks.length - 1]; const n = last.to - last.from + 1; ks.push({ from: Math.min(total, last.to + 1), to: Math.min(total, last.to + n), name: last.name || '', note: last.note || '', rows: JSON.parse(JSON.stringify(last.rows)) }); draw(); return; }
             if (t.closest('.kit-save')) {
                 sync();
-                const clean = ks.map(k => ({ ...(total ? { from: Math.min(k.from, k.to), to: Math.max(k.from, k.to) } : { from: 0, to: 0 }), rows: k.rows.map(r => ({ n: String(r.n || '').trim().slice(0, 30), q: String(r.q || '').trim().slice(0, 8) })).filter(r => r.n) })).filter(k => k.rows.length);
+                const clean = ks.map(k => ({ ...(total ? { from: Math.min(k.from, k.to), to: Math.max(k.from, k.to) } : { from: 0, to: 0 }),
+                    ...(String(k.name || '').trim() ? { name: String(k.name).trim().slice(0, 20) } : {}), ...(String(k.note || '').trim() ? { note: String(k.note).trim().slice(0, 60) } : {}), rows: k.rows.map(r => ({ n: String(r.n || '').trim().slice(0, 30), q: String(r.q || '').trim().slice(0, 8) })).filter(r => r.n) })).filter(k => k.rows.length);
                 const used = new Set(clean.flatMap(k => k.rows.map(r => r.n)));
                 const keep = {}; Object.keys(imgs).forEach(n => { if (used.has(n)) keep[n] = imgs[n]; });
                 if (clean.length) it.kits = clean; else delete it.kits;
