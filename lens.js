@@ -27,7 +27,7 @@
     Object.assign(inner.style, { width: W + 'px', height: H + 'px', background: bs.backgroundColor === 'rgba(0, 0, 0, 0)' ? '#fff' : bs.backgroundColor,
       color: bs.color, font: bs.font, fontFamily: bs.fontFamily, lineHeight: bs.lineHeight });
     const wrap = document.createElement('div');
-    Object.assign(wrap.style, { position: 'absolute', left: -scrollX + 'px', top: -scrollY + 'px', width: document.documentElement.scrollWidth + 'px' });
+    Object.assign(wrap.style, { position: 'absolute', left: -scrollX + 'px', top: -scrollY + 'px', width: document.documentElement.scrollWidth + 'px', height: Math.max(document.documentElement.scrollHeight, H) + 'px' });
     wrap.className = document.body.className;
     const src = [...document.body.children].filter(e => e !== lens && !/^(SCRIPT|STYLE|LINK|TEMPLATE)$/.test(e.tagName));
     const pairs = [];
@@ -45,7 +45,14 @@
     });
     inner.appendChild(wrap); lens.appendChild(inner);
     // 有捲動的區塊，複製後要捲到一樣的位置
-    pairs.forEach(([o, c]) => { if (o.scrollTop || o.scrollLeft) { c.scrollTop = o.scrollTop; c.scrollLeft = o.scrollLeft; } });
+    scrolled = pairs.filter(([o]) => o.scrollTop || o.scrollLeft);
+  }
+  let scrolled = [];
+  function syncScroll() {   // 要在放大鏡顯示之後才能設定捲動位置
+    scrolled.forEach(([o, c]) => {
+      c.style.height = o.clientHeight + 'px'; c.style.maxHeight = 'none'; c.style.overflow = 'hidden';   // 複製出來的區塊高度要跟原本一樣，才捲得到同一個位置
+      c.scrollTop = o.scrollTop; c.scrollLeft = o.scrollLeft; });
+    scrolled = [];
   }
   function move(x, y) {
     if (!on) return;
@@ -54,7 +61,7 @@
     lx = Math.max(6, Math.min(innerWidth - R * 2 - 6, lx));
     lens.style.left = lx + 'px'; lens.style.top = ly + 'px';
   }
-  function show(x, y) { try { build(); } catch (e) { console.warn('lens', e); return; } lens.style.display = 'block'; on = true; clearSel(); try { navigator.vibrate && navigator.vibrate(15); } catch (e) {} move(x, y); }
+  function show(x, y) { try { if (lens) lens.style.display = 'block'; build(); lens.style.display = 'block'; syncScroll(); } catch (e) { console.warn('lens', e); if (lens) lens.style.display = 'none'; return; } on = true; clearSel(); try { navigator.vibrate && navigator.vibrate(15); } catch (e) {} move(x, y); }
   function hide() { clearTimeout(timer); timer = null; document.documentElement.classList.remove('gl-hold'); if (on) { blockClick = Date.now(); on = false; if (lens) { lens.style.display = 'none'; lens.innerHTML = ''; } } }
   addEventListener('touchstart', e => {
     if (e.touches.length !== 1 || !allowed(e.target)) return hide();
