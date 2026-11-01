@@ -670,6 +670,7 @@
         #expiry-bar{all:unset;box-sizing:border-box;position:relative;display:inline-flex;align-items:center;gap:5px;padding:8px 12px;border-radius:999px;background:#fff1f0;border:1.5px solid #ffb3ad;color:#b42318;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;}
         #expiry-bar b{background:#dc2626;color:#fff;border-radius:999px;min-width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;padding:0 5px;}
         #expiry-bar em{position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:#dc2626;border:2px solid #fff;}
+        #box-batch-ov input[type=number]::-webkit-inner-spin-button,#box-batch-ov input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
         .exp-ov{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;}
         .exp-card{background:#fff;width:100%;max-width:520px;max-height:80vh;overflow:auto;border-radius:20px 20px 0 0;padding:14px 14px calc(18px + env(safe-area-inset-bottom));}
         .exp-h{display:flex;align-items:center;justify-content:space-between;font-size:17px;font-weight:900;color:#b42318;margin:4px 4px 10px;}
@@ -4039,7 +4040,7 @@
                     <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14.5px;color:#1f2937;word-break:break-all">${escapeHtml(r.name)}</div><div style="font-size:12px;color:#8a7f7a">${escapeHtml(r.sub)}</div>${!isOut && r.kind === 'c' ? `<label style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:${inc[r.key] ? '#b42318' : '#8a7f7a'};margin-top:3px;cursor:pointer"><input type="checkbox" data-inc="${escapeHtml(r.key)}" ${inc[r.key] ? 'checked' : ''} style="width:16px;height:16px;margin:0">這次結清${inc[r.key] && !val[r.key] ? '（0＝全部用掉，記消耗）' : val[r.key] < r.max && inc[r.key] ? `（沒回來的 ${r.max - val[r.key]} 記消耗）` : ''}</label>` : ''}</div>
                     ${r.max ? `<div style="display:flex;align-items:center;gap:6px;flex:none">
                         <button type="button" data-k="${escapeHtml(r.key)}" data-d="-1" style="all:unset;width:34px;height:34px;border-radius:10px;background:#f3efed;text-align:center;line-height:34px;font-size:20px;font-weight:900;cursor:pointer">−</button>
-                        <b style="min-width:26px;text-align:center;font-size:17px">${val[r.key]}</b>
+                        <input type="number" inputmode="numeric" min="0" max="${r.max}" data-n="${escapeHtml(r.key)}" value="${val[r.key]}" onfocus="this.select()" style="width:50px;height:34px;box-sizing:border-box;border:1.5px solid #e7dcd8;border-radius:10px;text-align:center;font-size:17px;font-weight:800;padding:0;-moz-appearance:textfield;font-family:inherit">
                         <button type="button" data-k="${escapeHtml(r.key)}" data-d="1" style="all:unset;width:34px;height:34px;border-radius:10px;background:${isOut ? '#f08339' : '#22c55e'};color:#fff;text-align:center;line-height:34px;font-size:20px;font-weight:900;cursor:pointer">＋</button>
                         <button type="button" data-k="${escapeHtml(r.key)}" data-d="max" style="all:unset;padding:0 6px;height:34px;line-height:34px;font-size:12px;color:#8a7f7a;cursor:pointer">全</button></div>` : '<span style="font-size:12px;color:#aaa">沒有</span>'}
                 </div>`).join('') : `<div style="text-align:center;color:#8e8e93;padding:24px">${isOut ? '箱子裡沒有東西' : '這箱沒有借出中的東西'}</div>`}
@@ -4057,7 +4058,19 @@
             const all = ov.querySelector('.bb-all');
             if (all) all.onclick = () => { const any = rows.some(r => val[r.key]); rows.forEach(r => { val[r.key] = any ? 0 : r.max; if (!isOut && r.kind === 'c') inc[r.key] = !any; }); draw(); };
             const ok = ov.querySelector('.bb-ok');
-            if (ok && can) ok.onclick = async () => { ok.onclick = null; ok.innerText = '處理中…'; await applyBoxBatch(box, rows, val, isOut, inc); close(); };
+            const refresh = () => {   // 手動打數字：不重畫整個視窗，只更新按鈕與底色
+                const t2 = rows.reduce((a, r) => a + (val[r.key] || 0), 0), s2 = rows.filter(r => inc[r.key] && !val[r.key]).length, c2 = t2 > 0 || s2 > 0;
+                ok.disabled = !c2; ok.style.background = c2 ? (isOut ? '#f08339' : '#22c55e') : '#d6d3d1';
+                ok.innerText = isOut ? `確認出庫（${t2}）` : `確認入庫（${t2}）${s2 ? `・消耗 ${s2} 項` : ''}`;
+                ov.querySelectorAll('[data-n]').forEach(i => { const row = i.closest('.bb-row'), on = val[i.dataset.n] || inc[i.dataset.n]; if (row) { row.style.background = on ? '#f0fdf4' : '#fff'; row.style.borderColor = on ? '#86efac' : '#f0e6e3'; } });
+            };
+            ov.querySelectorAll('[data-n]').forEach(i => {
+                const r = rows.find(x => x.key === i.dataset.n);
+                i.oninput = () => { let n = parseInt(i.value, 10); if (isNaN(n) || n < 0) n = 0; if (n > r.max) { n = r.max; i.value = n; showToast(`最多 ${r.max} ${r.unit || ''}`, 'error', 900); } val[r.key] = n; refresh(); };
+                i.onblur = () => { i.value = val[r.key] || 0; };
+                i.onkeydown = e => { if (e.key === 'Enter') i.blur(); };
+            });
+            if (ok) ok.onclick = async () => { if (ok.disabled) return; ok.onclick = null; ok.innerText = '處理中…'; await applyBoxBatch(box, rows, val, isOut, inc); close(); };
         };
         ov.onclick = e => { if (e.target === ov) close(); };
         document.body.appendChild(ov); draw();
