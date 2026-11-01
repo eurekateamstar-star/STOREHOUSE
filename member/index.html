@@ -2720,6 +2720,7 @@
       <div style="font-size:13px;color:var(--sub);line-height:1.7;">${esc(e.title || '')}　排進轎前／轎後的人自動帶出勤「輪班」。👆 點「出勤」格子選類別；點「住宿」格子會跳出確認，選住或不住（依身分證自動判斷男女）。</div>
       <div class="at-tools">
         <button class="at-b" id="at-auto" style="background:#ede9fe">⚡ 有出勤的天自動帶住宿（最後一天不住）</button>
+        <button class="at-b" id="at-clear" style="background:#fee2e2;color:#b91c1c">🧹 一鍵清除住宿</button>
         ${(() => { const n = selfPending(eid); return n ? `<button class="at-b" id="at-okself" style="background:#7c3aed;color:#fff">✓ 確認團員登記（${n} 格）</button>` : ''; })()}
         <span style="font-size:12px;color:#7c3aed;font-weight:700"><span style="display:inline-block;width:12px;height:12px;box-shadow:inset 0 0 0 1px #a855f7;border-radius:3px;vertical-align:-1px"></span> 紫框「自」＝團員自己登記、還沒確認</span>
         <style>.sf{box-shadow:inset 0 0 0 1px #a855f7!important;position:relative}.sf::after{content:'自';position:absolute;right:1px;top:0;font-size:7px;line-height:1;color:#7c3aed;font-weight:900}</style>
@@ -2862,6 +2863,15 @@
       save({ att }, `已帶入 ${n} 格住宿`);
     };
     $('at-xlsx').onclick = () => exportAttXlsx(eid);
+    $('at-clear').onclick = async () => {   // 重新排班前，把住宿洗掉重來
+      const c = await codePicker('一鍵清除？（清掉後可以按「⚡ 自動帶住宿」重新帶）', [['_s', '🛏 清除住宿＋備註'], ['_w', '🛏＋📋 也清掉手動改的出勤'], ['_x', '🧨 全部清空（連團員自己登記的住宿）']], '', '不清除');
+      if (!c) return;
+      const att = JSON.parse(JSON.stringify((evSched[eid] || {}).att || {})); let n = 0;
+      Object.keys(att).forEach(k => { n += Object.keys(att[k].s || {}).length; delete att[k].s; delete att[k].n; if (c !== '_s') delete att[k].w; if (!Object.keys(att[k]).length) delete att[k]; });
+      if (c === '_x') { const self = evSelf[eid] || {}; Object.entries(self).forEach(([k, ds]) => Object.entries(ds || {}).forEach(([d, v]) => { if (v && v.s && v.s !== 'x') { att[k] = att[k] || {}; (att[k].s = att[k].s || {})[d] = 'x'; n++; } })); }
+      if (!(await dialog({ title: '確定清除？', msg: c === '_s' ? '所有人的住宿和住宿備註會清掉（團員自己登記的還會留著，紫框）。' : c === '_w' ? '住宿、住宿備註，還有手動改過的出勤都會清掉；出勤會回到依排班表自動帶入。' : '住宿全部清空，連團員自己登記的也改成「不住」，手動改的出勤也清掉。', okText: '清除', danger: true }))) return;
+      save({ att }, '🧹 已清除，可以重新帶入');
+    };
   }
   // ===================== 座車統計：每天 出門／白天／回家 坐什麼車 =====================
   const CAR_CODES = [['9', '中巴'], ['1', '指揮車'], ['4', '機車'], ['5', '媽祖車'], ['6', '物資車']];
