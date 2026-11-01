@@ -2951,6 +2951,11 @@
   const readViewParam = () => { try { const q = new URLSearchParams(location.search); if (q.get('view')) return q.get('view');
     const st = q.get('liff.state'); if (st) return new URLSearchParams(st.replace(/^[^?]*\?/, '')).get('view') || ''; } catch (e) {} return ''; };
   let pendingView = readViewParam();
+  // 入口網址 ?entry=1：團員照常進；管理員直接打開後台；不是團員就跳官方帳號
+  let ENTRY = (() => { try { const q = new URLSearchParams(location.search); if (q.get('entry') === '1') return true;
+    const st = q.get('liff.state'); return !!st && new URLSearchParams(st.replace(/^[^?]*\?/, '')).get('entry') === '1'; } catch (e) { return false; } })();
+  const OA_URL = 'https://line.me/R/ti/p/@393geitc';
+  function goOA() { document.body.innerHTML = `<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;font-family:sans-serif;color:#4b5563;padding:24px;text-align:center"><div style="font-size:40px">💬</div><div>正在前往白沙屯拱天宮醫護團官方帳號…</div><a href="${OA_URL}" style="padding:12px 22px;border-radius:14px;background:#06c755;color:#fff;font-weight:800;text-decoration:none">沒有自動跳轉？點這裡</a></div>`; location.replace(OA_URL); }
   async function openViewer(eid) {
     pendingView = '';
     toast('讀取排班中…', 6000);
@@ -3989,6 +3994,9 @@
       if (isAdmin()) startAdminWatch();
       else if (wasAdmin) { stopAdminWatch(); adminOn = false; }
       if (user && user.status === 'approved') isResubmit = false;
+      if (ENTRY) { ENTRY = false; try { history.replaceState(null, '', location.pathname); } catch (e) {}
+        if (!user || user.status !== 'approved') return goOA();
+        if (isAdmin() && !adminOn) { setTimeout(() => $('btn-admin').click(), 0); } }
       render();
     }, () => fail('無法連線到資料庫，請重新整理。'));
   }

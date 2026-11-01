@@ -722,10 +722,14 @@ function eduAllFlex(origin) {
   const bubbles = EDU.map(e => shareFlex({ ...EDU_CARDS['edu-' + e.img], id: 'edu-all' }, origin).contents);
   return { type: 'flex', altText: '【白沙屯拱天宮醫護團】衛教小卡 6 張（左右滑動看更多）', contents: { type: 'carousel', contents: bubbles } };
 }
+EDU_CARDS['member-entry'] = { id: 'member-entry', builtin: true, w: 1040, h: 1600, alt: '白沙屯拱天宮醫護團｜團員專區入口', imgUrl: `${SITE}/richmenu/member-entry.jpg?v=1`,
+  title: '👥 團員專區入口', text: '團員：我的資料、排班、出席調查；管理員直接進後台；非團員會看到官方帳號。', url: 'https://liff.line.me/2011820105-x1KU6xLW?entry=1' };
+EDU_CARDS['record-entry'] = { id: 'record-entry', builtin: true, w: 1040, h: 1600, alt: '白沙屯拱天宮醫護團｜救護紀錄表入口', imgUrl: `${SITE}/richmenu/record-entry.jpg?v=1`,
+  title: '🚑 救護紀錄表入口', text: '團員：填寫救護紀錄；管理員、教官團直接開主控台；非團員會看到官方帳號。', url: 'https://liff.line.me/2011820105-6oXAxIEi?entry=1' };
 // 倉庫入口：整張長圖滿版，點圖就開倉庫（不放分享鈕）
 const whEntryFlex = c => ({ type: 'flex', altText: c.alt, contents: { type: 'bubble', size: 'giga',
   hero: { type: 'image', url: c.imgUrl, size: 'full', aspectRatio: '1040:1600', aspectMode: 'cover', action: { type: 'uri', label: '開啟倉庫管理', uri: c.url } } } });
-const cardFlex = (c, origin) => c.id === 'wh-entry' ? whEntryFlex(c) : c.id === 'guardian' ? guardianFlex() : c.id === 'edu-all' ? eduAllFlex(origin) : shareFlex(c, origin);
+const cardFlex = (c, origin) => /^(wh|member|record)-entry$/.test(c.id) ? whEntryFlex(c) : c.id === 'guardian' ? guardianFlex() : c.id === 'edu-all' ? eduAllFlex(origin) : shareFlex(c, origin);
 // 全民醫護證邀請卡（跟證件同風格：米白底、紅框、紅按鈕）
 function guardianFlex() {
   const RED = '#D7262B', INK = '#1F1A18', SUB = '#6E625C';

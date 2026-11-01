@@ -1217,6 +1217,11 @@
       measurementId: "G-1Z55WR53W7"
     };
     const MY_LIFF_ID = "2011820105-6oXAxIEi"; 
+    // 入口網址 ?entry=1：團員照常填紀錄表；管理員／教官團直接打開主控台；不是團員就跳官方帳號
+    let ENTRY = (() => { try { const q = new URLSearchParams(location.search); if (q.get('entry') === '1') return true;
+      const st = q.get('liff.state'); return !!st && new URLSearchParams(st.replace(/^[^?]*\?/, '')).get('entry') === '1'; } catch (e) { return false; } })();
+    const OA_URL = 'https://line.me/R/ti/p/@393geitc';
+    function goOA() { document.body.innerHTML = `<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;font-family:sans-serif;color:#4b5563;padding:24px;text-align:center"><div style="font-size:40px">💬</div><div>正在前往白沙屯拱天宮醫護團官方帳號…</div><a href="${OA_URL}" style="padding:12px 22px;border-radius:14px;background:#06c755;color:#fff;font-weight:800;text-decoration:none">沒有自動跳轉？點這裡</a></div>`; location.replace(OA_URL); }
 
     const app = initializeApp(firebaseConfig);
     const analytics = getAnalytics(app);
@@ -1380,6 +1385,7 @@
           currentUserData = userData;
           syncLineProfile(profile, userData);
           
+          if (ENTRY && userData.status !== 'approved') { goOA(); return; }
           if (userData.status === 'approved') {
             // ✅ 審核通過：進入系統，並把身分快取起來 (為了離線模式)
             localStorage.setItem('sfc_user_cache', JSON.stringify(userData));
@@ -1407,6 +1413,7 @@
             document.getElementById('authPending').style.display = 'block';
           }
         } else {
+          if (ENTRY) { goOA(); return; }
           localStorage.removeItem('sfc_user_cache');   // ★ 被踢出（資料已刪除）：清掉離線登入快取
           document.getElementById('authScreen').style.display = 'flex';
           document.getElementById('authRegister').style.display = 'block';
@@ -1506,6 +1513,8 @@
         updateAdminAdjustBtn();
         document.querySelector('.admin-console-btn').style.display = recViewer(userData) ? 'block' : 'none';
       }
+      if (ENTRY) { ENTRY = false; try { history.replaceState(null, '', location.pathname); } catch (e) {}
+        if (canConsole(userData)) setTimeout(() => { try { window.openAdminConsole(); } catch (e) {} }, 600); }
 
       try {
         await loadBodyConfigFromFirebase();
