@@ -1251,12 +1251,7 @@
 
             <div id="consumable-item-panel" style="display:none; text-align: center; margin-bottom: 14px; background: rgba(255,255,255,0.06); padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1);">
                 <div style="font-size:11px; color:#8e8e93; margin-bottom:10px;">耗材只記錄庫存數量與消耗量，不個別追蹤每一件</div>
-                <div id="consumable-expiry-edit-row" style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
-                    <span style="font-size:12px; color:#8e8e93;">📅 有效期限：</span>
-                    <input type="date" id="consumable-expiry-input" class="apple-input" style="padding:6px 8px; font-size:12px; width:150px;">
-                    <button class="apple-btn secondary" style="padding:6px 10px; font-size:11px;" onclick="saveConsumableExpiry()">儲存</button>
-                </div>
-                <div id="consumable-expiry-status" style="font-size:12px; font-weight:700; margin-bottom:12px;"></div>
+                <div id="consumable-lots" style="text-align:left;margin-bottom:12px;"></div>
                 <div id="consumable-qr-container" style="display:inline-block; background:#fff; border-radius:8px; padding:8px; margin-bottom:10px;"></div>
                 <div style="font-size:11px; color:#8e8e93; margin-bottom:4px;">掃這個 QR 進出貨，會跳出視窗輸入這次的數量</div>
                 <div style="font-size:11px; color:#8e8e93;">出庫模式＝出貨給目前選定的去處／進貨模式＝補貨回倉庫</div>
@@ -1412,9 +1407,101 @@
     }
     function updateDoc(ref, data) {
         const path = (ref && ref.path) || '';
-        if (path.startsWith('warehouse_boxes/')) touchAction('編輯箱子／物品', 30000);
+        if (path.startsWith('warehouse_boxes/')) { touchAction('編輯箱子／物品', 30000); if (data && Array.isArray(data.items)) data.items.forEach(syncLots); }
         else if (path.startsWith('warehouse_pages/')) touchAction('編輯頁面', 30000);
         return _updateDoc(ref, data);
+    }
+    // ===== 耗材效期批次：it.lots = [{ exp:'YYYY-MM-DD'|'', q }]（在庫）、it.holdLots = { 去處: [{ exp, q }] }（帶出去的）=====
+    // 合計永遠等於 it.qty／it.holdings；it.expiryDate＝最早到期的那批（舊的效期提醒照常運作）
+    const lotCmp = (a, b) => (a.exp || '9999') < (b.exp || '9999') ? -1 : (a.exp || '9999') > (b.exp || '9999') ? 1 : 0;
+    function lotsOf(it) {
+        if (!it || it.itemType !== 'consumable') return [];
+        if (Array.isArray(it.lots)) return it.lots.filter(l => l.q > 0).sort(lotCmp);
+        const q = Number(it.qty) || 0; return q > 0 ? [{ exp: it.expiryDate || '', q }] : [];
+    }
+    const lotSum = a => (a || []).reduce((n, l) => n + (Number(l.q) || 0), 0);
+    function lotAdd(arr, exp, q) { if (!(q > 0)) return arr; const l = arr.find(x => (x.exp || '') === (exp || '')); if (l) l.q += q; else arr.push({ exp: exp || '', q }); arr.sort(lotCmp); return arr; }
+    function lotTake(arr, n, pick, newestFirst) {   // 從批次拿出 n：有指定（pick：exp→數量）照指定，其餘最早到期先出
+        const out = []; arr.sort(lotCmp);
+        if (pick) Object.entries(pick).forEach(([exp, k]) => { const l = arr.find(x => (x.exp || '') === exp); const m = Math.min(k, l ? l.q : 0, n); if (m > 0) { l.q -= m; n -= m; lotAdd(out, exp, m); } });
+        const order = newestFirst ? arr.slice().reverse() : arr;
+        for (const l of order) { if (n <= 0) break; const m = Math.min(l.q, n); if (m > 0) { l.q -= m; n -= m; lotAdd(out, l.exp, m); } }
+        for (let i = arr.length - 1; i >= 0; i--) if (!(arr[i].q > 0)) arr.splice(i, 1);
+        return out;
+    }
+    function syncLots(it) {
+        if (!it || it.itemType !== 'consumable') return;
+        const lots = lotsOf(it).map(l => ({ exp: l.exp || '', q: Number(l.q) || 0 })), q = Number(it.qty) || 0, d = q - lotSum(lots);
+        if (d < 0) lotTake(lots, -d); else if (d > 0) lotAdd(lots, lots.length ? lots[lots.length - 1].exp : (it.expiryDate || ''), d);
+        it.lots = lots;
+        const hl = {}; Object.entries(it.holdings || {}).forEach(([t, n]) => { n = Number(n) || 0; if (n <= 0) return;
+            const a = ((it.holdLots || {})[t] || []).map(l => ({ exp: l.exp || '', q: Number(l.q) || 0 })).filter(l => l.q > 0), dd = n - lotSum(a);
+            if (dd < 0) lotTake(a, -dd); else if (dd > 0) lotAdd(a, '', dd); hl[t] = a; });
+        if (Object.keys(hl).length) it.holdLots = hl; else delete it.holdLots;
+        const first = lots.find(l => l.exp); it.expiryDate = first ? first.exp : (lots.length ? null : (it.expiryDate || null));
+    }
+    // 出庫：從倉庫批次拿，記到對方名下
+    function lotsOut(it, target, n, pick) { const lots = lotsOf(it).map(l => ({ ...l })); const got = lotTake(lots, n, pick); it.lots = lots;
+        it.holdLots = it.holdLots || {}; const h = (it.holdLots[target] || []).map(l => ({ ...l })); got.forEach(l => lotAdd(h, l.exp, l.q)); it.holdLots[target] = h; return got; }
+    // 還回：從對方名下拿回 back 個（效期晚的先回），用掉的 used 個直接扣掉
+    function lotsBack(it, target, back, used) { const h = (((it.holdLots || {})[target]) || []).map(l => ({ ...l })); const ret = lotTake(h, back, null, true); if (used) lotTake(h, used);
+        const lots = lotsOf(it).map(l => ({ ...l })); ret.forEach(l => lotAdd(lots, l.exp, l.q)); it.lots = lots; it.holdLots = it.holdLots || {}; it.holdLots[target] = h; return ret; }
+    const expTxt = e => e ? e.replace(/-/g, '/') : '沒有效期';
+    function lotBadge(exp) { const info = exp ? getExpiryInfo({ expiryDate: exp }) : null;
+        return info ? `<span style="color:${info.status === 'ok' ? '#15803d' : info.color};font-weight:800">${info.status === 'expired' ? '⚠️已過期' : info.status === 'warning' ? '⏳剩 ' + info.daysLeft + ' 天' : '✓'}</span>` : ''; }
+    // 選效期出貨（同一種耗材有好幾批）：最早到期的先自動帶入，可以自己改
+    function pickLotsSheet(it, title, maxN) {
+        return new Promise(res => {
+            const lots = lotsOf(it), U = UNIT(it), val = {};
+            const ov = document.createElement('div'); ov.className = 'exp-ov'; ov.style.zIndex = 9800;
+            const fefo = n => { lots.forEach(l => val[l.exp] = 0); for (const l of lots) { if (n <= 0) break; const m = Math.min(l.q, n); val[l.exp] = m; n -= m; } };
+            fefo(1);
+            const tot = () => Object.values(val).reduce((a, b) => a + b, 0);
+            ov.innerHTML = `<div class="exp-card"><div class="exp-h" style="color:#c2410c">${escapeHtml(title)}<button type="button" class="exp-x">✕</button></div>
+                <div style="display:flex;align-items:center;gap:8px;margin:0 4px 10px;font-size:14px;font-weight:800">總共要 <input id="lp-n" type="number" inputmode="numeric" min="0" style="width:70px;height:36px;border:1.5px solid #e7dcd8;border-radius:10px;text-align:center;font-size:17px;font-weight:800"> ${escapeHtml(U)}
+                  <span style="margin-left:auto;font-size:12px;color:#8a7f7a;font-weight:700">⚡ 自動先出最早到期</span></div>
+                ${lots.map((l, i) => `<div class="lp-row" data-i="${i}" style="display:flex;align-items:center;gap:8px;padding:9px 8px;border-radius:12px;border:1px solid #f0e6e3;margin-bottom:7px">
+                  <div style="flex:1;min-width:0"><div style="font-weight:900;font-size:15px">📅 ${expTxt(l.exp)} ${lotBadge(l.exp)}</div><div style="font-size:12px;color:#8a7f7a">在庫 ${l.q} ${escapeHtml(U)}</div></div>
+                  <button type="button" data-d="-1" data-i="${i}" style="all:unset;width:34px;height:34px;border-radius:10px;background:#f3efed;text-align:center;line-height:34px;font-size:20px;font-weight:900;cursor:pointer">−</button>
+                  <input type="number" inputmode="numeric" data-li="${i}" style="width:50px;height:34px;border:1.5px solid #e7dcd8;border-radius:10px;text-align:center;font-size:17px;font-weight:800">
+                  <button type="button" data-d="1" data-i="${i}" style="all:unset;width:34px;height:34px;border-radius:10px;background:#f08339;color:#fff;text-align:center;line-height:34px;font-size:20px;font-weight:900;cursor:pointer">＋</button></div>`).join('')}
+                <div style="display:flex;gap:10px;margin-top:6px"><button type="button" class="lp-no" style="all:unset;flex:1;text-align:center;padding:13px;border-radius:14px;background:#f3efed;font-weight:800;cursor:pointer">取消</button>
+                  <button type="button" class="lp-ok" style="all:unset;flex:2;text-align:center;padding:13px;border-radius:14px;color:#fff;font-weight:900;cursor:pointer"></button></div></div>`;
+            const paint = skip => {   // 只更新數字和顏色，不重畫（手機打字不會被打斷）
+                const n = ov.querySelector('#lp-n'); if (n !== skip) n.value = tot();
+                lots.forEach((l, i) => { const v = val[l.exp], row = ov.querySelector(`.lp-row[data-i="${i}"]`), inp = ov.querySelector(`[data-li="${i}"]`);
+                    if (inp !== skip) inp.value = v; row.style.background = v ? '#f0fdf4' : '#fff'; row.style.borderColor = v ? '#86efac' : '#f0e6e3'; });
+                const ok = ov.querySelector('.lp-ok'); ok.style.background = tot() ? '#f08339' : '#d6d3d1'; ok.innerText = `確認（${tot()} ${U}）`;
+            };
+            ov.querySelector('#lp-n').oninput = e => { let n = Math.max(0, parseInt(e.target.value, 10) || 0); n = Math.min(n, lotSum(lots), maxN || 1e9); fefo(n); paint(e.target); };
+            ov.querySelectorAll('button[data-d]').forEach(b => b.onclick = () => { const l = lots[+b.dataset.i]; val[l.exp] = Math.max(0, Math.min(l.q, val[l.exp] + +b.dataset.d)); paint(); });
+            ov.querySelectorAll('[data-li]').forEach(i => { i.onfocus = () => i.select(); i.oninput = () => { const l = lots[+i.dataset.li]; val[l.exp] = Math.max(0, Math.min(l.q, parseInt(i.value, 10) || 0)); paint(i); }; i.onblur = () => paint(); });
+            ov.querySelector('#lp-n').onblur = () => paint();
+            ov.onclick = e => { if (e.target === ov || e.target.closest('.exp-x') || e.target.closest('.lp-no')) { ov.remove(); res(null); } else if (e.target.closest('.lp-ok') && tot()) { ov.remove(); const pick = {}; Object.entries(val).forEach(([k, v]) => { if (v) pick[k] = v; }); res(pick); } };
+            document.body.appendChild(ov); paint();
+        });
+    }
+    // 補貨／進貨：數量＋這批的效期
+    function restockSheet(it, title) {
+        return new Promise(res => {
+            const lots = lotsOf(it), U = UNIT(it); let exp = lots.length ? lots[lots.length - 1].exp : '';
+            const ov = document.createElement('div'); ov.className = 'exp-ov'; ov.style.zIndex = 9800;
+            ov.innerHTML = `<div class="exp-card"><div class="exp-h" style="color:#15803d">${escapeHtml(title)}<button type="button" class="exp-x">✕</button></div>
+              <div style="font-size:14px;font-weight:800;margin:0 4px 6px">這次進了幾${escapeHtml(U)}？</div>
+              <input id="rs-n" type="number" inputmode="numeric" min="1" value="" placeholder="數量" style="width:100%;box-sizing:border-box;height:46px;border:1.5px solid #e7dcd8;border-radius:12px;text-align:center;font-size:20px;font-weight:800;margin-bottom:12px">
+              <div style="font-size:14px;font-weight:800;margin:0 4px 6px">📅 這批的有效期限</div>
+              <div id="rs-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
+              <input id="rs-d" type="date" style="width:100%;box-sizing:border-box;height:44px;border:1.5px solid #e7dcd8;border-radius:12px;padding:0 10px;font-size:16px">
+              <div style="display:flex;gap:10px;margin-top:12px"><button type="button" class="rs-no" style="all:unset;flex:1;text-align:center;padding:13px;border-radius:14px;background:#f3efed;font-weight:800;cursor:pointer">取消</button>
+                <button type="button" class="rs-ok" style="all:unset;flex:2;text-align:center;padding:13px;border-radius:14px;background:#22c55e;color:#fff;font-weight:900;cursor:pointer">確認入庫</button></div></div>`;
+            const chips = () => { ov.querySelector('#rs-chips').innerHTML = [...lots.map(l => l.exp).filter(Boolean), ''].map(e => `<button type="button" data-x="${e}" style="all:unset;padding:7px 11px;border-radius:18px;font-size:13px;font-weight:800;cursor:pointer;border:1.5px solid ${exp === e ? '#22c55e' : '#e7dcd8'};background:${exp === e ? '#dcfce7' : '#fff'}">${e ? '跟 ' + expTxt(e) + ' 同一批' : '沒有效期'}</button>`).join('');
+                ov.querySelector('#rs-d').value = exp; ov.querySelectorAll('[data-x]').forEach(b => b.onclick = () => { exp = b.dataset.x; chips(); }); };
+            chips(); ov.querySelector('#rs-d').onchange = e => { exp = e.target.value || ''; chips(); };
+            setTimeout(() => ov.querySelector('#rs-n').focus(), 100);
+            ov.onclick = e => { if (e.target === ov || e.target.closest('.exp-x') || e.target.closest('.rs-no')) { ov.remove(); res(null); }
+                else if (e.target.closest('.rs-ok')) { const n = parseInt(ov.querySelector('#rs-n').value, 10); if (!(n > 0)) { showToast('請輸入數量', 'error', 900); return; } ov.remove(); res({ n, exp }); } };
+            document.body.appendChild(ov);
+        });
     }
     function deleteDoc(ref) {
         const path = (ref && ref.path) || '';
@@ -1611,9 +1698,10 @@
         const out = [];
         (boxesCache || []).forEach(b => (b.items || []).forEach((it, idx) => {
             if (it.itemType !== 'consumable') return;
-            const info = getExpiryInfo(it); if (!info || info.status === 'ok') return;
             const pg = (pages || []).find(p => p.id === b.pageId);
-            out.push({ b, it, idx, info, where: `${pg ? pg.name : '未知位置'}${b.tier ? '・' + tierLabel(Number(b.tier)) : ''}・📦 ${b.name}` });
+            lotsOf(it).forEach(l => { const info = l.exp ? getExpiryInfo({ expiryDate: l.exp }) : null; if (!info || info.status === 'ok') return;
+                info.label += `・這批 ${l.q} ${UNIT(it)}`;
+                out.push({ b, it, idx, info, where: `${pg ? pg.name : '未知位置'}${b.tier ? '・' + tierLabel(Number(b.tier)) : ''}・📦 ${b.name}` }); });
         }));
         return out.sort((x, y) => x.info.daysLeft - y.info.daysLeft);
     }
@@ -3541,7 +3629,9 @@
                             showToast(`⚠️ 失敗\n耗材「${item.name}」庫存已為 0！`, 'error', 900);
                             return;
                         }
-                        const raw = await showPromptDialog(`倉庫庫存 ${currentQty} ${UNIT(item)}，這次要出貨多少${UNIT(item)}給「${currentBorrowTarget}」？`, '1', '📤 掃描出庫數量');
+                        let pick = null, raw;
+                        if (lotsOf(item).length > 1) { pick = await pickLotsSheet(item, `📤 ${item.name} → ${currentBorrowTarget}`, currentQty); if (!pick) return; raw = String(Object.values(pick).reduce((a, b) => a + b, 0)); }
+                        else raw = await showPromptDialog(`倉庫庫存 ${currentQty} ${UNIT(item)}，這次要出貨多少${UNIT(item)}給「${currentBorrowTarget}」？`, '1', '📤 掃描出庫數量');
                         if (!raw) return;
                         const n = parseInt(raw, 10);
                         if (!n || n <= 0) { showToast('請輸入大於 0 的整數', 'error', 900); return; }
@@ -3552,9 +3642,10 @@
                             return;
                         }
 
+                        const gotLots = lotsOut(item, currentBorrowTarget, n, pick);
                         item.qty = currentQty - n;
                         item.holdings[currentBorrowTarget] = (item.holdings[currentBorrowTarget] || 0) + n;
-                        scanSuccessFeedback('📤', `已出貨 ${n} ${UNIT(item)}\n${item.name}\n→ ${currentBorrowTarget}`);
+                        scanSuccessFeedback('📤', `已出貨 ${n} ${UNIT(item)}\n${item.name}\n→ ${currentBorrowTarget}${gotLots.some(l => l.exp) ? '\n📅 ' + gotLots.map(l => expTxt(l.exp) + '×' + l.q).join('、') : ''}`);
                         showToast(`✅ 出貨 ${n} 個\n${item.name}\n去向：${currentBorrowTarget}\n倉庫剩餘：${item.qty} 個`, 'success', 1000);
 
                         await updateDoc(doc(db, "warehouse_boxes", targetBoxId), { items: box.items });
@@ -3590,7 +3681,9 @@
                                 ? `「${sourceTarget}」原本帶出 ${heldQty} ${UNIT(item)}，這次回來了多少${UNIT(item)}？\n（這項要歸還：沒回來的會繼續記在「${sourceTarget}」名下）`
                                 : `「${sourceTarget}」原本帶出 ${heldQty} ${UNIT(item)}，這次實際回來了多少${UNIT(item)}？\n（沒回來的會自動記為消耗，這個去處會歸零結清）`)
                             : `這次「${item.name}」回來／補貨了多少個？`;
-                        const raw = await showPromptDialog(promptMsg, sourceTarget ? String(heldQty) : '1', '📥 掃描入庫數量');
+                        let restockExp = null, raw;
+                        if (!sourceTarget) { const r0 = await restockSheet(item, `📥 補貨：${item.name}`); if (!r0) return; raw = String(r0.n); restockExp = r0.exp; }
+                        else raw = await showPromptDialog(promptMsg, String(heldQty), '📥 掃描入庫數量');
                         if (!raw) return;
                         const n = parseInt(raw, 10);
                         if (!n && n !== 0) { showToast('請輸入數量', 'error', 900); return; }
@@ -3601,6 +3694,7 @@
 
                         if (sourceTarget) {
                             returned = Math.min(n, heldQty);
+                            lotsBack(item, sourceTarget, returned, item.mustReturn ? 0 : Math.max(0, heldQty - returned));
                             if (item.mustReturn) {   // 要歸還的東西：沒回來的繼續掛在對方名下，不記消耗
                                 const left = heldQty - returned;
                                 if (left > 0) item.holdings[sourceTarget] = left; else delete item.holdings[sourceTarget];
@@ -3610,6 +3704,7 @@
                             }
                             item.qty = currentQty + returned;
                         } else {
+                            item.lots = lotAdd(lotsOf(item).map(l => ({ ...l })), restockExp || '', n);
                             item.qty = currentQty + n;
                         }
 
@@ -4013,7 +4108,9 @@
             if (!cons) ensureUnits(it);
             if (isOut) {
                 const max = cons ? (Number(it.qty) || 0) : it.units.filter(u => u.status === 'in').length;
-                rows.push({ key: 'o' + idx, idx, kind: cons ? 'c' : 'd', name: it.name, img: it.imageUrl, max, unit: UNIT(it), sub: `在庫 ${max} ${UNIT(it)}` });
+                const ls = cons ? lotsOf(it) : [];
+                if (ls.length > 1) ls.forEach(l => rows.push({ key: 'o' + idx + '@' + l.exp, idx, kind: 'c', exp: l.exp, name: it.name, img: it.imageUrl, max: l.q, unit: UNIT(it), sub: `📅 ${expTxt(l.exp)}・在庫 ${l.q} ${UNIT(it)}`, badge: lotBadge(l.exp) }));
+                else rows.push({ key: 'o' + idx, idx, kind: cons ? 'c' : 'd', name: it.name, img: it.imageUrl, max, unit: UNIT(it), sub: `在庫 ${max} ${UNIT(it)}${ls[0] && ls[0].exp ? '・📅 ' + expTxt(ls[0].exp) : ''}`, badge: ls[0] ? lotBadge(ls[0].exp) : '' });
             } else if (cons) {
                 Object.entries(it.holdings || {}).filter(([, n]) => n > 0).forEach(([h, n]) =>
                     rows.push({ key: 'c' + idx + '|' + h, idx, kind: 'c', holder: h, name: it.name, img: it.imageUrl, max: n, unit: UNIT(it), sub: `${targetName(h)} 帶出 ${n} ${UNIT(it)}` }));
@@ -4037,7 +4134,7 @@
                 ${rows.length ? `<button type="button" class="bb-all" style="all:unset;box-sizing:border-box;display:block;width:100%;text-align:center;padding:10px;border-radius:12px;background:#fff7ed;color:#c2410c;font-weight:800;margin-bottom:10px;cursor:pointer">${total ? '全部清除' : (isOut ? '整箱全部帶走' : '全部還回')}</button>` : ''}
                 ${rows.length ? rows.map(r => `<div class="bb-row" style="display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:12px;border:1px solid ${val[r.key] || inc[r.key] ? '#86efac' : '#f0e6e3'};background:${val[r.key] || inc[r.key] ? '#f0fdf4' : '#fff'};margin-bottom:8px;${r.max ? '' : 'opacity:.45'}">
                     <img src="${escapeHtml(r.img || '')}" onerror="this.style.visibility='hidden'" style="width:42px;height:42px;border-radius:8px;object-fit:cover;background:#f3efed;flex:none">
-                    <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14.5px;color:#1f2937;word-break:break-all">${escapeHtml(r.name)}</div><div style="font-size:12px;color:#8a7f7a">${escapeHtml(r.sub)}</div>${!isOut && r.kind === 'c' ? `<label style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:${inc[r.key] ? '#b42318' : '#8a7f7a'};margin-top:3px;cursor:pointer"><input type="checkbox" data-inc="${escapeHtml(r.key)}" ${inc[r.key] ? 'checked' : ''} style="width:16px;height:16px;margin:0">這次結清${inc[r.key] && !val[r.key] ? '（0＝全部用掉，記消耗）' : val[r.key] < r.max && inc[r.key] ? `（沒回來的 ${r.max - val[r.key]} 記消耗）` : ''}</label>` : ''}</div>
+                    <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14.5px;color:#1f2937;word-break:break-all">${escapeHtml(r.name)}</div><div style="font-size:12px;color:#8a7f7a">${escapeHtml(r.sub)} ${r.badge || ''}</div>${!isOut && r.kind === 'c' ? `<label style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:${inc[r.key] ? '#b42318' : '#8a7f7a'};margin-top:3px;cursor:pointer"><input type="checkbox" data-inc="${escapeHtml(r.key)}" ${inc[r.key] ? 'checked' : ''} style="width:16px;height:16px;margin:0">這次結清${inc[r.key] && !val[r.key] ? '（0＝全部用掉，記消耗）' : val[r.key] < r.max && inc[r.key] ? `（沒回來的 ${r.max - val[r.key]} 記消耗）` : ''}</label>` : ''}</div>
                     ${r.max ? `<div style="display:flex;align-items:center;gap:6px;flex:none">
                         <button type="button" data-k="${escapeHtml(r.key)}" data-d="-1" style="all:unset;width:34px;height:34px;border-radius:10px;background:#f3efed;text-align:center;line-height:34px;font-size:20px;font-weight:900;cursor:pointer">−</button>
                         <input type="number" inputmode="numeric" min="0" max="${r.max}" data-n="${escapeHtml(r.key)}" value="${val[r.key]}" onfocus="this.select()" style="width:50px;height:34px;box-sizing:border-box;border:1.5px solid #e7dcd8;border-radius:10px;text-align:center;font-size:17px;font-weight:800;padding:0;-moz-appearance:textfield;font-family:inherit">
@@ -4084,6 +4181,7 @@
             if (isOut) {
                 if (r.kind === 'c') {
                     const q = Number(it.qty) || 0, m = Math.min(n, q); if (!m) return;
+                    lotsOut(it, currentBorrowTarget, m, r.exp !== undefined ? { [r.exp]: m } : null);
                     it.qty = q - m; it.holdings = it.holdings || {}; it.holdings[currentBorrowTarget] = (it.holdings[currentBorrowTarget] || 0) + m;
                     logs.push({ type: '出庫', itemName: it.name, qty: m, boxName: box.name, target: currentBorrowTarget }); count += m;
                 } else {
@@ -4096,6 +4194,7 @@
             } else {
                 if (r.kind === 'c') {
                     const held = (it.holdings || {})[r.holder] || 0, back = Math.min(n, held); if (!held) return;
+                    lotsBack(it, r.holder, back, it.mustReturn ? 0 : held - back);
                     it.qty = (Number(it.qty) || 0) + back;
                     let used = 0;
                     if (it.mustReturn) { const left = held - back; if (left > 0) it.holdings[r.holder] = left; else delete it.holdings[r.holder]; }
@@ -5857,7 +5956,7 @@
             const units = [];
             for (let i = 0; i < inN; i++) units.push({ uid: makeUid(), status: 'in', borrower: '' });
             Object.entries(holdings).forEach(([k, v]) => { for (let i = 0; i < (Number(v) || 0); i++) units.push({ uid: makeUid(), status: 'out', borrower: k }); });
-            delete it.itemType; delete it.holdings; delete it.expiryDate;
+            delete it.itemType; delete it.holdings; delete it.expiryDate; delete it.lots; delete it.holdLots;
             it.units = units; syncItemCounts(it);
         }
         try {
@@ -6186,21 +6285,43 @@
             colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H
         });
 
-        document.getElementById('consumable-expiry-input').value = it.expiryDate || '';
-        document.getElementById('consumable-expiry-edit-row').style.display = isContentEditActive ? 'flex' : 'none';
-        const statusEl = document.getElementById('consumable-expiry-status');
-        const info = getExpiryInfo(it);
-        if (info) {
-            statusEl.style.color = info.color;
-            if (info.status === 'expired') statusEl.innerText = `⚠️ ${info.label}！請盡快處理`;
-            else if (info.status === 'warning') statusEl.innerText = `⏳ ${info.label}，即將到期`;
-            else statusEl.innerText = `✅ ${info.label}（到期日 ${info.dateStr}）`;
-        } else {
-            statusEl.style.color = '#8e8e93';
-            statusEl.innerText = '尚未設定有效期限';
-        }
+        renderLotsBox(it);
     };
-
+    // 效期批次清單；編輯模式可以改每一批的效期、數量，新增或刪除一批
+    function renderLotsBox(it) {
+        const el = document.getElementById('consumable-lots'); if (!el) return;
+        const lots = lotsOf(it), U = escapeHtml(UNIT(it)), held = Object.entries(it.holdLots || {}).filter(([, a]) => lotSum(a) > 0);
+        el.innerHTML = `<div style="font-weight:900;font-size:14px;margin:0 2px 6px">📅 效期批次（在庫 ${lotSum(lots)} ${U}${lots.length > 1 ? `・${lots.length} 批` : ''}）</div>`
+            + (lots.length ? lots.map(l => `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:#fff;border:1px solid #f0e6e3;margin-bottom:5px"><b style="flex:1;font-size:14px">${expTxt(l.exp)}</b>${lotBadge(l.exp)}<b style="color:#c2410c;font-size:15px;min-width:54px;text-align:right">${l.q} ${U}</b></div>`).join('') : '<div style="color:#8e8e93;font-size:13px;padding:4px">目前沒有庫存</div>')
+            + (held.length ? `<div style="font-size:12px;color:#8a7f7a;margin:6px 2px 0">帶出去的：${held.map(([t, a]) => `${escapeHtml(targetName(t))} ${a.map(l => expTxt(l.exp) + '×' + l.q).join('、')}`).join('；')}</div>` : '')
+            + (isContentEditActive && isAdmin() ? `<button type="button" class="apple-btn secondary" onclick="openLotsEditor()" style="width:100%;margin-top:8px;padding:10px;font-size:13px">✏️ 編輯效期批次／新增一批</button>` : '');
+    }
+    window.openLotsEditor = function () {
+        const b = boxesCache.find(x => x.id === currentBoxId); if (!b || editingItemIndex === null) return;
+        const it = b.items[editingItemIndex]; if (!it || it.itemType !== 'consumable') return;
+        let rows = lotsOf(it).map(l => ({ exp: l.exp, q: l.q })); if (!rows.length) rows = [{ exp: '', q: 0 }];
+        const U = escapeHtml(UNIT(it)), ov = document.createElement('div'); ov.className = 'exp-ov'; ov.style.zIndex = 9800;
+        const inp = 'box-sizing:border-box;height:40px;border:1.5px solid #e7dcd8;border-radius:10px;font-size:15px;padding:0 8px;background:#fff';
+        const sync = () => ov.querySelectorAll('[data-r]').forEach(x => { const r = rows[+x.dataset.r]; if (x.dataset.f === 'q') r.q = Math.max(0, parseInt(x.value, 10) || 0); else r.exp = x.value || ''; });
+        const draw = () => { ov.innerHTML = `<div class="exp-card"><div class="exp-h" style="color:#c2410c">📅 ${escapeHtml(it.name)}・效期批次<button type="button" class="exp-x">✕</button></div>
+            <div style="font-size:12.5px;color:#6b625e;margin:0 4px 10px">每一批填效期和數量（同一天到期的算同一批）。合計會變成倉庫庫存。</div>
+            ${rows.map((r, i) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:7px"><input type="date" data-r="${i}" data-f="exp" value="${r.exp}" style="${inp};flex:1;min-width:0"><input type="number" inputmode="numeric" data-r="${i}" data-f="q" value="${r.q}" style="${inp};width:72px;text-align:center;font-weight:800"><span style="font-size:13px">${U}</span><button type="button" data-del="${i}" style="all:unset;width:28px;text-align:center;color:#b42318;font-size:18px;cursor:pointer">✕</button></div>`).join('')}
+            <button type="button" class="lt-add" style="all:unset;box-sizing:border-box;display:block;width:100%;text-align:center;padding:10px;border-radius:10px;border:1px dashed #e0b8a8;color:#c2410c;font-weight:800;cursor:pointer;margin-bottom:10px">＋ 新增一批</button>
+            <div style="text-align:center;font-weight:900;margin-bottom:10px">合計 <span class="lt-sum">${lotSum(rows)}</span> ${U}（原本 ${Number(it.qty) || 0}）</div>
+            <div style="display:flex;gap:10px"><button type="button" class="lt-no" style="all:unset;flex:1;text-align:center;padding:13px;border-radius:14px;background:#f3efed;font-weight:800;cursor:pointer">取消</button><button type="button" class="lt-ok" style="all:unset;flex:2;text-align:center;padding:13px;border-radius:14px;background:#f08339;color:#fff;font-weight:900;cursor:pointer">💾 儲存</button></div></div>`;
+            ov.querySelectorAll('[data-r]').forEach(x => x.oninput = () => { sync(); ov.querySelector('.lt-sum').innerText = lotSum(rows); }); };
+        ov.onclick = async e => { const t = e.target;
+            if (t === ov || t.closest('.exp-x') || t.closest('.lt-no')) { ov.remove(); return; }
+            if (t.closest('.lt-add')) { sync(); rows.push({ exp: '', q: 0 }); draw(); return; }
+            if (t.closest('[data-del]')) { sync(); rows.splice(+t.closest('[data-del]').dataset.del, 1); if (!rows.length) rows.push({ exp: '', q: 0 }); draw(); return; }
+            if (t.closest('.lt-ok')) { sync(); const lots = []; rows.forEach(r => lotAdd(lots, r.exp, r.q)); const oldQ = Number(it.qty) || 0, newQ = lotSum(lots);
+                it.lots = lots; it.qty = newQ; ov.remove();
+                await updateDoc(doc(db, "warehouse_boxes", currentBoxId), { items: b.items });
+                if (newQ !== oldQ) { try { await addDoc(collection(db, "warehouse_logs"), { ...opInfo(), type: '調整', itemName: it.name, qty: Math.abs(newQ - oldQ), fromQty: oldQ, toQty: newQ, boxName: b.name, target: '效期批次修改', timestamp: Date.now(), timeStr: nowTimeStr() }); } catch (er) {} }
+                renderConsumablePanel(it, b.id, editingItemIndex); updateItemStatusBanner(it); const q = document.getElementById('view-item-qty'); if (q) q.innerText = stockText(it); renderBoxModal(b);
+                showToast('💾 效期批次已儲存', 'success', 900); } };
+        document.body.appendChild(ov); draw();
+    };
     window.saveConsumableExpiry = async function() {
         const b = boxesCache.find(x => x.id === currentBoxId);
         if (!b || editingItemIndex === null) return;
