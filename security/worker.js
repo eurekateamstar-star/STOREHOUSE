@@ -588,6 +588,8 @@ EDU_CARDS['edu-all'] = { id: 'edu-all', builtin: true, w: 1080, h: 1080, alt: '�
   title: '衛教小卡・一次分享 6 張', text: '中暑、水泡、抽筋、曬傷、扭傷、求助，收到的人可以左右滑動看完。' };
 EDU_CARDS.guardian = { id: 'guardian', builtin: true, w: 1024, h: 756, alt: '全民醫護證｜不用證照，也能守護身邊的人', imgUrl: `${SITE}/richmenu/guardian-promo.jpg?v=3`,
   title: '領一張你的全民醫護證', text: '不用證照，也能守護身邊的人。放上照片、勾選你會的守護技能，做一張屬於你的醫護證！', btn: '🪪 領取我的全民醫護證', url: GUARDIAN_URL };
+EDU_CARDS['wh-entry'] = { id: 'wh-entry', builtin: true, w: 1040, h: 560, alt: '白沙屯拱天宮醫護團｜倉庫管理入口（團員專用）', imgUrl: `${SITE}/richmenu/wh-entry.jpg?v=1`,
+  title: '📦 倉庫管理入口', text: '醫護團團員專用：掃物品 QR 找位置、看腰包裡有什麼、領用歸還一掃就好。', btn: '📦 開啟倉庫管理', url: 'https://liff.line.me/2011820105-ofRs4ehy?scan=1' };
 function shareFlex(c, origin) {
   const ratio = Math.min(3, Math.max(1 / 3, (c.w || 1) / (c.h || 1))), W = 1000, H = Math.round(W / ratio);
   const body = [], heroUrl = c.imgUrl || `${origin}/c/${c.id}.jpg`;
