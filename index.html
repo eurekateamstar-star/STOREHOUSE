@@ -4154,6 +4154,7 @@
             const total = rows.reduce((a, r) => a + (val[r.key] || 0), 0);
             const settle = rows.filter(r => inc[r.key] && !val[r.key]).length;   // 回來 0 個、要記消耗的耗材
             const can = total > 0 || settle > 0;
+            const keepY = ov.querySelector('.exp-card') ? ov.querySelector('.exp-card').scrollTop : 0;   // 重畫時保持捲動位置，不要跳回最上面
             ov.innerHTML = `<div class="exp-card">
                 <div class="exp-h" style="color:${isOut ? '#c2410c' : '#15803d'}">${isOut ? '📤 整箱出庫' : '📥 整箱入庫'}・${escapeHtml(box.name)}<button type="button" class="exp-x">✕</button></div>
                 <div style="font-size:13px;color:#6b625e;margin:0 4px 10px">${isOut ? `領用對象：<b style="color:#c2410c">${escapeHtml(currentBorrowTarget)}</b>　點 ＋ 選要帶走的數量` : '選要還回來的東西（預設全數，沒回來的耗材記消耗）'}</div>
@@ -4164,6 +4165,8 @@
                     <button type="button" class="bb-ok" ${can ? '' : 'disabled'} style="all:unset;flex:2;text-align:center;padding:13px;border-radius:14px;background:${can ? (isOut ? '#f08339' : '#22c55e') : '#d6d3d1'};color:#fff;font-weight:900;cursor:pointer">${isOut ? `確認出庫（${total}）` : `確認入庫（${total}）${settle ? `・消耗 ${settle} 項` : ''}`}</button>
                 </div></div>`;
             ov.querySelector('.exp-x').onclick = close; ov.querySelector('.bb-cancel').onclick = close;
+            { const cd = ov.querySelector('.exp-card'); if (cd) cd.scrollTop = keepY; }
+            ov.querySelectorAll('#box-batch-ov input[type=number]').forEach(i => i.addEventListener('focus', () => { setTimeout(() => { try { i.closest('.bb-row,.bb-g').scrollIntoView({ block: 'center' }); } catch (e) {} }, 350); }));
             ov.querySelectorAll('[data-gt]').forEach(el => el.onclick = () => { const i = +el.dataset.gt; openG.has(i) ? openG.delete(i) : openG.add(i); draw(); });
             ov.querySelectorAll('[data-gd]').forEach(b => b.onclick = () => { const g = groups[+b.dataset.g]; gSet(g, b.dataset.gd === 'max' ? (gVal(g) === g.max ? 0 : g.max) : gVal(g) + +b.dataset.gd); draw(); });
             ov.querySelectorAll('[data-k]').forEach(b => b.onclick = () => {
