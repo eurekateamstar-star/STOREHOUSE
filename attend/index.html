@@ -180,6 +180,7 @@
         <div class="u-total" id="u-total"></div>
       </div>
     </div>
+    <div class="card hidden" id="grp-skip" style="padding:14px 18px;font-size:14px;font-weight:800;color:#9a3412;background:#fff7ed;">🧩 你是幹部／組長／教官團，這次不需要選組 🙏</div>
     <div class="card hidden" id="grp-card">
       <h2>🧩 選組（可複選）<span class="req">*</span></h2>
       <div id="grp-core"></div>
@@ -272,10 +273,14 @@
   }
   let GP = { gs: [], core: [] };
   const picks = new Set();
-  const gOn = () => !!(ev && ev.askGroups) && GP.gs.length > 0 && attend !== 'no';
+  const nk = x => String(x || '').replace(/[（(].*$/, '').replace(/[\s　]+/g, '');
+  const gBase = () => !!(ev && ev.askGroups) && GP.gs.length > 0 && attend !== 'no';
+  const gSkip = () => { const k = nk(f.elements.name.value); return !!k && (ev.grpSkip || []).includes(k); };   // 幹部、組長、教官團不用選組
+  const gOn = () => gBase() && !gSkip();
   const escH = x => String(x || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   function gRender() {
     $('grp-card').classList.toggle('hidden', !gOn());
+    $('grp-skip').classList.toggle('hidden', !(gBase() && gSkip()));
     $('grp-core').innerHTML = GP.core.length ? '<div class="gp-core">' + GP.core.map(c => `<span class="nw"><b>${escH(c.t)}</b>：${escH(c.n)}</span>`).join('') + '</div>' : '';
     $('grp-list').innerHTML = GP.gs.map((g, i) => `<button type="button" class="gp${picks.has(g.n) ? ' on' : ''}" data-gi="${i}"><div class="gn">${escH(g.n)}</div>
       ${g.lead.length ? `<div class="gl">${g.lead.map(l => `<span class="nw">${escH(l.t)}：${escH(l.n)}</span>`).join('')}</div>` : ''}
@@ -319,6 +324,7 @@
     document.querySelectorAll('[data-f="lunch"] .chip').forEach(x => x.classList.toggle('on', x === c));
   });
   f.querySelectorAll('input,textarea').forEach(i => i.addEventListener('input', () => i.closest('.field') && i.closest('.field').classList.remove('bad')));
+  f.elements.name.addEventListener('input', () => { if (ev) gRender(); });
 
   $('btn-again').onclick = () => {
     $('msg').classList.add('hidden'); f.classList.remove('hidden');

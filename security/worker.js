@@ -806,10 +806,12 @@ async function mySchedRoute(req, env, json) {
       let grp = null;
       if (e.askGroups) {
         const gd = await fsGet(tok, `events/${e.id}/admin/groups`), fin = gd ? (fobj(gd.fields).final || {}) : {};
-        const order = parseGroups(e.groupsText).gs.map(g => g.n);
+        const GP = parseGroups(e.groupsText), order = GP.gs.map(g => g.n);
         const picks = ((latest[myKey] || {}).groups || []).filter(Boolean);
-        const final = Object.keys(fin).filter(g => fin[g] && fin[g][myKey]).sort((a, b) => order.indexOf(a) - order.indexOf(b));
-        if (picks.length || final.length) grp = { picks, final };
+        const led = GP.gs.filter(g => g.lead.some(l => leadKey(l.n) === myKey)).map(g => g.n);   // 組長／副組長＝自己帶的組
+        const final = [...new Set([...led, ...Object.keys(fin).filter(g => fin[g] && fin[g][myKey])])].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+        const role = [...GP.core.filter(c => leadKey(c.n) === myKey).map(c => c.t), ...GP.gs.flatMap(g => g.lead.filter(l => leadKey(l.n) === myKey).map(l => g.n + ' ' + l.t))];
+        if (picks.length || final.length || role.length) grp = { picks, final, role };
       }
       const dr = e.schedPublic ? await fsGet(tok, `events/${e.id}/admin/draw`) : null;
       if (!dr) { if (grp) out.push({ id: e.id, title: e.title || '', name: myKey, days: [], cats: {}, cmd: [], g: myG, plan: [], grp }); continue; }
