@@ -2146,10 +2146,12 @@
   }
   // 免選組名單：核心幹部、各組組長／副組長、名冊職位是教官團等（存在活動裡，公開表單用名字判斷）
   const grpKey = n => normName(String(n || '').replace(/[（(].*$/, ''));
-  function grpSkipList(text) {
+  function grpSkipList(text, add = [], off = []) {
     const G = parseGroups(text), set = new Set();
+    add.forEach(n => set.add(grpKey(n)));
     G.core.forEach(c => set.add(grpKey(c.n))); G.gs.forEach(g => g.lead.forEach(l => set.add(grpKey(l.n))));
     (rosterCache || []).forEach(r => { if (/教官團|顧問|團長|秘書長|指揮官/.test(rv(r, 'position') || '')) set.add(normName(r.name)); });
+    off.forEach(n => set.delete(grpKey(n)));
     set.delete(''); return [...set];
   }
   async function grpCall(path, body) {
@@ -3745,19 +3747,28 @@
         <label style="display:flex; gap:8px; align-items:center; font-size:14px; font-weight:800; margin:6px 2px 12px;"><input type="checkbox" id="ev-lunch" ${e.askLunch === false ? '' : 'checked'} style="width:18px;height:18px;"> 詢問午膳（葷／素／自行處理）</label>
         <label style="display:flex; gap:8px; align-items:center; font-size:14px; font-weight:800; margin:-4px 2px 12px;"><input type="checkbox" id="ev-uni" ${e.askUniform ? 'checked' : ''} style="width:18px;height:18px;"> 詢問團服訂購（新團員配發／舊團員加購）</label>
         <label style="display:flex; gap:8px; align-items:center; font-size:14px; font-weight:800; margin:-4px 2px 8px;"><input type="checkbox" id="ev-grp" ${e.askGroups ? 'checked' : ''} style="width:18px;height:18px;"> 詢問選組（可複選，組長確認）</label>
-        <div class="field ${e.askGroups ? '' : 'hidden'}" id="ev-grp-box"><label>分組架構與職責（直接貼上；「1️⃣ 組名」開頭一組、「組長：姓名」是組長、「▫️」是職責）</label><textarea id="ev-grptext" style="min-height:220px;font-size:13px;">${esc(e.groupsText || DEFAULT_GROUPS_TEXT)}</textarea><div id="ev-grp-prev" style="font-size:12px;color:var(--sub);margin-top:4px;white-space:pre-wrap;line-height:1.6;"></div></div>
+        <div class="field ${e.askGroups ? '' : 'hidden'}" id="ev-grp-box"><label>分組架構與職責（直接貼上；「1️⃣ 組名」開頭一組、「組長：姓名」是組長、「▫️」是職責）</label><textarea id="ev-grptext" style="min-height:220px;font-size:13px;">${esc(e.groupsText || DEFAULT_GROUPS_TEXT)}</textarea><div id="ev-grp-prev" style="font-size:12px;color:var(--sub);margin-top:4px;white-space:pre-wrap;line-height:1.6;"></div>
+          <label style="margin-top:12px;">另外加入免選組的人（名字用「、」或空白分開）</label><input id="ev-grpadd" value="${esc((e.grpSkipAdd || []).join('、'))}" placeholder="例如：王小明、陳大華">
+          <div style="font-size:12px;color:var(--sub);margin:8px 0 4px;">免選組名單（點名字可以取消／恢復）：</div><div id="ev-grpskip" style="display:flex;flex-wrap:wrap;gap:6px;"></div></div>
       </div>
       <button class="btn" id="ev-save">${isNew ? '建立並取得連結' : '儲存'}</button>
       ${isNew ? '' : '<button class="btn ghost" id="ev-del" style="margin-top:8px; color:var(--red);">刪除這個出席調查</button>'}`;
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open'); $('sheet').scrollTop = 0;
-    const grpPrev = () => { const G = parseGroups($('ev-grptext').value), sk = grpSkipList($('ev-grptext').value);
-      $('ev-grp-prev').textContent = G.gs.length ? `讀到 ${G.gs.length} 組：` + G.gs.map(g => g.n + (g.lead.length ? '（' + g.lead.map(l => l.n.replace(/[（(].*$/, '')).join('、') + '）' : '')).join('｜') + `\n免選組 ${sk.length} 人（核心幹部、組長／副組長、名冊職位是教官團／顧問／團長／秘書長／指揮官）：${sk.join('、')}` : '⚠️ 讀不到組別'; };
+    const skipOff = new Set((e.grpSkipOff || []).map(grpKey));
+    const addList = () => $('ev-grpadd').value.split(/[、,，;；\s]+/).map(x => x.trim()).filter(Boolean);
+    const grpPrev = () => { const G = parseGroups($('ev-grptext').value), all = grpSkipList($('ev-grptext').value, addList()), sk = all.filter(n => !skipOff.has(n));
+      $('ev-grp-prev').textContent = G.gs.length ? `讀到 ${G.gs.length} 組：` + G.gs.map(g => g.n + (g.lead.length ? '（' + g.lead.map(l => l.n.replace(/[（(].*$/, '')).join('、') + '）' : '')).join('｜') + `\n免選組 ${sk.length} 人（核心幹部、組長／副組長、名冊職位是教官團／顧問／團長／秘書長／指揮官，加上你另外加入的人）` : '⚠️ 讀不到組別';
+      const offOnly = [...skipOff].filter(n => !all.includes(n));
+      $('ev-grpskip').innerHTML = [...all, ...offOnly].map(n => { const off = skipOff.has(n);
+        return `<button type="button" data-skn="${esc(n)}" style="border:1.5px solid ${off ? '#e5e7eb' : '#fdba74'};background:${off ? '#f9fafb' : '#fff7ed'};color:${off ? '#9ca3af' : '#9a3412'};border-radius:999px;padding:5px 11px;font-size:13px;font-weight:800;font-family:inherit;${off ? 'text-decoration:line-through;' : ''}">${off ? '' : '✓ '}${esc(n)}</button>`; }).join('');
+      document.querySelectorAll('[data-skn]').forEach(b => b.onclick = () => { const n = b.dataset.skn; skipOff.has(n) ? skipOff.delete(n) : skipOff.add(n); grpPrev(); }); };
+    $('ev-grpadd').oninput = grpPrev;
     $('ev-grp').onchange = () => $('ev-grp-box').classList.toggle('hidden', !$('ev-grp').checked);
     $('ev-grptext').oninput = grpPrev; grpPrev();
     $('ev-save').onclick = async () => {
       const title = $('ev-title').value.trim(); if (!title) return toast('請填寫標題');
       const data = { title, date: $('ev-date').value.trim(), desc: $('ev-desc').value.trim(), askLunch: $('ev-lunch').checked, askUniform: $('ev-uni').checked, askGroups: $('ev-grp').checked };
-      if (data.askGroups) { data.groupsText = $('ev-grptext').value.trim(); if (!parseGroups(data.groupsText).gs.length) return toast('分組架構裡找不到組別（每組要用「1️⃣ 組名」或「1. 組名」開頭）'); data.grpSkip = grpSkipList(data.groupsText); }
+      if (data.askGroups) { data.groupsText = $('ev-grptext').value.trim(); if (!parseGroups(data.groupsText).gs.length) return toast('分組架構裡找不到組別（每組要用「1️⃣ 組名」或「1. 組名」開頭）'); data.grpSkipAdd = addList(); data.grpSkipOff = [...skipOff]; data.grpSkip = grpSkipList(data.groupsText, data.grpSkipAdd, data.grpSkipOff); }
       try {
         if (isNew) { const id = 'ev' + Date.now().toString(36); await setDoc(doc(db, 'events', id), { ...data, open: true, createdAt: serverTimestamp(), createdBy: user.realName || '' }); evOpenId = id; }
         else await updateDoc(doc(db, 'events', e.id), data);
