@@ -1004,17 +1004,39 @@
     }, () => { rosterUnsub = null; retryAdminWatch(); });
     // 4 秒後還沒拿到伺服器資料 → 直接向伺服器要一次，並重新連線
     clearTimeout(startAdminWatch._t);
-    startAdminWatch._t = setTimeout(forceAdminLoad, 4000);
+    startAdminWatch._t = setTimeout(forceAdminLoad, 2500);
   }
+  // LINE 內建瀏覽器有時 Firestore 即時連線會卡住（一直顯示 …，要重新整理才有）→ 改用一般網路請求（REST）直接讀
+  const fsTs = iso => { const ms = Date.parse(iso); return { seconds: Math.floor(ms / 1000), nanoseconds: 0, toMillis: () => ms, toDate: () => new Date(ms) }; };
+  const restV = v => v == null ? null : 'stringValue' in v ? v.stringValue : 'booleanValue' in v ? v.booleanValue : 'integerValue' in v ? +v.integerValue
+    : 'doubleValue' in v ? v.doubleValue : 'timestampValue' in v ? fsTs(v.timestampValue) : 'nullValue' in v ? null
+    : 'mapValue' in v ? restO(v.mapValue.fields) : 'arrayValue' in v ? (v.arrayValue.values || []).map(restV) : null;
+  const restO = f => Object.fromEntries(Object.entries(f || {}).map(([k, v]) => [k, restV(v)]));
+  async function restList(col) {
+    const t = await auth.currentUser.getIdToken(); let out = [], pt = '';
+    do {
+      const ac = new AbortController(), to = setTimeout(() => ac.abort(), 12000);
+      const r = await fetch(`https://firestore.googleapis.com/v1/projects/linebot-firebase-b1242/databases/(default)/documents/${col}?pageSize=300${pt ? '&pageToken=' + encodeURIComponent(pt) : ''}`,
+        { headers: { Authorization: 'Bearer ' + t }, signal: ac.signal }).finally(() => clearTimeout(to));
+      if (!r.ok) throw new Error('REST ' + r.status);
+      const j = await r.json(); (j.documents || []).forEach(d => out.push({ id: d.name.split('/').pop(), ...restO(d.fields) })); pt = j.nextPageToken || '';
+    } while (pt);
+    return out;
+  }
+  const withTimeout = (p, ms) => Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error('timeout')), ms))]);
   async function forceAdminLoad() {
     if (!isAdmin() || (usersLive && rosterLive)) return;
+    const one = col => Promise.any([withTimeout(getDocsFromServer(collection(db, col)), 8000).then(q => q.docs.map(d => ({ id: d.id, ...d.data() }))), restList(col)]);   // 誰先回來用誰
     try {
-      const [us, rs] = await Promise.all([usersLive ? null : getDocsFromServer(collection(db, 'users')), rosterLive ? null : getDocsFromServer(collection(db, ROSTER))]);
-      if (us) { usersCache = us.docs.map(d => ({ id: d.id, ...d.data() })); usersLive = true; }
-      if (rs) { rosterCache = rs.docs.map(d => ({ id: d.id, ...d.data() })); rosterLive = true; }
+      const [us, rs] = await Promise.all([usersLive ? null : one('users'), rosterLive ? null : one(ROSTER)]);
+      if (us && !usersLive) { usersCache = us; usersLive = true; }
+      if (rs && !rosterLive) { rosterCache = rs; rosterLive = true; }
       updateAdminDot(); if (adminOn) renderAdmin();
-    } catch (e) { retryAdminWatch(); }
+    } catch (e) { console.warn('admin load', e); }
+    if (isAdmin() && !(usersLive && rosterLive)) { clearTimeout(startAdminWatch._t); startAdminWatch._t = setTimeout(forceAdminLoad, 3000); }
   }
+  // 從背景回到畫面：如果名單還沒讀到，馬上再讀一次
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && isAdmin() && !(usersLive && rosterLive)) forceAdminLoad(); });
   function retryAdminWatch() {
     if (adminRetry >= 5 || !isAdmin()) { if (adminRetry >= 5) toast('讀取名單失敗，請重新整理'); return; }
     adminRetry++;
