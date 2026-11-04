@@ -78,6 +78,8 @@ export default {
     if (path === '/lot') return lotRoute(req, env, json);
     if (path === '/mysched') return mySchedRoute(req, env, json);
     if (path === '/myplan') return myPlanRoute(req, env, json);
+    if (path === '/groups') return groupsRoute(req, env, json);
+    if (path === '/groupset') return groupSetRoute(req, env, json);
     if (path === '/nudge') return nudgeRoute(req, env, json);
     if (path === '/viewsched') return viewSchedRoute(req, env, json);
     if (path === '/remind') return remindRoute(req, env, json);
@@ -793,16 +795,25 @@ async function mySchedRoute(req, env, json) {
     const tok = await saToken(env);
     const ro = await fsGet(tok, `member_roster/${encodeURIComponent(u.rosterId)}`); if (!ro) return json({ events: [] });
     const roF = fobj(ro.fields), myKey = normName(roF.name), myG = String(roF.idCard || '').toUpperCase()[1] === '2' ? '8' : '7';
-    const evs = (await fsList(tok, 'events')).filter(e => e.schedPublic);
-    const roster = evs.length ? await fsList(tok, 'member_roster') : [], byName = {};
+    const evs = (await fsList(tok, 'events')).filter(e => e.schedPublic || e.askGroups);
+    const roster = evs.some(e => e.schedPublic) ? await fsList(tok, 'member_roster') : [], byName = {};
     roster.forEach(x => { const k = normName(x.name); if (k && !byName[k]) byName[k] = x; });
     const catOf = k => { const c = String((byName[k] || {}).cert || '').toUpperCase().replace(/[-\s]/g, ''); return c.includes('護理') || c.includes('醫師') ? 'N' : c.includes('EMTP') || c.includes('EMT2') ? 'T2' : c.includes('EMT1') ? 'T1' : 'O'; };
     const EQN = { kit: '救護包', ambu: 'AMBU包', inst: '儀器包' };
     const out = [];
     for (const e of evs) {
-      const dr = await fsGet(tok, `events/${e.id}/admin/draw`); if (!dr) continue;
-      const sc = fobj(dr.fields).sched || {}, days = sc.days || {}, info = sc.info || {};
       const latest = {}; (await fsList(tok, `events/${e.id}/responses`)).forEach(x => { const k = normName(x.name); if (k && (!latest[k] || (x.createdAt || 0) >= (latest[k].createdAt || 0))) latest[k] = x; });
+      let grp = null;
+      if (e.askGroups) {
+        const gd = await fsGet(tok, `events/${e.id}/admin/groups`), fin = gd ? (fobj(gd.fields).final || {}) : {};
+        const order = parseGroups(e.groupsText).gs.map(g => g.n);
+        const picks = ((latest[myKey] || {}).groups || []).filter(Boolean);
+        const final = Object.keys(fin).filter(g => fin[g] && fin[g][myKey]).sort((a, b) => order.indexOf(a) - order.indexOf(b));
+        if (picks.length || final.length) grp = { picks, final };
+      }
+      const dr = e.schedPublic ? await fsGet(tok, `events/${e.id}/admin/draw`) : null;
+      if (!dr) { if (grp) out.push({ id: e.id, title: e.title || '', name: myKey, days: [], cats: {}, cmd: [], g: myG, plan: [], grp }); continue; }
+      const sc = fobj(dr.fields).sched || {}, days = sc.days || {}, info = sc.info || {};
       const cmd = Object.keys(latest).filter(k => ['yes', 'join'].includes(latest[k].attend) && (byName[k] || {}).position === '指揮官');
       const eqOf = t => t.eq ? [Object.entries(EQN).filter(([k]) => t.eq[k] > 0).map(([k, n]) => n + '*' + t.eq[k]).join('、'), (t.eq.text || '').trim()].filter(Boolean).join('　') : (t.note || '');
       const LO = l => (String(l).startsWith('轎前') ? -(+String(l).slice(2)) : 10 + (+String(l).slice(2)));
@@ -831,9 +842,84 @@ async function mySchedRoute(req, env, json) {
         return o; };
       const ds = mine.map(x => x.d), first = ds[0], pre = first ? isoAddW(first, -1) : null;
       const planDays = [...(pre && sc.start && pre >= sc.start ? [pre] : []), ...ds].sort();   // 只有排班前一天＋排班的日子
-      out.push({ id: e.id, title: e.title || '', name: myKey, days: mine, cats, cmd, g: myG, plan: planDays.map(plan) });
+      out.push({ id: e.id, title: e.title || '', name: myKey, days: mine, cats, cmd, g: myG, plan: planDays.map(plan), grp });
     }
     return json({ events: out });
+  } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
+}
+// ===== 選組：管理員貼的分組架構文字 → 組別、組長 =====
+function parseGroups(t) {
+  const gs = [], core = []; let cur = null, started = false;
+  String(t || '').split(/\r?\n/).forEach(l => {
+    const s = l.trim(); if (!s) return;
+    const m = /^(?:\d+\s*[.、)）]|\d\uFE0F?\u20E3)\s*(.+)$/.exec(s);
+    if (m) { cur = { n: m[1].trim(), lead: [], duty: [] }; gs.push(cur); started = true; return; }
+    if (/^[━─=＝\-]{3,}/.test(s)) { cur = null; return; }
+    if (!cur) { const c = /^(團長|副團長|秘書長|指揮官|副指揮官)\s*[:：]\s*(.+)$/.exec(s); if (c && !started) core.push({ t: c[1], n: c[2] }); return; }
+    const ld = /^(.{0,8}組長)\s*[:：]\s*(.+)$/.exec(s);
+    if (ld) { cur.lead.push({ t: ld[1], n: ld[2].trim() }); return; }
+    const d = /^(?:▫️|▫|・|•|‧|-|\*|◦)\s*(.+)$/.exec(s);
+    cur.duty.push(d ? d[1] : s);
+  });
+  return { gs: gs.filter(g => g.n), core };
+}
+const leadKey = n => normName(String(n || '').replace(/[（(].*$/, ''));
+async function groupMe(idToken, env) {
+  const me = await fetch(`${FS}/users/${encodeURIComponent(uidOfToken(idToken))}`, { headers: { Authorization: 'Bearer ' + idToken } });
+  if (!me.ok) return null;
+  const u = fobj((await me.json()).fields); if (u.status !== 'approved') return null;
+  const tok = await saToken(env); let key = '';
+  if (u.rosterId) { const ro = await fsGet(tok, `member_roster/${encodeURIComponent(u.rosterId)}`); if (ro) key = normName(fobj(ro.fields).name); }
+  return { u, tok, key, admin: u.role === 'admin' || u.adminMember === true, by: key || normName(u.realName) };
+}
+// 組長／管理員看選組名單：{ idToken, eid? }（沒 eid ＝ 只回清單和人數）
+async function groupsRoute(req, env, json) {
+  try {
+    const { idToken, eid } = await req.json();
+    if (!idToken) return json({ error: 'missing' }, 400);
+    const M = await groupMe(idToken, env); if (!M) return json({ error: 'not member' }, 403);
+    const { tok, key, admin } = M;
+    const evs = (await fsList(tok, 'events')).filter(e => e.askGroups && (!eid || e.id === eid));
+    const out = []; let roster = null;
+    for (const e of evs) {
+      const GP = parseGroups(e.groupsText);
+      const mine = GP.gs.filter(g => admin || (key && g.lead.some(l => leadKey(l.n) === key)));
+      if (!mine.length) continue;
+      const latest = {}; (await fsList(tok, `events/${e.id}/responses`)).forEach(x => { const k = normName(x.name); if (k && (!latest[k] || (x.createdAt || 0) >= (latest[k].createdAt || 0))) latest[k] = x; });
+      const gd = await fsGet(tok, `events/${e.id}/admin/groups`), fin = gd ? (fobj(gd.fields).final || {}) : {};
+      const att = Object.keys(latest).filter(k => ['yes', 'join'].includes(latest[k].attend));
+      if (eid && !roster) { roster = {}; (await fsList(tok, 'member_roster')).forEach(x => { const k = normName(x.name); if (k && !roster[k]) roster[k] = x; }); }
+      const person = k => { const r = latest[k] || {}, ro = (roster || {})[k] || {}; return { k, name: r.name || k, attend: r.attend || '', picks: r.groups || [], cert: ro.cert || '', pos: ro.position || '' }; };
+      const groups = mine.map(g => {
+        const f = fin[g.n] || {};
+        const ks = [...new Set([...att.filter(k => (latest[k].groups || []).includes(g.n)), ...Object.keys(f)])];
+        return eid ? { n: g.n, lead: g.lead, people: ks.map(k => ({ ...person(k), ok: f[k] || '' })) }
+          : { n: g.n, picked: ks.length, ok: Object.keys(f).length };
+      });
+      out.push({ id: e.id, title: e.title || '', groups, ...(eid ? { all: att.map(person) } : {}) });
+    }
+    return json({ events: out, admin });
+  } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
+}
+// 確認／取消某人在某組：{ idToken, eid, g, k, on }
+async function groupSetRoute(req, env, json) {
+  try {
+    const { idToken, eid, g, k, on } = await req.json();
+    if (!idToken || !/^[A-Za-z0-9_-]{1,64}$/.test(eid || '') || !g || !k || String(k).length > 20) return json({ error: 'missing' }, 400);
+    const M = await groupMe(idToken, env); if (!M) return json({ error: 'not member' }, 403);
+    const { tok, key, admin, by } = M;
+    const ev = await fsGet(tok, `events/${eid}`); if (!ev) return json({ error: 'no event' }, 404);
+    const e = fobj(ev.fields), G = parseGroups(e.groupsText).gs.find(x => x.n === g);
+    if (!e.askGroups || !G) return json({ error: '沒有這個組別' }, 404);
+    if (!admin && !(key && G.lead.some(l => leadKey(l.n) === key))) return json({ error: '只有這組的組長或管理員可以確認' }, 403);
+    const path = `events/${eid}/admin/groups`, cur = await fsGet(tok, path), fin = cur ? (fobj(cur.fields).final || {}) : {};
+    const nk = normName(k), m = { ...(fin[g] || {}) };
+    if (on) m[nk] = by || '管理員'; else delete m[nk];
+    fin[g] = m; if (!Object.keys(m).length) delete fin[g];
+    const w = await fetch(`${FS}/${path}?updateMask.fieldPaths=final&updateMask.fieldPaths=at`, { method: 'PATCH', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields: { final: tv(fin), at: { timestampValue: new Date().toISOString() } } }) });
+    if (!w.ok) return json({ error: 'write failed ' + w.status }, 500);
+    return json({ ok: true, final: fin[g] || {} });
   } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
 }
 const isoAddW = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };

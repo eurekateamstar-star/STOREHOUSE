@@ -1781,13 +1781,13 @@
       </div>`;
     }).join('');
     el.querySelectorAll('[data-att]').forEach(b => b.onclick = () => { const url = eventLink(b.dataset.att); try { if (inLine()) { liff.openWindow({ url, external: false }); return; } } catch (e) {} location.href = url; });
-    renderLotCards(); loadMySched();
+    renderLotCards(); loadMySched(); loadGrpHome();
   }
   // ===== 首頁：我的排班（管理員在排班表打開「公開給團員看」才會出現）=====
   let mySchedKey = null, mySchedData = null;
   async function loadMySched() {
     if (!user || user.status !== 'approved' || !user.rosterId || !auth.currentUser) return;
-    const k = eventsCache.filter(e => e.schedPublic).map(e => e.id + ':' + tsMs(e.schedPublicAt)).join(',');
+    const k = eventsCache.filter(e => e.schedPublic || e.askGroups).map(e => e.id + ':' + tsMs(e.schedPublicAt)).join(',');
     if (k === mySchedKey) return; mySchedKey = k;
     if (!k) { mySchedData = null; renderMySched(); return; }
     try {
@@ -1802,8 +1802,9 @@
   function renderMySched() {
     let box = $('my-sched');
     if (!box) { box = document.createElement('div'); box.id = 'my-sched'; ($('lot-cards') || $('attend-cards')).after(box); }
-    const evs = (mySchedData || []).filter(e => e.days.length);
+    const evs = (mySchedData || []).filter(e => e.days.length || e.grp);
     if (!evs.length) { box.innerHTML = ''; return; }
+    const grpLine = e => !e.grp ? '' : `<div class="ms-grp">🧩 今年組別：${e.grp.final.length ? `<b>${e.grp.final.map(esc).join('、')}</b> <span class="ok">✅ 組長已確認</span>` : `${e.grp.picks.map(esc).join('、')} <span class="wt">⏳ 等組長確認</span>`}</div>`;
     box.innerHTML = `<style>
       .ms-card{background:#fff;border-radius:16px;box-shadow:0 6px 18px rgba(120,60,50,.07);border:1px solid #f1e8e4;overflow:hidden;margin:12px 0}
       .ms-h{padding:9px 14px;display:flex;justify-content:space-between;align-items:baseline;gap:8px;background:#fdf6f4;font-weight:900;font-size:14px;color:var(--ink);white-space:nowrap}.ms-h small{min-width:0;font-size:11px;color:var(--sub);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1812,8 +1813,9 @@
       .ms-tm{flex:none;font-size:10px;font-weight:900;color:#fff;background:#c2414f;border-radius:6px;padding:2px 4px}
       .ms-mb{flex:1;min-width:0;font-size:11.5px;letter-spacing:-.5px;color:#4b5563;white-space:nowrap;line-height:1.45;overflow:hidden}.ms-mb .nmw{white-space:nowrap}.ms-mb small{display:block;font-size:10.5px;color:#b91c1c;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
       .ms-dt .ms-tg,.ms-tg{font-size:9px;color:#fff;background:#1e3a8a;border-radius:4px;padding:1px 3px;margin-right:2px;font-weight:700;vertical-align:1px}
-      .ms-ar{flex:none;color:#c9b5ae;font-size:15px;font-weight:700}</style>
-      ${evs.map(e => `<div class="ms-card"><div class="ms-h">📅 我的排班<small>${esc(e.title)}・${e.days.length} 天・點日期看全部</small></div>
+      .ms-ar{flex:none;color:#c9b5ae;font-size:15px;font-weight:700}
+      .ms-grp{padding:8px 14px;border-top:1px solid #f3ece9;font-size:13px;color:#374151;background:#fffaf5}.ms-grp b{color:#c2410c}.ms-grp .ok{font-size:11px;color:#15803d;font-weight:800}.ms-grp .wt{font-size:11px;color:#b45309;font-weight:800}</style>
+      ${evs.map(e => `<div class="ms-card"><div class="ms-h">📅 我的排班<small>${esc(e.title)}${e.days.length ? `・${e.days.length} 天・點日期看全部` : ''}</small></div>${grpLine(e)}
         ${[...new Set([...e.days.map(x => x.d), ...(e.plan || []).map(x => x.d)])].sort().map(d => { const x = e.days.find(y => y.d === d), pl = (e.plan || []).find(y => y.d === d) || {};
           const ic = `${pl.s ? '🛏' : ''}${['o', 'y', 'h'].some(f => pl[f] === '9') ? '🚌' : ''}`;
           if (!x) { const dd = new Date(d + 'T12:00:00'); return `<div class="ms-row" data-msd="${e.id}|${d}"><div class="ms-dt"><b>${dd.getMonth() + 1}/${dd.getDate()}</b><span>(${WK[dd.getDay()]})</span></div>
@@ -1983,11 +1985,11 @@
     const lotTag = r => { if (r.attend === 'no') return ''; const v = dmap[normName(r.name)]; return v ? `<span class="ev-tag lot">🎲 ${esc(v)}</span>` : '<span class="ev-tag none">未抽籤</span>'; };
     const payTag = r => r.attend === 'no' ? '' : pmap[normName(r.name)] ? '<span class="ev-tag paid">✅ 已繳</span>' : '<span class="ev-tag unpaid">未繳</span>';
     const card = r => { const ro = rosterOf(r); return `<div class="ev-rc"><div class="n">${avR(ro)}<b>${esc(r.name || '')}</b> <span class="a">${ATT_SHORT[r.attend] || ''}</span> ${lotTag(r)} ${payTag(r)}</div>
-        <div class="s">${ro ? esc(rv(ro, 'position')) + '・' + esc(ro.cert || '') : '<span style="color:#b45309">未對應名冊</span>'}${r.lunch ? '　🍱 ' + esc(r.lunch) : ''}${r.lineName ? '　LINE：' + esc(r.lineName) : ''}</div>${r.uniform ? `<div class="x">👕 ${esc(uniText(r.uniform))}</div>` : ''}
+        <div class="s">${ro ? esc(rv(ro, 'position')) + '・' + esc(ro.cert || '') : '<span style="color:#b45309">未對應名冊</span>'}${r.lunch ? '　🍱 ' + esc(r.lunch) : ''}${r.lineName ? '　LINE：' + esc(r.lineName) : ''}</div>${r.uniform ? `<div class="x">👕 ${esc(uniText(r.uniform))}</div>` : ''}${r.groups && r.groups.length ? `<div class="x">🧩 ${esc(r.groups.join('、'))}</div>` : ''}
         ${r.reason ? `<div class="x">原因：${esc(r.reason)}</div>` : ''}${r.comment ? `<div class="x">意見：${esc(r.comment)}</div>` : ''}
         <div class="t">${esc(fmtAt(tsMs(r.createdAt || r.updatedAt)))}<span style="float:right"><button class="sbtn" data-rede="${r.id}" style="padding:4px 10px;font-size:12px;">編輯</button> <button class="sbtn red" data-rdel="${r.id}" style="padding:4px 10px;font-size:12px;">刪除</button></span></div></div>`; };
     const row = r => { const ro = rosterOf(r); return `<tr><td><div style="display:flex;align-items:center;gap:8px;">${avR(ro)}<div><b>${esc(r.name || '')}</b>${ro ? `<div style="font-size:11px;color:var(--sub)">${esc(rv(ro, 'position'))}・${esc(ro.cert || '')}</div>` : '<div style="font-size:11px;color:#b45309">未對應名冊</div>'}</div></div></td>
-        <td>${ATT_SHORT[r.attend] || ''}</td><td>${lotTag(r)}</td><td>${payTag(r)}</td><td>${esc(r.lunch || '')}</td><td style="font-size:12px;min-width:120px">${r.uniform ? uniCell(r.uniform) : ''}</td><td>${esc(r.reason || '')}</td><td>${esc(r.comment || '')}</td><td style="font-size:12px">${esc(r.lineName || '')}</td><td style="font-size:11px;color:var(--sub);white-space:nowrap">${esc(fmtAt(tsMs(r.createdAt || r.updatedAt)))}</td>
+        <td>${ATT_SHORT[r.attend] || ''}</td><td>${lotTag(r)}</td><td>${payTag(r)}</td><td>${esc(r.lunch || '')}</td><td style="font-size:12px;min-width:120px">${r.uniform ? uniCell(r.uniform) : ''}</td>${e.askGroups ? `<td style="font-size:12px;min-width:90px">${esc((r.groups || []).join('、'))}</td>` : ''}<td>${esc(r.reason || '')}</td><td>${esc(r.comment || '')}</td><td style="font-size:12px">${esc(r.lineName || '')}</td><td style="font-size:11px;color:var(--sub);white-space:nowrap">${esc(fmtAt(tsMs(r.createdAt || r.updatedAt)))}</td>
         <td style="white-space:nowrap"><button class="sbtn" data-rede="${r.id}" style="padding:4px 10px;font-size:12px;">編輯</button> <button class="sbtn red" data-rdel="${r.id}" style="padding:4px 10px;font-size:12px;">刪除</button></td></tr>`; };
     $('ev-list').innerHTML = `
       <button class="sbtn" id="ev-back" style="margin-bottom:10px;">← 所有出席調查</button>
@@ -2000,6 +2002,7 @@
           <button class="sbtn violet" id="ev-edit">編輯</button><button class="sbtn" id="ev-csv">⬇ 匯出</button></div>
           <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; padding-top:8px; border-top:1px dashed rgba(0,0,0,.12);">
             <button class="sbtn" id="ev-draw" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">👥 分組名單・抽籤・簽到表</button>
+            ${e.askGroups ? '<button class="sbtn" id="ev-grpb" style="background:#fff7ed;color:#c2410c;">🧩 選組確認</button>' : ''}
             <button class="sbtn" id="ev-test-add" style="background:#ecfeff;color:#0e7490;">🧪 產生測試回覆（名冊 9 成）</button>
             ${testN ? `<button class="sbtn" id="ev-test-clear" style="background:#fef2f2;color:#b91c1c;">🧹 清除測試回覆（${testN}）</button>` : ''}</div></div>
         <div class="ev-stats">
@@ -2013,7 +2016,7 @@
       ${evFilter === 'none' ? `<div class="card" style="padding:12px 14px; font-size:14px; line-height:2;">${notYet.map(r => esc(r.name || '')).join('、') || '全部都回覆了 🎉'}</div>` : `
       <div class="ev-cards">${shown.map(card).join('') || '<div class="card empty">沒有資料</div>'}</div>
       <div class="card ev-tbl-wrap" style="padding:8px 10px; overflow-x:auto;">
-        <table class="ev-tbl"><thead><tr><th>姓名</th><th>出席</th><th>抽籤</th><th>團費</th><th>午膳</th><th>團服</th><th>無法出席原因</th><th>意見</th><th>LINE 名稱</th><th>回覆時間</th><th></th></tr></thead>
+        <table class="ev-tbl"><thead><tr><th>姓名</th><th>出席</th><th>抽籤</th><th>團費</th><th>午膳</th><th>團服</th>${e.askGroups ? '<th>選組</th>' : ''}<th>無法出席原因</th><th>意見</th><th>LINE 名稱</th><th>回覆時間</th><th></th></tr></thead>
         <tbody>${shown.map(row).join('') || '<tr><td colspan="10"><div class="empty">沒有資料</div></td></tr>'}</tbody></table>
       </div>`}
       <div style="font-size:12px; color:var(--sub); margin:8px 4px;">※ 依「姓名」自動對應名冊；同一人重複填寫以最後一次為準。顯示「未對應名冊」的，可能是名字寫法不同或尚未加入名冊。</div>`;
@@ -2023,6 +2026,7 @@
     $('ev-toggle').onclick = async () => { try { await updateDoc(doc(db, 'events', e.id), { open: !e.open }); toast(e.open ? '已截止回覆' : '已重新開放'); } catch (err) { toast('❌ 操作失敗'); } };
     $('ev-edit').onclick = () => openEventForm(e);
     $('ev-draw').onclick = () => openDrawSheet(e.id);
+    if ($('ev-grpb')) $('ev-grpb').onclick = () => openGroupBoard(e.id);
     document.querySelectorAll('[data-rede]').forEach(b => b.onclick = () => openRespForm(e, (evRespCache[eid] || []).find(x => x.id === b.dataset.rede)));
     document.querySelectorAll('[data-rdel]').forEach(b => b.onclick = async () => {
       const r0 = (evRespCache[eid] || []).find(x => x.id === b.dataset.rdel); if (!r0) return;
@@ -2061,14 +2065,154 @@
         toast('🧹 已清除測試回覆');
       } catch (err) { console.error(err); toast('❌ 清除失敗'); }
     };
-    $('ev-csv').onclick = () => {
-      const head = ['序號', '職位', '姓名', '證照', '出席', '午膳', '無法出席原因', '意見', 'LINE名稱', '回覆時間', '新/舊團員', '上衣（每件尺寸）', '上衣件數', '褲子（每件尺寸）', '褲子件數', '團服金額'];
+    $('ev-csv').onclick = async () => {
+      let fin = {}; if (e.askGroups) { try { const g = await getDoc(doc(db, 'events', e.id, 'admin', 'groups')); fin = (g.exists() && g.data().final) || {}; } catch (err) {} }
+      const finOf = r => Object.keys(fin).filter(g => fin[g] && fin[g][normName(r.name)]).join('、');
+      const head = ['序號', '職位', '姓名', '證照', '出席', '午膳', '無法出席原因', '意見', 'LINE名稱', '回覆時間', '新/舊團員', '上衣（每件尺寸）', '上衣件數', '褲子（每件尺寸）', '褲子件數', '團服金額', ...(e.askGroups ? ['選組（填寫）', '確定組別'] : [])];
       const U = r => { const d = r.uniform; if (!d) return ['', '', '', '', '', '']; const it = uniItems(d); return [d.member === 'new' ? '新團員' : d.buy ? '舊團員加購' : '舊團員不加購', cntTxt(it.shirts), it.shirts.length || '', cntTxt(it.pants), it.pants.length || '', d.total || 0]; };
-      const lines = [head].concat(rs.map(r => { const ro = rosterOf(r); return [ro ? ro.serial || '' : '', ro ? rv(ro, 'position') : '', r.name || '', ro ? ro.cert || '' : '', ATT_SHORT[r.attend] || '', r.lunch || '', r.reason || '', r.comment || '', r.lineName || '', fmtAt(tsMs(r.createdAt || r.updatedAt)), ...U(r)]; }))
+      const lines = [head].concat(rs.map(r => { const ro = rosterOf(r); return [ro ? ro.serial || '' : '', ro ? rv(ro, 'position') : '', r.name || '', ro ? ro.cert || '' : '', ATT_SHORT[r.attend] || '', r.lunch || '', r.reason || '', r.comment || '', r.lineName || '', fmtAt(tsMs(r.createdAt || r.updatedAt)), ...U(r), ...(e.askGroups ? [(r.groups || []).join('、'), finOf(r)] : [])]; }))
         .concat(notYet.map(r => [r.serial || '', rv(r, 'position'), r.name || '', r.cert || '', '未回覆', '', '', '', r.lineName || '', '']));
       const csv = '﻿' + lines.map(l => l.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
       const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = `${e.title || '出席調查'}.csv`; a.click();
     };
+  }
+  // ===================== 選組（出席調查可複選，組長確認） =====================
+  const DEFAULT_GROUPS_TEXT = `白沙屯拱天宮進香醫護團
+📋 116 年（丁未年）分組架構與職責表
+━━━━━━━━━━━━━━━
+👑 【核心幹部】
+團長：楊富雄
+秘書長：王曉惠（統籌協調）
+指揮官：吳宏璋（現場指揮調度）
+━━━━━━━━━━━━━━━
+📌 【各組幹部與職責】
+1️⃣ 行政組
+組長：鄭文惠（排班）
+副組長：王曉惠
+▫️ 行政庶務、會議通知與記錄
+▫️ 彙整名冊、出勤及各組資料
+▫️ 排班、輪值班及文件存檔
+2️⃣ 醫療物資盤點／器材組
+組長：吳秋萍
+物資副組長：許雯琳
+器材副組長：林孟學
+▫️ 【物資】醫療耗材盤點、補給與歸位
+▫️ 【物資】確認數量、效期及備品需求
+▫️ 【物資】勤務期間發放、補充及登記
+▫️ 【器材】維護 AED、血壓機、氧氣器材
+▫️ 【器材】檢查設備功能並回報異常
+▫️ 【器材】勤務後清潔、檢查及歸位
+3️⃣ 車輛裝備維護管理組
+汽車組長：曾袁浩
+汽車副組長：彭康榮
+機車組長：葉人偉
+▫️ 【汽車】車輛行前保養與安全檢查
+▫️ 【汽車】車輛調度、裝備上下車
+▫️ 【汽車】油料、使用及維修紀錄
+▫️ 【機車】機車與安全裝備行前檢查
+▫️ 【機車】配合勤務機動支援與聯繫
+▫️ 【機車】異常回報、活動後檢討
+4️⃣ 後勤管理組
+組長：張泓騏
+副組長：黃資傑
+▫️ 食宿、飲水補給協調
+▫️ 分配每日補給品與生活物資
+▫️ 住宿聯繫、場地及團員支援
+5️⃣ 媒體文宣／紀錄組
+組長：彭康峴（康康）
+文宣副組長：溫謹菱
+紀錄副組長：陳筠蓉
+▫️ 文宣製作、資料發布、形象宣傳
+▫️ 影像拍攝、勤務紀錄、資料整理
+6️⃣ 出納總務組
+組長：劉珈妤
+▫️ 團務經費收入、支出及日常帳務登記
+▫️ 費用單據整理、帳目收支核對及彙整
+▫️ 定期彙整收支報表、帳務資料公告與歸檔`;
+  function parseGroups(t) {
+    const gs = [], core = []; let cur = null, started = false;
+    String(t || '').split(/\r?\n/).forEach(l => {
+      const s = l.trim(); if (!s) return;
+      const m = /^(?:\d+\s*[.、)）]|\d\uFE0F?\u20E3)\s*(.+)$/.exec(s);
+      if (m) { cur = { n: m[1].trim(), lead: [], duty: [] }; gs.push(cur); started = true; return; }
+      if (/^[━─=＝\-]{3,}/.test(s)) { cur = null; return; }
+      if (!cur) { const c = /^(團長|副團長|秘書長|指揮官|副指揮官)\s*[:：]\s*(.+)$/.exec(s); if (c && !started) core.push({ t: c[1], n: c[2] }); return; }
+      const ld = /^(.{0,8}組長)\s*[:：]\s*(.+)$/.exec(s);
+      if (ld) { cur.lead.push({ t: ld[1], n: ld[2].trim() }); return; }
+      const d = /^(?:▫️|▫|・|•|‧|-|\*|◦)\s*(.+)$/.exec(s);
+      cur.duty.push(d ? d[1] : s);
+    });
+    return { gs: gs.filter(g => g.n), core };
+  }
+  async function grpCall(path, body) {
+    const idToken = await auth.currentUser.getIdToken();
+    const r = await fetch(AUTH_URL + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, ...body }) });
+    const j = await r.json().catch(() => ({})); if (!r.ok || j.error) throw new Error(j.error || ('HTTP ' + r.status)); return j;
+  }
+  // 首頁：我是組長（或管理員）→ 選組確認卡片
+  let grpHome = null, grpHomeKey = null;
+  async function loadGrpHome() {
+    if (!user || user.status !== 'approved' || !auth.currentUser) return;
+    const k = eventsCache.filter(e => e.askGroups).map(e => e.id).join(',');
+    if (k === grpHomeKey) return; grpHomeKey = k;
+    if (!k) { grpHome = null; renderGrpHome(); return; }
+    try { grpHome = (await grpCall('/groups', {})).events || []; } catch (e) { grpHome = null; grpHomeKey = null; }
+    renderGrpHome();
+  }
+  function renderGrpHome() {
+    let box = $('grp-home');
+    if (!box) { box = document.createElement('div'); box.id = 'grp-home'; ($('my-sched') || $('lot-cards') || $('attend-cards')).after(box); }
+    const evs = (grpHome || []).filter(e => e.groups.length);
+    box.innerHTML = evs.map(e => { const wait = e.groups.reduce((a, g) => a + Math.max(0, g.picked - g.ok), 0);
+      return `<div class="att-card" style="border-color:#fdba74;background:linear-gradient(135deg,#fff7ed,#fff)">
+        <div class="t">🧩 選組確認<span style="font-size:12px;color:var(--sub);font-weight:700;margin-left:6px">${esc(e.title)}</span></div>
+        <div class="d">${e.groups.map(g => `<b>${esc(g.n)}</b> ${g.picked} 人選、${g.ok} 人已確認`).join('<br>')}</div>
+        <button class="sbtn pri" data-grpb="${e.id}" style="width:100%;padding:11px;">${wait ? `確認組員（${wait} 人待確認）` : '查看組員'}</button></div>`; }).join('');
+    box.querySelectorAll('[data-grpb]').forEach(b => b.onclick = () => openGroupBoard(b.dataset.grpb));
+  }
+  async function openGroupBoard(eid) {
+    $('sheet-body').innerHTML = '<div class="empty" style="padding:30px 0">⏳ 載入選組名單…</div>';
+    $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open'); $('sheet').scrollTop = 0;
+    let E;
+    try { E = ((await grpCall('/groups', { eid })).events || [])[0]; } catch (err) { $('sheet-body').innerHTML = `<div class="empty">❌ 讀取失敗：${esc(err.message)}</div>`; return; }
+    if (!E) { $('sheet-body').innerHTML = '<div class="empty">你不是這次任何一組的組長</div>'; return; }
+    const ATT = { yes: '出席', join: '不出席但參與' };
+    const paint = () => {
+      $('sheet-body').innerHTML = `<style>
+        .gb-g{border:1px solid #f1e3dc;border-radius:16px;margin:12px 0;overflow:hidden;background:#fff}
+        .gb-h{padding:10px 14px;background:#fff7ed;display:flex;justify-content:space-between;align-items:center;gap:8px}
+        .gb-h b{font-size:16px}.gb-h small{display:block;font-size:11.5px;color:#9a3412;font-weight:700}
+        .gb-n{font-size:12px;font-weight:900;color:#c2410c;white-space:nowrap}
+        .gb-r{display:flex;align-items:center;gap:8px;padding:9px 14px;border-top:1px solid #f6eeea}
+        .gb-r .nm{flex:1;min-width:0}.gb-r .nm b{font-size:15px}.gb-r .nm div{font-size:11.5px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .gb-btn{flex:none;border:1.5px solid #d1d5db;background:#fff;border-radius:999px;padding:6px 12px;font-weight:900;font-size:13px;font-family:inherit;color:#374151}
+        .gb-btn.ok{background:#16a34a;border-color:#16a34a;color:#fff}
+        .gb-add{display:block;width:100%;border:none;border-top:1px dashed #f1d5c7;background:#fffaf7;padding:9px;font-weight:800;color:#c2410c;font-family:inherit;font-size:13px}</style>
+        <h3>🧩 選組確認</h3><div style="font-size:12.5px;color:var(--sub);margin-top:2px">${esc(E.title)}　按「確認」後，團員的「我的排班」會顯示確定的組別。</div>
+        ${E.groups.map((g, gi) => { const ok = g.people.filter(p => p.ok).length;
+          return `<div class="gb-g"><div class="gb-h"><div><b>${esc(g.n)}</b><small>${g.lead.map(l => esc(l.t + '：' + l.n)).join('　')}</small></div><span class="gb-n">✅ ${ok} / ${g.people.length}</span></div>
+          ${g.people.map((p, pi) => `<div class="gb-r"><div class="nm"><b>${esc(p.name)}</b><div>${[p.pos, p.cert, ATT[p.attend] || '', p.picks.includes(g.n) ? '' : '組長加入', p.picks.length > 1 ? '也選：' + p.picks.filter(x => x !== g.n).join('、') : ''].filter(Boolean).map(esc).join('・')}</div></div>
+            <button class="gb-btn ${p.ok ? 'ok' : ''}" data-gb="${gi}|${pi}">${p.ok ? '✅ 已確認' : '確認'}</button></div>`).join('') || '<div class="gb-r" style="color:var(--sub);font-size:13px">還沒有人選這組</div>'}
+          <button class="gb-add" data-gadd="${gi}">＋ 加入沒選這組的人</button></div>`; }).join('')}`;
+      document.querySelectorAll('[data-gb]').forEach(b => b.onclick = async () => {
+        const [gi, pi] = b.dataset.gb.split('|').map(Number), g = E.groups[gi], p = g.people[pi], on = !p.ok;
+        b.disabled = true; b.textContent = '…';
+        try { const j = await grpCall('/groupset', { eid, g: g.n, k: p.k, on }); g.people.forEach(x => x.ok = (j.final || {})[x.k] || ''); if (!on && !p.picks.includes(g.n)) g.people.splice(pi, 1); }
+        catch (err) { toast('❌ ' + err.message); }
+        paint(); grpHomeKey = null; loadGrpHome();
+      });
+      document.querySelectorAll('[data-gadd]').forEach(b => b.onclick = async () => {
+        const g = E.groups[+b.dataset.gadd], have = new Set(g.people.map(p => p.k));
+        const cands = (E.all || []).filter(p => !have.has(p.k));
+        if (!cands.length) return toast('出席的人都已經在這組了');
+        const v = await dialog({ title: `加入「${g.n}」`, msg: '輸入姓名（要跟出席調查填的一樣）\n可加入：' + cands.map(p => p.name).join('、'), input: '', okText: '加入並確認' });
+        if (!v) return; const p = cands.find(x => normName(x.name) === normName(v)); if (!p) return toast('找不到這個人（要先在出席調查回覆出席）');
+        try { const j = await grpCall('/groupset', { eid, g: g.n, k: p.k, on: true }); g.people.push({ ...p, ok: (j.final || {})[p.k] || '✓' }); toast('✅ 已加入'); }
+        catch (err) { toast('❌ ' + err.message); }
+        paint();
+      });
+    };
+    paint();
   }
   // ===================== 分組抽籤 + 簽到表 / 抽籤紀錄 / 繳費紀錄 =====================
   const DRAW_GROUPS = ['教官及長官', '護理師', 'EMTP、EMT2', 'EMT1', '指揮官及汽機車組', '專業人員及志工', '未對應名冊'];
@@ -3592,13 +3736,19 @@
         <div class="field"><label>說明（選填）</label><textarea id="ev-desc" placeholder="地點、注意事項…">${esc(e.desc || '')}</textarea></div>
         <label style="display:flex; gap:8px; align-items:center; font-size:14px; font-weight:800; margin:6px 2px 12px;"><input type="checkbox" id="ev-lunch" ${e.askLunch === false ? '' : 'checked'} style="width:18px;height:18px;"> 詢問午膳（葷／素／自行處理）</label>
         <label style="display:flex; gap:8px; align-items:center; font-size:14px; font-weight:800; margin:-4px 2px 12px;"><input type="checkbox" id="ev-uni" ${e.askUniform ? 'checked' : ''} style="width:18px;height:18px;"> 詢問團服訂購（新團員配發／舊團員加購）</label>
+        <label style="display:flex; gap:8px; align-items:center; font-size:14px; font-weight:800; margin:-4px 2px 8px;"><input type="checkbox" id="ev-grp" ${e.askGroups ? 'checked' : ''} style="width:18px;height:18px;"> 詢問選組（可複選，組長確認）</label>
+        <div class="field ${e.askGroups ? '' : 'hidden'}" id="ev-grp-box"><label>分組架構與職責（直接貼上；「1️⃣ 組名」開頭一組、「組長：姓名」是組長、「▫️」是職責）</label><textarea id="ev-grptext" style="min-height:220px;font-size:13px;">${esc(e.groupsText || DEFAULT_GROUPS_TEXT)}</textarea><div id="ev-grp-prev" style="font-size:12px;color:var(--sub);margin-top:4px;"></div></div>
       </div>
       <button class="btn" id="ev-save">${isNew ? '建立並取得連結' : '儲存'}</button>
       ${isNew ? '' : '<button class="btn ghost" id="ev-del" style="margin-top:8px; color:var(--red);">刪除這個出席調查</button>'}`;
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open'); $('sheet').scrollTop = 0;
+    const grpPrev = () => { const G = parseGroups($('ev-grptext').value); $('ev-grp-prev').textContent = G.gs.length ? `讀到 ${G.gs.length} 組：` + G.gs.map(g => g.n + (g.lead.length ? '（' + g.lead.map(l => l.n.replace(/[（(].*$/, '')).join('、') + '）' : '')).join('｜') : '⚠️ 讀不到組別'; };
+    $('ev-grp').onchange = () => $('ev-grp-box').classList.toggle('hidden', !$('ev-grp').checked);
+    $('ev-grptext').oninput = grpPrev; grpPrev();
     $('ev-save').onclick = async () => {
       const title = $('ev-title').value.trim(); if (!title) return toast('請填寫標題');
-      const data = { title, date: $('ev-date').value.trim(), desc: $('ev-desc').value.trim(), askLunch: $('ev-lunch').checked, askUniform: $('ev-uni').checked };
+      const data = { title, date: $('ev-date').value.trim(), desc: $('ev-desc').value.trim(), askLunch: $('ev-lunch').checked, askUniform: $('ev-uni').checked, askGroups: $('ev-grp').checked };
+      if (data.askGroups) { data.groupsText = $('ev-grptext').value.trim(); if (!parseGroups(data.groupsText).gs.length) return toast('分組架構裡找不到組別（每組要用「1️⃣ 組名」或「1. 組名」開頭）'); }
       try {
         if (isNew) { const id = 'ev' + Date.now().toString(36); await setDoc(doc(db, 'events', id), { ...data, open: true, createdAt: serverTimestamp(), createdBy: user.realName || '' }); evOpenId = id; }
         else await updateDoc(doc(db, 'events', e.id), data);
