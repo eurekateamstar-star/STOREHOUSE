@@ -84,7 +84,7 @@
   .idc .m-name { font-size: 22px; letter-spacing: 1px; overflow-wrap: anywhere; }
   .idc .m-line { color: #8a7f7a; opacity: 1; }
   .idc-medal { flex: none; text-align: center; font-size: 10.5px; font-weight: 800; letter-spacing: 1px; color: #b07d10; line-height: 1.3; }
-  .idc-medal svg { width: 44px; height: 44px; display: block; margin: 0 auto 1px; filter: drop-shadow(0 2px 3px rgba(138,90,0,.25)); }
+  .idc-medal img { width: 52px; height: 52px; display: block; margin: 0 auto 1px; filter: drop-shadow(0 3px 4px rgba(138,90,0,.3)); }
   .idc-medal.crown { color: #7a5600; }
   .idc-bd { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 16px 14px; }
   .idc-bd:empty { display: none; }
@@ -826,7 +826,7 @@
     if (cat && cat !== cert && !tags.length) tags.push(rbHtml(cat));
     $('m-badges').innerHTML = tags.join('') + (adminList(user).length && !meDev() ? '<span class="rb r-adm">⭐ 管理員</span>' : '');
     $('m-medal').className = 'idc-medal' + (yrs >= 10 ? ' crown' : '');
-    $('m-medal').innerHTML = yrs >= 10 ? `${RB_I.crown}資深 ${yrs} 年` : yrs >= 5 ? `${RB_I.star}服務 ${yrs} 年` : '';
+    $('m-medal').innerHTML = yrs >= 10 ? `<img src="/member/medal-crown.png" alt="">資深 ${yrs} 年` : yrs >= 5 ? `<img src="/member/medal-star.png" alt="">服務 ${yrs} 年` : '';
     document.querySelector('#v-member .idc').classList.toggle('gold', yrs >= 5);
     $('m-no').textContent = myRoster && myRoster.serial ? 'NO. ' + String(myRoster.serial).padStart(3, '0') : '';
     $('m-ok').textContent = user.rosterId ? '✔ 名冊已驗證' : '';
