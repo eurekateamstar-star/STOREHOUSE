@@ -69,6 +69,36 @@
   .badge.solid { background: #fff; color: var(--primary); border-color: #fff; }
   .member-foot { display: flex; justify-content: space-between; margin-top: 18px; font-size: 11px; opacity: 0.85; position: relative; z-index: 1; }
 
+
+  /* 會員證件卡 */
+  .idc { position: relative; background: #fff; color: #1f2430; border-radius: 22px; overflow: hidden; box-shadow: 0 12px 30px rgba(120,50,30,0.16); }
+  .idc-band { height: 76px; position: relative; background: linear-gradient(120deg, #D65A68, #F08339); }
+  .idc-band::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(135deg, rgba(255,255,255,.08) 0 8px, transparent 8px 16px); }
+  .idc-org { position: absolute; left: 118px; top: 14px; color: #fff; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; z-index: 1; }
+  .idc-org b { display: block; font-size: 15px; letter-spacing: 1px; }
+  .idc-no { position: absolute; right: 16px; bottom: 8px; color: #fff; font: 800 11px ui-monospace, monospace; opacity: .9; z-index: 1; }
+  .idc .idc-av { position: absolute; left: 18px; top: 22px; width: 86px; height: 86px; border-radius: 20px; border: 4px solid #fff; z-index: 2;
+    background-color: #f3d9cf; color: #c2414f; font-size: 32px; box-shadow: 0 6px 16px rgba(0,0,0,.18); }
+  .idc.gold .idc-av { border-color: #f2c94c; box-shadow: 0 0 0 2px #fff, 0 6px 16px rgba(0,0,0,.2); }
+  .idc-body { display: flex; align-items: center; gap: 8px; padding: 10px 14px 10px 118px; min-height: 62px; }
+  .idc .m-name { font-size: 22px; letter-spacing: 1px; overflow-wrap: anywhere; }
+  .idc .m-line { color: #8a7f7a; opacity: 1; }
+  .idc-medal { flex: none; text-align: center; font-size: 10.5px; font-weight: 800; letter-spacing: 1px; color: #b07d10; line-height: 1.3; }
+  .idc-medal svg { width: 44px; height: 44px; display: block; margin: 0 auto 1px; filter: drop-shadow(0 2px 3px rgba(138,90,0,.25)); }
+  .idc-medal.crown { color: #7a5600; }
+  .idc-bd { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 16px 14px; }
+  .idc-bd:empty { display: none; }
+  .rb { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px 0 7px; border-radius: 13px; font-size: 12.5px; font-weight: 900; color: #fff; white-space: nowrap; }
+  .rb svg { width: 15px; height: 15px; flex: none; }
+  .r-emt1 { background: linear-gradient(135deg,#22c55e,#15803d); } .r-emt2 { background: linear-gradient(135deg,#3b82f6,#1d4ed8); }
+  .r-emtp { background: linear-gradient(135deg,#a855f7,#6d28d9); } .r-rn { background: linear-gradient(135deg,#f472b6,#db2777); }
+  .r-md { background: linear-gradient(135deg,#14b8a6,#0f766e); } .r-ins { background: linear-gradient(135deg,#1e3a8a,#0f1f4d); box-shadow: inset 0 0 0 1.5px #e9c46a; }
+  .r-adv { background: linear-gradient(135deg,#d4a017,#8a6400); }
+  .r-pl { background: #f6eeea; color: #7a5a50; padding: 0 10px; }
+  .r-adm { background: #fff4d6; color: #8a5a00; padding: 0 10px; box-shadow: inset 0 0 0 1.5px #f2c94c; }
+  .idc-ft { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-top: 1px dashed #eadfda; padding: 10px 16px; font-size: 11.5px; color: #8a7f7a; }
+  .idc-ft b { color: #15803d; white-space: nowrap; }
+
   .sec { font-size: 13px; font-weight: 800; color: var(--gold); margin: 22px 6px 8px; letter-spacing: 1px; }
   .rows .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
   .rows .row:last-child { border-bottom: none; }
@@ -418,16 +448,15 @@
   <!-- 會員資料 -->
   <div id="v-member" class="hidden">
     <div class="col-l">
-      <div class="card member">
-        <div class="member-head">
-          <div class="avatar" id="m-avatar"></div>
-          <div style="min-width:0">
-            <div class="m-name" id="m-name"></div>
-            <div class="m-line" id="m-line"></div>
-            <div class="badges" id="m-badges"></div>
-          </div>
+      <div class="idc">
+        <div class="idc-band"><div class="idc-org">BAISHATUN EMS<b>白沙屯拱天宮醫護團</b></div><div class="idc-no" id="m-no"></div></div>
+        <div class="avatar idc-av" id="m-avatar"></div>
+        <div class="idc-body">
+          <div style="min-width:0;flex:1"><div class="m-name" id="m-name"></div><div class="m-line" id="m-line"></div></div>
+          <div class="idc-medal" id="m-medal"></div>
         </div>
-        <div class="member-foot"><span id="m-since"></span><span id="m-pos">白沙屯拱天宮醫護團 團員</span></div>
+        <div class="idc-bd" id="m-badges"></div>
+        <div class="idc-ft"><span><span id="m-pos"></span>　<span id="m-since"></span></span><b id="m-ok"></b></div>
       </div>
 
       <div id="attend-cards"></div>
@@ -731,6 +760,28 @@
     const n = now.getFullYear() - y;
     return (n ? `加入 ${n} 年` : '今年加入') + `（${roc}）`;
   }
+  // 會員證：職稱徽章、年資勳章（5 年 ★、10 年 ♛）
+  const RB_I = {
+    pulse: '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l2-5 4 10 2-5h8"/></svg>',
+    bolt: '<svg viewBox="0 0 24 24" fill="#fff"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>',
+    heart: '<svg viewBox="0 0 24 24" fill="#fff"><path d="M12 21s-8-5.2-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.8-8 11-8 11z"/></svg>',
+    steth: '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M6 3v6a4 4 0 0 0 8 0V3"/><path d="M10 13v3a4 4 0 0 0 8 0v-2"/><circle cx="18" cy="12" r="2"/></svg>',
+    shield: '<svg viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5z" fill="#e9c46a"/><path d="m8.5 12 2.4 2.4L16 9.5" fill="none" stroke="#1e3a8a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    scroll: '<svg viewBox="0 0 24 24"><path d="M6 3h10a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3z" fill="#fff"/><path d="M8 8h8M8 12h8M8 16h5" stroke="#8a6400" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    star: '<svg viewBox="0 0 24 24"><path d="m12 2 2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17l-6.1 3.4 1.5-6.8L2.2 9l6.9-.7z" fill="#e9b62a" stroke="#b07d10" stroke-width=".8" stroke-linejoin="round"/></svg>',
+    crown: '<svg viewBox="0 0 24 24"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z" fill="#f2c94c" stroke="#8a5a00" stroke-width="1.2" stroke-linejoin="round"/><circle cx="12" cy="5" r="1.6" fill="#fff8d6"/><circle cx="3" cy="8" r="1.4" fill="#f2c94c"/><circle cx="21" cy="8" r="1.4" fill="#f2c94c"/><rect x="5" y="17" width="14" height="2.4" fill="#c9971a"/></svg>'
+  };
+  const RB = { 'EMT-1': ['r-emt1', 'pulse'], 'EMT-2': ['r-emt2', 'pulse'], 'EMT-P': ['r-emtp', 'bolt'], '護理師': ['r-rn', 'heart'], '醫師': ['r-md', 'steth'], '教官團': ['r-ins', 'shield'], '顧問': ['r-adv', 'scroll'] };
+  const rbHtml = t => RB[t] ? `<span class="rb ${RB[t][0]}">${RB_I[RB[t][1]]}${esc(t)}</span>` : `<span class="rb r-pl">${esc(t)}</span>`;
+  function joinYears(v) {   // 加入滿幾年（不足 1 年 = 0；看不懂 = null）
+    const m = /(\d{2,4})(?:[.\/\-年](\d{1,2}))?/.exec(String(v || ''));
+    if (!m) return null;
+    let y = +m[1]; const mo = m[2] ? +m[2] : 0, now = new Date();
+    if (y < 200) y += 1911;
+    if (y < 1980 || y > now.getFullYear()) return null;
+    const months = (now.getFullYear() - y) * 12 + (mo >= 1 && mo <= 12 ? now.getMonth() + 1 - mo : 0);
+    return months < 0 ? null : Math.floor(months / 12);
+  }
   function render() {
     $('btn-admin').classList.toggle('hidden', !isAdmin());
     if (adminOn && isAdmin()) { show('v-admin'); renderAdmin(); return; }
@@ -767,12 +818,20 @@
     setAvatar($('m-avatar'), user.pictureUrl || profile.pictureUrl, name);
     $('m-name').textContent = name || '(未命名)';
     $('m-line').textContent = 'LINE：' + (user.lineDisplayName || profile.displayName || '—');
-    $('m-badges').innerHTML = (cert ? `<span class="badge solid">${esc(cert)}</span>` : '')
-      + (cat && cat !== cert ? `<span class="badge">🏷️ ${esc(cat)}</span>` : '')
-      + (user.rosterId ? '<span class="badge">✔ 名冊已驗證</span>' : '')
-      + (adminList(user).length && !meDev() ? '<span class="badge">⭐ 管理員</span>' : '');
+    const pos = myRoster ? (rv(myRoster, 'position') || '團員') : '會員';
+    const yrs = joinYears(myRoster && myRoster.joinYear);
+    const tags = [];
+    if (cert && cert !== '無證照') tags.push(rbHtml(cert));
+    ['教官團', '顧問'].forEach(t => { if (String(pos).includes(t)) tags.push(rbHtml(t)); });
+    if (cat && cat !== cert && !tags.length) tags.push(rbHtml(cat));
+    $('m-badges').innerHTML = tags.join('') + (adminList(user).length && !meDev() ? '<span class="rb r-adm">⭐ 管理員</span>' : '');
+    $('m-medal').className = 'idc-medal' + (yrs >= 10 ? ' crown' : '');
+    $('m-medal').innerHTML = yrs >= 10 ? `${RB_I.crown}資深 ${yrs} 年` : yrs >= 5 ? `${RB_I.star}服務 ${yrs} 年` : '';
+    document.querySelector('#v-member .idc').classList.toggle('gold', yrs >= 5);
+    $('m-no').textContent = myRoster && myRoster.serial ? 'NO. ' + String(myRoster.serial).padStart(3, '0') : '';
+    $('m-ok').textContent = user.rosterId ? '✔ 名冊已驗證' : '';
     const created = tsMs(user.createdAt);
-    $('m-pos').textContent = '白沙屯拱天宮醫護團 ' + (myRoster ? (rv(myRoster, 'position') || '團員') : '會員');
+    $('m-pos').textContent = pos;
     $('m-since').textContent = joinText(myRoster && myRoster.joinYear) || (created ? '加入於 ' + new Date(created).toLocaleDateString('zh-TW') : '');
     $('f-name').innerHTML = `<b>${esc(name || '—')}</b>`;
     $('f-id').textContent = showId ? (user.idCard || '—') : maskId(user.idCard);
