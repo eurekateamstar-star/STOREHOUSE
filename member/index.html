@@ -812,7 +812,7 @@
     if (y < 200) y += 1911;
     if (y < 1980 || y > now.getFullYear()) return null;
     const months = (now.getFullYear() - y) * 12 + (mo >= 1 && mo <= 12 ? now.getMonth() + 1 - mo : 0);
-    return months < 0 ? null : Math.floor(months / 12);
+    return Math.max(0, Math.floor(months / 12));   // 今年加入（或月份還沒到）＝未滿 1 年
   }
   function render() {
     $('btn-admin').classList.toggle('hidden', !isAdmin());
@@ -1790,11 +1790,18 @@
     const k = eventsCache.filter(e => e.schedPublic || e.askGroups).map(e => e.id + ':' + tsMs(e.schedPublicAt)).join(',');
     if (k === mySchedKey) return; mySchedKey = k;
     if (!k) { mySchedData = null; renderMySched(); return; }
+    // 先顯示上次的「我的排班」（存在這支手機），背景再更新 → 不用等
+    const ck = 'ms_cache_' + (profile && profile.userId);
+    if (!mySchedData) { try { const c = JSON.parse(localStorage.getItem(ck) || 'null'); if (c && Array.isArray(c.events)) { mySchedData = c.events; renderMySched(); } } catch (e) {} }
     try {
       const idToken = await auth.currentUser.getIdToken();
-      const r = await fetch(AUTH_URL + '/mysched', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken }) });
-      const j = await r.json(); mySchedData = j.events || [];
-    } catch (e) { mySchedData = null; mySchedKey = null; setTimeout(loadMySched, 2500); }
+      const ac = new AbortController(), to = setTimeout(() => ac.abort(), 15000);
+      const r = await fetch(AUTH_URL + '/mysched', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken }), signal: ac.signal });
+      clearTimeout(to);
+      const j = await r.json(); if (j.error) throw new Error(j.error);
+      mySchedData = j.events || [];
+      try { localStorage.setItem(ck, JSON.stringify({ at: Date.now(), events: mySchedData })); } catch (e) {}
+    } catch (e) { mySchedKey = null; setTimeout(loadMySched, 3000); if (!mySchedData) return; }
     renderMySched();
   }
   document.addEventListener('visibilitychange', () => { if (!document.hidden && user && user.status === 'approved') { mySchedKey = null; loadMySched(); } });
@@ -2156,7 +2163,8 @@
   }
   async function grpCall(path, body) {
     const idToken = await auth.currentUser.getIdToken();
-    const r = await fetch(AUTH_URL + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, ...body }) });
+    const ac = new AbortController(), to = setTimeout(() => ac.abort(), 15000);
+    const r = await fetch(AUTH_URL + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, ...body }), signal: ac.signal }).finally(() => clearTimeout(to));
     const j = await r.json().catch(() => ({})); if (!r.ok || j.error) throw new Error(j.error || ('HTTP ' + r.status)); return j;
   }
   // 首頁：我是組長（或管理員）→ 選組確認卡片
@@ -2166,7 +2174,7 @@
     const k = eventsCache.filter(e => e.askGroups).map(e => e.id).join(',');
     if (k === grpHomeKey) return; grpHomeKey = k;
     if (!k) { grpHome = null; renderGrpHome(); return; }
-    try { grpHome = (await grpCall('/groups', {})).events || []; } catch (e) { grpHome = null; grpHomeKey = null; }
+    try { grpHome = (await grpCall('/groups', {})).events || []; } catch (e) { grpHome = null; grpHomeKey = null; setTimeout(loadGrpHome, 5000); }
     renderGrpHome();
   }
   function renderGrpHome() {

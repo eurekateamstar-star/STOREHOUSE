@@ -788,24 +788,27 @@ async function mySchedRoute(req, env, json) {
     const { idToken } = await req.json();
     if (!idToken) return json({ error: 'missing' }, 400);
     const uid = uidOfToken(idToken);
-    const me = await fetch(`${FS}/users/${encodeURIComponent(uid)}`, { headers: { Authorization: 'Bearer ' + idToken } });
+    // 能同時做的都同時做（以前一個一個等，團員首頁「我的排班」要等很久）
+    const [me, tok] = await Promise.all([fetch(`${FS}/users/${encodeURIComponent(uid)}`, { headers: { Authorization: 'Bearer ' + idToken } }), saToken(env)]);
     if (!me.ok) return json({ error: 'not signed in' }, 401);
     const u = fobj((await me.json()).fields);
     if (u.status !== 'approved' || !u.rosterId) return json({ events: [] });
-    const tok = await saToken(env);
-    const ro = await fsGet(tok, `member_roster/${encodeURIComponent(u.rosterId)}`); if (!ro) return json({ events: [] });
+    const [ro, evAll] = await Promise.all([fsGet(tok, `member_roster/${encodeURIComponent(u.rosterId)}`), fsList(tok, 'events')]);
+    if (!ro) return json({ events: [] });
     const roF = fobj(ro.fields), myKey = normName(roF.name), myG = String(roF.idCard || '').toUpperCase()[1] === '2' ? '8' : '7';
-    const evs = (await fsList(tok, 'events')).filter(e => e.schedPublic || e.askGroups);
+    const evs = evAll.filter(e => e.schedPublic || e.askGroups);
+    const P = {}; evs.forEach(e => { P[e.id] = Promise.all([fsList(tok, `events/${e.id}/responses`), e.askGroups ? fsGet(tok, `events/${e.id}/admin/groups`) : null,
+      e.schedPublic ? fsGet(tok, `events/${e.id}/admin/draw`) : null, e.schedPublic ? fsGet(tok, `events/${e.id}/admin/self_${u.rosterId}`) : null]); });
     const roster = evs.some(e => e.schedPublic) ? await fsList(tok, 'member_roster') : [], byName = {};
     roster.forEach(x => { const k = normName(x.name); if (k && !byName[k]) byName[k] = x; });
     const catOf = k => { const c = String((byName[k] || {}).cert || '').toUpperCase().replace(/[-\s]/g, ''); return c.includes('護理') || c.includes('醫師') ? 'N' : c.includes('EMTP') || c.includes('EMT2') ? 'T2' : c.includes('EMT1') ? 'T1' : 'O'; };
     const EQN = { kit: '救護包', ambu: 'AMBU包', inst: '儀器包' };
-    const out = [];
-    for (const e of evs) {
-      const latest = {}; (await fsList(tok, `events/${e.id}/responses`)).forEach(x => { const k = normName(x.name); if (k && (!latest[k] || (x.createdAt || 0) >= (latest[k].createdAt || 0))) latest[k] = x; });
+    const res = await Promise.all(evs.map(async e => {
+      const [rsp, gd, dr, selfDoc] = await P[e.id];
+      const latest = {}; rsp.forEach(x => { const k = normName(x.name); if (k && (!latest[k] || (x.createdAt || 0) >= (latest[k].createdAt || 0))) latest[k] = x; });
       let grp = null;
       if (e.askGroups) {
-        const gd = await fsGet(tok, `events/${e.id}/admin/groups`), fin = gd ? (fobj(gd.fields).final || {}) : {};
+        const fin = gd ? (fobj(gd.fields).final || {}) : {};
         const GP = parseGroups(e.groupsText), order = GP.gs.map(g => g.n);
         const picks = ((latest[myKey] || {}).groups || []).filter(Boolean);
         const led = GP.gs.filter(g => g.lead.some(l => leadKey(l.n) === myKey)).map(g => g.n);   // 組長／副組長＝自己帶的組
@@ -813,8 +816,7 @@ async function mySchedRoute(req, env, json) {
         const role = [...GP.core.filter(c => leadKey(c.n) === myKey).map(c => c.t), ...GP.gs.flatMap(g => g.lead.filter(l => leadKey(l.n) === myKey).map(l => g.n + ' ' + l.t))];
         if (picks.length || final.length || role.length) grp = { picks, final, role };
       }
-      const dr = e.schedPublic ? await fsGet(tok, `events/${e.id}/admin/draw`) : null;
-      if (!dr) { if (grp) out.push({ id: e.id, title: e.title || '', name: myKey, days: [], cats: {}, cmd: [], g: myG, plan: [], grp }); continue; }
+      if (!dr) return grp ? { id: e.id, title: e.title || '', name: myKey, days: [], cats: {}, cmd: [], g: myG, plan: [], grp } : null;
       const sc = fobj(dr.fields).sched || {}, days = sc.days || {}, info = sc.info || {};
       const cmd = Object.keys(latest).filter(k => ['yes', 'join'].includes(latest[k].attend) && (byName[k] || {}).position === '指揮官');
       const eqOf = t => t.eq ? [Object.entries(EQN).filter(([k]) => t.eq[k] > 0).map(([k, n]) => n + '*' + t.eq[k]).join('、'), (t.eq.text || '').trim()].filter(Boolean).join('　') : (t.note || '');
@@ -831,7 +833,7 @@ async function mySchedRoute(req, env, json) {
           teams: full(d), info: { bus: I.bus || '', stay: I.stay || '', stock: I.stock || '', wash: I.wash || '', arrive: I.arrive || '' } };
       }).filter(Boolean);
       // 我的住宿／中巴：管理員設定 > 自己登記 > 自動
-      const selfDoc = await fsGet(tok, `events/${e.id}/admin/self_${u.rosterId}`), self = selfDoc ? (fobj(selfDoc.fields).days || {}) : {};
+      const self = selfDoc ? (fobj(selfDoc.fields).days || {}) : {};
       const att = (sc.att || {})[myKey] || {}, car = (sc.car || {})[myKey] || {}, meal = (sc.meal || {})[myKey] || {};
       const inT = d => (days[d] || []).some(t => (t.m || []).includes(myKey));
       const W = d => { const w0 = (att.w || {})[d]; return w0 === undefined ? (inT(d) ? '2' : '') : (w0 === 'x' ? '' : w0); };
@@ -844,9 +846,9 @@ async function mySchedRoute(req, env, json) {
         return o; };
       const ds = mine.map(x => x.d), first = ds[0], pre = first ? isoAddW(first, -1) : null;
       const planDays = [...(pre && sc.start && pre >= sc.start ? [pre] : []), ...ds].sort();   // 只有排班前一天＋排班的日子
-      out.push({ id: e.id, title: e.title || '', name: myKey, days: mine, cats, cmd, g: myG, plan: planDays.map(plan), grp });
-    }
-    return json({ events: out });
+      return { id: e.id, title: e.title || '', name: myKey, days: mine, cats, cmd, g: myG, plan: planDays.map(plan), grp };
+    }));
+    return json({ events: res.filter(Boolean) });
   } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
 }
 // ===== 選組：管理員貼的分組架構文字 → 組別、組長 =====
@@ -883,14 +885,16 @@ async function groupsRoute(req, env, json) {
     const { tok, key, admin } = M;
     const evs = (await fsList(tok, 'events')).filter(e => e.askGroups && (!eid || e.id === eid));
     const out = []; let roster = null;
-    for (const e of evs) {
+    const want = evs.filter(e => parseGroups(e.groupsText).gs.some(g => admin || (key && g.lead.some(l => leadKey(l.n) === key))));
+    const pre = {}; want.forEach(e => { pre[e.id] = Promise.all([fsList(tok, `events/${e.id}/responses`), fsGet(tok, `events/${e.id}/admin/groups`)]); });
+    if (eid && want.length) { roster = {}; (await fsList(tok, 'member_roster')).forEach(x => { const k = normName(x.name); if (k && !roster[k]) roster[k] = x; }); }
+    for (const e of want) {
       const GP = parseGroups(e.groupsText);
       const mine = GP.gs.filter(g => admin || (key && g.lead.some(l => leadKey(l.n) === key)));
-      if (!mine.length) continue;
-      const latest = {}; (await fsList(tok, `events/${e.id}/responses`)).forEach(x => { const k = normName(x.name); if (k && (!latest[k] || (x.createdAt || 0) >= (latest[k].createdAt || 0))) latest[k] = x; });
-      const gd = await fsGet(tok, `events/${e.id}/admin/groups`), fin = gd ? (fobj(gd.fields).final || {}) : {};
+      const [rsp, gd] = await pre[e.id];
+      const latest = {}; rsp.forEach(x => { const k = normName(x.name); if (k && (!latest[k] || (x.createdAt || 0) >= (latest[k].createdAt || 0))) latest[k] = x; });
+      const fin = gd ? (fobj(gd.fields).final || {}) : {};
       const att = Object.keys(latest).filter(k => ['yes', 'join'].includes(latest[k].attend));
-      if (eid && !roster) { roster = {}; (await fsList(tok, 'member_roster')).forEach(x => { const k = normName(x.name); if (k && !roster[k]) roster[k] = x; }); }
       const person = k => { const r = latest[k] || {}, ro = (roster || {})[k] || {}; return { k, name: r.name || k, attend: r.attend || '', picks: r.groups || [], cert: ro.cert || '', pos: ro.position || '' }; };
       const groups = mine.map(g => {
         const f = fin[g.n] || {};
