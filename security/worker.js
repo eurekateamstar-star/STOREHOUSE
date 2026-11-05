@@ -78,6 +78,7 @@ export default {
     if (path === '/lot') return lotRoute(req, env, json);
     if (path === '/mysched') return mySchedRoute(req, env, json);
     if (path === '/myplan') return myPlanRoute(req, env, json);
+    if (path === '/lead') return leadRoute(req, env, json);
     if (path === '/groups') return groupsRoute(req, env, json);
     if (path === '/groupset') return groupSetRoute(req, env, json);
     if (path === '/mygroup') return myGroupRoute(req, env, json);
@@ -1027,6 +1028,50 @@ async function myGroupRoute(req, env, json) {
     const mine = GP.gs.filter(g => g.lead.some(l => leadKey(l.n) === key) || (fin[g.n] && fin[g.n][key]));
     return json({ core: GP.core, groups: mine.map(g => ({ n: g.n, lead: g.lead, duty: g.duty,
       members: Object.keys(fin[g.n] || {}).filter(k => !g.lead.some(l => leadKey(l.n) === k)).map(k => nm[k] || k) })) });
+  } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
+}
+// ===== 小隊長檢查：組長確認整組當天用餐、到勤、配備、服裝儀容、就寢前充電 =====
+// { idToken, eid, d, l?(管理員看別組), save?: { att, meal:{k:{l,n}}, eq, dress, charge } }
+async function leadRoute(req, env, json) {
+  try {
+    const { idToken, eid, d, l, save } = await req.json();
+    if (!idToken || !/^[A-Za-z0-9_-]{1,64}$/.test(eid || '') || !/^\d{4}-\d{2}-\d{2}$/.test(d || '')) return json({ error: 'missing' }, 400);
+    const uid = uidOfToken(idToken);
+    const meR = await fetch(`${FS}/users/${encodeURIComponent(uid)}`, { headers: { Authorization: 'Bearer ' + idToken } });
+    if (!meR.ok) return json({ error: 'not signed in' }, 401);
+    const u = fobj((await meR.json()).fields); if (u.status !== 'approved') return json({ error: 'not member' }, 403);
+    const admin = u.role === 'admin' || u.adminMember === true;
+    const tok = await saToken(env);
+    const [dr, roster] = await Promise.all([fsGet(tok, `events/${eid}/admin/draw`), fsList(tok, 'member_roster')]);
+    const byName = {}; roster.forEach(x => { const k = normName(x.name); if (k && !byName[k]) byName[k] = x; });
+    const me = u.rosterId ? roster.find(x => x.id === u.rosterId) : null, myKey = me ? normName(me.name) : '';
+    const sc = dr ? (fobj(dr.fields).sched || {}) : {}, teams = (sc.days || {})[d] || [];
+    const t = teams.find(x => l ? x.l === l : (x.m || [])[0] === myKey);
+    if (!t) return json({ error: '這天你不是小隊長' }, 403);
+    if (!admin && (t.m || [])[0] !== myKey) return json({ error: '只有這組的小隊長可以確認' }, 403);
+    const path = `events/${eid}/admin/lead_${d}_${encodeURIComponent(t.l)}`;
+    const H = { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' };
+    const selfOf = async k => { const ro = byName[k]; if (!ro) return null; const s0 = await fsGet(tok, `events/${eid}/admin/self_${ro.id}`); return { ro, days: s0 ? (fobj(s0.fields).days || {}) : {} }; };
+    if (save) {
+      const by = me ? me.name : (u.realName || ''), now = new Date().toISOString(), cur = await fsGet(tok, path), old = cur ? fobj(cur.fields) : {};
+      const doc = { ...old, team: t.l, d, by, at: Date.now() };
+      ['att', 'eq', 'dress', 'charge'].forEach(f => { if (save[f] && typeof save[f] === 'object') { doc[f] = save[f]; doc[f + 'At'] = Date.now(); doc[f + 'By'] = by; } });
+      if (save.meal && typeof save.meal === 'object') {   // 用餐：寫回每個人自己的登記（管理員設定過的不動）
+        const adm = sc.meal || {};
+        for (const k of (t.m || [])) { const v = save.meal[k]; if (!v) continue; const S = await selfOf(k); if (!S) continue;
+          const dv = { ...(S.days[d] || {}) };
+          ['l', 'n'].forEach(f => { if (((adm[k] || {})[d] || {})[f] !== undefined) return; if (['葷', '素', '自'].includes(v[f])) dv[f] = v[f]; else if (v[f] === '') delete dv[f]; });
+          S.days[d] = dv;
+          await fetch(`${FS}/events/${eid}/admin/self_${S.ro.id}`, { method: 'PATCH', headers: H, body: JSON.stringify({ fields: { key: tv(k), days: tv(S.days), at: { timestampValue: now } } }) }); }
+        doc.mealAt = Date.now(); doc.mealBy = by;
+      }
+      const w = await fetch(`${FS}/${path}`, { method: 'PATCH', headers: H, body: JSON.stringify({ fields: Object.fromEntries(Object.entries(doc).map(([k, v]) => [k, tv(v)])) }) });
+      if (!w.ok) return json({ error: 'write failed ' + w.status }, 500);
+    }
+    const ck = await fsGet(tok, path), adm = sc.meal || {};
+    const members = await Promise.all((t.m || []).map(async k => { const S = await selfOf(k), A = (adm[k] || {})[d] || {}, sd = S ? (S.days[d] || {}) : {};
+      const pick = f => A[f] !== undefined ? A[f] : sd[f]; return { k, name: (byName[k] || {}).name || k, cert: (byName[k] || {}).cert || '', l: pick('l') || '', n: pick('n') || '', lockL: A.l !== undefined, lockN: A.n !== undefined }; }));
+    return json({ ok: true, team: t.l, d, eq: t.eq || {}, members, check: ck ? fobj(ck.fields) : {}, leader: (t.m || [])[0] });
   } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
 }
 const isoAddW = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };

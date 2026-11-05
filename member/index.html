@@ -1780,7 +1780,7 @@
   const LUNCH = ['葷', '素（方便素）', '自行處理'];
   const eventLink = id => `https://tsushin-buishatun.pages.dev/attend/?e=${encodeURIComponent(id)}`;   // 公開表單：不用先綁團員專區
   let evPaid = {}, drPayMode = false, evSched = {}, schedOpen = false, schSel = null, schPk = null, attOpen = false, attBrush = null, schFold = (() => { try { return JSON.parse(localStorage.getItem('schFold') || '{}'); } catch (e) { return {}; } })(), carOpen = false, mealOpen = false, evSelf = {};
-  let evDraw = {}, evDrawBy = {}, evOver = {}, evGrpFin = {}, drawSheetEid = null, drSel = null;
+  let evDraw = {}, evDrawBy = {}, evOver = {}, evGrpFin = {}, evLead = {}, drawSheetEid = null, drSel = null;
   let eventsCache = [], eventsUnsub = null, myResp = {}, evRespCache = {}, evRespUnsub = null, evOpenId = null, evFilter = 'all', evQ = {}, evSort = { k: 'time', d: 1 };
   // 連結 liff.line.me/…?e=活動ID：LIFF 開啟時參數可能包在 liff.state 裡
   const readEventParam = () => { try { const q = new URLSearchParams(location.search); if (q.get('e')) return q.get('e');
@@ -1852,7 +1852,8 @@
       .ms-mb{flex:1;min-width:0;font-size:11.5px;letter-spacing:-.5px;color:#4b5563;white-space:nowrap;line-height:1.45;overflow:hidden}.ms-mb .nmw{white-space:nowrap}.ms-mb small{display:block;font-size:10.5px;color:#b91c1c;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
       .ms-dt .ms-tg,.ms-tg{font-size:9px;color:#fff;background:#1e3a8a;border-radius:4px;padding:1px 3px;margin-right:2px;font-weight:700;vertical-align:1px}
       .ms-ar{flex:none;color:#c9b5ae;font-size:15px;font-weight:700}
-      .ms-grp{padding:8px 14px;border-top:1px solid #f3ece9;font-size:13px;color:#374151;background:#fffaf5}.ms-grp b{color:#c2410c}.ms-grp .ok{font-size:11px;color:#15803d;font-weight:800}.ms-grp .wt{font-size:11px;color:#b45309;font-weight:800}.ms-grp .ms-ar{font-size:12px;color:#c2410c}</style>
+      .ms-grp{padding:8px 14px;border-top:1px solid #f3ece9;font-size:13px;color:#374151;background:#fffaf5}.ms-grp b{color:#c2410c}.ms-grp .ok{font-size:11px;color:#15803d;font-weight:800}.ms-grp .wt{font-size:11px;color:#b45309;font-weight:800}.ms-grp .ms-ar{font-size:12px;color:#c2410c}
+      .ms-ld{flex:none;border:none;border-radius:8px;padding:3px 6px;font:inherit;font-size:10px;line-height:1.25;font-weight:900;color:#fff;background:linear-gradient(135deg,#D65A68,#F08339);box-shadow:0 2px 6px rgba(214,90,104,.35)}</style>
       ${evs.map(e => `<div class="ms-card"><div class="ms-h">📅 我的排班<small>${esc(e.title)}${e.days.length ? `・${e.days.length} 天・點日期看全部` : ''}</small></div>${grpLine(e)}
         ${[...new Set([...e.days.map(x => x.d), ...(e.plan || []).map(x => x.d)])].sort().map(d => { const x = e.days.find(y => y.d === d), pl = (e.plan || []).find(y => y.d === d) || {};
           const ic = `${pl.s ? '🛏' : ''}${['o', 'y', 'h'].some(f => pl[f] === '9') ? '🚌' : ''}`;
@@ -1862,9 +1863,10 @@
     function msRow(e, x, ic) { { const dd = new Date(x.d + 'T12:00:00'), mates = x.members;
           const [eqA, ...eqT] = String(x.eq || '').split('　'), extra = [x.note, x.duty.join('、'), eqA ? '🎒' + eqA : ''].filter(Boolean).map(esc).join('・') + (eqT.join('') ? ` <span style="color:#9ca3af;font-weight:600">${esc(eqT.join(' '))}</span>` : '');
           return `<div class="ms-row" data-msd="${e.id}|${x.d}"><div class="ms-dt"><b>${dd.getMonth() + 1}/${dd.getDate()}</b><span>(${WK[dd.getDay()]})</span>${x.tag ? `<span class="ms-tg" style="display:block;margin:2px 0 0">${esc(x.tag)}</span>` : ''}</div>
-            <span class="ms-tm">${esc(x.team)}</span>
+            <span class="ms-tm">${esc(x.team)}</span>${mates[0] === e.name ? `<button type="button" class="ms-ld" data-lead="${e.id}|${x.d}">👑 小隊長<br>檢查</button>` : ''}
             <div class="ms-mb">${mates.map(n => `<span class="nmw">${n === e.name ? `<b style="color:#b91c1c">${esc(n)}</b>` : esc(n)}</span>`).join('<i style="font-style:normal;color:#cbbdb8">·</i>')}${extra.trim() ? `<small>${extra}</small>` : ''}</div><span class="ms-ar" style="font-size:11px">${ic}</span><span class="ms-ar">›</span></div>`; } }
     box.querySelectorAll('[data-msd]').forEach(el => el.onclick = () => { const [a, b] = el.dataset.msd.split('|'); showMyDay(a, b); });
+    box.querySelectorAll('[data-lead]').forEach(el => el.onclick = ev => { ev.stopPropagation(); const [a, b] = el.dataset.lead.split('|'); openLeadCheck(a, b); });
     box.querySelectorAll('[data-myg]').forEach(el => el.onclick = () => openMyGroup(el.dataset.myg));
   }
   function msFlash(t, bad) {
@@ -1924,6 +1926,82 @@
         const j = await r.json(); if (!j.ok) throw new Error(j.error || 'fail');
         msFlash('✅ 已登記');
       } catch (err) { msFlash('❌ 沒有存到，請再點一次', true); mySchedKey = null; loadMySched(); } })(); });
+  }
+  // ===== 小隊長檢查：到勤點名、用餐、配備、服裝儀容、就寢前充電（組長或管理員）=====
+  async function openLeadCheck(eid, d, l) {
+    const call = async body => { const idToken = await auth.currentUser.getIdToken();
+      const r = await fetch(AUTH_URL + '/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, eid, d, ...(l ? { l } : {}), ...body }) });
+      const j = await r.json().catch(() => ({})); if (!r.ok || j.error) throw new Error(j.error || 'HTTP ' + r.status); return j; };
+    let ov = document.getElementById('lead-ov'); if (ov) ov.remove();
+    ov = document.createElement('div'); ov.id = 'lead-ov';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:9600;background:rgba(31,36,48,.55);display:flex;align-items:flex-end;justify-content:center';
+    document.body.appendChild(ov);
+    const shell = h => ov.innerHTML = `<div id="lead-box" style="background:#fff;width:100%;max-width:600px;max-height:92vh;overflow-y:auto;border-radius:22px 22px 0 0;padding:14px 14px calc(22px + env(safe-area-inset-bottom))">${h}</div>`;
+    shell('<div style="text-align:center;padding:40px 0;color:#6b7280">⏳ 讀取小隊資料…</div>');
+    ov.onclick = e => { if (e.target === ov) ov.remove(); };
+    let J; try { J = await call({}); } catch (err) { shell(`<div style="text-align:center;padding:30px 0;color:#b91c1c">❌ ${esc(err.message)}</div><button class="btn ghost" onclick="document.getElementById('lead-ov').remove()">關閉</button>`); return; }
+    const M = J.members, C = J.check || {}, eq = J.eq || {};
+    const att = { ...(C.att || {}) }; M.forEach(m => { if (att[m.k] === undefined) att[m.k] = 1; });
+    const meal = {}; M.forEach(m => meal[m.k] = { l: m.l, n: m.n });
+    const EQ = [['kit', '救護包', eq.kit], ['inst', '器材包', eq.inst], ['ambu', 'AMBU包', eq.ambu], ['radio', '無線電'], ['shoulder', '肩燈'], ['head', '頭燈']];
+    const eqc = { ...(C.eq || {}) };
+    const DR = [['towel', '毛巾綁好'], ['armband', '臂章'], ['hat', '帽子'], ['whistle', '口哨'], ['vest', '背心']];
+    const dress = JSON.parse(JSON.stringify(C.dress || {})); M.forEach(m => dress[m.k] = dress[m.k] || {});
+    const CH = [['shoulder', '肩燈'], ['head', '頭燈'], ['radio', '無線電']], chg = { ...(C.charge || {}) };
+    const tm = ms => { if (!ms) return ''; const t = new Date(ms); return `${t.getMonth() + 1}/${t.getDate()} ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`; };
+    const done = f => C[f + 'At'] ? `<span class="lc-ok">✅ ${esc(C[f + 'By'] || '')} ${tm(C[f + 'At'])} 已確認</span>` : '<span class="lc-no">還沒確認</span>';
+    const dd = new Date(d + 'T12:00:00');
+    const paint = () => {
+      const y = (document.getElementById('lead-box') || {}).scrollTop || 0;
+      shell(`<style>
+        .lc-h{display:flex;justify-content:space-between;align-items:center}.lc-h b{font-size:20px}.lc-x{border:none;background:#f1f5f9;border-radius:50%;width:34px;height:34px;font-size:16px}
+        .lc-s{border:1.5px solid #f1e3dc;border-radius:18px;margin-top:14px;overflow:hidden}.lc-st{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:10px 12px;background:#fff7ed;font-weight:900;font-size:16px;color:#7c2d12;flex-wrap:wrap}
+        .lc-ok{font-size:11.5px;color:#15803d;font-weight:800}.lc-no{font-size:11.5px;color:#b45309;font-weight:800}
+        .lc-r{display:flex;align-items:center;gap:6px;padding:8px 12px;border-top:1px solid #f6eeea;flex-wrap:wrap}.lc-r .nm{width:76px;font-weight:900;font-size:15px}.lc-r .nm small{display:block;font-size:10px;color:#9ca3af;font-weight:700}
+        .lc-b{border:1.5px solid #e5ddd9;background:#fff;border-radius:10px;padding:6px 10px;font:inherit;font-size:13px;font-weight:800;color:#6b7280;cursor:pointer}.lc-b.on{background:#c2414f;border-color:#c2414f;color:#fff}.lc-b.g.on{background:#16a34a;border-color:#16a34a}.lc-b.lk{opacity:.55}
+        .lc-l{font-size:12px;font-weight:800;color:#6b7280;width:34px}
+        .lc-sv{display:block;width:calc(100% - 24px);margin:8px 12px 12px;border:none;border-radius:12px;padding:11px;font:inherit;font-size:15px;font-weight:900;color:#fff;background:linear-gradient(90deg,#D65A68,#F08339)}
+        .lc-tip{font-size:11.5px;color:#9a8f8b;padding:0 12px 6px}</style>
+        <div class="lc-h"><b>👑 小隊長檢查</b><button class="lc-x" onclick="document.getElementById('lead-ov').remove()">✕</button></div>
+        <div style="font-size:14px;color:#6b7280;margin-top:2px">${dd.getMonth() + 1}/${dd.getDate()}（${WK[dd.getDay()]}）・<b style="color:#c2414f">${esc(J.team)}</b>・${M.length} 人</div>
+
+        <div class="lc-s"><div class="lc-st">🙋 出發前・到勤點名${done('att')}</div>
+          ${M.map(m => `<div class="lc-r"><span class="nm">${esc(m.name)}<small>${esc(m.cert)}</small></span><button class="lc-b g ${att[m.k] ? 'on' : ''}" data-at="${m.k}|1">✓ 到勤</button><button class="lc-b ${att[m.k] ? '' : 'on'}" data-at="${m.k}|0">未到</button></div>`).join('')}
+          <button class="lc-sv" data-sv="att">確認到勤（${M.filter(m => att[m.k]).length}/${M.length} 到）</button></div>
+
+        <div class="lc-s"><div class="lc-st">🍱 今天午餐・晚餐${done('meal')}</div>
+          ${M.map(m => `<div class="lc-r"><span class="nm">${esc(m.name)}</span>${[['l', '中餐', m.lockL], ['n', '晚餐', m.lockN]].map(([f, t, lk]) => `<span class="lc-l">${t}</span>${[['葷', '葷'], ['素', '素'], ['自', '自理']].map(([v, n]) => `<button class="lc-b ${meal[m.k][f] === v ? 'on' : ''} ${lk ? 'lk' : ''}" ${lk ? 'data-lk="1"' : ''} data-ml="${m.k}|${f}|${v}">${n}</button>`).join('')}`).join('<span style="width:100%;height:0"></span><span class="nm"></span>')}</div>`).join('')}
+          <div class="lc-tip">灰色＝管理員已設定，不能改。按確認會更新每個人的用餐登記。</div>
+          <button class="lc-sv" data-sv="meal">確認用餐（中 ${M.filter(m => meal[m.k].l && meal[m.k].l !== '自').length}・晚 ${M.filter(m => meal[m.k].n && meal[m.k].n !== '自').length} 份）</button></div>
+
+        <div class="lc-s"><div class="lc-st">🎒 小組配備盤點${done('eq')}</div>
+          <div class="lc-r">${EQ.map(([k, n, c]) => `<button class="lc-b g ${eqc[k] ? 'on' : ''}" data-eq="${k}">${eqc[k] ? '✓ ' : ''}${n}${c ? ' ×' + c : ''}</button>`).join('')}</div>
+          <button class="lc-sv" data-sv="eq">確認配備（${EQ.filter(x => eqc[x[0]]).length}/${EQ.length}）</button></div>
+
+        <div class="lc-s"><div class="lc-st">👕 隊員服裝儀容${done('dress')}<button class="lc-b" data-dall="1" style="padding:4px 10px">全部 OK</button></div>
+          ${M.map(m => `<div class="lc-r"><span class="nm">${esc(m.name)}</span>${DR.map(([k, n]) => `<button class="lc-b g ${dress[m.k][k] ? 'on' : ''}" data-dr="${m.k}|${k}">${dress[m.k][k] ? '✓' : ''}${n}</button>`).join('')}</div>`).join('')}
+          <button class="lc-sv" data-sv="dress">確認服裝儀容（${M.filter(m => DR.every(([k]) => dress[m.k][k])).length}/${M.length} 人全部 OK）</button></div>
+
+        <div class="lc-s"><div class="lc-st">🌙 就寢前・充電確認${done('charge')}</div>
+          <div class="lc-r">${CH.map(([k, n]) => `<button class="lc-b g ${chg[k] ? 'on' : ''}" data-ch="${k}">${chg[k] ? '🔋 ' : ''}${n}已充電</button>`).join('')}</div>
+          <button class="lc-sv" data-sv="charge">確認充電（${CH.filter(x => chg[x[0]]).length}/${CH.length}）</button></div>`);
+      document.getElementById('lead-box').scrollTop = y;
+      const q = (a, f) => document.querySelectorAll(`#lead-ov [${a}]`).forEach(b => b.onclick = () => { f(b.getAttribute(a)); paint(); });
+      q('data-at', v => { const [k, o] = v.split('|'); att[k] = +o; });
+      q('data-ml', v => { const [k, f, x] = v.split('|'); if (document.querySelector(`[data-ml="${v}"]`).dataset.lk) return toast('管理員已設定，請洽管理員'); meal[k][f] = meal[k][f] === x ? '' : x; });
+      q('data-eq', k => { eqc[k] = !eqc[k]; });
+      q('data-dr', v => { const [k, f] = v.split('|'); dress[k][f] = !dress[k][f]; });
+      q('data-dall', () => M.forEach(m => DR.forEach(([k]) => dress[m.k][k] = true)));
+      q('data-ch', k => { chg[k] = !chg[k]; });
+      document.querySelectorAll('#lead-ov [data-sv]').forEach(b => b.onclick = async () => {
+        const f = b.dataset.sv, val = { att, meal, eq: eqc, dress, charge: chg }[f];
+        b.disabled = true; b.textContent = '儲存中…';
+        try { const r = await call({ save: { [f]: val } }); Object.assign(C, r.check || {}); toast('✅ 已確認'); if (f === 'meal') { mySchedKey = null; loadMySched(); } }
+        catch (err) { toast('❌ ' + err.message); }
+        paint();
+      });
+    };
+    paint();
   }
   // ===== 首頁：自己抽籤（管理員在出席調查「開放自己抽籤」後才會出現）=====
   const lotState = {};      // eid → 伺服器回來的狀態
@@ -1996,7 +2074,8 @@
       if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid);
     }, () => toast('讀取回覆失敗'));
     const u2 = onSnapshot(doc(db, 'events', eid, 'admin', 'draw'), s => { const d = s.exists() ? s.data() : {}; evDraw[eid] = d.map || {}; evDrawBy[eid] = d.by2 || {}; evOver[eid] = d.groupOverride || {}; evPaid[eid] = d.paid || {}; evSched[eid] = schedFromDb(d.sched); if (drawSheetEid === eid) (mealOpen ? renderMeal(eid) : carOpen ? renderCar(eid) : attOpen ? renderAtt(eid) : schedOpen ? renderSched(eid) : renderDrawSheet(eid)); if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid); }, () => {});
-    const u3 = onSnapshot(collection(db, 'events', eid, 'admin'), s => { const o = {}; let fin = {}; s.docs.forEach(d => { if (d.id === 'groups') fin = d.data().final || {}; if (d.id.startsWith('self_')) { const x = d.data(); if (x.key) o[x.key] = x.days || {}; } }); evSelf[eid] = o;
+    const u3 = onSnapshot(collection(db, 'events', eid, 'admin'), s => { const o = {}; let fin = {}; const ld = {}; s.docs.forEach(d => { if (d.id.startsWith('lead_')) { const x = d.data(); if (x.d && x.team) (ld[x.d] = ld[x.d] || {})[x.team] = x; } }); const lc = JSON.stringify(ld) !== JSON.stringify(evLead[eid] || {}); evLead[eid] = ld; if (lc && schedOpen && drawSheetEid === eid) setTimeout(() => renderSched(eid), 0);
+      s.docs.forEach(d => { if (d.id === 'groups') fin = d.data().final || {}; if (d.id.startsWith('self_')) { const x = d.data(); if (x.key) o[x.key] = x.days || {}; } }); evSelf[eid] = o;
       const fc = JSON.stringify(fin) !== JSON.stringify(evGrpFin[eid] || {}); evGrpFin[eid] = fin;
       if (fc && adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid);
       if (drawSheetEid === eid) (mealOpen ? renderMeal(eid) : carOpen ? renderCar(eid) : attOpen ? renderAtt(eid) : schedOpen ? null : fc ? renderDrawSheet(eid) : null); }, () => {});
@@ -2763,7 +2842,9 @@
         return `<tr class="${cls}"><th class="xl ${mv ? 'mv' : ''}" ${mv ? `data-mvd="${d}" data-mvl="${t.l}" title="移到這組"` : ''}>${mv ? '⬅ ' : ''}<span class="xl-a">${t.l.slice(0, 2)}</span><span class="xl-n">${t.l.slice(2)}</span></th>${cells}<td class="xn"><div class="xnote ${tNote(t) ? '' : 'emp'}" data-nd="${d}" data-nl="${t.l}">${tNote(t) ? eqHtml(tNote(t)) : '＋裝備'}</div>${extra}</td></tr>`; }).join('');
       return `<div class="xd" data-day="${d}"><table class="xt"><thead><tr><th class="xc">組別</th><th colspan="${NC}" class="xdate"><span class="xtag ${(info[d] || {}).tag ? '' : 'emp'}" data-tag="${d}">${esc((info[d] || {}).tag || '＋標記')}</span>${dd.getMonth() + 1}月${dd.getDate()}日(${WK[dd.getDay()]})</th><th class="xcmd">指揮官:${esc(cmd)}<div class="xcnt">${ts.length} 組・${pres.length} 人</div></th></tr></thead>
         <tbody>${rows || `<tr><td colspan="${NC + 2}" class="sc-empty">按「自動排班」</td></tr>`}
-        ${dutyHtml(info[d]).map(h => `<tr><td colspan="${NC + 2}" class="xf" data-duty="${d}">${h}</td></tr>`).join('')}</tbody></table>
+        ${dutyHtml(info[d]).map(h => `<tr><td colspan="${NC + 2}" class="xf" data-duty="${d}">${h}</td></tr>`).join('')}
+        ${ts.length ? `<tr><td colspan="${NC + 2}" class="xf xlead">📋 小隊長檢查：${ts.map(t => { const c = ((evLead[eid] || {})[d] || {})[t.l] || {}, n = ['attAt', 'mealAt', 'eqAt', 'dressAt', 'chargeAt'].filter(f => c[f]).length;
+          return `<button type="button" data-ldv="${d}|${esc(t.l)}" style="border:1.5px solid ${n === 5 ? '#86efac' : n ? '#fdba74' : '#e5e7eb'};background:${n === 5 ? '#f0fdf4' : n ? '#fff7ed' : '#fff'};color:${n === 5 ? '#15803d' : n ? '#c2410c' : '#9ca3af'};border-radius:999px;padding:1px 8px;margin:1px 2px;font:inherit;font-size:11px;font-weight:800;cursor:pointer">${esc(t.l)} ${n}/5</button>`; }).join('')}</td></tr>` : ''}</tbody></table>
         <div class="xsbar"><button class="xshot" data-shot="${d}">📷 存圖</button></div>
         ${miss.length && ts.length ? `<div class="sc-miss">未排入：${miss.map(k => chip(k, false, d)).join('')}</div>` : ''}</div>`; };
     $('sheet-body').innerHTML = `
@@ -2785,7 +2866,7 @@
         .xt tr.xb>*{border-top:2px solid #e9b8bf}
         .sc-days.shootall{display:flex!important;flex-direction:column;width:760px;gap:14px;padding:10px;background:#fff}
         .xshot{margin-left:8px;border:none;border-radius:8px;background:#1f2430;color:#fff;font:inherit;font-size:11px;font-weight:800;padding:3px 8px;cursor:pointer;vertical-align:middle}
-        .xd.shooting .xshot,.xd.shooting .xc .xshot,.xd.shooting .sc-miss,.xd.shooting .xnote.emp{visibility:hidden}.xsub{color:#6b7280;font-size:.9em}
+        .xd.shooting .xlead,.xd.shooting .xshot,.xd.shooting .xc .xshot,.xd.shooting .sc-miss,.xd.shooting .xnote.emp{visibility:hidden}.xsub{color:#6b7280;font-size:.9em}
         /* ===== 精緻版表格 ===== */
         .xd{border:1px solid #efe4e0!important;box-shadow:0 10px 30px rgba(120,60,50,.08)!important;border-radius:18px!important}
         .xt thead tr{background:linear-gradient(120deg,#fff5f3 0%,#fff 55%,#fff8ef 100%)!important}
@@ -2967,13 +3048,14 @@
       days.forEach(d => { out[d] = buildDay(presentOn(d), prev, size, ppl).map(t => ({ ...t, note: ((dt[d] || []).find(x => x.l === t.l) || (prev || []).find(x => x.l === t.l) || {}).note || '' })); prev = out[d]; });
       save({ size, days: out }, '🔀 已自動排班');
     };
+    document.querySelectorAll('[data-ldv]').forEach(b => b.onclick = ev => { ev.stopPropagation(); const [d, l] = b.dataset.ldv.split('|'); openLeadCheck(eid, d, l); });
     document.querySelectorAll('[data-sd][data-sk]').forEach(b => b.onclick = () => { const k = b.dataset.sk, d = b.dataset.sd; schSel = schSel && schSel.k === k && schSel.d === d ? null : { k, d }; renderSched(eid); });
     // 選了某人 → 下方工具列：點組別換組／加備註（幾點到、駐駕退…）
     document.querySelectorAll('.sc-bar').forEach(x => x.remove());
     if (schSel && ppl[schSel.k]) {
       const bar = document.createElement('div'); bar.className = 'sc-bar';
       const tm = (dt[schSel.d] || []).find(t => t.m.includes(schSel.k)), cur = tm && (tm.pn || {})[schSel.k];
-      bar.innerHTML = `<b>${esc(ppl[schSel.k].name)}</b><span>${dLabel(schSel.d)}・點組別可換組</span><button class="sb-mv" data-dir="-1">◀ 往前</button><button class="sb-mv" data-dir="1">往後 ▶</button><button id="sb-note">📝 ${cur ? '改備註' : '加備註'}</button><button id="sb-x">取消</button>`;
+      bar.innerHTML = `<b>${esc(ppl[schSel.k].name)}</b><span>${dLabel(schSel.d)}・點組別可換組</span><button class="sb-mv" data-dir="-1">◀ 往前</button><button class="sb-mv" data-dir="1">往後 ▶</button><button id="sb-note">📝 ${cur ? '改備註' : '加備註'}</button><button id="sb-x">✓ 確認</button>`;
       $('sheet').appendChild(bar);
       bar.querySelector('#sb-x').onclick = () => { schSel = null; renderSched(eid); };
       bar.querySelectorAll('.sb-mv').forEach(b => b.onclick = () => {      // 同一組內往前／往後移（第一位＝組長）
