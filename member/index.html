@@ -120,6 +120,9 @@
   .idc-ft { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-top: 1px dashed #eadfda; padding: 10px 16px; font-size: 11.5px; color: #8a7f7a; }
   .idc-ft b { color: #15803d; white-space: nowrap; }
 
+  .ev-fbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; }
+  .ev-fbar input { flex: 1 1 220px; min-width: 0; padding: 10px 14px; border: 1.5px solid #eadfda; border-radius: 12px; font-size: 14px; font-family: inherit; background: #fff; }
+  .ev-fsel { padding: 9px 10px; border: 1.5px solid #eadfda; border-radius: 12px; font-size: 13px; font-weight: 700; font-family: inherit; background: #fff; color: #374151; max-width: 100%; }
   .sec { font-size: 13px; font-weight: 800; color: var(--gold); margin: 22px 6px 8px; letter-spacing: 1px; }
   .rows .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
   .rows .row:last-child { border-bottom: none; }
@@ -1775,7 +1778,7 @@
   const eventLink = id => `https://tsushin-buishatun.pages.dev/attend/?e=${encodeURIComponent(id)}`;   // 公開表單：不用先綁團員專區
   let evPaid = {}, drPayMode = false, evSched = {}, schedOpen = false, schSel = null, schPk = null, attOpen = false, attBrush = null, schFold = (() => { try { return JSON.parse(localStorage.getItem('schFold') || '{}'); } catch (e) { return {}; } })(), carOpen = false, mealOpen = false, evSelf = {};
   let evDraw = {}, evDrawBy = {}, evOver = {}, evGrpFin = {}, drawSheetEid = null, drSel = null;
-  let eventsCache = [], eventsUnsub = null, myResp = {}, evRespCache = {}, evRespUnsub = null, evOpenId = null, evFilter = 'all';
+  let eventsCache = [], eventsUnsub = null, myResp = {}, evRespCache = {}, evRespUnsub = null, evOpenId = null, evFilter = 'all', evQ = {};
   // 連結 liff.line.me/…?e=活動ID：LIFF 開啟時參數可能包在 liff.state 裡
   const readEventParam = () => { try { const q = new URLSearchParams(location.search); if (q.get('e')) return q.get('e');
     const st = q.get('liff.state'); if (st) return new URLSearchParams(st.replace(/^[^?]*\?/, '')).get('e') || ''; } catch (e) {} return ''; };
@@ -1992,6 +1995,7 @@
     const u2 = onSnapshot(doc(db, 'events', eid, 'admin', 'draw'), s => { const d = s.exists() ? s.data() : {}; evDraw[eid] = d.map || {}; evDrawBy[eid] = d.by2 || {}; evOver[eid] = d.groupOverride || {}; evPaid[eid] = d.paid || {}; evSched[eid] = schedFromDb(d.sched); if (drawSheetEid === eid) (mealOpen ? renderMeal(eid) : carOpen ? renderCar(eid) : attOpen ? renderAtt(eid) : schedOpen ? renderSched(eid) : renderDrawSheet(eid)); if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid); }, () => {});
     const u3 = onSnapshot(collection(db, 'events', eid, 'admin'), s => { const o = {}; let fin = {}; s.docs.forEach(d => { if (d.id === 'groups') fin = d.data().final || {}; if (d.id.startsWith('self_')) { const x = d.data(); if (x.key) o[x.key] = x.days || {}; } }); evSelf[eid] = o;
       const fc = JSON.stringify(fin) !== JSON.stringify(evGrpFin[eid] || {}); evGrpFin[eid] = fin;
+      if (fc && adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid);
       if (drawSheetEid === eid) (mealOpen ? renderMeal(eid) : carOpen ? renderCar(eid) : attOpen ? renderAtt(eid) : schedOpen ? null : fc ? renderDrawSheet(eid) : null); }, () => {});
     evRespUnsub = () => { u1(); u2(); u3(); };
     evRespUnsub._eid = eid;
@@ -2018,11 +2022,18 @@
     const avR = ro => { const u = ro && ro.boundUserId && userById(ro.boundUserId); return u && u.pictureUrl ? `<img class="ev-av" src="${esc(u.pictureUrl)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ''; };
     const lotTag = r => { if (r.attend === 'no') return ''; const v = dmap[normName(r.name)]; return v ? `<span class="ev-tag lot">🎲 ${esc(v)}</span>` : '<span class="ev-tag none">未抽籤</span>'; };
     const payTag = r => r.attend === 'no' ? '' : pmap[normName(r.name)] ? '<span class="ev-tag paid">✅ 已繳</span>' : '<span class="ev-tag unpaid">未繳</span>';
-    const card = r => { const ro = rosterOf(r); return `<div class="ev-rc"><div class="n">${avR(ro)}<b>${esc(r.name || '')}</b> <span class="a">${ATT_SHORT[r.attend] || ''}</span> ${lotTag(r)} ${payTag(r)}</div>
+    const fin0 = evGrpFin[eid] || {};
+    const certCat = ro => { if (!ro) return '未對應'; const c = certKey(ro.cert); return c.includes('EMTP') ? 'EMT-P' : c.includes('EMT2') ? 'EMT-2' : c.includes('EMT1') ? 'EMT-1' : c.includes('護理') ? '護理師' : c.includes('醫師') ? '醫師' : '其他'; };
+    const fAttr = r => { const ro = rosterOf(r), k = normName(r.name), u = r.uniform;
+      const fin = Object.keys(fin0).filter(g => fin0[g] && fin0[g][k]);
+      return `data-fs="${esc([r.name, r.lineName, r.comment, r.reason, ro && ro.cert, ro && rv(ro, 'position'), (r.groups || []).join(' '), r.lunch].filter(Boolean).join(' ').toLowerCase())}" data-fc="${esc(certCat(ro))}"`
+        + ` data-fl="${r.attend === 'no' ? '' : dmap[k] ? 'y' : 'n'}" data-fp="${r.attend === 'no' ? '' : pmap[k] ? 'y' : 'n'}" data-fu="${!u ? 'none' : u.member === 'new' ? 'new' : u.buy ? 'buy' : 'none'}"`
+        + ` data-fg="|${esc((r.groups || []).join('|'))}|" data-ff="|${esc(fin.join('|'))}|"`; };
+    const card = r => { const ro = rosterOf(r); return `<div class="ev-rc" ${fAttr(r)}><div class="n">${avR(ro)}<b>${esc(r.name || '')}</b> <span class="a">${ATT_SHORT[r.attend] || ''}</span> ${lotTag(r)} ${payTag(r)}</div>
         <div class="s">${ro ? esc(rv(ro, 'position')) + '・' + esc(ro.cert || '') : '<span style="color:#b45309">未對應名冊</span>'}${r.lunch ? '　🍱 ' + esc(r.lunch) : ''}${r.lineName ? '　LINE：' + esc(r.lineName) : ''}</div>${r.uniform ? `<div class="x">👕 ${esc(uniText(r.uniform))}</div>` : ''}${r.groups && r.groups.length ? `<div class="x">🧩 ${esc(r.groups.join('、'))}</div>` : ''}
         ${r.reason ? `<div class="x">原因：${esc(r.reason)}</div>` : ''}${r.comment ? `<div class="x">意見：${esc(r.comment)}</div>` : ''}
         <div class="t">${esc(fmtAt(tsMs(r.createdAt || r.updatedAt)))}<span style="float:right"><button class="sbtn" data-rede="${r.id}" style="padding:4px 10px;font-size:12px;">編輯</button> <button class="sbtn red" data-rdel="${r.id}" style="padding:4px 10px;font-size:12px;">刪除</button></span></div></div>`; };
-    const row = r => { const ro = rosterOf(r); return `<tr><td><div style="display:flex;align-items:center;gap:8px;">${avR(ro)}<div><b>${esc(r.name || '')}</b>${ro ? `<div style="font-size:11px;color:var(--sub)">${esc(rv(ro, 'position'))}・${esc(ro.cert || '')}</div>` : '<div style="font-size:11px;color:#b45309">未對應名冊</div>'}</div></div></td>
+    const row = r => { const ro = rosterOf(r); return `<tr ${fAttr(r)}><td><div style="display:flex;align-items:center;gap:8px;">${avR(ro)}<div><b>${esc(r.name || '')}</b>${ro ? `<div style="font-size:11px;color:var(--sub)">${esc(rv(ro, 'position'))}・${esc(ro.cert || '')}</div>` : '<div style="font-size:11px;color:#b45309">未對應名冊</div>'}</div></div></td>
         <td>${ATT_SHORT[r.attend] || ''}</td><td>${lotTag(r)}</td><td>${payTag(r)}</td><td>${esc(r.lunch || '')}</td><td style="font-size:12px;min-width:120px">${r.uniform ? uniCell(r.uniform) : ''}</td>${e.askGroups ? `<td style="font-size:12px;min-width:90px">${esc((r.groups || []).join('、'))}</td>` : ''}<td>${esc(r.reason || '')}</td><td>${esc(r.comment || '')}</td><td style="font-size:12px">${esc(r.lineName || '')}</td><td style="font-size:11px;color:var(--sub);white-space:nowrap">${esc(fmtAt(tsMs(r.createdAt || r.updatedAt)))}</td>
         <td style="white-space:nowrap"><button class="sbtn" data-rede="${r.id}" style="padding:4px 10px;font-size:12px;">編輯</button> <button class="sbtn red" data-rdel="${r.id}" style="padding:4px 10px;font-size:12px;">刪除</button></td></tr>`; };
     $('ev-list').innerHTML = `
@@ -2047,7 +2058,16 @@
         </div>
         <div style="font-size:12px; color:var(--sub);">👆 點上面的數字，下方就只列出那一類的人</div>
       </div>${e.askUniform ? uniSummary(rs) : ''}
-      <div class="grp-t">📋 ${esc(fTitle)}（${evFilter === 'none' ? notYet.length : shown.length}）</div>
+      <div class="grp-t">📋 ${esc(fTitle)}（<span id="ev-fn">${evFilter === 'none' ? notYet.length : shown.length}</span>）</div>
+      ${evFilter === 'none' ? '' : (() => { const G = e.askGroups ? parseGroups(e.groupsText).gs.map(g => g.n) : [];
+        const sel = (id, label, opts) => `<select id="${id}" class="ev-fsel"><option value="">${label}</option>${opts.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join('')}</select>`;
+        return `<div class="ev-fbar"><input id="ev-fq" type="search" placeholder="🔍 搜尋姓名、LINE、意見、組別…">
+          ${sel('ev-fc', '證照：全部', ['EMT-1', 'EMT-2', 'EMT-P', '護理師', '醫師', '其他', '未對應'].map(x => [x, x]))}
+          ${sel('ev-fl', '抽籤：全部', [['n', '未抽籤'], ['y', '已抽籤']])}
+          ${sel('ev-fp', '團費：全部', [['n', '未繳'], ['y', '已繳']])}
+          ${e.askUniform ? sel('ev-fu', '團服：全部', [['new', '新團員'], ['buy', '舊團員加購'], ['none', '沒訂']]) : ''}
+          ${G.length ? sel('ev-fg', '選組：全部', [['_none', '沒選組'], ...G.map(g => ['p:' + g, '選了 ' + g]), ['_nofin', '還沒確認組別'], ...G.map(g => ['f:' + g, '確認在 ' + g])]) : ''}
+          <button class="sbtn" id="ev-fclr" style="padding:8px 12px;">清除</button></div>`; })()}
       ${evFilter === 'none' ? `<div class="card" style="padding:12px 14px; font-size:14px; line-height:2;">${notYet.map(r => esc(r.name || '')).join('、') || '全部都回覆了 🎉'}</div>` : `
       <div class="ev-cards">${shown.map(card).join('') || '<div class="card empty">沒有資料</div>'}</div>
       <div class="card ev-tbl-wrap" style="padding:8px 10px; overflow-x:auto;">
@@ -2055,7 +2075,18 @@
         <tbody>${shown.map(row).join('') || '<tr><td colspan="10"><div class="empty">沒有資料</div></td></tr>'}</tbody></table>
       </div>`}
       <div style="font-size:12px; color:var(--sub); margin:8px 4px;">※ 依「姓名」自動對應名冊；同一人重複填寫以最後一次為準。顯示「未對應名冊」的，可能是名字寫法不同或尚未加入名冊。</div>`;
-    $('ev-back').onclick = () => { evOpenId = null; evFilter = 'all'; renderEvents(); };
+    const evFApply = () => {
+      const q = (evQ.q || '').trim().toLowerCase().split(/\s+/).filter(Boolean); let n = 0;
+      document.querySelectorAll('#ev-list [data-fs]').forEach(el => { const d = el.dataset;
+        const ok = q.every(w => d.fs.includes(w)) && (!evQ.c || d.fc === evQ.c) && (!evQ.l || d.fl === evQ.l) && (!evQ.p || d.fp === evQ.p) && (!evQ.u || d.fu === evQ.u)
+          && (!evQ.g || (evQ.g === '_none' ? d.fg === '||' : evQ.g === '_nofin' ? d.ff === '||' && d.fg !== '||' : evQ.g.startsWith('p:') ? d.fg.includes('|' + evQ.g.slice(2) + '|') : d.ff.includes('|' + evQ.g.slice(2) + '|')));
+        el.style.display = ok ? '' : 'none'; if (ok && el.tagName === 'TR') n++; });
+      if ($('ev-fn') && evFilter !== 'none') $('ev-fn').textContent = n;
+    };
+    [['ev-fq', 'q'], ['ev-fc', 'c'], ['ev-fl', 'l'], ['ev-fp', 'p'], ['ev-fu', 'u'], ['ev-fg', 'g']].forEach(([id, k]) => { const el = $(id); if (!el) return; el.value = evQ[k] || ''; el.oninput = el.onchange = () => { evQ[k] = el.value; evFApply(); }; });
+    if ($('ev-fclr')) $('ev-fclr').onclick = () => { evQ = {}; ['ev-fq', 'ev-fc', 'ev-fl', 'ev-fp', 'ev-fu', 'ev-fg'].forEach(id => { if ($(id)) $(id).value = ''; }); evFApply(); };
+    evFApply();
+    $('ev-back').onclick = () => { evOpenId = null; evFilter = 'all'; evQ = {}; renderEvents(); };
     document.querySelectorAll('[data-evf]').forEach(b => b.onclick = () => { evFilter = evFilter === b.dataset.evf && b.dataset.evf !== 'all' ? 'all' : b.dataset.evf; renderEventDetail(eid); });
     $('ev-copy').onclick = async () => { try { await navigator.clipboard.writeText(eventLink(e.id)); toast('🔗 已複製回覆連結'); } catch (err) { await dialog({ title: '回覆連結', msg: eventLink(e.id), okText: '好' }); } };
     $('ev-toggle').onclick = async () => { try { await updateDoc(doc(db, 'events', e.id), { open: !e.open }); toast(e.open ? '已截止回覆' : '已重新開放'); } catch (err) { toast('❌ 操作失敗'); } };
