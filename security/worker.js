@@ -93,6 +93,7 @@ export default {
     if (path === '/item-cats') return itemCatsRoute(req, env, json);
     if (path === '/wh-members') return whMembersRoute(req, env, json);
     if (path === '/whtake') return whTakeRoute(req, env, json);
+    if (path === '/wh-sched') return whSchedRoute(req, env, json);
 
     try {
       const { accessToken } = await req.json();
@@ -712,6 +713,25 @@ async function whTakeRoute(req, env, json) {
     }
     return json({ error: '這一箱剛好有人在改，請再掃一次' }, 409);
   } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
+}
+// ===== 倉庫：用已公開的排班當「人員分類」（日期 → 各組名單，只回姓名）=====
+async function whSchedRoute(req, env, json) {
+  try {
+    const { idToken } = await req.json();
+    if (!idToken) return json({ error: 'missing' }, 400);
+    const me = await fsUser(idToken, uidOfToken(idToken));
+    const ok = me && me.status === 'approved' && !me.warehouseRemoved && (me.role === 'admin' || me.adminWarehouse || me.warehouseHelper);
+    if (!ok) return json({ error: 'not allowed' }, 403);
+    const tok = await saToken(env);
+    const evs = (await fsList(tok, 'events')).filter(e => e.schedPublic).sort((a, b) => (b.schedPublicAt || 0) - (a.schedPublicAt || 0));
+    for (const e of evs) {
+      const dr = await fsGet(tok, `events/${e.id}/admin/draw`); if (!dr) continue;
+      const sc = fobj(dr.fields).sched || {}, D = sc.days || {};
+      const days = Object.keys(D).sort().map(d => ({ d, teams: (D[d] || []).filter(t => (t.m || []).length).map(t => ({ l: t.l || '', m: (t.m || []).filter(Boolean) })) })).filter(x => x.teams.length);
+      if (days.length) return json({ ok: true, title: e.title || '', days });
+    }
+    return json({ ok: true, days: [] });
+  } catch (e) { return json({ error: String((e && e.message) || e) }, e && e.code ? e.code : 500); }
 }
 async function whMembersRoute(req, env, json) {
   try {

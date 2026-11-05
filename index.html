@@ -2863,6 +2863,8 @@
             document.getElementById('btn-pick-by-qr').style.display = (borrowerModalOnConfirm || !SHOW_PERSON_GROUPS) ? 'none' : 'flex';
 
             if (selectedGroupIndex === null) {
+                if (whSched && SHOW_PERSON_GROUPS) selectorContainer.appendChild(schedDayBar(() => renderBorrowerSelectorUI()));
+                loadWhSched();
                 groups.forEach((group, idx) => {
                     const card = document.createElement('div');
                     card.className = 'borrower-card';
@@ -2921,7 +2923,7 @@
                         <div class="borrower-card-name">${escapeHtml(itemName)}</div>
                     `;
                     card.onclick = () => {
-                        currentBorrowTarget = `${currentGroup.groupName} - ${itemName}`;
+                        currentBorrowTarget = currentGroup.virtual ? targetForUser(itemName) : `${currentGroup.groupName} - ${itemName}`;
                         document.getElementById('selected-target-preview').innerText = `已選擇: [ ${currentBorrowTarget} ]`;
                         document.getElementById('btn-confirm-borrow').disabled = false;
                         
@@ -3370,6 +3372,8 @@
             el.innerHTML = `<div style="color:#8e8e93; font-size:12px;">尚未設定領用群組</div>`;
             return;
         }
+        if (whSched && SHOW_PERSON_GROUPS) { const bar = schedDayBar(() => renderLookupTargetChips()); bar.style.gridColumn = ''; bar.style.width = '100%'; el.appendChild(bar); }
+        loadWhSched();
         getSelectableGroups().forEach(g => {
             const groupWrap = document.createElement('div');
             groupWrap.className = 'lookup-group-wrap';
@@ -3383,7 +3387,7 @@
             const chipsRow = document.createElement('div');
             chipsRow.style.cssText = 'display:flex; flex-wrap:wrap;';
             (g.items || []).forEach(itemName => {
-                const target = `${g.groupName} - ${itemName}`;
+                const target = g.virtual ? targetForUser(itemName) : `${g.groupName} - ${itemName}`;
                 const btn = document.createElement('button');
                 btn.className = 'apple-btn secondary lookup-chip';
                 btn.style.cssText = 'padding:8px 12px; font-size:12px; margin:0 6px 6px 0;';
@@ -3430,16 +3434,17 @@
             return;
         }
 
-        const holdings = [];
+        const holdings = [], isPerson = (usersCache || []).some(u => u.account === targetName(target));
+        const sameT = k => k === target || (isPerson && targetName(k) === targetName(target));   // 同一個人不管當初記在哪個分類都算
         boxesCache.forEach(b => {
             (b.items || []).forEach(it => {
                 if (it.itemType === 'consumable') {
-                    const heldQty = (it.holdings && it.holdings[target]) || 0;
+                    const heldQty = Object.entries(it.holdings || {}).reduce((a, [k, v]) => a + (sameT(k) ? (Number(v) || 0) : 0), 0);
                     if (heldQty > 0) holdings.push({ box: b, item: it, count: heldQty, isConsumable: true });
                     return;
                 }
                 ensureUnits(it);
-                const count = it.units.filter(u => u.status === 'out' && u.borrower === target).length;
+                const count = it.units.filter(u => u.status === 'out' && sameT(u.borrower)).length;
                 if (count > 0) holdings.push({ box: b, item: it, count });
             });
         });
@@ -5233,11 +5238,42 @@
 
     // 手動群組 + 自動產生的群組：已通過審核、不在任何手動群組的成員，依「分類」分組（沒分類的歸「成員」）
     const SHOW_PERSON_GROUPS = true;    // 顯示「人員」：已通過審核的成員依分類自動分組（快速出貨選對象、去處查詢都看得到）
+    // 人員分類：有公開的排班 → 依「排班日期」分（選一天，列出那天各組的人）；沒有排班才依證照分類
+    let whSched = null, whSchedAt = 0, whSchedDay = '';
+    async function loadWhSched(force) {
+        if (!canScan() || !auth.currentUser || (!force && Date.now() - whSchedAt < 300000)) return;
+        whSchedAt = Date.now();
+        try { const idToken = await auth.currentUser.getIdToken();
+            const r = await fetch(AUTH_URL + '/wh-sched', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken }) });
+            const j = await r.json(); whSched = j && j.days && j.days.length ? j : null;
+            if (whSched && !whSched.days.some(x => x.d === whSchedDay)) { const t = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10); whSchedDay = (whSched.days.find(x => x.d >= t) || whSched.days[0]).d; }
+        } catch (e) { whSchedAt = 0; }
+        try { if (document.getElementById('borrower-modal').style.display !== 'none' && selectedGroupIndex === null) renderBorrowerSelectorUI(); } catch (e) {}
+        try { if (document.getElementById('lookup-view').style.display === 'block') renderLookupTargetChips(); } catch (e) {}
+    }
+    const WD = '日一二三四五六', schedMd = d => { const t = new Date(d + 'T00:00:00'); return `${t.getMonth() + 1}/${t.getDate()}（${WD[t.getDay()]}）`; };
+    // 日期選擇列（出貨選對象、去處查詢共用）
+    function schedDayBar(onPick) {
+        const w = document.createElement('div');
+        w.style.cssText = 'grid-column:1/-1; display:flex; gap:6px; overflow-x:auto; padding:2px 0 8px; margin-bottom:4px; -webkit-overflow-scrolling:touch;';
+        w.innerHTML = `<span style="flex:none; align-self:center; font-size:12px; font-weight:800; color:#8e8e93;">📅 排班</span>` + whSched.days.map(x => `<button type="button" data-sd="${x.d}" style="flex:none; border:1.5px solid ${x.d === whSchedDay ? '#c2414f' : '#e5ddd9'}; background:${x.d === whSchedDay ? '#c2414f' : '#fff'}; color:${x.d === whSchedDay ? '#fff' : '#3a3a3c'}; border-radius:999px; padding:6px 12px; font-size:13px; font-weight:800; font-family:inherit;">${schedMd(x.d)}</button>`).join('');
+        w.querySelectorAll('[data-sd]').forEach(b => b.onclick = () => { whSchedDay = b.dataset.sd; onPick(); });
+        setTimeout(() => { const on = w.querySelector(`[data-sd="${whSchedDay}"]`); if (on) on.scrollIntoView({ inline: 'center', block: 'nearest' }); }, 0);
+        return w;
+    }
     function getSelectableGroups() {
         const groups = borrowerGroupsCache.map(g => ({ ...g }));
         if (!SHOW_PERSON_GROUPS) return groups;
         const known = new Set();
         borrowerGroupsCache.forEach(g => (g.items || []).forEach(n => known.add(n)));
+        const day = whSched && whSched.days.find(x => x.d === whSchedDay);
+        if (day) {   // 依排班日期：那天的各組，其他人放「其他人員」
+            const onDay = new Set();
+            day.teams.forEach(t => { const items = t.m.filter(n => !known.has(n)); items.forEach(n => onDay.add(n)); if (items.length) groups.push({ groupName: `${schedMd(day.d).replace(/（.）/, '')} ${t.l}`, items, virtual: true, sched: true }); });
+            const rest = (usersCache || []).filter(u => uStatus(u) === 'approved' && !u.removed && u.account && !known.has(u.account) && !onDay.has(u.account)).map(u => u.account);
+            if (rest.length) groups.push({ groupName: '其他人員', items: rest, virtual: true });
+            return groups;
+        }
         const byGroup = new Map();
         (usersCache || []).filter(u => uStatus(u) === 'approved' && !u.removed && u.account && !known.has(u.account)).forEach(u => {
             const g = u.category || MEMBER_GROUP;
