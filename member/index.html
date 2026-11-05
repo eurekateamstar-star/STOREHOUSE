@@ -1973,7 +1973,7 @@
           <table class="lc-tb dr"><tr><th></th>${DR.map(([, n]) => `<th>${n.replace('綁好', '')}</th>`).join('')}</tr>${M.map(m => `<tr><td class="nm">${esc(m.name)}</td>${DR.map(([k]) => `<td><button class="lc-dot g ${ok(m, k) ? 'on' : ''}" data-dr="${m.k}|${k}">${ok(m, k) ? '✓' : ''}</button></td>`).join('')}</tr>`).join('')}</table>`;
       if (tab === 'charge') body = `<div class="lc-tip2">🌙 就寢前確認整組都插上充電</div><div class="lc-g3">${CH.map(([k, n]) => `<button class="lc-tile ${chg[k] ? 'y' : ''}" data-ch="${k}"><span>${IC(k)}</span><b>${n}</b><small>${chg[k] ? '已充電' : '未充電'}</small><i>${chg[k] ? '🔋' : ''}</i></button>`).join('')}</div>`;
       shell(`<style>
-        .lc-h{display:flex;justify-content:space-between;align-items:center}.lc-h b{font-size:20px}.lc-x{border:none;background:#f1f5f9;border-radius:50%;width:34px;height:34px;font-size:16px}
+        .lc-h{display:flex;justify-content:space-between;align-items:center}.lc-tt{display:flex;align-items:center;gap:10px}.lc-ava{position:relative;flex:none;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#ffe4d1,#fff3ea);box-shadow:inset 0 0 0 2px #f6c9a8}.lc-ava img{width:100%;height:100%;border-radius:50%;object-fit:cover;object-position:top}.lc-ava i{position:absolute;top:-11px;left:50%;transform:translateX(-50%) rotate(-8deg);font-style:normal;font-size:17px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}.lc-h b{font-size:20px}.lc-x{border:none;background:#f1f5f9;border-radius:50%;width:34px;height:34px;font-size:16px}
         .lc-tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:12px 0 10px}
         .lc-tabs button{position:relative;border:2px solid #f1e3dc;background:#fff;border-radius:14px;padding:7px 2px 6px;font:inherit;font-size:13px;font-weight:900;color:#6b7280;line-height:1.25}
         .lc-tabs button span{display:block;font-size:20px}.lc-tabs .lc-im{width:30px;height:30px}.lc-im{display:block;margin:0 auto;object-fit:contain}.lc-tile .lc-im{width:58px;height:58px}.lc-hd .lc-im{display:inline-block;width:26px;height:26px;vertical-align:-6px;margin-right:2px}.lc-tabs button.on{border-color:#c2414f;background:#fff1f2;color:#c2414f}
@@ -1994,7 +1994,7 @@
         .lc-tb.dr .lc-dot{width:38px;height:38px}
         .lc-bot{position:sticky;bottom:-24px;margin:12px -14px -24px;padding:10px 14px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(#fff0,#fff 25%)}
         .lc-sv{display:block;width:100%;border:none;border-radius:14px;padding:14px;font:inherit;font-size:16px;font-weight:900;color:#fff;background:linear-gradient(90deg,#D65A68,#F08339);box-shadow:0 6px 16px rgba(214,90,104,.3)}</style>
-        <div class="lc-h"><b>👑 小隊長檢查</b><button class="lc-x" onclick="document.getElementById('lead-ov').remove()">✕</button></div>
+        <div class="lc-h"><b class="lc-tt"><span class="lc-ava"><img src="/member/ic/leader.png" alt=""><i>👑</i></span>小隊長檢查</b><button class="lc-x" onclick="document.getElementById('lead-ov').remove()">✕</button></div>
         <div style="font-size:14px;color:#6b7280;margin-top:2px">${dd.getMonth() + 1}/${dd.getDate()}（${WK[dd.getDay()]}）・<b style="color:#c2414f">${esc(J.team)}</b>・${M.length} 人</div>
         <div class="lc-tabs">${TABS.map(([f, ic, n]) => `<button class="${tab === f ? 'on' : ''} ${C[f + 'At'] ? 'done' : ''}" data-tab="${f}"><span>${ic}</span>${n}</button>`).join('')}</div>
         <div class="lc-hd"><b>${TABS[T][1]} ${{ att: '出發前・到勤點名', meal: '今天用餐', eq: '小組配備盤點', dress: '隊員服裝儀容', charge: '就寢前・充電' }[tab]}</b>${done(tab)}</div>
