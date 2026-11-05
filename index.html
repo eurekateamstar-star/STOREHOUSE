@@ -3944,14 +3944,16 @@
         const ov = document.createElement('div'); ov.className = 'exp-ov'; ov.id = 'contents-ov'; ov.style.zIndex = 9600;
         const co = Number(it.checkedOutCount) || 0;
         const u = unitNo && Array.isArray(it.units) ? it.units[unitNo - 1] : null;
-        const st = u ? (u.status === 'out' ? `<span style="color:#b42318">🔴 這件已外借：${escapeHtml(targetName(u.borrower || '不詳'))}</span>` : '<span style="color:#15803d">🟢 這件在庫</span>')
+        const outBy = u && u.status === 'out' ? targetName(u.borrower || '不詳') : '';
+        const outBar = outBy ? `<div style="display:flex;align-items:center;gap:10px;margin:2px 0 10px;padding:10px 14px;border-radius:14px;background:linear-gradient(90deg,#dc2626,#ef4444);color:#fff;box-shadow:0 4px 12px rgba(220,38,38,.28)"><span style="flex:none;font-size:12.5px;font-weight:900;background:rgba(255,255,255,.22);border-radius:999px;padding:3px 10px">🔴 外借中</span><b style="flex:1;min-width:0;font-size:24px;font-weight:900;letter-spacing:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(outBy)}</b><span style="flex:none;font-size:12px;opacity:.9;font-weight:700">在他身上</span></div>` : '';
+        const st = u ? (u.status === 'out' ? '' : '<span style="color:#15803d">🟢 這件在庫</span>')
             : co > 0 ? `<span style="color:#b42318">🔴 已外借 ${co} ${escapeHtml(UNIT(it))}</span>` : `<span style="color:#15803d">🟢 在庫 ${Number(it.qty) || 0} ${escapeHtml(UNIT(it))}</span>`;
         // 補包核對要用的清單（這一件那組；沒指定件數就全部合併）
         const ks = kitsFor(it, unitNo);
         const list = []; ks.forEach(k => k.rows.forEach(r => { if (!list.some(x => x.n === r.n)) list.push(r); }));
         let tab = 'view', res = [];
         ov.innerHTML = `<div class="exp-card" style="max-height:94vh">
-            <div class="exp-h" style="color:#1f2937;margin-bottom:6px">${it.imageUrl ? `<img src="${escapeHtml(it.imageUrl)}" alt="" style="width:46px;height:46px;border-radius:10px;object-fit:cover;margin-right:10px;flex:none">` : ''}<span style="flex:1;min-width:0">${escapeHtml(it.name)}${unitNo ? ` <span style="color:#c2410c">第 ${unitNo} 件</span>` : ''}<small style="display:block;font-size:12.5px;color:#8a7f7a;font-weight:600;margin-top:2px">📦 ${escapeHtml(boxName)}・${st}</small></span><button type="button" class="exp-x">✕</button></div>
+            <div class="exp-h" style="color:#1f2937;margin-bottom:6px">${it.imageUrl ? `<img src="${escapeHtml(it.imageUrl)}" alt="" style="width:46px;height:46px;border-radius:10px;object-fit:cover;margin-right:10px;flex:none">` : ''}<span style="flex:1;min-width:0">${escapeHtml(it.name)}${unitNo ? ` <span style="color:#c2410c">第 ${unitNo} 件</span>` : ''}<small style="display:block;font-size:12.5px;color:#8a7f7a;font-weight:600;margin-top:2px">📦 ${escapeHtml(boxName)}${st ? '・' + st : ''}</small></span><button type="button" class="exp-x">✕</button></div>${outBar}
             <div class="ks-tabs" style="display:flex;background:#f3efed;border-radius:12px;padding:3px;margin-bottom:8px"><button type="button" data-tab="view" style="all:unset;flex:1;text-align:center;padding:8px;border-radius:9px;font-weight:800;font-size:14px;cursor:pointer">📋 看內容</button><button type="button" data-tab="check" style="all:unset;flex:1;text-align:center;padding:8px;border-radius:9px;font-weight:800;font-size:14px;cursor:pointer">✅ 補包核對</button></div>
             <div class="ks-body"></div></div>`;
         const body = ov.querySelector('.ks-body');
