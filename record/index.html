@@ -70,6 +70,8 @@
       .draft-m b { font-size: 17px; color: #222; } .draft-m small { color: #aaa; }
       .draft-now { margin-left: 6px; font-size: 11px; background: #f08339; color: #fff; border-radius: 999px; padding: 1px 8px; }
       .draft-miss { color: #b45309; font-weight: 700; }
+      .draft-pg { display: flex; align-items: center; gap: 8px; margin: 4px 0 2px; } .draft-pg span { font-size: 12px; font-weight: 800; color: #555; white-space: nowrap; }
+      .draft-pgb { flex: 1; height: 8px; border-radius: 99px; background: #f1e3dc; overflow: hidden; } .draft-pgb i { display: block; height: 100%; border-radius: 99px; }
       .draft-del { flex: none; border: none; background: #fef2f2; color: #b91c1c; border-radius: 10px; padding: 8px 12px; font-weight: 700; font-family: inherit; }
 
       .btn-next { background: linear-gradient(135deg, #F08339 0%, #F4A674 100%); color: white; box-shadow: 0 4px 15px rgba(240, 131, 57, 0.3); }
@@ -3572,19 +3574,20 @@
     const escD = x => String(x == null ? '' : x).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const draftTitle = d => { const P = d.patient || {}; return (P.name && P.name !== '不詳') ? P.name : (P.armband && P.armband !== '無' ? '臂章 ' + P.armband : '無名氏'); };
     const draftLoc = d => (d.location && d.location.address) || '';
-    function draftMissing(d) {
-      const m = [], S = d.scene || {}, T = d.treatment || {}, F = d.followUp || {};
-      if (!(S.problems || []).length) m.push('問題類型'); if (!S.mainComplaint) m.push('主訴');
-      if (!(T.actions || []).length) m.push('處置'); if (!F.postVitals || F.postVitals === '未填寫') m.push('生命徵象'); if (!F.handoverInfo) m.push('交班');
-      return m;
+    // 送出前要完成的項目（進度用）
+    function draftItems(d) {
+      const P = d.patient || {}, S = d.scene || {}, T = d.treatment || {}, F = d.followUp || {}, L = d.location || {};
+      return [['姓名', P.name && P.name !== '不詳'], ['地點', !!L.address], ['定位', !!(L.lat && L.lng)], ['問題類型', (S.problems || []).length > 0], ['主訴', !!S.mainComplaint],
+        ['處置', (T.actions || []).length > 0], ['生命徵象', !!F.postVitals && F.postVitals !== '未填寫'], ['交班', !!F.handoverInfo]];
     }
+    const draftMissing = d => draftItems(d).filter(x => !x[1]).map(x => x[0]);
     window.saveDraft = function() {
       if (editingId) return;
       const d = buildRecordData(new FormData(document.getElementById('ambulanceForm')));
       delete d.timestamp;
       const P = d.patient || {};
-      if ((!P.name || P.name === '不詳') && !draftLoc(d) && !(d.scene || {}).mainComplaint && (!P.armband || P.armband === '無'))
-        return window.showNotice('error', '還沒有內容', '先填姓名或地點再暫存。');
+      if (!P.name || P.name === '不詳') { window.showNotice('error', '請先填姓名', '暫存最少要填「姓名」，才找得回來。'); currentStep = 0; window.updateWizard();
+        setTimeout(() => { const el = document.querySelector('[name=pName]'); if (el) { el.focus(); el.closest('.row') && el.closest('.row').classList.add('field-error'); } }, 300); return; }
       const id = draftId || ('d' + Date.now().toString(36));
       d._draft = id;
       const list = draftsGet().filter(x => x.id !== id), item = { id, at: Date.now(), d };
@@ -3599,10 +3602,12 @@
       let ov = document.getElementById('draftOverlay');
       if (!ov) { ov = document.createElement('div'); ov.id = 'draftOverlay'; ov.className = 'draft-ov'; document.body.appendChild(ov); ov.onclick = e => { if (e.target === ov) ov.style.display = 'none'; }; }
       ov.innerHTML = `<div class="draft-box"><div class="draft-h"><b>📝 暫存紀錄（${list.length}）</b><button type="button" onclick="document.getElementById('draftOverlay').style.display='none'">✕</button></div>
-        <div class="draft-tip">只存在這支手機。點一筆繼續補資料，填完按「確認上傳」才會送出。</div>
+        <div class="draft-tip">只存在這支手機。最少要填姓名。點一筆繼續補資料，填完按「確認上傳」才會送出。</div>
         ${list.map(x => { const ms = draftMissing(x.d), t = new Date(x.at);
+          const it = draftItems(x.d), done = it.filter(v => v[1]).length, pct = Math.round(done / it.length * 100);
           return `<div class="draft-it ${x.id === draftId ? 'cur' : ''}"><div class="draft-m" onclick="window.resumeDraft('${x.id}')"><b>${escD(draftTitle(x.d))}</b>${x.id === draftId ? '<span class="draft-now">補填中</span>' : ''}
             <div>${escD(x.d.caseTime || '')}${draftLoc(x.d) ? '・' + escD(draftLoc(x.d)) : ''}</div>
+            <div class="draft-pg"><div class="draft-pgb"><i style="width:${pct}%;background:${pct === 100 ? '#16a34a' : pct >= 50 ? '#f08339' : '#e5484d'}"></i></div><span>完成 ${done}/${it.length}</span></div>
             <div class="draft-miss">${ms.length ? '還沒填：' + ms.join('、') : '✅ 都填好了，可以送出'}</div><small>暫存於 ${t.getMonth() + 1}/${t.getDate()} ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}</small></div>
             <button type="button" class="draft-del" onclick="window.deleteDraft('${x.id}')">刪除</button></div>`; }).join('') || '<div class="draft-tip" style="text-align:center;padding:24px 0">沒有暫存</div>'}</div>`;
       ov.style.display = 'flex';
@@ -3630,7 +3635,8 @@
       if (!bar) return;
       const cur = draftId && draftsGet().find(x => x.id === draftId);
       bar.style.display = (n && !editingId) ? 'flex' : 'none';
-      bar.innerHTML = cur ? `<span>📝 補填暫存中：<b>${escD(draftTitle(cur.d))}</b></span><span class="draft-n">${n > 1 ? `還有 ${n - 1} 筆 ›` : '›'}</span>`
+      const prog = x => { const it = draftItems(x.d); return `${it.filter(v => v[1]).length}/${it.length}`; };
+      bar.innerHTML = cur ? `<span>📝 補填暫存中：<b>${escD(draftTitle(cur.d))}</b>（完成 ${prog(cur)}）</span><span class="draft-n">${n > 1 ? `還有 ${n - 1} 筆 ›` : '›'}</span>`
         : `<span>📝 有 <b>${n}</b> 筆暫存還沒送出</span><span class="draft-n">點我補資料 ›</span>`;
     }
 
