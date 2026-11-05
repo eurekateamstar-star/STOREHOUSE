@@ -92,6 +92,7 @@ export default {
     if (path === '/guardian-no') return guardianNoRoute(req, env, json);
     if (path === '/item-cats') return itemCatsRoute(req, env, json);
     if (path === '/wh-members') return whMembersRoute(req, env, json);
+    if (path === '/whtake') return whTakeRoute(req, env, json);
 
     try {
       const { accessToken } = await req.json();
@@ -211,7 +212,7 @@ async function fsUser(idToken, uid) {
   if (!r.ok) throw Object.assign(new Error('not allowed'), { code: r.status === 403 ? 403 : 401 });
   const f = (await r.json()).fields || {};
   const v = k => f[k] && (f[k].stringValue ?? f[k].booleanValue);
-  return { role: v('role'), status: v('status'), adminMember: v('adminMember') === true, adminWarehouse: v('adminWarehouse') === true, warehouseHelper: v('warehouseHelper') === true, warehouseRemoved: v('warehouseRemoved') === true };
+  return { role: v('role'), status: v('status'), adminMember: v('adminMember') === true, adminWarehouse: v('adminWarehouse') === true, warehouseHelper: v('warehouseHelper') === true, warehouseRemoved: v('warehouseRemoved') === true, realName: v('realName') || '' };
 }
 const memberAdmin = u => !!u && u.status === 'approved' && (u.role === 'admin' || u.adminMember);
 
@@ -664,6 +665,54 @@ async function itemCatsRoute(req, env, json) {
   } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
 }
 // ===== 倉庫進出庫小幫手：只拿可領用成員的名字／分類／頭貼（不含身分證等個資）=====
+// ===== 倉庫：團員自己掃物品 QR 接收（在庫 → 領取；在別人手上 → 轉交給自己）=====
+// 只改那一件的狀態（直接改 Firestore 原始資料，其他欄位原封不動），並寫一筆進出紀錄
+async function whTakeRoute(req, env, json) {
+  try {
+    const { idToken, code, target } = await req.json();
+    if (!idToken || !/^ITEM_[^_]+_\d+_[A-Za-z0-9-]+$/.test(code || '')) return json({ error: '請掃「每一件」物品上的 QR 標籤' }, 400);
+    const uid = uidOfToken(idToken), me = await fsUser(idToken, uid);
+    if (!me || me.status !== 'approved' || me.warehouseRemoved || !me.realName) return json({ error: '只有已通過審核的團員可以接收' }, 403);
+    const name = String(me.realName).trim(), tgt = String(target || '').trim();
+    const tName = t => { t = String(t || ''); const i = t.indexOf(' - '); return i === -1 ? t : t.slice(i + 3); };
+    if (!tgt || tName(tgt) !== name) return json({ error: 'bad target' }, 400);
+    const [, boxId, , unitUid] = code.split('_');
+    const tok = await saToken(env);
+    const S = v => v && v.stringValue !== undefined ? v.stringValue : '';
+    const findIn = d => { const vals = (((d.fields || {}).items || {}).arrayValue || {}).values || [];
+      for (let i = 0; i < vals.length; i++) { const f = (vals[i].mapValue || {}).fields || {}; const us = ((f.units || {}).arrayValue || {}).values || [];
+        for (let j = 0; j < us.length; j++) if (S(((us[j].mapValue || {}).fields || {}).uid) === unitUid) return { i, j }; } return null; };
+    for (let attempt = 0; attempt < 3; attempt++) {
+      let d = await fsGet(tok, `warehouse_boxes/${encodeURIComponent(boxId)}`), at = d && findIn(d);
+      if (!at) { const all = await fetch(`${FS}/warehouse_boxes?pageSize=300`, { headers: { Authorization: 'Bearer ' + tok } }).then(r => r.json());
+        for (const x of all.documents || []) { const a = findIn(x); if (a) { d = x; at = a; break; } } }
+      if (!d || !at) return json({ error: '找不到這一件物品（標籤可能已作廢），請找管理員' }, 404);
+      const items = d.fields.items.arrayValue.values, itF = items[at.i].mapValue.fields;
+      if (S(itF.itemType) === 'consumable') return json({ error: '耗材請找管理員出庫' }, 400);
+      const units = itF.units.arrayValue.values, uF = units[at.j].mapValue.fields || (units[at.j].mapValue.fields = {});
+      const st = S(uF.status) || 'in', from = S(uF.borrower);
+      if (st === 'out' && tName(from) === name) return json({ error: '這一件已經在你名下了', already: true, item: S(itF.name), unitLabel: `第 ${at.j + 1}/${units.length} 件` }, 409);
+      const now = Date.now();
+      uF.status = { stringValue: 'out' }; uF.borrower = { stringValue: tgt }; uF.outAt = { integerValue: String(now) };
+      uF.outBy = { stringValue: name }; uF.outByHelper = { booleanValue: false }; uF.outBySelf = { booleanValue: true };
+      const outs = units.filter(u => S(((u.mapValue || {}).fields || {}).status) === 'out');
+      itF.qty = { integerValue: String(units.length - outs.length) }; itF.checkedOutCount = { integerValue: String(outs.length) };
+      itF.borrower = { stringValue: outs.length ? S(outs[outs.length - 1].mapValue.fields.borrower) : '' };
+      const docPath = d.name.split('/documents/')[1];
+      const w = await fetch(`${FS}/${docPath}?updateMask.fieldPaths=items&currentDocument.updateTime=${encodeURIComponent(d.updateTime)}`, { method: 'PATCH',
+        headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify({ fields: { items: d.fields.items } }) });
+      if (w.status === 400 || w.status === 409 || w.status === 412) continue;   // 剛好有人同時改這一箱 → 重讀再試
+      if (!w.ok) return json({ error: 'write failed ' + w.status }, 500);
+      const action = st === 'out' ? '轉交' : '出庫', itemName = S(itF.name), unitLabel = `第 ${at.j + 1}/${units.length} 件`, boxName = S(d.fields.name);
+      const t = new Date(now + 8 * 3600e3), timeStr = `${t.getUTCMonth() + 1}/${t.getUTCDate()} ${String(t.getUTCHours()).padStart(2, '0')}:${String(t.getUTCMinutes()).padStart(2, '0')}`;
+      await fetch(`${FS}/warehouse_logs`, { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: Object.fromEntries(Object.entries({ type: action, itemName, qty: 1, boxName, target: st === 'out' ? `${from || '不詳'} → ${tgt}` : tgt,
+          unitLabel, unitUid, timestamp: now, timeStr, operator: name, operatorId: uid, operatorRole: 'self', selfScan: true }).map(([k, v]) => [k, tv(v)])) }) }).catch(() => {});
+      return json({ ok: true, action, from: st === 'out' ? from : '', item: itemName, unitLabel, box: boxName });
+    }
+    return json({ error: '這一箱剛好有人在改，請再掃一次' }, 409);
+  } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
+}
 async function whMembersRoute(req, env, json) {
   try {
     const { idToken } = await req.json();

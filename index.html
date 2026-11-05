@@ -874,6 +874,11 @@
                     <div class="menu-card-title">我的 QR 與持有物品</div>
                     <div class="menu-card-desc">個人 QR（給管理員掃）、目前身上有什麼</div>
                 </div>
+                <div class="menu-card" id="menu-card-take" onclick="openScanner('take')">
+                    <div class="menu-card-icon">📲</div>
+                    <div class="menu-card-title">掃 QR 接收物品</div>
+                    <div class="menu-card-desc">救護包等，掃一下就在你名下；交接時對方再掃</div>
+                </div>
                 <div class="menu-card" id="menu-card-locate" onclick="openScanner('locate')">
                     <div class="menu-card-icon">🔍</div>
                     <div class="menu-card-title">掃 QR 找位置</div>
@@ -2233,7 +2238,8 @@
         ['logs', 'lookup'].forEach(k => setDisp('menu-card-' + k, admin));
         ['in', 'out'].forEach(k => setDisp('menu-card-' + k, canScan()));   // 小幫手也可以進出庫
         setDisp('menu-card-helpers', admin);
-        const loc = _el('menu-card-locate'); if (loc) loc.style.gridColumn = canScan() ? '' : 'span 2';
+        const loc = _el('menu-card-locate'); if (loc) loc.style.gridColumn = '';
+        const tk = _el('menu-card-take'); if (tk) tk.style.gridColumn = canScan() ? 'span 2' : '';
         setDisp('btn-item-history', admin);
         if (!admin) {
             if (isContentEditActive) toggleContentEditMode();
@@ -3473,7 +3479,7 @@
 
     window.openScanner = function(mode) {
         if (mode === 'helper' && !isAdmin()) return showToast('🔒 只有管理員可以設定小幫手', 'error', 1200);
-        if (mode !== 'locate' && !canScan()) return showToast('🔒 只有管理員或進出庫小幫手可以進出貨', 'error', 1200);
+        if (mode !== 'locate' && mode !== 'take' && !canScan()) return showToast('🔒 只有管理員或進出庫小幫手可以進出貨', 'error', 1200);
         scannerMode = mode;
         lastScannedCode = null;
         lastScannedAt = 0;
@@ -3489,6 +3495,7 @@
         if (mode === 'locate') { title = '🔍 掃 QR 找位置'; hint = '對準箱子或物品 QR Code 尋找位置'; }
         else if (mode === 'in') { title = '📥 快速進貨 (還回)'; hint = '掃物品 QR 還回；掃箱子 QR 可整箱一次入庫'; }
         else if (mode === 'out') { title = `📤 快速出貨`; hint = '掃物品 QR 出庫；掃箱子 QR 可勾選整箱帶走；掃成員 QR 換對象'; }
+        else if (mode === 'take') { title = '📲 掃 QR 接收物品'; hint = '對準物品上的 QR（每一件都有自己的 QR）\n在庫的 → 登記到你名下；在別人手上的 → 交接給你'; }
         else if (mode === 'pickperson') { title = '👤 掃成員 QR 選人'; hint = '請對準成員手機上的「我的 QR」'; }
         else if (mode === 'helper') { title = '🧰 掃 QR 設定小幫手'; hint = '請對方打開「我的 QR 與持有物品」，對準他的個人 QR'; }
 
@@ -3566,6 +3573,7 @@
 
     async function handleGlobalScanInner(scannedText, now) {
         if (!boxesCache) boxesCache = [];
+        if (scannerMode === 'take') { await handleTake(scannedText, now); return; }
         if (scannedText.startsWith('USER_')) { await handleUserQr(scannedText); return; }
         if (batchOpen) return;
         {   // 箱子 QR：BOX_<id>（舊的直接是箱子 id 也可以）
@@ -5312,6 +5320,48 @@
         renderPersonHoldings();
         loadPersonLogs(personViewUser.account);
     }
+
+    // ===== 團員自己掃 QR 接收（在庫 → 領取；在別人手上 → 交接給自己）。寫入由伺服器處理，一般團員不能直接改倉庫 =====
+    let takeBusy = false;
+    async function handleTake(code, now) {
+        if (takeBusy) return;   // 同一個 QR 連續掃的冷卻，handleGlobalScan 已經處理
+        if (!/^ITEM_[^_]+_\d+_[A-Za-z0-9-]+$/.test(code)) { scanErrorFeedback('⚠️', code.startsWith('ITEM_') ? '這是耗材或整批的 QR\n請找管理員出庫' : '請掃物品上的 QR 標籤\n（每一件都有自己的 QR）'); return; }
+        if (!currentUser || !auth.currentUser) { scanErrorFeedback('⚠️', '還沒登入完成，請稍等'); return; }
+        takeBusy = true; showToast('⏳ 登記中…', 'info', 800);
+        try {
+            const idToken = await auth.currentUser.getIdToken();
+            const r = await fetch(AUTH_URL + '/whtake', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, code, target: targetForUser(currentUser.account) }) });
+            const j = await r.json().catch(() => ({}));
+            if (!r.ok || j.error) { scanErrorFeedback(j.already ? '👌' : '⚠️', j.already ? `${j.item || ''}（${j.unitLabel || ''}）\n已經在你名下了` : (j.error || '登記失敗，請再掃一次')); return; }
+            if (j.action === '轉交') scanSuccessFeedback('🤝', `交接完成\n${j.item}（${j.unitLabel}）\n${targetName(j.from) || '不詳'} → ${currentUser.account}`);
+            else scanSuccessFeedback('📲', `已登記在你名下\n${j.item}（${j.unitLabel}）\n從「${j.box}」領取`);
+            showToast(j.action === '轉交' ? `🤝 ${j.item} 已從 ${targetName(j.from) || '不詳'} 交接給你` : `📲 ${j.item} 已登記在你名下`, 'success', 1600);
+        } catch (e) { scanErrorFeedback('⚠️', '網路不穩，請再掃一次'); }
+        finally { takeBusy = false; }
+    }
+    // 一件物品的流向：誰領、交接給誰、何時入庫
+    window.showUnitFlow = async function (uid, title) {
+        let ov = document.getElementById('flow-ov');
+        if (!ov) { ov = document.createElement('div'); ov.id = 'flow-ov'; ov.style.cssText = 'position:fixed; inset:0; z-index:10050; background:rgba(0,0,0,.55); display:flex; align-items:flex-end; justify-content:center;'; document.body.appendChild(ov); ov.onclick = e => { if (e.target === ov) ov.remove(); }; }
+        const box = h => ov.innerHTML = `<div style="background:#1c1c1e; color:#fff; width:100%; max-width:560px; max-height:82vh; overflow-y:auto; border-radius:22px 22px 0 0; padding:18px 18px calc(22px + env(safe-area-inset-bottom));">
+            <div style="display:flex; justify-content:space-between; align-items:center;"><b style="font-size:18px;">📍 物品流向</b><button onclick="document.getElementById('flow-ov').remove()" style="border:none; background:#2c2c2e; color:#fff; width:34px; height:34px; border-radius:50%; font-size:16px;">✕</button></div>
+            <div style="font-size:13px; color:#8e8e93; margin:4px 0 14px;">${escapeHtml(title || '')}</div>${h}</div>`;
+        box('<div style="color:#8e8e93; text-align:center; padding:20px;">載入中…</div>');
+        try {
+            const snap = await getDocs(collection(db, "warehouse_logs")); const rows = [];
+            snap.forEach(d => { const l = d.data(); if (l.unitUid === uid) rows.push(l); });
+            rows.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+            if (!rows.length) return box('<div style="color:#8e8e93; text-align:center; padding:20px;">還沒有紀錄</div>');
+            const dot = l => l.type === '轉交' ? ['🤝', '#ff9f0a'] : l.type === '出庫' ? ['📤', '#ff453a'] : ['📥', '#30d158'];
+            const what = l => { const tg = String(l.target || '');
+                if (l.type === '轉交') { const [a, b] = tg.split(' → '); return `<b>${escapeHtml(targetName(a))}</b> 交接給 <b>${escapeHtml(targetName(b || ''))}</b>`; }
+                if (l.type === '出庫') return `<b>${escapeHtml(targetName(tg))}</b> ${l.selfScan ? '掃描領取' : '領用'}`;
+                return `入庫歸位${tg.includes('原借用') ? `（原本在 ${escapeHtml(targetName(tg.replace(/^.*原借用:\s*/, '').replace(/\)$/, '')))}）` : ''}`; };
+            box(rows.map((l, i) => { const [ic, c] = dot(l);
+                return `<div style="display:flex; gap:12px;"><div style="display:flex; flex-direction:column; align-items:center;"><div style="width:36px; height:36px; border-radius:50%; background:${c}22; border:2px solid ${c}; display:flex; align-items:center; justify-content:center; font-size:16px;">${ic}</div>${i < rows.length - 1 ? `<div style="flex:1; width:2px; background:#3a3a3c; min-height:18px;"></div>` : ''}</div>
+                <div style="padding-bottom:16px; flex:1;"><div style="font-size:15px;">${what(l)}</div><div style="font-size:12px; color:#8e8e93; margin-top:3px;">${escapeHtml(l.timeStr || '')}${l.operator ? ' · ' + (l.selfScan ? '本人掃描' : '經手：' + escapeHtml(l.operator) + (l.operatorRole === 'helper' ? '（小幫手）' : '')) : ''}${l.boxName ? ' · 📦 ' + escapeHtml(l.boxName) : ''}</div></div></div>`; }).join(''));
+        } catch (e) { box('<div style="color:#ff453a; text-align:center; padding:20px;">讀取失敗</div>'); }
+    };
     function computeHoldings(account) {
         const rows = [];
         (boxesCache || []).forEach(b => (b.items || []).forEach((it, idx) => {
@@ -5325,7 +5375,7 @@
                 ensureUnits(it);
                 it.units.forEach((u, ui) => {
                     if (u.status === 'out' && targetName(u.borrower) === account) {
-                        rows.push({ name: it.name, qty: 1, box: b.name, label: `第 ${ui + 1}/${it.units.length} 件`, qr: `ITEM_${b.id}_${idx}_${u.uid}`, since: u.outAt || 0, by: u.outBy || '', byHelper: !!u.outByHelper });
+                        rows.push({ name: it.name, qty: 1, box: b.name, label: `第 ${ui + 1}/${it.units.length} 件`, qr: `ITEM_${b.id}_${idx}_${u.uid}`, uid: u.uid, since: u.outAt || 0, by: u.outBy || '', byHelper: !!u.outByHelper, self: !!u.outBySelf });
                     }
                 });
             }
@@ -5356,8 +5406,10 @@
                 <div style="font-weight:700; font-size:14px;">${escapeHtml(r.name)}${r.consumable ? ' <span style="font-size:10px; color:#0a84ff;">📦耗材</span> <span style="color:#ff453a;">x' + r.qty + '</span>' : ''}</div>
                 ${r.label ? `<div style="font-size:12px; color:#ff9500; margin-top:2px;">🔖 ${escapeHtml(r.label)}</div>` : ''}
                 <div style="font-size:12px; color:#8e8e93; margin-top:2px;">原位置：📦 ${escapeHtml(r.box)}</div>
-                ${(r.since || r.by) ? `<div style="font-size:11px; color:#ff9f0a; margin-top:2px;">${r.since ? '領用於 ' + fmtUserTime(r.since) : ''}${r.by ? ` · 發出${r.byHelper ? '小幫手' : '管理員'}：` + escapeHtml(r.by) : ''}</div>` : ''}`;
+                ${(r.since || r.by) ? `<div style="font-size:11px; color:#ff9f0a; margin-top:2px;">${r.since ? (r.self ? '掃描接收於 ' : '領用於 ') + fmtUserTime(r.since) : ''}${r.by && !r.self ? ` · 發出${r.byHelper ? '小幫手' : '管理員'}：` + escapeHtml(r.by) : ''}</div>` : ''}`;
             card.appendChild(info);
+            if (r.uid) { const fb = document.createElement('button'); fb.textContent = '📍 流向'; fb.style.cssText = 'flex:none; border:none; background:#2c2c2e; color:#ff9f0a; border-radius:10px; padding:8px 10px; font-size:12px; font-weight:700;';
+                fb.onclick = () => showUnitFlow(r.uid, `${r.name} · ${r.label}`); card.appendChild(fb); }
             el.appendChild(card);
         });
     }
@@ -5404,7 +5456,7 @@
         const names = Object.keys(by), multi = names.length > 1 || list.length > 1;
         const title = !opt.showItem ? k.verb : names.length === 1 ? escapeHtml(names[0]) : `${escapeHtml(names[0])}、${escapeHtml(names[1])}${names.length > 2 ? ` 等 ${names.length} 項` : ''}`;
         const action = l.type === '調整' ? '後台修改數量' : l.type === '出庫' ? `出庫給 ${escapeHtml(who || '—')}` : l.type === '轉交' ? `轉交 ${escapeHtml(who)}` : l.type === '消耗' ? `${escapeHtml(who || '')} 用掉` : who ? `${escapeHtml(who)} 還回` : '入庫';
-        const sub = [`<b style="color:${k.c}">${action}</b>`, escapeHtml(hm(l)), l.operator ? escapeHtml(l.operator) + (l.operatorRole === 'helper' ? '（小幫手）' : '') : ''].filter(Boolean).join('<i>·</i>');
+        const sub = [`<b style="color:${k.c}">${action}</b>`, escapeHtml(hm(l)), l.operator ? escapeHtml(l.operator) + (l.operatorRole === 'helper' ? '（小幫手）' : l.operatorRole === 'self' ? '（本人掃描）' : '') : ''].filter(Boolean).join('<i>·</i>');
         const ic = LG_IC[l.type] || '↓';
         const head = `<span class="lg-ic" style="background:${k.bg};color:${k.c}">${ic}</span>
             <span class="lg-mid"><span class="lg-name">${title}</span><span class="lg-meta">${sub}</span></span>
@@ -6587,6 +6639,8 @@
             if (u.labelAt) { dlBtn.style.color = '#15803d'; dlBtn.title = '已下載過，再按一次重新下載'; }
             dlBtn.onclick = () => downloadItemLabel(u.uid);
             if (isContentEditActive) row.appendChild(dlBtn);
+            else { const fb = document.createElement('button'); fb.className = 'apple-btn secondary'; fb.style.cssText = 'padding:6px 10px; font-size:11px; flex-shrink:0; color:#ff9f0a;'; fb.innerText = '📍 流向';
+                fb.onclick = ev => { ev.stopPropagation(); showUnitFlow(u.uid, `${it.name} · 第 ${uIdx + 1}/${it.units.length} 件`); }; row.appendChild(fb); }
 
             listEl.appendChild(row);
         });
