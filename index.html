@@ -3805,8 +3805,8 @@
                         unit.outBy = ''; unit.outByHelper = false;
                         actionType = '進貨';
                         recordTarget = `還回 (原借用: ${oldBorrower})`;
-                        scanSuccessFeedback('📥', `已入庫\n${item.name} (${unitLabel})\n→ 回到「${box.name}」`);
-                        showToast(`✅ 進貨/還回成功\n物品：${item.name} (${unitLabel})\n位置：${box.name}`, 'success', 700);
+                        scanSuccessFeedback('📥', `已入庫\n${item.name} (${unitLabel})\n${targetName(oldBorrower)} 歸還 → 「${box.name}」`);
+                        showToast(`✅ 已入庫\n物品：${item.name} (${unitLabel})\n👤 歸還人：${targetName(oldBorrower)}\n📦 回到：${box.name}`, 'success', 1600);
                     }
                     syncItemCounts(item);
 
@@ -3856,6 +3856,10 @@
 
             if (scannedItemInfo && kitsFor(scannedItemInfo.item, scannedItemInfo.unitNo).length) {
                 showContentsSheet(scannedItemInfo.item, scannedItemInfo.unitNo, box.name);
+            } else if (scannedItemInfo && scannedItemInfo.unitNo) {   // 掃的是某一件 → 直接說這一件在誰手上
+                const u = scannedItemInfo.item.units[scannedItemInfo.unitNo - 1], lab = `第 ${scannedItemInfo.unitNo}/${scannedItemInfo.item.units.length} 件`;
+                if (u && u.status === 'out') showToast(`📍 ${scannedItemInfo.name}（${lab}）\n\n🔴 已出庫，目前在：\n👤 ${targetName(u.borrower) || '不詳'}\n${u.outAt ? '🕒 ' + fmtUserTime(u.outAt) + (u.outBySelf ? ' 本人掃描接收' : ' 領用') : ''}\n\n📦 原位置：${box.name}`, 'out', 3200);
+                else showToast(`📍 ${scannedItemInfo.name}（${lab}）\n\n🟢 在庫中\n📦 位置：${box.name}`, 'success', 2400);
             } else if (scannedItemInfo) {
                 if (scannedItemInfo.checkedOutCount > 0) {
                     showToast(`📍 找到箱子：${box.name}\n\n🚨 【狀態：已出庫】\n物品：${scannedItemInfo.name}\n🔴 已外借未歸還：${scannedItemInfo.checkedOutCount} 件\n👤 出庫去向：${scannedItemInfo.borrower}\n\n💡 可至「進出貨紀錄」查詢詳細出貨單。`, 'out', 2000);
@@ -5327,39 +5331,62 @@
         if (takeBusy) return;   // 同一個 QR 連續掃的冷卻，handleGlobalScan 已經處理
         if (!/^ITEM_[^_]+_\d+_[A-Za-z0-9-]+$/.test(code)) { scanErrorFeedback('⚠️', code.startsWith('ITEM_') ? '這是耗材或整批的 QR\n請找管理員出庫' : '請掃物品上的 QR 標籤\n（每一件都有自己的 QR）'); return; }
         if (!currentUser || !auth.currentUser) { scanErrorFeedback('⚠️', '還沒登入完成，請稍等'); return; }
-        takeBusy = true; showToast('⏳ 登記中…', 'info', 800);
+        // 先用手機上的資料馬上顯示結果（不用等伺服器），伺服器失敗才改成錯誤提示
+        const [, bId, , uUid] = code.split('_');
+        let lb = null, li = null, lu = null;
+        for (const b of (boxesCache || [])) { for (const it of (b.items || [])) { const u = (it.units || []).find(x => x.uid === uUid); if (u) { lb = b; li = it; lu = u; break; } } if (lu) break; }
+        const me = currentUser.account, myT = targetForUser(me);
+        if (lu && lu.status === 'out' && targetName(lu.borrower) === me) { scanErrorFeedback('👌', `${li.name}\n已經在你名下了`); showToast(`👌 ${li.name} 已經在你名下了`, 'info', 1600); return; }
+        if (li && li.itemType === 'consumable') { scanErrorFeedback('⚠️', '耗材請找管理員出庫'); return; }
+        const label = lu ? `第 ${li.units.indexOf(lu) + 1}/${li.units.length} 件` : '';
+        const from = lu && lu.status === 'out' ? targetName(lu.borrower) || '不詳' : '';
+        const okMsg = (name, lab, fr, box) => fr ? [`🤝`, `交接完成\n${name}（${lab}）\n${fr} → ${me}`, `🤝 交接完成：${name}（${lab}）\n${fr} → ${me}`]
+            : [`📲`, `已登記在你名下\n${name}（${lab}）`, `📲 已登記在你名下：${name}（${lab}）\n從「${box}」領取`];
+        if (lu) {
+            const m = okMsg(li.name, label, from, lb.name); scanSuccessFeedback(m[0], m[1]); showToast(m[2], 'success', 2200);
+            lu.status = 'out'; lu.borrower = myT; lu.outAt = Date.now(); lu.outBy = me; lu.outBySelf = true; syncItemCounts(li);   // 畫面先更新
+            try { renderPersonHoldings(); } catch (e) {}
+        }
+        takeBusy = true;
         try {
             const idToken = await auth.currentUser.getIdToken();
-            const r = await fetch(AUTH_URL + '/whtake', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, code, target: targetForUser(currentUser.account) }) });
+            const r = await fetch(AUTH_URL + '/whtake', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, code, target: myT }) });
             const j = await r.json().catch(() => ({}));
-            if (!r.ok || j.error) { scanErrorFeedback(j.already ? '👌' : '⚠️', j.already ? `${j.item || ''}（${j.unitLabel || ''}）\n已經在你名下了` : (j.error || '登記失敗，請再掃一次')); return; }
-            if (j.action === '轉交') scanSuccessFeedback('🤝', `交接完成\n${j.item}（${j.unitLabel}）\n${targetName(j.from) || '不詳'} → ${currentUser.account}`);
-            else scanSuccessFeedback('📲', `已登記在你名下\n${j.item}（${j.unitLabel}）\n從「${j.box}」領取`);
-            showToast(j.action === '轉交' ? `🤝 ${j.item} 已從 ${targetName(j.from) || '不詳'} 交接給你` : `📲 ${j.item} 已登記在你名下`, 'success', 1600);
-        } catch (e) { scanErrorFeedback('⚠️', '網路不穩，請再掃一次'); }
+            if (!r.ok || j.error) { if (j.already) return; scanErrorFeedback('⚠️', j.error || '登記失敗，請再掃一次'); showToast('❌ 沒有登記成功：' + (j.error || '請再掃一次'), 'error', 2600); return; }
+            if (!lu) { const m = okMsg(j.item, j.unitLabel, j.action === '轉交' ? (targetName(j.from) || '不詳') : '', j.box); scanSuccessFeedback(m[0], m[1]); showToast(m[2], 'success', 2200); }
+        } catch (e) { scanErrorFeedback('⚠️', '網路不穩，請再掃一次'); showToast('❌ 網路不穩，沒有登記成功，請再掃一次', 'error', 2600); }
         finally { takeBusy = false; }
     }
     // 一件物品的流向：誰領、交接給誰、何時入庫
     window.showUnitFlow = async function (uid, title) {
         let ov = document.getElementById('flow-ov');
-        if (!ov) { ov = document.createElement('div'); ov.id = 'flow-ov'; ov.style.cssText = 'position:fixed; inset:0; z-index:10050; background:rgba(0,0,0,.55); display:flex; align-items:flex-end; justify-content:center;'; document.body.appendChild(ov); ov.onclick = e => { if (e.target === ov) ov.remove(); }; }
-        const box = h => ov.innerHTML = `<div style="background:#1c1c1e; color:#fff; width:100%; max-width:560px; max-height:82vh; overflow-y:auto; border-radius:22px 22px 0 0; padding:18px 18px calc(22px + env(safe-area-inset-bottom));">
-            <div style="display:flex; justify-content:space-between; align-items:center;"><b style="font-size:18px;">📍 物品流向</b><button onclick="document.getElementById('flow-ov').remove()" style="border:none; background:#2c2c2e; color:#fff; width:34px; height:34px; border-radius:50%; font-size:16px;">✕</button></div>
-            <div style="font-size:13px; color:#8e8e93; margin:4px 0 14px;">${escapeHtml(title || '')}</div>${h}</div>`;
+        if (!ov) { ov = document.createElement('div'); ov.id = 'flow-ov'; ov.style.cssText = 'position:fixed; inset:0; z-index:10050; background:rgba(0,0,0,.5); display:flex; align-items:flex-end; justify-content:center;'; document.body.appendChild(ov); ov.onclick = e => { if (e.target === ov) ov.remove(); }; }
+        // 現在在哪
+        let nowTxt = '';
+        for (const b of (boxesCache || [])) for (const it of (b.items || [])) { const u = (it.units || []).find(x => x.uid === uid); if (u) nowTxt = u.status === 'out' ? `目前在 <b>${escapeHtml(targetName(u.borrower) || '不詳')}</b> 手上` : `目前在庫：📦 <b>${escapeHtml(b.name)}</b>`; }
+        const box = h => ov.innerHTML = `<div style="background:#fff; color:#1f2430; width:100%; max-width:560px; max-height:84vh; overflow-y:auto; border-radius:24px 24px 0 0; padding:18px 18px calc(24px + env(safe-area-inset-bottom)); font-family:inherit;">
+            <div style="display:flex; justify-content:space-between; align-items:center;"><b style="font-size:20px; color:#1f2430;">📍 物品流向</b><button onclick="document.getElementById('flow-ov').remove()" style="border:none; background:#f2f2f7; color:#3a3a3c; width:36px; height:36px; border-radius:50%; font-size:17px;">✕</button></div>
+            <div style="font-size:15px; font-weight:800; color:#3a3a3c; margin-top:6px;">${escapeHtml(title || '')}</div>
+            ${nowTxt ? `<div style="margin:12px 0 16px; padding:12px 14px; border-radius:14px; background:#fff7ed; color:#9a3412; font-size:15px; border:1.5px solid #fed7aa;">${nowTxt}</div>` : '<div style="height:14px"></div>'}${h}</div>`;
         box('<div style="color:#8e8e93; text-align:center; padding:20px;">載入中…</div>');
         try {
             const snap = await getDocs(collection(db, "warehouse_logs")); const rows = [];
             snap.forEach(d => { const l = d.data(); if (l.unitUid === uid) rows.push(l); });
-            rows.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+            rows.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));   // 最新的在最上面
             if (!rows.length) return box('<div style="color:#8e8e93; text-align:center; padding:20px;">還沒有紀錄</div>');
-            const dot = l => l.type === '轉交' ? ['🤝', '#ff9f0a'] : l.type === '出庫' ? ['📤', '#ff453a'] : ['📥', '#30d158'];
-            const what = l => { const tg = String(l.target || '');
-                if (l.type === '轉交') { const [a, b] = tg.split(' → '); return `<b>${escapeHtml(targetName(a))}</b> 交接給 <b>${escapeHtml(targetName(b || ''))}</b>`; }
-                if (l.type === '出庫') return `<b>${escapeHtml(targetName(tg))}</b> ${l.selfScan ? '掃描領取' : '領用'}`;
-                return `入庫歸位${tg.includes('原借用') ? `（原本在 ${escapeHtml(targetName(tg.replace(/^.*原借用:\s*/, '').replace(/\)$/, '')))}）` : ''}`; };
-            box(rows.map((l, i) => { const [ic, c] = dot(l);
-                return `<div style="display:flex; gap:12px;"><div style="display:flex; flex-direction:column; align-items:center;"><div style="width:36px; height:36px; border-radius:50%; background:${c}22; border:2px solid ${c}; display:flex; align-items:center; justify-content:center; font-size:16px;">${ic}</div>${i < rows.length - 1 ? `<div style="flex:1; width:2px; background:#3a3a3c; min-height:18px;"></div>` : ''}</div>
-                <div style="padding-bottom:16px; flex:1;"><div style="font-size:15px;">${what(l)}</div><div style="font-size:12px; color:#8e8e93; margin-top:3px;">${escapeHtml(l.timeStr || '')}${l.operator ? ' · ' + (l.selfScan ? '本人掃描' : '經手：' + escapeHtml(l.operator) + (l.operatorRole === 'helper' ? '（小幫手）' : '')) : ''}${l.boxName ? ' · 📦 ' + escapeHtml(l.boxName) : ''}</div></div></div>`; }).join(''));
+            const K = l => l.type === '轉交' ? { ic: '🤝', t: '交接', c: '#d97706', bg: '#fffbeb' } : l.type === '出庫' ? { ic: '📤', t: l.selfScan ? '掃描領取' : '領用', c: '#dc2626', bg: '#fef2f2' } : { ic: '📥', t: '入庫歸位', c: '#16a34a', bg: '#f0fdf4' };
+            const pill = n => `<span style="display:inline-block; background:#f2f2f7; color:#1f2430; border-radius:10px; padding:3px 10px; font-weight:900; font-size:16px;">${escapeHtml(n || '不詳')}</span>`;
+            const who = l => { const tg = String(l.target || '');
+                if (l.type === '轉交') { const [a, b] = tg.split(' → '); return `${pill(targetName(a))} <span style="color:#d97706; font-weight:900; font-size:18px;">→</span> ${pill(targetName(b || ''))}`; }
+                if (l.type === '出庫') return pill(targetName(tg));
+                const o = tg.includes('原借用') ? targetName(tg.replace(/^.*原借用:\s*/, '').replace(/\)$/, '')) : ''; return o ? `${pill(o)} <span style="color:#16a34a; font-weight:900;">歸還</span>` : '<span style="font-weight:800;">回到倉庫</span>'; };
+            box(rows.map((l, i) => { const k = K(l);
+                return `<div style="display:flex; gap:12px; align-items:stretch;">
+                  <div style="display:flex; flex-direction:column; align-items:center; width:40px; flex:none;"><div style="width:40px; height:40px; border-radius:50%; background:${k.bg}; border:2.5px solid ${k.c}; display:flex; align-items:center; justify-content:center; font-size:18px;">${k.ic}</div>${i < rows.length - 1 ? '<div style="flex:1; width:3px; background:#e5e5ea; margin:4px 0;"></div>' : ''}</div>
+                  <div style="flex:1; background:${i === 0 ? k.bg : '#fafafa'}; border:1.5px solid ${i === 0 ? k.c + '55' : '#efeff4'}; border-radius:16px; padding:10px 12px; margin-bottom:12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><span style="font-size:13px; font-weight:900; color:${k.c};">${k.t}${i === 0 ? '・最新' : ''}</span><span style="font-size:13px; color:#6b7280; font-weight:700;">${escapeHtml(l.timeStr || '')}</span></div>
+                    <div style="margin-top:6px; line-height:1.9;">${who(l)}</div>
+                    <div style="font-size:12px; color:#8e8e93; margin-top:4px;">${l.selfScan ? '📲 本人掃描' : l.operator ? '👤 經手：' + escapeHtml(l.operator) + (l.operatorRole === 'helper' ? '（小幫手）' : '（管理員）') : ''}${l.boxName ? '　📦 ' + escapeHtml(l.boxName) : ''}</div></div></div>`; }).join(''));
         } catch (e) { box('<div style="color:#ff453a; text-align:center; padding:20px;">讀取失敗</div>'); }
     };
     function computeHoldings(account) {
