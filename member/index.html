@@ -2732,7 +2732,7 @@
             return `<button type="button" class="pm-d ${on ? 'on' : ''}" data-pd="${d}"><b>${dd.getMonth() + 1}/${dd.getDate()}</b><small>${WK[dd.getDay()]}</small></button>`; }).join('')}</div>
           <div style="display:flex;gap:6px;margin-top:8px;align-items:center"><button type="button" class="sbtn" data-pdall="1" style="padding:6px 10px">全選</button><button type="button" class="sbtn" data-pdall="0" style="padding:6px 10px">全不選</button>
           <span id="pm-dn" style="font-size:12px;color:var(--sub);margin-left:auto"></span><button class="sbtn" data-pm="range" style="background:var(--primary);color:#fff;padding:7px 14px">套用</button></div></div>
-        <div style="font-size:12px;color:var(--sub);margin-top:10px">改完記得按「🔀 自動排班」重新排。</div></div></div>`; })() : '';
+        <div style="font-size:12px;color:var(--sub);margin-top:10px">套用後，不在值班日的班會自動拿掉；新加的日子會出現在那天的「未排入」，點名字再點組別就能排進去（或重按「🔀 自動排班」全部重排）。</div></div></div>`; })() : '';
             const cmd = Object.values(ppl).filter(p => p.pos === '指揮官').map(p => p.name).join('、');
     const info = sc.info || {};
     const dayBox = d => { const ts = (dt[d] || []).slice().sort((a, b) => LBL_ORDER(a.l) - LBL_ORDER(b.l)), pres = presentOn(d);
@@ -2911,7 +2911,16 @@
       ${!all.length ? '<div class="card empty" style="margin-top:12px;">還沒有人回覆出席</div>' : `${editor}<div class="sc-grid">${SLOTS.map(slotBox).join('')}</div>
         <div class="sc-grid">${box('全程', '每天都值班', all.filter(p => p.mode === 'all'))}${box('自訂日期', '特定幾天', all.filter(p => p.mode === 'range'))}${box('不排班', '指揮官、團長、車輛組、教官團…', all.filter(p => p.mode === 'off'))}</div>`}
       ${days.length ? `<div class="sc-days">${days.map(dayBox).join('')}</div>` : ''}`;
-    const save = async (patch, msg) => { evSched[eid] = { ...(evSched[eid] || {}), ...patch }; try { await saveDraw(eid, { ...(evDraw[eid] || {}) }, { ...(evDrawBy[eid] || {}) }, { ...(evOver[eid] || {}) }); if (msg) toast(msg); } catch (err) { console.error(err); toast('❌ 儲存失敗'); } renderSched(eid); };
+    const save = async (patch, msg) => { evSched[eid] = { ...(evSched[eid] || {}), ...patch };
+      // 改了某人的排班方式／日期（或抽籤時段的日期）→ 不在值班日子的班表上的人拿掉，回到「未排入」
+      if ((patch.person || patch.ranges) && !patch.days) {
+        const P2 = schedPeople(eid), on = (p, d) => p.days ? p.days.includes(d) : !!(p.range && d >= p.range[0] && d <= p.range[1]);
+        const D = JSON.parse(JSON.stringify(evSched[eid].days || {})); let n = 0;
+        Object.keys(D).forEach(d => (D[d] || []).forEach(t => { const keep = (t.m || []).filter(k => !P2[k] || on(P2[k], d)); n += (t.m || []).length - keep.length;
+          (t.m || []).filter(k => !keep.includes(k)).forEach(k => { if (t.pn) delete t.pn[k]; }); t.m = keep; }));
+        if (n) { evSched[eid].days = D; msg = `已更新，從班表拿掉 ${n} 個不在值班日的位置（新的日子會出現在「未排入」）`; }
+      }
+      try { await saveDraw(eid, { ...(evDraw[eid] || {}) }, { ...(evDrawBy[eid] || {}) }, { ...(evOver[eid] || {}) }); if (msg) toast(msg); } catch (err) { console.error(err); toast('❌ 儲存失敗'); } renderSched(eid); };
     document.querySelectorAll('[data-fold]').forEach(h => h.onclick = () => { const t = h.dataset.fold, col = h.parentNode, open = !col.classList.contains('fold');
       schFold[t] = open; try { localStorage.setItem('schFold', JSON.stringify(schFold)); } catch (e) {} renderSched(eid); });
     $('sc-back').onclick = () => { schedOpen = false; schPk = null; renderDrawSheet(eid); };
@@ -2927,7 +2936,7 @@
       const pm = { ...(sc.person || {}) };
       if (m === 'range') { const ds = [...document.querySelectorAll('.pm-d.on')].map(x => x.dataset.pd).sort(); if (!ds.length) return toast('請至少選一天'); pm[k] = { mode: 'range', days: ds, a: ds[0], b: ds[ds.length - 1] }; }
       else pm[k] = { mode: m };
-      schPk = null; save({ person: pm }, '已更新，請重新按「自動排班」');
+      schPk = null; save({ person: pm }, '已更新');
     });
     const dateChange = () => { const a = $('sc-start').value, b = $('sc-end').value; if (!a || !b) return; if (a > b) return toast('結束日期要在開始之後');
       save({ start: a, end: b, ranges: defRanges(dayList(a, b)), days: {} }); };
