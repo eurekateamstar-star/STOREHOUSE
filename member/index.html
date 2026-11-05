@@ -2083,10 +2083,10 @@
     if (evRespUnsub && evRespUnsub._eid === eid) return;
     if (evRespUnsub) evRespUnsub();
     const u1 = onSnapshot(collection(db, 'events', eid, 'responses'), s => {
-      evRespCache[eid] = s.docs.map(d => ({ id: d.id, ...d.data() }));
+      evRespCache[eid] = s.docs.map(d => ({ id: d.id, ...d.data() })); if (bigEid === eid) renderBigDraw();
       if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid);
     }, () => toast('讀取回覆失敗'));
-    const u2 = onSnapshot(doc(db, 'events', eid, 'admin', 'draw'), s => { const d = s.exists() ? s.data() : {}; evDraw[eid] = d.map || {}; evDrawBy[eid] = d.by2 || {}; evOver[eid] = d.groupOverride || {}; evPaid[eid] = d.paid || {}; evSched[eid] = schedFromDb(d.sched); if (drawSheetEid === eid) (mealOpen ? renderMeal(eid) : carOpen ? renderCar(eid) : attOpen ? renderAtt(eid) : schedOpen ? renderSched(eid) : renderDrawSheet(eid)); if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid); }, () => {});
+    const u2 = onSnapshot(doc(db, 'events', eid, 'admin', 'draw'), s => { const d = s.exists() ? s.data() : {}; evDraw[eid] = d.map || {}; evDrawBy[eid] = d.by2 || {}; evOver[eid] = d.groupOverride || {}; evPaid[eid] = d.paid || {}; evSched[eid] = schedFromDb(d.sched); if (bigEid === eid) renderBigDraw(); if (drawSheetEid === eid) (mealOpen ? renderMeal(eid) : carOpen ? renderCar(eid) : attOpen ? renderAtt(eid) : schedOpen ? renderSched(eid) : renderDrawSheet(eid)); if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid); }, () => {});
     const u3 = onSnapshot(collection(db, 'events', eid, 'admin'), s => { const o = {}; let fin = {}; const ld = {}; s.docs.forEach(d => { if (d.id.startsWith('lead_')) { const x = d.data(); if (x.d && x.team) (ld[x.d] = ld[x.d] || {})[x.team] = x; } }); const lc = JSON.stringify(ld) !== JSON.stringify(evLead[eid] || {}); evLead[eid] = ld; if (lc && schedOpen && drawSheetEid === eid) setTimeout(() => renderSched(eid), 0);
       s.docs.forEach(d => { if (d.id === 'groups') fin = d.data().final || {}; if (d.id.startsWith('self_')) { const x = d.data(); if (x.key) o[x.key] = x.days || {}; } }); evSelf[eid] = o;
       const fc = JSON.stringify(fin) !== JSON.stringify(evGrpFin[eid] || {}); evGrpFin[eid] = fin;
@@ -2544,6 +2544,79 @@
     Object.keys(by2).forEach(k => { if (!map[k]) delete by2[k]; });
     await saveDraw(eid, map, by2, evOver[eid] || {});
   }
+  // ===================== 大螢幕投影：抽籤即時看板 =====================
+  let bigEid = null, bigPrev = null, bigFeed = [], bigPopT = null;
+  function openBigDraw(eid) {
+    bigEid = eid; bigPrev = null; bigFeed = [];
+    let ov = $('big-ov'); if (!ov) { ov = document.createElement('div'); ov.id = 'big-ov'; document.body.appendChild(ov); }
+    ov.style.display = 'block';
+    try { (document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen || (() => {})).call(document.documentElement); } catch (e) {}
+    renderBigDraw();
+  }
+  function closeBigDraw() { bigEid = null; const ov = $('big-ov'); if (ov) ov.style.display = 'none'; try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) {} }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && bigEid) closeBigDraw(); });
+  function renderBigDraw() {
+    const ov = $('big-ov'); if (!bigEid || !ov) return;
+    const eid = bigEid, e = eventsCache.find(x => x.id === eid) || {}, groups = drawPeople(eid), map = evDraw[eid] || {};
+    const all = DRAW_GROUPS.flatMap(g => groups[g].map(p => ({ ...p, g })));
+    const done = all.filter(p => SLOTS.includes(map[p.key])).length, pct = all.length ? Math.round(done / all.length * 100) : 0;
+    // 新抽到的人
+    const fresh = bigPrev ? all.filter(p => SLOTS.includes(map[p.key]) && bigPrev[p.key] !== map[p.key]) : [];
+    bigPrev = { ...map };
+    fresh.forEach(p => bigFeed.unshift({ name: p.name, slot: map[p.key], g: p.g, at: Date.now() })); bigFeed = bigFeed.slice(0, 12);
+    const isNew = k => fresh.some(p => p.key === k);
+    const SC = { 前: '#f59e0b', 中: '#ef4444', 後: '#8b5cf6' };
+    const card = g => { const L = groups[g]; if (!L.length) return ''; const T = slotTargets(L.length), wait = L.filter(p => !SLOTS.includes(map[p.key])).length, dense = Math.max(...SLOTS.map(sl => Math.max(T[sl], L.filter(p => map[p.key] === sl).length))) > 7;
+      return `<div class="bg-card ${dense ? 'dense' : ''}"><div class="bg-ch"><b>${esc(g)}</b><span>${L.length} 人${wait ? `・待抽 <em>${wait}</em>` : '・<em class="ok">全部抽完</em>'}</span></div>
+        <div class="bg-lanes">${SLOTS.map(sl => { const P = L.filter(p => map[p.key] === sl), full = P.length >= T[sl];
+          return `<div class="bg-lane" style="--c:${SC[sl]}"><div class="bg-lh"><b>${sl}</b><span>${P.length}/${T[sl]}${full ? ' ✓' : ''}</span></div>
+            <div class="bg-names">${P.map(p => `<span class="bg-n ${isNew(p.key) ? 'new' : ''}">${esc(p.name)}</span>`).join('')}${Array.from({ length: Math.max(0, T[sl] - P.length) }, () => '<span class="bg-n emp"></span>').join('')}</div></div>`; }).join('')}</div></div>`; };
+    const cards = DRAW_GROUPS.map(card).filter(Boolean);
+    ov.innerHTML = `<style>
+      #big-ov{position:fixed;inset:0;z-index:20000;overflow:hidden;color:#fff;font-family:"Noto Sans TC","PingFang TC",sans-serif;
+        background:radial-gradient(1200px 600px at 15% -10%,#f97316aa,transparent 60%),radial-gradient(900px 500px at 110% 110%,#7c3aedaa,transparent 60%),linear-gradient(135deg,#450a0a,#7f1d1d 45%,#9a3412)}
+      #big-ov:before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.035) 0 14px,transparent 14px 28px);pointer-events:none}
+      .bg-wrap{position:relative;height:100%;display:flex;flex-direction:column;padding:1.6vw 2vw 1.2vw;gap:1vw}
+      .bg-top{display:flex;align-items:center;gap:1.6vw}
+      .bg-logo{width:4.6vw;height:4.6vw;min-width:44px;min-height:44px;border-radius:1.2vw;background:#fff;display:flex;align-items:center;justify-content:center;font-size:2.8vw;box-shadow:0 .4vw 1.4vw rgba(0,0,0,.35)}
+      .bg-t small{display:block;font-size:max(12px,1vw);letter-spacing:.5vw;color:#fed7aa;font-weight:800}.bg-t h1{margin:.2vw 0 0;font-size:max(22px,2.5vw);font-weight:900;letter-spacing:.15vw;text-shadow:0 .2vw .8vw rgba(0,0,0,.35)}
+      .bg-prog{margin-left:auto;min-width:28vw;text-align:right}.bg-prog b{font-size:max(26px,3.4vw);font-weight:900;line-height:1}.bg-prog b small{font-size:.45em;color:#fed7aa;margin-left:.4vw}
+      .bg-bar{height:1vw;min-height:10px;border-radius:99px;background:rgba(255,255,255,.18);margin-top:.5vw;overflow:hidden}.bg-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#fde047,#fb923c);transition:width .8s;box-shadow:0 0 1vw #fde04788}
+      .bg-x{position:absolute;top:.8vw;right:.8vw;border:none;background:rgba(0,0,0,.3);color:#fff;border-radius:99px;padding:.4vw 1vw;font:inherit;font-size:max(12px,.9vw);cursor:pointer;opacity:.5}.bg-x:hover{opacity:1}
+      .bg-main{flex:1;min-height:0;display:flex;gap:1vw}
+      .bg-grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(${Math.min(3, cards.length)},1fr);grid-auto-rows:1fr;gap:1vw}
+      .bg-card{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:1.2vw;padding:.8vw 1vw;display:flex;flex-direction:column;min-height:0;backdrop-filter:blur(6px)}
+      .bg-ch{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.5vw}.bg-ch b{font-size:max(16px,1.55vw);font-weight:900}.bg-ch span{font-size:max(11px,.95vw);color:#fed7aa}.bg-ch em{font-style:normal;color:#fde047;font-weight:900}.bg-ch em.ok{color:#86efac}
+      .bg-lanes{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,1fr);gap:.6vw}
+      .bg-lane{background:rgba(0,0,0,.18);border-radius:.8vw;padding:.4vw;display:flex;flex-direction:column;min-height:0;border-top:.3vw solid var(--c)}
+      .bg-lh{display:flex;justify-content:space-between;align-items:center;padding:0 .3vw .3vw}.bg-lh b{font-size:max(16px,1.6vw);color:var(--c);font-weight:900;text-shadow:0 0 .6vw rgba(0,0,0,.4)}.bg-lh span{font-size:max(10px,.85vw);color:#fff;opacity:.85;font-weight:800}
+      .bg-names{display:flex;flex-wrap:wrap;gap:.3vw;align-content:flex-start;overflow:hidden}
+      .bg-n{background:#fff;color:#1f2430;border-radius:.5vw;padding:.15vw .5vw;font-size:max(11px,1vw);font-weight:900;white-space:nowrap}
+      .bg-n.emp{background:transparent;border:1.5px dashed rgba(255,255,255,.28);width:3.6vw;height:1.6vw;padding:0}
+      .bg-card.dense .bg-names{display:grid;grid-template-columns:1fr 1fr;gap:.25vw}.bg-card.dense .bg-n{font-size:max(10px,.8vw);padding:.12vw .2vw;text-align:center;overflow:hidden;text-overflow:ellipsis}.bg-card.dense .bg-n.emp{width:auto;height:1.3vw}
+      .bg-n.new{animation:bgpop 1.6s ease-out;background:#fde047}
+      @keyframes bgpop{0%{transform:scale(2.2);box-shadow:0 0 0 0 #fde047}40%{transform:scale(1);box-shadow:0 0 2vw .6vw #fde047cc}100%{box-shadow:0 0 0 0 transparent}}
+      .bg-feed{width:17vw;min-width:150px;background:rgba(0,0,0,.25);border-radius:1.2vw;padding:.8vw;display:flex;flex-direction:column;gap:.45vw;overflow:hidden}
+      .bg-feed h3{margin:0 0 .2vw;font-size:max(13px,1.1vw);color:#fed7aa;letter-spacing:.2vw}
+      .bg-f{display:flex;align-items:center;gap:.6vw;background:rgba(255,255,255,.1);border-radius:.8vw;padding:.45vw .6vw}.bg-f b{font-size:max(13px,1.15vw)}.bg-f small{display:block;font-size:max(9px,.7vw);color:#fed7aa}
+      .bg-f i{margin-left:auto;font-style:normal;width:2.3vw;height:2.3vw;min-width:26px;min-height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:max(13px,1.2vw)}
+      .bg-f:first-child{animation:bgin .6s ease-out}@keyframes bgin{from{transform:translateX(30%);opacity:0}}
+      .bg-pop{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;background:rgba(0,0,0,.45);animation:bgfade 3s forwards}
+      .bg-pop div{text-align:center;animation:bgzoom .6s cubic-bezier(.2,1.4,.4,1)}.bg-pop small{display:block;font-size:2vw;color:#fed7aa;font-weight:800}.bg-pop b{display:block;font-size:6vw;font-weight:900;text-shadow:0 .4vw 2vw rgba(0,0,0,.5)}
+      .bg-pop em{display:inline-flex;align-items:center;justify-content:center;width:11vw;height:11vw;border-radius:50%;font-style:normal;font-size:7vw;font-weight:900;margin-top:1vw;box-shadow:0 0 4vw rgba(253,224,71,.8);border:.5vw solid #fff}
+      @keyframes bgzoom{from{transform:scale(.3);opacity:0}}@keyframes bgfade{0%,80%{opacity:1}100%{opacity:0}}
+      .bg-foot{text-align:center;font-size:max(11px,.85vw);color:#fed7aa;opacity:.8}</style>
+      <div class="bg-wrap"><button class="bg-x" id="bg-x">✕ 關閉（Esc）</button>
+        <div class="bg-top"><div class="bg-logo">🎲</div><div class="bg-t"><small>白沙屯拱天宮醫護團</small><h1>${esc(e.title || '進香時段抽籤')}・時段抽籤</h1></div>
+          <div class="bg-prog"><b>${done}<small>/ ${all.length} 人已抽</small></b><div class="bg-bar"><i style="width:${pct}%"></i></div></div></div>
+        <div class="bg-main"><div class="bg-grid">${cards.join('')}</div>
+          <div class="bg-feed"><h3>🔔 最新抽籤</h3>${bigFeed.map(f => `<div class="bg-f"><div><b>${esc(f.name)}</b><small>${esc(f.g)}</small></div><i style="background:${SC[f.slot]}">${f.slot}</i></div>`).join('') || '<div style="opacity:.6;font-size:max(12px,1vw)">等待抽籤中…</div>'}</div></div>
+        <div class="bg-foot">打開團員專區 → 首頁「🎲 抽籤」，結果會即時出現在這裡</div></div>`;
+    $('bg-x').onclick = closeBigDraw;
+    if (fresh.length) { const f = fresh[0]; const pop = document.createElement('div'); pop.className = 'bg-pop';
+      pop.innerHTML = `<div><small>🎉 ${esc(f.g)}</small><b>${esc(f.name)}</b><em style="background:${SC[map[f.key]]}">${map[f.key]}</em></div>`;
+      ov.querySelector('.bg-wrap').appendChild(pop); clearTimeout(bigPopT); bigPopT = setTimeout(() => pop.remove(), 3000); }
+  }
   function openDrawSheet(eid) {
     drawSheetEid = eid; drSel = null; drPayMode = false; schedOpen = false; $('sheet').classList.add('wide');
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open'); $('sheet').scrollTop = 0;
@@ -2609,6 +2682,7 @@
         ${missing ? `<button class="sbtn" id="dr-go" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">🎲 管理員代抽：還沒抽的 ${missing} 人</button>` : ''}
         ${done ? '<button class="sbtn" id="dr-redo" style="background:#fef2f2;color:#b91c1c;">全部重抽</button><button class="sbtn" id="dr-clear" style="background:#f1f5f9;color:#334155;">全部取消抽籤</button>' : ''}
         <button class="sbtn" id="dr-pay" style="${drPayMode ? 'background:#16a34a;color:#fff;box-shadow:0 0 0 3px #bbf7d0;' : 'background:#dcfce7;color:#166534;'}">${drPayMode ? '✅ 繳費模式中（按這裡結束）' : '💰 繳費模式：點名字就打勾'}</button>
+        <button class="sbtn" id="dr-big" style="background:linear-gradient(90deg,#b91c1c,#ea580c);color:#fff;">📺 大螢幕投影</button>
         <button class="sbtn" id="dr-sched" style="background:#7c3aed;color:#fff;">📅 排班表</button>
         <button class="sbtn" id="dr-dl" style="background:#1f2430;color:#fff;">⬇ 下載</button>
       </div></div>
@@ -2673,6 +2747,7 @@
       ov.querySelector('#dl-pdf').onclick = () => { ov.remove(); printDrawAll(eid); };
       ov.querySelector('#dl-xlsx').onclick = () => { ov.remove(); exportDrawXlsx(eid); };
     };
+    $('dr-big').onclick = () => openBigDraw(eid);
     $('dr-sched').onclick = () => { schedOpen = true; schSel = null; renderSched(eid); $('sheet').scrollTop = 0; };
   }
   // 下載 PDF：自己排好每一頁（A4 直式、每頁 20 人、換頁重印標題），轉成圖片放進 PDF，沒有瀏覽器頁首頁尾、不會被切邊
