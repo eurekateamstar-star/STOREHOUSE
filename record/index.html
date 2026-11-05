@@ -3621,7 +3621,17 @@
       resetFormUI();
       draftId = id;
       fillForm(it.d);
-      currentStep = 0; window.updateWizard(); updateDraftBar();
+      updateDraftBar();
+      // 直接跳到第一個還沒填的地方（前面的頁打勾）；都填好就跳到最後一頁準備送出
+      setTimeout(() => {
+        const miss = collectMissing(), first = miss[0], target = first ? first.step : steps.length - 1;
+        completedSteps.clear(); for (let i = 0; i < target; i++) completedSteps.add(i);
+        currentStep = target; window.updateWizard();
+        document.querySelectorAll('.field-error').forEach(e => e.classList.remove('field-error'));
+        miss.filter(m => m.step === target && m.el).forEach(m => m.el.classList.add('field-error'));
+        if (first && first.el) setTimeout(() => { first.el.scrollIntoView({ behavior: 'smooth', block: 'center' }); const f = first.el.querySelector('input:not([type=hidden]),textarea'); if (f && f.type !== 'checkbox' && f.type !== 'radio') try { f.focus({ preventScroll: true }); } catch (e) {} }, 120);
+        else if (!first) window.showNotice('success', '都填好了', '檢查一下，沒問題就按「確認上傳」。');
+      }, 80);
     };
     window.deleteDraft = async function(id) {
       const it = draftsGet().find(x => x.id === id); if (!it) return;
