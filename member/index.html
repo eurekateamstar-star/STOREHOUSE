@@ -1853,7 +1853,7 @@
       .ms-dt .ms-tg,.ms-tg{font-size:9px;color:#fff;background:#1e3a8a;border-radius:4px;padding:1px 3px;margin-right:2px;font-weight:700;vertical-align:1px}
       .ms-ar{flex:none;color:#c9b5ae;font-size:15px;font-weight:700}
       .ms-grp{padding:8px 14px;border-top:1px solid #f3ece9;font-size:13px;color:#374151;background:#fffaf5}.ms-grp b{color:#c2410c}.ms-grp .ok{font-size:11px;color:#15803d;font-weight:800}.ms-grp .wt{font-size:11px;color:#b45309;font-weight:800}.ms-grp .ms-ar{font-size:12px;color:#c2410c}
-      .ms-ld{flex:none;border:none;border-radius:8px;padding:3px 6px;font:inherit;font-size:10px;line-height:1.25;font-weight:900;color:#fff;background:linear-gradient(135deg,#D65A68,#F08339);box-shadow:0 2px 6px rgba(214,90,104,.35)}</style>
+      .ms-ld{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;width:40px;height:40px;border:1.5px solid #fdba74;border-radius:12px;background:#fff7ed;padding:0;font:inherit;font-size:9.5px;line-height:1.1;font-weight:900;color:#c2410c}.ms-ld i{font-style:normal;font-size:16px;line-height:1}</style>
       ${evs.map(e => `<div class="ms-card"><div class="ms-h">📅 我的排班<small>${esc(e.title)}${e.days.length ? `・${e.days.length} 天・點日期看全部` : ''}</small></div>${grpLine(e)}
         ${[...new Set([...e.days.map(x => x.d), ...(e.plan || []).map(x => x.d)])].sort().map(d => { const x = e.days.find(y => y.d === d), pl = (e.plan || []).find(y => y.d === d) || {};
           const ic = `${pl.s ? '🛏' : ''}${['o', 'y', 'h'].some(f => pl[f] === '9') ? '🚌' : ''}`;
@@ -1863,8 +1863,8 @@
     function msRow(e, x, ic) { { const dd = new Date(x.d + 'T12:00:00'), mates = x.members;
           const [eqA, ...eqT] = String(x.eq || '').split('　'), extra = [x.note, x.duty.join('、'), eqA ? '🎒' + eqA : ''].filter(Boolean).map(esc).join('・') + (eqT.join('') ? ` <span style="color:#9ca3af;font-weight:600">${esc(eqT.join(' '))}</span>` : '');
           return `<div class="ms-row" data-msd="${e.id}|${x.d}"><div class="ms-dt"><b>${dd.getMonth() + 1}/${dd.getDate()}</b><span>(${WK[dd.getDay()]})</span>${x.tag ? `<span class="ms-tg" style="display:block;margin:2px 0 0">${esc(x.tag)}</span>` : ''}</div>
-            <span class="ms-tm">${esc(x.team)}</span>${mates[0] === e.name ? `<button type="button" class="ms-ld" data-lead="${e.id}|${x.d}">👑 小隊長<br>檢查</button>` : ''}
-            <div class="ms-mb">${mates.map(n => `<span class="nmw">${n === e.name ? `<b style="color:#b91c1c">${esc(n)}</b>` : esc(n)}</span>`).join('<i style="font-style:normal;color:#cbbdb8">·</i>')}${extra.trim() ? `<small>${extra}</small>` : ''}</div><span class="ms-ar" style="font-size:11px">${ic}</span><span class="ms-ar">›</span></div>`; } }
+            <span class="ms-tm">${esc(x.team)}</span>
+            <div class="ms-mb">${mates.map(n => `<span class="nmw">${n === e.name ? `<b style="color:#b91c1c">${esc(n)}</b>` : esc(n)}</span>`).join('<i style="font-style:normal;color:#cbbdb8">·</i>')}${extra.trim() ? `<small>${extra}</small>` : ''}</div><span class="ms-ar" style="font-size:11px">${ic}</span>${mates[0] === e.name ? `<button type="button" class="ms-ld" data-lead="${e.id}|${x.d}" title="小隊長檢查"><i>👑</i>檢查</button>` : ''}<span class="ms-ar">›</span></div>`; } }
     box.querySelectorAll('[data-msd]').forEach(el => el.onclick = () => { const [a, b] = el.dataset.msd.split('|'); showMyDay(a, b); });
     box.querySelectorAll('[data-lead]').forEach(el => el.onclick = ev => { ev.stopPropagation(); const [a, b] = el.dataset.lead.split('|'); openLeadCheck(a, b); });
     box.querySelectorAll('[data-myg]').forEach(el => el.onclick = () => openMyGroup(el.dataset.myg));
