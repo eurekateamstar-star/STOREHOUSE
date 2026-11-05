@@ -1073,7 +1073,7 @@ async function leadRoute(req, env, json) {
     const ck = await fsGet(tok, path), adm = sc.meal || {};
     const members = await Promise.all((t.m || []).map(async k => { const S = await selfOf(k), A = (adm[k] || {})[d] || {}, sd = S ? (S.days[d] || {}) : {};
       const pick = f => A[f] !== undefined ? A[f] : sd[f]; return { k, name: (byName[k] || {}).name || k, cert: (byName[k] || {}).cert || '', l: pick('l') || '', n: pick('n') || '', lockL: A.l !== undefined, lockN: A.n !== undefined }; }));
-    return json({ ok: true, team: t.l, d, eq: t.eq || {}, members, check: ck ? fobj(ck.fields) : {}, leader: (t.m || [])[0] });
+    return json({ ok: true, team: t.l, d, eq: t.eq || {}, note: t.note || '', members, check: ck ? fobj(ck.fields) : {}, leader: (t.m || [])[0] });
   } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
 }
 const isoAddW = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };

@@ -1943,7 +1943,11 @@
     const M = J.members, C = J.check || {}, eq = J.eq || {};
     const att = { ...(C.att || {}) }; M.forEach(m => { if (att[m.k] === undefined) att[m.k] = 1; });
     const meal = {}; M.forEach(m => meal[m.k] = { l: m.l, n: m.n }); let mf = 'l';
-    const EQ = [['kit', '救護包', eq.kit], ['inst', '器材包', eq.inst], ['ambu', 'AMBU包', eq.ambu], ['radio', '無線電'], ['shoulder', '肩燈'], ['head', '頭燈']];
+    // 配備：照排班「＋裝備」寫的（救護包／儀器包／AMBU包幾個、其他自己填的），再加無線電、肩燈、頭燈
+    const E0 = eq && ['kit', 'inst', 'ambu'].some(k => eq[k] > 0) || (eq && eq.text) ? eq : eqParse(J.note || '');
+    const EQX = String(E0.text || '').split(/[、,，\n]/).map(x => x.trim()).filter(Boolean);
+    const EQ = [...[['kit', '救護包'], ['inst', '儀器包'], ['ambu', 'AMBU包']].filter(([k]) => E0[k] > 0).map(([k, n]) => [k, n, E0[k]]), ...EQX.map((x, i) => ['x' + i, x]), ['radio', '無線電'], ['shoulder', '肩燈'], ['head', '頭燈']];
+    const eqSrc = eqText(E0);
     const eqc = { ...(C.eq || {}) };
     const DR = [['towel', '毛巾綁好'], ['armband', '臂章'], ['hat', '帽子'], ['whistle', '口哨'], ['vest', '背心']];
     const dress = JSON.parse(JSON.stringify(C.dress || {})); M.forEach(m => dress[m.k] = dress[m.k] || {});
@@ -1963,7 +1967,7 @@
       if (tab === 'meal') body = `<div class="lc-seg">${[['l', '☀️ 中餐'], ['n', '🌙 晚餐']].map(([f, t]) => `<button class="${mf === f ? 'on' : ''}" data-mf="${f}">${t}<small>${M.filter(m => meal[m.k][f]).length}/${M.length}</small></button>`).join('')}</div>
           <div class="lc-cnt">${[['葷', '葷'], ['素', '素'], ['自', '自理']].map(([v, n]) => `<span>${n} <b>${M.filter(m => meal[m.k][mf] === v).length}</b></span>`).join('')}<span>未選 <b>${M.filter(m => !meal[m.k][mf]).length}</b></span><button class="lc-mini" data-mall="葷">全部葷</button><button class="lc-mini" data-mall="素">全部素</button></div>
           <table class="lc-tb"><tr><th></th><th>葷</th><th>素</th><th>自理</th></tr>${M.map(m => { const lk = mf === 'l' ? m.lockL : m.lockN; return `<tr><td class="nm">${esc(m.name)}${lk ? '<small>管理員設定</small>' : ''}</td>${['葷', '素', '自'].map(v => `<td><button class="lc-dot ${meal[m.k][mf] === v ? 'on' : ''} ${lk ? 'lk' : ''}" ${lk ? 'data-lk="1"' : ''} data-ml="${m.k}|${mf}|${v}">${meal[m.k][mf] === v ? '●' : ''}</button></td>`).join('')}</tr>`; }).join('')}</table>`;
-      if (tab === 'eq') body = `<div class="lc-tip2">清點到了就點一下（綠色＝有）</div><div class="lc-g3">${EQ.map(([k, n, c]) => `<button class="lc-tile ${eqc[k] ? 'y' : ''}" data-eq="${k}"><span>${{ kit: '🩹', inst: '🧰', ambu: '🫁', radio: '📻', shoulder: '🔦', head: '⛑️' }[k]}</span><b>${n}</b>${c ? `<small>×${c}</small>` : ''}<i>${eqc[k] ? '✓' : ''}</i></button>`).join('')}</div>`;
+      if (tab === 'eq') body = `<div class="lc-src ${eqSrc ? '' : 'emp'}"><small>📋 排班寫的這組配備</small>${eqSrc ? esc(eqSrc).replace(/\n/g, '<br>') : '排班沒有寫要帶的包，只檢查無線電和燈'}</div><div class="lc-tip2">清點到了就點一下（綠色＝有）</div><div class="lc-g3">${EQ.map(([k, n, c]) => `<button class="lc-tile ${eqc[k] ? 'y' : ''}" data-eq="${k}"><span>${{ kit: '🩹', inst: '🧰', ambu: '🫁', radio: '📻', shoulder: '🔦', head: '⛑️' }[k] || '🎒'}</span><b>${esc(n)}</b>${c ? `<small>要 ${c} 個</small>` : ''}<i>${eqc[k] ? '✓' : ''}</i></button>`).join('')}</div>`;
       if (tab === 'dress') body = `<div class="lc-cnt"><span>點格子打勾</span><button class="lc-mini" data-dall="1" style="margin-left:auto">全部 OK</button></div>
           <table class="lc-tb dr"><tr><th></th>${DR.map(([, n]) => `<th>${n.replace('綁好', '')}</th>`).join('')}</tr>${M.map(m => `<tr><td class="nm">${esc(m.name)}</td>${DR.map(([k]) => `<td><button class="lc-dot g ${ok(m, k) ? 'on' : ''}" data-dr="${m.k}|${k}">${ok(m, k) ? '✓' : ''}</button></td>`).join('')}</tr>`).join('')}</table>`;
       if (tab === 'charge') body = `<div class="lc-tip2">🌙 就寢前確認整組都插上充電</div><div class="lc-g3">${CH.map(([k, n]) => `<button class="lc-tile ${chg[k] ? 'y' : ''}" data-ch="${k}"><span>${{ shoulder: '🔦', head: '⛑️', radio: '📻' }[k]}</span><b>${n}</b><small>${chg[k] ? '已充電' : '未充電'}</small><i>${chg[k] ? '🔋' : ''}</i></button>`).join('')}</div>`;
@@ -1974,7 +1978,7 @@
         .lc-tabs button span{display:block;font-size:20px}.lc-tabs button.on{border-color:#c2414f;background:#fff1f2;color:#c2414f}
         .lc-tabs button.done::after{content:'✓';position:absolute;top:-7px;right:-5px;width:19px;height:19px;border-radius:50%;background:#16a34a;color:#fff;font-size:12px;line-height:19px}
         .lc-hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin:2px 2px 8px}.lc-hd b{font-size:19px}.lc-hd span{font-size:12px;font-weight:800}
-        .lc-ok{color:#15803d}.lc-no{color:#b45309}.lc-tip2{font-size:13px;color:#6b7280;margin:0 2px 8px}
+        .lc-src{background:#fff7ed;border:1.5px solid #fed7aa;border-radius:14px;padding:8px 12px;margin:0 0 10px;font-size:15px;font-weight:900;color:#9a3412;line-height:1.5}.lc-src small{display:block;font-size:11.5px;color:#c2410c;font-weight:800}.lc-src.emp{background:#f8fafc;border-color:#e5e7eb;color:#6b7280;font-weight:700;font-size:13px}.lc-ok{color:#15803d}.lc-no{color:#b45309}.lc-tip2{font-size:13px;color:#6b7280;margin:0 2px 8px}
         .lc-g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.lc-g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
         .lc-card{border:2px solid;border-radius:16px;padding:10px 8px;font:inherit;text-align:center;background:#fff}.lc-card b{display:block;font-size:17px;color:#1f2430}.lc-card small{display:block;font-size:11px;color:#9ca3af}.lc-card i{display:inline-block;margin-top:5px;font-style:normal;font-size:13px;font-weight:900;border-radius:999px;padding:2px 10px}
         .lc-card.y{border-color:#86efac;background:#f0fdf4}.lc-card.y i{background:#16a34a;color:#fff}.lc-card.n{border-color:#fca5a5;background:#fef2f2}.lc-card.n i{background:#dc2626;color:#fff}
