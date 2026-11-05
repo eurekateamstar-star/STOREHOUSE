@@ -80,6 +80,7 @@ export default {
     if (path === '/myplan') return myPlanRoute(req, env, json);
     if (path === '/groups') return groupsRoute(req, env, json);
     if (path === '/groupset') return groupSetRoute(req, env, json);
+    if (path === '/mygroup') return myGroupRoute(req, env, json);
     if (path === '/nudge') return nudgeRoute(req, env, json);
     if (path === '/viewsched') return viewSchedRoute(req, env, json);
     if (path === '/remind') return remindRoute(req, env, json);
@@ -885,12 +886,13 @@ async function groupsRoute(req, env, json) {
     const { tok, key, admin } = M;
     const evs = (await fsList(tok, 'events')).filter(e => e.askGroups && (!eid || e.id === eid));
     const out = []; let roster = null;
-    const want = evs.filter(e => parseGroups(e.groupsText).gs.some(g => admin || (key && g.lead.some(l => leadKey(l.n) === key))));
+    if (!admin) return json({ events: [], admin });   // 選組確認只在管理員後台做
+    const want = evs.filter(e => parseGroups(e.groupsText).gs.length);
     const pre = {}; want.forEach(e => { pre[e.id] = Promise.all([fsList(tok, `events/${e.id}/responses`), fsGet(tok, `events/${e.id}/admin/groups`)]); });
     if (eid && want.length) { roster = {}; (await fsList(tok, 'member_roster')).forEach(x => { const k = normName(x.name); if (k && !roster[k]) roster[k] = x; }); }
     for (const e of want) {
       const GP = parseGroups(e.groupsText);
-      const mine = GP.gs.filter(g => admin || (key && g.lead.some(l => leadKey(l.n) === key)));
+      const mine = GP.gs;
       const [rsp, gd] = await pre[e.id];
       const latest = {}; rsp.forEach(x => { const k = normName(x.name); if (k && (!latest[k] || (x.createdAt || 0) >= (latest[k].createdAt || 0))) latest[k] = x; });
       const fin = gd ? (fobj(gd.fields).final || {}) : {};
@@ -910,22 +912,40 @@ async function groupsRoute(req, env, json) {
 // 確認／取消某人在某組：{ idToken, eid, g, k, on }
 async function groupSetRoute(req, env, json) {
   try {
-    const { idToken, eid, g, k, on } = await req.json();
-    if (!idToken || !/^[A-Za-z0-9_-]{1,64}$/.test(eid || '') || !g || !k || String(k).length > 20) return json({ error: 'missing' }, 400);
+    const { idToken, eid, g, k, ks, on } = await req.json();
+    const keys = (Array.isArray(ks) ? ks : [k]).filter(x => x && String(x).length <= 20).slice(0, 400);
+    if (!idToken || !/^[A-Za-z0-9_-]{1,64}$/.test(eid || '') || !g || !keys.length) return json({ error: 'missing' }, 400);
     const M = await groupMe(idToken, env); if (!M) return json({ error: 'not member' }, 403);
     const { tok, key, admin, by } = M;
     const ev = await fsGet(tok, `events/${eid}`); if (!ev) return json({ error: 'no event' }, 404);
     const e = fobj(ev.fields), G = parseGroups(e.groupsText).gs.find(x => x.n === g);
     if (!e.askGroups || !G) return json({ error: '沒有這個組別' }, 404);
-    if (!admin && !(key && G.lead.some(l => leadKey(l.n) === key))) return json({ error: '只有這組的組長或管理員可以確認' }, 403);
+    if (!admin) return json({ error: '只有管理員可以確認組別' }, 403);
     const path = `events/${eid}/admin/groups`, cur = await fsGet(tok, path), fin = cur ? (fobj(cur.fields).final || {}) : {};
-    const nk = normName(k), m = { ...(fin[g] || {}) };
-    if (on) m[nk] = by || '管理員'; else delete m[nk];
+    const m = { ...(fin[g] || {}) };
+    keys.forEach(x => { const nk = normName(x); if (on) m[nk] = by || '管理員'; else delete m[nk]; });
     fin[g] = m; if (!Object.keys(m).length) delete fin[g];
     const w = await fetch(`${FS}/${path}?updateMask.fieldPaths=final&updateMask.fieldPaths=at`, { method: 'PATCH', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
       body: JSON.stringify({ fields: { final: tv(fin), at: { timestampValue: new Date().toISOString() } } }) });
     if (!w.ok) return json({ error: 'write failed ' + w.status }, 500);
     return json({ ok: true, final: fin[g] || {} });
+  } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
+}
+// 團員看自己組別的組長、組員：{ idToken, eid }
+async function myGroupRoute(req, env, json) {
+  try {
+    const { idToken, eid } = await req.json();
+    if (!idToken || !/^[A-Za-z0-9_-]{1,64}$/.test(eid || '')) return json({ error: 'missing' }, 400);
+    const M = await groupMe(idToken, env); if (!M) return json({ error: 'not member' }, 403);
+    const { tok, key, admin } = M;
+    const [ev, gd, rsp] = await Promise.all([fsGet(tok, `events/${eid}`), fsGet(tok, `events/${eid}/admin/groups`), fsList(tok, `events/${eid}/responses`)]);
+    if (!ev) return json({ error: 'no event' }, 404);
+    const e = fobj(ev.fields); if (!e.askGroups) return json({ groups: [] });
+    const GP = parseGroups(e.groupsText), fin = gd ? (fobj(gd.fields).final || {}) : {};
+    const nm = {}; rsp.forEach(x => { const k = normName(x.name); if (k && !nm[k]) nm[k] = String(x.name || '').trim(); });
+    const mine = GP.gs.filter(g => g.lead.some(l => leadKey(l.n) === key) || (fin[g.n] && fin[g.n][key]));
+    return json({ core: GP.core, groups: mine.map(g => ({ n: g.n, lead: g.lead, duty: g.duty,
+      members: Object.keys(fin[g.n] || {}).filter(k => !g.lead.some(l => leadKey(l.n) === k)).map(k => nm[k] || k) })) });
   } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
 }
 const isoAddW = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };

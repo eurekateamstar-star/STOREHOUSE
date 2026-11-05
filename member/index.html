@@ -1803,7 +1803,7 @@
       </div>`;
     }).join('');
     el.querySelectorAll('[data-att]').forEach(b => b.onclick = () => { const url = eventLink(b.dataset.att); try { if (inLine()) { liff.openWindow({ url, external: false }); return; } } catch (e) {} location.href = url; });
-    renderLotCards(); loadMySched(); loadGrpHome();
+    renderLotCards(); loadMySched();
   }
   // ===== 首頁：我的排班（管理員在排班表打開「公開給團員看」才會出現）=====
   let mySchedKey = null, mySchedData = null;
@@ -1833,7 +1833,10 @@
     if (!box) { box = document.createElement('div'); box.id = 'my-sched'; ($('lot-cards') || $('attend-cards')).after(box); }
     const evs = (mySchedData || []).filter(e => e.days.length || e.grp);
     if (!evs.length) { box.innerHTML = ''; return; }
-    const grpLine = e => !e.grp ? '' : (e.grp.role || []).length ? `<div class="ms-grp">🧩 今年職務：<b>${e.grp.role.map(esc).join('、')}</b>${(() => { const led = e.grp.role.map(r => r.split(' ')[0]), more = e.grp.final.filter(g => !led.includes(g)); return more.length ? `　也在 <b>${more.map(esc).join('、')}</b>` : ''; })()}</div>` : `<div class="ms-grp">🧩 今年組別：${e.grp.final.length ? `<b>${e.grp.final.map(esc).join('、')}</b> <span class="ok">✅ 組長已確認</span>` : `${e.grp.picks.map(esc).join('、')} <span class="wt">⏳ 等組長確認</span>`}</div>`;
+    const grpLine = e => { if (!e.grp) return ''; const g = e.grp, role = g.role || [], has = g.final.length || role.length;
+      const body = role.length ? `🧩 今年職務：<b>${role.map(esc).join('、')}</b>${(() => { const led = role.map(r => r.split(' ')[0]), more = g.final.filter(x => !led.includes(x)); return more.length ? `　也在 <b>${more.map(esc).join('、')}</b>` : ''; })()}`
+        : g.final.length ? `🧩 今年組別：<b>${g.final.map(esc).join('、')}</b> <span class="ok">✅ 已確認</span>` : `🧩 今年選組：${g.picks.map(esc).join('、')} <span class="wt">⏳ 等管理員確認</span>`;
+      return `<div class="ms-grp"${has ? ` data-myg="${e.id}" style="cursor:pointer"` : ''}>${body}${has ? '<span class="ms-ar" style="float:right">看組員 ›</span>' : ''}</div>`; };
     box.innerHTML = `<style>
       .ms-card{background:#fff;border-radius:16px;box-shadow:0 6px 18px rgba(120,60,50,.07);border:1px solid #f1e8e4;overflow:hidden;margin:12px 0}
       .ms-h{padding:9px 14px;display:flex;justify-content:space-between;align-items:baseline;gap:8px;background:#fdf6f4;font-weight:900;font-size:14px;color:var(--ink);white-space:nowrap}.ms-h small{min-width:0;font-size:11px;color:var(--sub);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1843,7 +1846,7 @@
       .ms-mb{flex:1;min-width:0;font-size:11.5px;letter-spacing:-.5px;color:#4b5563;white-space:nowrap;line-height:1.45;overflow:hidden}.ms-mb .nmw{white-space:nowrap}.ms-mb small{display:block;font-size:10.5px;color:#b91c1c;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
       .ms-dt .ms-tg,.ms-tg{font-size:9px;color:#fff;background:#1e3a8a;border-radius:4px;padding:1px 3px;margin-right:2px;font-weight:700;vertical-align:1px}
       .ms-ar{flex:none;color:#c9b5ae;font-size:15px;font-weight:700}
-      .ms-grp{padding:8px 14px;border-top:1px solid #f3ece9;font-size:13px;color:#374151;background:#fffaf5}.ms-grp b{color:#c2410c}.ms-grp .ok{font-size:11px;color:#15803d;font-weight:800}.ms-grp .wt{font-size:11px;color:#b45309;font-weight:800}</style>
+      .ms-grp{padding:8px 14px;border-top:1px solid #f3ece9;font-size:13px;color:#374151;background:#fffaf5}.ms-grp b{color:#c2410c}.ms-grp .ok{font-size:11px;color:#15803d;font-weight:800}.ms-grp .wt{font-size:11px;color:#b45309;font-weight:800}.ms-grp .ms-ar{font-size:12px;color:#c2410c}</style>
       ${evs.map(e => `<div class="ms-card"><div class="ms-h">📅 我的排班<small>${esc(e.title)}${e.days.length ? `・${e.days.length} 天・點日期看全部` : ''}</small></div>${grpLine(e)}
         ${[...new Set([...e.days.map(x => x.d), ...(e.plan || []).map(x => x.d)])].sort().map(d => { const x = e.days.find(y => y.d === d), pl = (e.plan || []).find(y => y.d === d) || {};
           const ic = `${pl.s ? '🛏' : ''}${['o', 'y', 'h'].some(f => pl[f] === '9') ? '🚌' : ''}`;
@@ -1856,6 +1859,7 @@
             <span class="ms-tm">${esc(x.team)}</span>
             <div class="ms-mb">${mates.map(n => `<span class="nmw">${n === e.name ? `<b style="color:#b91c1c">${esc(n)}</b>` : esc(n)}</span>`).join('<i style="font-style:normal;color:#cbbdb8">·</i>')}${extra.trim() ? `<small>${extra}</small>` : ''}</div><span class="ms-ar" style="font-size:11px">${ic}</span><span class="ms-ar">›</span></div>`; } }
     box.querySelectorAll('[data-msd]').forEach(el => el.onclick = () => { const [a, b] = el.dataset.msd.split('|'); showMyDay(a, b); });
+    box.querySelectorAll('[data-myg]').forEach(el => el.onclick = () => openMyGroup(el.dataset.myg));
   }
   function msFlash(t, bad) {
     let el = document.getElementById('ms-flash');
@@ -2202,70 +2206,139 @@
     const r = await fetch(AUTH_URL + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, ...body }), signal: ac.signal }).finally(() => clearTimeout(to));
     const j = await r.json().catch(() => ({})); if (!r.ok || j.error) throw new Error(j.error || ('HTTP ' + r.status)); return j;
   }
-  // 首頁：我是組長（或管理員）→ 選組確認卡片
-  let grpHome = null, grpHomeKey = null;
-  async function loadGrpHome() {
-    if (!user || user.status !== 'approved' || !auth.currentUser) return;
-    const k = eventsCache.filter(e => e.askGroups).map(e => e.id).join(',');
-    if (k === grpHomeKey) return; grpHomeKey = k;
-    if (!k) { grpHome = null; renderGrpHome(); return; }
-    try { grpHome = (await grpCall('/groups', {})).events || []; } catch (e) { grpHome = null; grpHomeKey = null; setTimeout(loadGrpHome, 5000); }
-    renderGrpHome();
-  }
-  function renderGrpHome() {
-    let box = $('grp-home');
-    if (!box) { box = document.createElement('div'); box.id = 'grp-home'; ($('my-sched') || $('lot-cards') || $('attend-cards')).after(box); }
-    const evs = (grpHome || []).filter(e => e.groups.length);
-    box.innerHTML = evs.map(e => { const wait = e.groups.reduce((a, g) => a + Math.max(0, g.picked - g.ok), 0);
-      return `<div class="att-card" style="border-color:#fdba74;background:linear-gradient(135deg,#fff7ed,#fff)">
-        <div class="t">🧩 選組確認<span style="font-size:12px;color:var(--sub);font-weight:700;margin-left:6px">${esc(e.title)}</span></div>
-        <div class="d">${e.groups.map(g => `<b>${esc(g.n)}</b> ${g.picked} 人選、${g.ok} 人已確認`).join('<br>')}</div>
-        <button class="sbtn pri" data-grpb="${e.id}" style="width:100%;padding:11px;">${wait ? `確認組員（${wait} 人待確認）` : '查看組員'}</button></div>`; }).join('');
-    box.querySelectorAll('[data-grpb]').forEach(b => b.onclick = () => openGroupBoard(b.dataset.grpb));
+  let grpHomeKey = null; const loadGrpHome = () => {};   // 選組確認只在管理員後台
+  // 團員：點「今年組別」→ 看組長、組員
+  async function openMyGroup(eid) {
+    $('sheet-body').innerHTML = '<div class="empty" style="padding:30px 0">⏳ 讀取組員…</div>';
+    $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open'); $('sheet').scrollTop = 0;
+    let j; try { j = await grpCall('/mygroup', { eid }); } catch (err) { $('sheet-body').innerHTML = `<div class="empty">❌ 讀取失敗：${esc(err.message)}</div>`; return; }
+    const me = myRoster ? normName(myRoster.name) : '';
+    const nm = n => { const k = normName(String(n).replace(/[（(].*$/, '')); return `<span class="mg-p${k === me ? ' me' : ''}">${esc(n)}</span>`; };
+    $('sheet-body').innerHTML = `<style>.mg{border:1px solid #f1e3dc;border-radius:16px;margin:12px 0;overflow:hidden;background:#fff}
+      .mg-h{padding:12px 14px;background:linear-gradient(110deg,#D65A68,#F08339);color:#fff;font-size:17px;font-weight:900}
+      .mg-s{padding:10px 14px;border-top:1px solid #f6eeea}.mg-s small{display:block;font-size:11.5px;color:var(--sub);font-weight:800;margin-bottom:6px}
+      .mg-l{display:flex;flex-wrap:wrap;gap:6px}.mg-p{background:#f6eeea;color:#3f3a37;border-radius:999px;padding:4px 11px;font-size:14px;font-weight:800}
+      .mg-p.me{background:#fde7d9;color:#c2410c;box-shadow:inset 0 0 0 1.5px #f08339}.mg-ld{display:flex;gap:8px;align-items:center;margin:3px 0;font-size:14px}.mg-ld b{font-size:11.5px;color:#9a3412;background:#fff7ed;border-radius:6px;padding:2px 7px}
+      .mg-d{margin:0;padding-left:18px;font-size:12.5px;color:#4b5563;line-height:1.7}</style>
+      <h3>🧩 我的組別</h3>
+      ${(j.groups || []).map(g => `<div class="mg"><div class="mg-h">${esc(g.n)}</div>
+        ${g.lead.length ? `<div class="mg-s"><small>組長／副組長</small>${g.lead.map(l => `<div class="mg-ld"><b>${esc(l.t)}</b>${nm(l.n.replace(/[（(].*$/, ''))}</div>`).join('')}</div>` : ''}
+        <div class="mg-s"><small>組員 ${g.members.length} 人</small><div class="mg-l">${g.members.map(nm).join('') || '<span style="color:var(--sub);font-size:13px">管理員還沒確認組員</span>'}</div></div>
+        ${g.duty.length ? `<div class="mg-s"><small>職責</small><ul class="mg-d">${g.duty.map(d => `<li>${esc(d)}</li>`).join('')}</ul></div>` : ''}</div>`).join('') || '<div class="empty">管理員還沒確認你的組別</div>'}`;
   }
   async function openGroupBoard(eid) {
     $('sheet-body').innerHTML = '<div class="empty" style="padding:30px 0">⏳ 載入選組名單…</div>';
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open'); $('sheet').scrollTop = 0;
     let E;
     try { E = ((await grpCall('/groups', { eid })).events || [])[0]; } catch (err) { $('sheet-body').innerHTML = `<div class="empty">❌ 讀取失敗：${esc(err.message)}</div>`; return; }
-    if (!E) { $('sheet-body').innerHTML = '<div class="empty">你不是這次任何一組的組長</div>'; return; }
+    if (!E) { $('sheet-body').innerHTML = '<div class="empty">這個出席調查沒有開選組</div>'; return; }
+    const ev = eventsCache.find(x => x.id === eid) || {}, CORE = parseGroups(ev.groupsText).core;
     const ATT = { yes: '出席', join: '不出席但參與' };
+    const okIn = k => E.groups.filter(g => g.people.some(p => p.k === k && p.ok)).map(g => g.n);
+    const set = async (g, ks, on) => {
+      const j = await grpCall('/groupset', { eid, g: g.n, ks, on });
+      g.people.forEach(x => x.ok = (j.final || {})[x.k] || '');
+      g.people = g.people.filter(p => p.ok || p.picks.includes(g.n));
+    };
     const paint = () => {
+      const y = $('sheet').scrollTop;
       $('sheet-body').innerHTML = `<style>
         .gb-g{border:1px solid #f1e3dc;border-radius:16px;margin:12px 0;overflow:hidden;background:#fff}
         .gb-h{padding:10px 14px;background:#fff7ed;display:flex;justify-content:space-between;align-items:center;gap:8px}
         .gb-h b{font-size:16px}.gb-h small{display:block;font-size:11.5px;color:#9a3412;font-weight:700}
-        .gb-n{font-size:12px;font-weight:900;color:#c2410c;white-space:nowrap}
+        .gb-n{font-size:12px;font-weight:900;color:#c2410c;white-space:nowrap;text-align:right}
+        .gb-all{display:block;margin-top:4px;border:none;background:#16a34a;color:#fff;border-radius:999px;padding:4px 10px;font-weight:900;font-size:12px;font-family:inherit}
         .gb-r{display:flex;align-items:center;gap:8px;padding:9px 14px;border-top:1px solid #f6eeea}
-        .gb-r .nm{flex:1;min-width:0}.gb-r .nm b{font-size:15px}.gb-r .nm div{font-size:11.5px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .gb-r .nm{flex:1;min-width:0}.gb-r .nm b{font-size:15px}.gb-r .nm div{font-size:11.5px;color:var(--sub)}
+        .gb-r .warn{color:#b45309;font-weight:800}
         .gb-btn{flex:none;border:1.5px solid #d1d5db;background:#fff;border-radius:999px;padding:6px 12px;font-weight:900;font-size:13px;font-family:inherit;color:#374151}
         .gb-btn.ok{background:#16a34a;border-color:#16a34a;color:#fff}
-        .gb-add{display:block;width:100%;border:none;border-top:1px dashed #f1d5c7;background:#fffaf7;padding:9px;font-weight:800;color:#c2410c;font-family:inherit;font-size:13px}</style>
-        <h3>🧩 選組確認</h3><div style="font-size:12.5px;color:var(--sub);margin-top:2px">${esc(E.title)}　按「確認」後，團員的「我的排班」會顯示確定的組別。</div>
-        ${E.groups.map((g, gi) => { const ok = g.people.filter(p => p.ok).length;
-          return `<div class="gb-g"><div class="gb-h"><div><b>${esc(g.n)}</b><small>${g.lead.map(l => esc(l.t + '：' + l.n)).join('　')}</small></div><span class="gb-n">✅ ${ok} / ${g.people.length}</span></div>
-          ${g.people.map((p, pi) => `<div class="gb-r"><div class="nm"><b>${esc(p.name)}</b><div>${[p.pos, p.cert, ATT[p.attend] || '', p.picks.includes(g.n) ? '' : '組長加入', p.picks.length > 1 ? '也選：' + p.picks.filter(x => x !== g.n).join('、') : ''].filter(Boolean).map(esc).join('・')}</div></div>
-            <button class="gb-btn ${p.ok ? 'ok' : ''}" data-gb="${gi}|${pi}">${p.ok ? '✅ 已確認' : '確認'}</button></div>`).join('') || '<div class="gb-r" style="color:var(--sub);font-size:13px">還沒有人選這組</div>'}
+        .gb-add{display:block;width:100%;border:none;border-top:1px dashed #f1d5c7;background:#fffaf7;padding:9px;font-weight:800;color:#c2410c;font-family:inherit;font-size:13px}
+        .gb-img{width:100%;border:none;border-radius:14px;padding:12px;font-size:15px;font-weight:900;color:#fff;background:linear-gradient(90deg,#D65A68,#F08339);font-family:inherit;margin-top:10px}</style>
+        <h3>🧩 選組確認</h3><div style="font-size:12.5px;color:var(--sub);margin-top:2px">${esc(E.title)}　確認後，團員的「我的排班」會顯示組別，點進去看得到組長和組員。</div>
+        <button class="gb-img" id="gb-img">🖼️ 產生分組名單圖（全部組別＋人員）</button>
+        ${E.groups.map((g, gi) => { const ok = g.people.filter(p => p.ok).length, wait = g.people.filter(p => !p.ok).length;
+          return `<div class="gb-g"><div class="gb-h"><div><b>${esc(g.n)}</b><small>${g.lead.map(l => esc(l.t + '：' + l.n)).join('　')}</small></div>
+            <div class="gb-n">✅ ${ok} / ${g.people.length}${wait ? `<button class="gb-all" data-gall="${gi}">全部確認（${wait}）</button>` : ''}</div></div>
+          ${g.people.map((p, pi) => { const other = okIn(p.k).filter(x => x !== g.n);
+            return `<div class="gb-r"><div class="nm"><b>${esc(p.name)}</b><div>${[p.pos, p.cert, ATT[p.attend] || '', p.picks.includes(g.n) ? '' : '管理員加入', p.picks.length > 1 ? '也選：' + p.picks.filter(x => x !== g.n).join('、') : ''].filter(Boolean).map(esc).join('・')}${other.length ? ` <span class="warn">・已在 ${esc(other.join('、'))}</span>` : ''}</div></div>
+            <button class="gb-btn ${p.ok ? 'ok' : ''}" data-gb="${gi}|${pi}">${p.ok ? '✅ 已確認' : '確認'}</button></div>`; }).join('') || '<div class="gb-r" style="color:var(--sub);font-size:13px">還沒有人選這組</div>'}
           <button class="gb-add" data-gadd="${gi}">＋ 加入沒選這組的人</button></div>`; }).join('')}`;
+      $('sheet').scrollTop = y;
+      $('gb-img').onclick = () => groupImage(E, CORE);
       document.querySelectorAll('[data-gb]').forEach(b => b.onclick = async () => {
-        const [gi, pi] = b.dataset.gb.split('|').map(Number), g = E.groups[gi], p = g.people[pi], on = !p.ok;
+        const [gi, pi] = b.dataset.gb.split('|').map(Number), g = E.groups[gi], p = g.people[pi];
         b.disabled = true; b.textContent = '…';
-        try { const j = await grpCall('/groupset', { eid, g: g.n, k: p.k, on }); g.people.forEach(x => x.ok = (j.final || {})[x.k] || ''); if (!on && !p.picks.includes(g.n)) g.people.splice(pi, 1); }
-        catch (err) { toast('❌ ' + err.message); }
-        paint(); grpHomeKey = null; loadGrpHome();
+        try { await set(g, [p.k], !p.ok); } catch (err) { toast('❌ ' + err.message); }
+        paint();
+      });
+      document.querySelectorAll('[data-gall]').forEach(b => b.onclick = async () => {
+        const g = E.groups[+b.dataset.gall], ks = g.people.filter(p => !p.ok).map(p => p.k);
+        const dup = g.people.filter(p => !p.ok && okIn(p.k).length);
+        if (dup.length && !(await dialog({ title: `「${g.n}」全部確認？`, msg: `其中 ${dup.length} 人已經在別組：${dup.map(p => p.name).join('、')}\n確認後他們會同時在兩組。`, okText: '全部確認' }))) return;
+        b.disabled = true; b.textContent = '…';
+        try { await set(g, ks, true); toast(`✅ 已確認 ${ks.length} 人`); } catch (err) { toast('❌ ' + err.message); }
+        paint();
       });
       document.querySelectorAll('[data-gadd]').forEach(b => b.onclick = async () => {
         const g = E.groups[+b.dataset.gadd], have = new Set(g.people.map(p => p.k));
         const cands = (E.all || []).filter(p => !have.has(p.k));
         if (!cands.length) return toast('出席的人都已經在這組了');
-        const v = await dialog({ title: `加入「${g.n}」`, msg: '輸入姓名（要跟出席調查填的一樣）\n可加入：' + cands.map(p => p.name).join('、'), input: '', okText: '加入並確認' });
+        const v = await dialog({ title: `加入「${g.n}」`, msg: '輸入姓名（要跟出席調查填的一樣）', input: '', okText: '加入並確認' });
         if (!v) return; const p = cands.find(x => normName(x.name) === normName(v)); if (!p) return toast('找不到這個人（要先在出席調查回覆出席）');
-        try { const j = await grpCall('/groupset', { eid, g: g.n, k: p.k, on: true }); g.people.push({ ...p, ok: (j.final || {})[p.k] || '✓' }); toast('✅ 已加入'); }
+        try { g.people.push({ ...p, ok: '' }); await set(g, [p.k], true); toast('✅ 已加入'); }
         catch (err) { toast('❌ ' + err.message); }
         paint();
       });
     };
     paint();
+  }
+  // 分組名單圖：全部組別＋組長＋已確認組員 → PNG（LINE 裡長按圖片可存）
+  async function groupImage(E, CORE) {
+    try { await document.fonts.load('900 30px "Noto Sans TC"'); } catch (e) {}
+    const F = '"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif';
+    const W = 1600, PAD = 50, COLS = 3, GAP = 28, CW = (W - PAD * 2 - GAP * (COLS - 1)) / COLS, PER = 4, NH = 46;
+    const cv = document.createElement('canvas'), x = cv.getContext('2d');
+    const boxes = E.groups.map(g => { const lead = g.lead.map(l => ({ t: l.t, n: l.n.replace(/[（(].*$/, '') })), lk = new Set(lead.map(l => normName(l.n)));
+      const mem = g.people.filter(p => p.ok && !lk.has(p.k)).map(p => p.name);
+      return { n: g.n, lead, mem, h: 84 + lead.length * 44 + 30 + Math.max(1, Math.ceil(mem.length / PER)) * NH + 26 }; });
+    const colH = Array(COLS).fill(0), pos = boxes.map(b => { const c = colH.indexOf(Math.min(...colH)), y = colH[c]; colH[c] += b.h + GAP; return { c, y }; });
+    const TOP = 250 + (CORE.length ? 70 : 0), H = TOP + Math.max(...colH) + 70;
+    cv.width = W; cv.height = H;
+    x.fillStyle = '#fdf6f2'; x.fillRect(0, 0, W, H);
+    const gr = x.createLinearGradient(0, 0, W, 0); gr.addColorStop(0, '#D65A68'); gr.addColorStop(1, '#F08339');
+    x.fillStyle = gr; x.fillRect(0, 0, W, 190);
+    x.fillStyle = '#fff'; x.textAlign = 'center'; x.font = `900 58px ${F}`; x.fillText('白沙屯拱天宮醫護團', W / 2, 88);
+    x.font = `700 32px ${F}`; x.fillText(`${E.title}・分組名單`, W / 2, 145);
+    let y0 = 240;
+    if (CORE.length) { x.fillStyle = '#7c2d12'; x.font = `800 30px ${F}`; x.fillText(CORE.map(c => `${c.t}：${c.n.replace(/[（(].*$/, '')}`).join('　｜　'), W / 2, y0); y0 += 70; }
+    const rr = (X, Y, w, h, r) => { x.beginPath(); x.moveTo(X + r, Y); x.arcTo(X + w, Y, X + w, Y + h, r); x.arcTo(X + w, Y + h, X, Y + h, r); x.arcTo(X, Y + h, X, Y, r); x.arcTo(X, Y, X + w, Y, r); x.closePath(); };
+    boxes.forEach((b, i) => {
+      const X = PAD + pos[i].c * (CW + GAP), Y = y0 - 20 + pos[i].y;
+      x.save(); x.shadowColor = 'rgba(120,50,30,.12)'; x.shadowBlur = 18; x.shadowOffsetY = 6; x.fillStyle = '#fff'; rr(X, Y, CW, b.h, 22); x.fill(); x.restore();
+      x.save(); rr(X, Y, CW, b.h, 22); x.clip(); x.fillStyle = gr; x.fillRect(X, Y, CW, 64); x.restore();
+      x.textAlign = 'left'; x.fillStyle = '#fff'; x.font = `900 32px ${F}`; x.fillText(b.n, X + 22, Y + 44);
+      x.font = `800 22px ${F}`; x.textAlign = 'right'; x.fillText(`${b.lead.length + b.mem.length} 人`, X + CW - 20, Y + 42);
+      let yy = Y + 84 + 18;
+      b.lead.forEach(l => { x.textAlign = 'left';
+        x.font = `800 20px ${F}`; const tw = x.measureText(l.t).width; x.fillStyle = '#fff1e6'; rr(X + 20, yy - 25, tw + 20, 34, 9); x.fill();
+        x.fillStyle = '#9a3412'; x.fillText(l.t, X + 30, yy); x.fillStyle = '#1f2430'; x.font = `900 26px ${F}`; x.fillText(l.n, X + 20 + tw + 34, yy + 1); yy += 44; });
+      x.strokeStyle = '#f1e3dc'; x.setLineDash([6, 6]); x.beginPath(); x.moveTo(X + 20, yy - 14); x.lineTo(X + CW - 20, yy - 14); x.stroke(); x.setLineDash([]);
+      yy += 18;
+      if (!b.mem.length) { x.fillStyle = '#9ca3af'; x.font = `700 22px ${F}`; x.textAlign = 'left'; x.fillText('（尚未確認組員）', X + 22, yy + 4); }
+      const cw = (CW - 40) / PER;
+      b.mem.forEach((n, k) => { const cx = X + 20 + (k % PER) * cw, cy = yy - 26 + Math.floor(k / PER) * NH;
+        x.fillStyle = '#f6eeea'; rr(cx + 3, cy, cw - 6, 38, 19); x.fill();
+        x.fillStyle = '#3f3a37'; x.textAlign = 'center'; let fs = 23; x.font = `800 ${fs}px ${F}`; while (x.measureText(n).width > cw - 16 && fs > 14) x.font = `800 ${--fs}px ${F}`; x.fillText(n, cx + cw / 2, cy + 27); });
+    });
+    x.textAlign = 'center'; x.fillStyle = '#a8a29e'; x.font = `700 20px ${F}`; x.fillText(`產生時間 ${new Date().toLocaleString('zh-TW', { hour12: false })}`, W / 2, H - 28);
+    const url = cv.toDataURL('image/png'), fn = `${E.title || '分組名單'}_分組名單.png`;
+    $('sheet-body').innerHTML = `<h3>🖼️ 分組名單圖</h3><div style="font-size:12.5px;color:var(--sub);margin:4px 0 10px">在 LINE 裡請<b>長按圖片</b>儲存；電腦可按下載。</div>
+      <img src="${url}" style="width:100%;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.12)" alt="分組名單">
+      <div style="display:flex;gap:8px;margin-top:12px"><a class="sbtn pri" href="${url}" download="${esc(fn)}" style="flex:1;text-align:center;padding:12px;text-decoration:none">⬇️ 下載圖檔</a>
+      <button class="sbtn" id="gi-back" style="flex:1;padding:12px">← 回選組確認</button></div>`;
+    $('sheet').scrollTop = 0;
+    $('gi-back').onclick = () => openGroupBoard(E.id);
   }
   // ===================== 分組抽籤 + 簽到表 / 抽籤紀錄 / 繳費紀錄 =====================
   const DRAW_GROUPS = ['教官及長官', '護理師', 'EMTP、EMT2', 'EMT1', '指揮官及汽機車組', '專業人員及志工', '未對應名冊'];
