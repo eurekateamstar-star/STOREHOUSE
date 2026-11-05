@@ -5232,7 +5232,7 @@
     const targetName = t => { t = String(t || ''); const i = t.indexOf(' - '); return i === -1 ? t : t.slice(i + 3); };
 
     // 手動群組 + 自動產生的群組：已通過審核、不在任何手動群組的成員，依「分類」分組（沒分類的歸「成員」）
-    const SHOW_PERSON_GROUPS = false;   // 先不顯示「個人」（依成員分類自動產生的群組），只留自己定義的群組
+    const SHOW_PERSON_GROUPS = true;    // 顯示「人員」：已通過審核的成員依分類自動分組（快速出貨選對象、去處查詢都看得到）
     function getSelectableGroups() {
         const groups = borrowerGroupsCache.map(g => ({ ...g }));
         if (!SHOW_PERSON_GROUPS) return groups;
