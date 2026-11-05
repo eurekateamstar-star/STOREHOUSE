@@ -2031,8 +2031,9 @@
           <button class="sbtn violet" id="ev-edit">編輯</button><button class="sbtn" id="ev-csv">⬇ 匯出</button></div>
           <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; padding-top:8px; border-top:1px dashed rgba(0,0,0,.12);">
             <button class="sbtn" id="ev-draw" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">👥 分組名單・抽籤・簽到表</button>
-            ${e.askGroups ? '<button class="sbtn" id="ev-grpb" style="background:#fff7ed;color:#c2410c;">🧩 選組確認</button>' : ''}
+            ${e.askGroups ? '<button class="sbtn" id="ev-grpb" style="background:#ea580c;color:#fff;">🧩 選組確認</button>' : ''}
             <button class="sbtn" id="ev-test-add" style="background:#ecfeff;color:#0e7490;">🧪 產生測試回覆（名冊 9 成）</button>
+            ${e.askGroups && rs.some(r => r.src === 'test' && r.attend !== 'no' && !(r.groups || []).length) ? '<button class="sbtn" id="ev-test-grp" style="background:#fff7ed;color:#c2410c;">🧩 幫測試回覆加上選組</button>' : ''}
             ${testN ? `<button class="sbtn" id="ev-test-clear" style="background:#fef2f2;color:#b91c1c;">🧹 清除測試回覆（${testN}）</button>` : ''}</div></div>
         <div class="ev-stats">
           ${st('all', '已回覆', rs.length)}${st('yes', '出席', cnt('yes'), 'var(--green)')}${st('join', '不出席但參與進香', cnt('join'), '#b45309')}
@@ -2064,6 +2065,18 @@
       try { const bt = writeBatch(db); same.forEach(x => bt.delete(doc(db, 'events', e.id, 'responses', x.id))); await bt.commit(); toast('已刪除'); } catch (err) { console.error(err); toast('❌ 刪除失敗'); }
     });
     // 測試用：名冊裡約 9 成還沒回覆的人，隨機產生回覆（標記 src: test，可一鍵清除）
+    // 測試回覆的選組：免選組的人不選，其他人隨機選 1～2 組（偶爾 3 組）
+    const TG = e.askGroups ? parseGroups(e.groupsText).gs.map(g => g.n) : [], TSKIP = new Set(e.grpSkip || []);
+    const testGroups = (name, attend) => { if (!TG.length || attend === 'no' || TSKIP.has(normName(name))) return null;
+      const a = TG.slice().sort(() => Math.random() - 0.5), n = Math.random() < 0.6 ? 1 : Math.random() < 0.85 ? 2 : 3; return a.slice(0, n).sort((x, y) => TG.indexOf(x) - TG.indexOf(y)); };
+    if ($('ev-test-grp')) $('ev-test-grp').onclick = async () => {
+      const list = rs.filter(r => r.src === 'test' && r.attend !== 'no' && !(r.groups || []).length);
+      if (!(await dialog({ title: `幫 ${list.length} 筆測試回覆加上選組？`, msg: '隨機選 1～3 組；幹部、組長、教官團等免選組的人不會加。', okText: '加上' }))) return;
+      try {
+        for (let i = 0; i < list.length; i += 400) { const b = writeBatch(db); list.slice(i, i + 400).forEach(r => { const g = testGroups(r.name, r.attend); if (g) b.update(doc(db, 'events', e.id, 'responses', r.id), { groups: g }); }); await b.commit(); }
+        toast('🧩 已加上選組');
+      } catch (err) { console.error(err); toast('❌ 失敗'); }
+    };
     $('ev-test-add').onclick = async () => {
       if (!e.open) return toast('請先「重新開放」回覆，才能產生測試資料');
       const pool = notYet.slice(); for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
@@ -2079,7 +2092,7 @@
             const x = Math.random(), attend = x < 0.75 ? 'yes' : x < 0.85 ? 'join' : 'no';
             const y = Math.random(), lunch = attend !== 'yes' || e.askLunch === false ? '' : y < 0.55 ? '葷' : y < 0.85 ? '素（方便素）' : '自行處理';
             b.set(doc(collection(db, 'events', e.id, 'responses')), { name: ro.name || '', lineName: ro.lineName || ro.name || '', attend, lunch,
-              reason: attend === 'join' ? rnd(REASONS) : '', comment: rnd(COMMENTS), createdAt: serverTimestamp(), src: 'test', ...(e.askUniform && attend !== 'no' ? { uniform: testUniform() } : {}) });
+              reason: attend === 'join' ? rnd(REASONS) : '', comment: rnd(COMMENTS), createdAt: serverTimestamp(), src: 'test', ...(e.askUniform && attend !== 'no' ? { uniform: testUniform() } : {}), ...((g => g ? { groups: g } : {})(testGroups(ro.name, attend))) });
           });
           await b.commit();
         }
