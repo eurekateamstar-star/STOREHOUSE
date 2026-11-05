@@ -57,8 +57,18 @@
       .nav-btn:active { transform: scale(0.96); }
       .btn-prev { background: #f0f0f0; color: #666; }
       .btn-draft { flex: 0 0 auto; background: #fff7ed; color: #c2410c; border: 1.5px solid #fdba74; padding: 15px 14px; letter-spacing: 0; }
-      .draft-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 10px 12px 0; padding: 11px 14px; border-radius: 14px; background: #fff7ed; border: 1.5px solid #fdba74; color: #9a3412; font-size: 14px; font-weight: 700; cursor: pointer; }
-      .draft-bar .draft-n { font-size: 12.5px; color: #c2410c; white-space: nowrap; }
+      .draft-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 10px 12px 0; padding: 10px 12px; border-radius: 14px; background: #f8fafc; border: 1.5px solid #e2e8f0; color: #475569; font-size: 13px; cursor: pointer; }
+      .draft-bar .db-l { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+      .draft-bar .db-l b { color: #c2410c; }
+      .draft-bar.cur .db-l b { font-size: 16px; color: #fff; }
+      .draft-bar .db-tag { font-size: 12px; font-weight: 800; padding: 3px 9px; border-radius: 999px; background: #fff; color: #c2410c; white-space: nowrap; }
+      .draft-bar .db-tag.new { background: #dcfce7; color: #15803d; }
+      .draft-bar .db-r { display: flex; gap: 6px; flex: none; }
+      .draft-bar .db-r button { border: none; border-radius: 10px; padding: 7px 10px; font-size: 12.5px; font-weight: 800; font-family: inherit; background: #fff7ed; color: #c2410c; white-space: nowrap; }
+      .draft-bar.cur { position: sticky; top: 8px; z-index: 60; background: linear-gradient(110deg, #ea580c, #f59e0b); border-color: #ea580c; color: #fff7ed; box-shadow: 0 6px 16px rgba(234,88,12,.3); cursor: default; }
+      .draft-bar.cur .db-r button { background: rgba(255,255,255,.95); }
+      body.in-draft .fixed-header { background: #fff7ed; box-shadow: inset 0 -3px 0 #f59e0b; }
+      body.in-draft .content-scroll-area { background: #fffaf3; }
       .draft-ov { position: fixed; inset: 0; z-index: 4000; background: rgba(0,0,0,.45); display: none; align-items: flex-end; justify-content: center; }
       .draft-box { background: #fff; width: 100%; max-width: 560px; max-height: 82vh; overflow-y: auto; border-radius: 22px 22px 0 0; padding: 16px 16px calc(20px + env(safe-area-inset-bottom)); }
       .draft-h { display: flex; justify-content: space-between; align-items: center; font-size: 18px; }
@@ -3585,9 +3595,14 @@
       if (editingId) return;
       const d = buildRecordData(new FormData(document.getElementById('ambulanceForm')));
       delete d.timestamp;
-      const P = d.patient || {};
-      if (!P.name || P.name === '不詳') { window.showNotice('error', '請先填姓名', '暫存最少要填「姓名」，才找得回來。'); currentStep = 0; window.updateWizard();
-        setTimeout(() => { const el = document.querySelector('[name=pName]'); if (el) { el.focus(); el.closest('.row') && el.closest('.row').classList.add('field-error'); } }, 300); return; }
+      const P = d.patient || {}, L = d.location || {}, need = [];
+      if (!P.name || P.name === '不詳') need.push(['pName', '姓名']);
+      if (!L.address) need.push(['location', '地點']);
+      if (!(L.lat && L.lng)) need.push(['location', '定位（按地點旁的「📍定位」）']);
+      if (need.length) { window.showNotice('error', '暫存前要先填好', need.map(x => '• ' + x[1]).join('\n')); currentStep = 0; window.updateWizard();
+        document.querySelectorAll('.field-error').forEach(e => e.classList.remove('field-error'));
+        need.forEach(([n]) => { const el = document.querySelector(`[name=${n}]`); const box = el && el.closest('.col-box, .row, .card'); if (box) box.classList.add('field-error'); });
+        setTimeout(() => { const el = document.querySelector(`[name=${need[0][0]}]`); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 300); return; }
       const id = draftId || ('d' + Date.now().toString(36));
       d._draft = id;
       const list = draftsGet().filter(x => x.id !== id), item = { id, at: Date.now(), d };
@@ -3602,7 +3617,7 @@
       let ov = document.getElementById('draftOverlay');
       if (!ov) { ov = document.createElement('div'); ov.id = 'draftOverlay'; ov.className = 'draft-ov'; document.body.appendChild(ov); ov.onclick = e => { if (e.target === ov) ov.style.display = 'none'; }; }
       ov.innerHTML = `<div class="draft-box"><div class="draft-h"><b>📝 暫存紀錄（${list.length}）</b><button type="button" onclick="document.getElementById('draftOverlay').style.display='none'">✕</button></div>
-        <div class="draft-tip">只存在這支手機。最少要填姓名。點一筆繼續補資料，填完按「確認上傳」才會送出。</div>
+        <div class="draft-tip">只存在這支手機。暫存前要先填姓名、地點並按定位。點一筆繼續補資料，填完按「確認上傳」才會送出。</div>
         ${list.map(x => { const ms = draftMissing(x.d), t = new Date(x.at);
           const it = draftItems(x.d), done = it.filter(v => v[1]).length, pct = Math.round(done / it.length * 100);
           return `<div class="draft-it ${x.id === draftId ? 'cur' : ''}"><div class="draft-m" onclick="window.resumeDraft('${x.id}')"><b>${escD(draftTitle(x.d))}</b>${x.id === draftId ? '<span class="draft-now">補填中</span>' : ''}
@@ -3641,14 +3656,28 @@
     };
     function updateDraftBar() {
       const n = draftsGet().length, bar = document.getElementById('draftBar'), btn = document.getElementById('draftBtn');
-      if (btn) btn.style.display = editingId ? 'none' : '';
-      if (!bar) return;
       const cur = draftId && draftsGet().find(x => x.id === draftId);
-      bar.style.display = (n && !editingId) ? 'flex' : 'none';
+      document.body.classList.toggle('in-draft', !!cur && !editingId);
+      if (btn) { btn.style.display = editingId ? 'none' : ''; btn.innerHTML = cur ? '💾 存回暫存' : '💾 暫存'; }
+      const sb = document.getElementById('submitBtn'); if (sb && !editingId) sb.innerText = cur ? '完成並上傳' : '確認上傳';
+      if (!bar) return;
+      if (editingId) { bar.style.display = 'none'; return; }
+      bar.style.display = 'flex';
       const prog = x => { const it = draftItems(x.d); return `${it.filter(v => v[1]).length}/${it.length}`; };
-      bar.innerHTML = cur ? `<span>📝 補填暫存中：<b>${escD(draftTitle(cur.d))}</b>（完成 ${prog(cur)}）</span><span class="draft-n">${n > 1 ? `還有 ${n - 1} 筆 ›` : '›'}</span>`
-        : `<span>📝 有 <b>${n}</b> 筆暫存還沒送出</span><span class="draft-n">點我補資料 ›</span>`;
+      if (cur) {
+        bar.className = 'draft-bar cur';
+        bar.innerHTML = `<div class="db-l"><span class="db-tag">📝 補填暫存</span><b>${escD(draftTitle(cur.d))}</b><small>完成 ${prog(cur)}${n > 1 ? `・還有 ${n - 1} 筆暫存` : ''}</small></div>
+          <div class="db-r"><button type="button" onclick="event.stopPropagation(); window.openDrafts()">暫存清單</button><button type="button" onclick="event.stopPropagation(); window.leaveDraft()">＋ 新表單</button></div>`;
+      } else {
+        bar.className = 'draft-bar';
+        bar.innerHTML = `<div class="db-l"><span class="db-tag new">🆕 新表單</span><small>${n ? `有 <b>${n}</b> 筆暫存還沒送出` : '沒有暫存'}</small></div>${n ? '<div class="db-r"><button type="button">補資料 ›</button></div>' : ''}`;
+      }
+      bar.onclick = n ? () => window.openDrafts() : null;
     }
+    window.leaveDraft = async function() {
+      if (!(await window.showConfirm('開新表單？', '這筆暫存剛剛改的內容如果還沒按「💾 存回暫存」就不會保留。\n（暫存本身還在清單裡）', '開新表單'))) return;
+      resetFormUI();
+    };
 
     window.finalSubmit = async function() {
       const fd = new FormData(document.getElementById('ambulanceForm'));
