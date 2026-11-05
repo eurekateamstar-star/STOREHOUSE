@@ -2571,7 +2571,7 @@
         logo: '#fff', barbg: 'rgba(255,255,255,.12)', bar: 'linear-gradient(90deg,#F08339,#fbbf24)', btn: 'rgba(255,255,255,.1)', card: 'rgba(255,255,255,.06)', cardb: '1px solid rgba(240,131,57,.35)', cardsh: 'none',
         hl2: '#fbbf24', ok: '#86efac', lane: 'rgba(0,0,0,.25)', chip: '#fff', chipc: '#1f2430', chipsh: 'none', emp: 'rgba(255,255,255,.22)', feed: 'rgba(0,0,0,.25)', fitem: 'rgba(255,255,255,.08)', pop: 'rgba(10,15,35,.85)' }) },
   ];
-  let bigTheme = 0; try { bigTheme = +localStorage.getItem('bigTheme') || 0; } catch (e) {}
+  let bigTheme = 1; // 固定 ② 奶白清爽
   const TUBE = '<svg viewBox="0 0 64 64"><g stroke="#92400e" stroke-width=".8">' + [[-14, 26], [-9, 22], [-4, 20], [1, 19], [6, 21], [11, 23], [15, 27]].map(([dx, top], i) => `<rect x="${30 + dx}" y="${top - 12}" width="4.2" height="30" rx="1.6" fill="${i === 3 ? '#ef4444' : '#fcd34d'}" transform="rotate(${dx * 1.2} ${32 + dx} 44)"/>`).join('') + '</g><path d="M14 32h36l-3 26a4 4 0 0 1-4 3.5H21a4 4 0 0 1-4-3.5z" fill="#c62828" stroke="#d4a017" stroke-width="2.4"/><rect x="12" y="29" width="40" height="6" rx="2.5" fill="#991b1b" stroke="#d4a017" stroke-width="2"/><circle cx="32" cy="47" r="8.5" fill="#fde68a" stroke="#b45309" stroke-width="1.6"/><text x="32" y="51.5" text-anchor="middle" font-size="12" font-weight="900" fill="#b91c1c" font-family="Noto Serif CJK TC,serif">籤</text></svg>';
   function renderBigDraw() {
     const ov = $('big-ov'); if (!bigEid || !ov) return;
@@ -2596,7 +2596,7 @@
       #big-ov:before{content:'';position:absolute;inset:0;background:var(--pat);pointer-events:none}
       .bg-wrap{position:relative;height:100%;display:flex;flex-direction:column;padding:1.6vw 2vw 1.2vw;gap:1vw}
       .bg-top{display:flex;align-items:center;gap:1.6vw}
-      .bg-logo{width:5.4vw;height:5.4vw;min-width:52px;min-height:52px;border-radius:1.4vw;background:var(--logo);display:flex;align-items:center;justify-content:center;box-shadow:0 .4vw 1.4vw rgba(0,0,0,.25)}.bg-logo svg{width:82%;height:82%}
+      .bg-logo{width:5.4vw;height:5.4vw;min-width:52px;min-height:52px;display:flex;align-items:center;justify-content:center}.bg-logo{width:auto;height:6.2vw}.bg-logo img{height:100%;width:auto;display:block;filter:drop-shadow(0 .3vw .6vw rgba(0,0,0,.18))}
       .bg-t small{display:block;font-size:max(12px,1vw);letter-spacing:.5vw;color:var(--sub);font-weight:800}.bg-t h1{margin:.2vw 0 0;font-size:max(22px,2.5vw);font-weight:900;letter-spacing:.15vw;text-shadow:var(--ts)}
       .bg-prog{margin-left:auto;min-width:28vw;text-align:right}.bg-prog b{font-size:max(26px,3.4vw);font-weight:900;line-height:1}.bg-prog b small{font-size:.45em;color:var(--sub);margin-left:.4vw}
       .bg-bar{height:1vw;min-height:10px;border-radius:99px;background:var(--barbg);margin-top:.5vw;overflow:hidden}.bg-bar i{display:block;height:100%;border-radius:99px;background:var(--bar);transition:width .8s}
@@ -2628,14 +2628,13 @@
       .bg-many b{font-size:2.4vw;font-weight:900}.bg-many em{width:4vw!important;height:4vw!important;font-size:2.4vw!important;margin:0!important;border-width:.25vw!important}.bg-many small{font-size:1vw!important}
       @keyframes bgzoom{from{transform:scale(.3);opacity:0}}@keyframes bgfade{0%,80%{opacity:1}100%{opacity:0}}
       .bg-foot{text-align:center;font-size:max(11px,.85vw);color:var(--sub);opacity:.8}</style>
-      <div class="bg-wrap"><div class="bg-tools"><button class="bg-x" id="bg-th">🎨 ${TH.n}</button><button class="bg-x" id="bg-x">✕ 關閉（Esc）</button></div>
-        <div class="bg-top"><div class="bg-logo">${TUBE}</div><div class="bg-t"><small>白沙屯拱天宮醫護團</small><h1>${esc(e.title || '進香時段抽籤')}・時段抽籤</h1></div>
+      <div class="bg-wrap"><div class="bg-tools"><button class="bg-x" id="bg-x">✕ 關閉（Esc）</button></div>
+        <div class="bg-top"><div class="bg-logo"><img src="/member/car-mazu.png" alt="媽祖車"></div><div class="bg-t"><small>白沙屯拱天宮醫護團</small><h1>${esc(e.title || '進香時段抽籤')}・時段抽籤</h1></div>
           <div class="bg-prog"><b>${done}<small>/ ${all.length} 人已抽</small></b><div class="bg-bar"><i style="width:${pct}%"></i></div></div></div>
         <div class="bg-main"><div class="bg-grid">${cards.join('')}</div>
           <div class="bg-feed"><h3>🔔 最新抽籤</h3>${bigFeed.map(f => `<div class="bg-f"><div><b>${esc(f.name)}</b><small>${esc(f.g)}</small></div><i style="background:${SC[f.slot]}">${f.slot}</i></div>`).join('') || '<div style="opacity:.6;font-size:max(12px,1vw)">等待抽籤中…</div>'}</div></div>
         <div class="bg-foot">打開團員專區 → 首頁「🎲 抽籤」，結果會即時出現在這裡</div></div>`;
     $('bg-x').onclick = closeBigDraw;
-    $('bg-th').onclick = () => { bigTheme = (bigTheme + 1) % BIG_THEMES.length; try { localStorage.setItem('bigTheme', bigTheme); } catch (e) {} renderBigDraw(); };
     if (bigCurPop) ov.querySelector('.bg-wrap').appendChild(bigCurPop);
     fresh.forEach(p => bigQ.push({ name: p.name, g: p.g, slot: map[p.key] }));
     if (!bigPopT) bigNextPop();
