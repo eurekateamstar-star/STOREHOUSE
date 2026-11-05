@@ -1774,7 +1774,7 @@
   const LUNCH = ['葷', '素（方便素）', '自行處理'];
   const eventLink = id => `https://tsushin-buishatun.pages.dev/attend/?e=${encodeURIComponent(id)}`;   // 公開表單：不用先綁團員專區
   let evPaid = {}, drPayMode = false, evSched = {}, schedOpen = false, schSel = null, schPk = null, attOpen = false, attBrush = null, schFold = (() => { try { return JSON.parse(localStorage.getItem('schFold') || '{}'); } catch (e) { return {}; } })(), carOpen = false, mealOpen = false, evSelf = {};
-  let evDraw = {}, evDrawBy = {}, evOver = {}, drawSheetEid = null, drSel = null;
+  let evDraw = {}, evDrawBy = {}, evOver = {}, evGrpFin = {}, drawSheetEid = null, drSel = null;
   let eventsCache = [], eventsUnsub = null, myResp = {}, evRespCache = {}, evRespUnsub = null, evOpenId = null, evFilter = 'all';
   // 連結 liff.line.me/…?e=活動ID：LIFF 開啟時參數可能包在 liff.state 裡
   const readEventParam = () => { try { const q = new URLSearchParams(location.search); if (q.get('e')) return q.get('e');
@@ -1990,8 +1990,9 @@
       if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid);
     }, () => toast('讀取回覆失敗'));
     const u2 = onSnapshot(doc(db, 'events', eid, 'admin', 'draw'), s => { const d = s.exists() ? s.data() : {}; evDraw[eid] = d.map || {}; evDrawBy[eid] = d.by2 || {}; evOver[eid] = d.groupOverride || {}; evPaid[eid] = d.paid || {}; evSched[eid] = schedFromDb(d.sched); if (drawSheetEid === eid) (mealOpen ? renderMeal(eid) : carOpen ? renderCar(eid) : attOpen ? renderAtt(eid) : schedOpen ? renderSched(eid) : renderDrawSheet(eid)); if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid); }, () => {});
-    const u3 = onSnapshot(collection(db, 'events', eid, 'admin'), s => { const o = {}; s.docs.forEach(d => { if (d.id.startsWith('self_')) { const x = d.data(); if (x.key) o[x.key] = x.days || {}; } }); evSelf[eid] = o;
-      if (drawSheetEid === eid) (mealOpen ? renderMeal(eid) : carOpen ? renderCar(eid) : attOpen ? renderAtt(eid) : null); }, () => {});
+    const u3 = onSnapshot(collection(db, 'events', eid, 'admin'), s => { const o = {}; let fin = {}; s.docs.forEach(d => { if (d.id === 'groups') fin = d.data().final || {}; if (d.id.startsWith('self_')) { const x = d.data(); if (x.key) o[x.key] = x.days || {}; } }); evSelf[eid] = o;
+      const fc = JSON.stringify(fin) !== JSON.stringify(evGrpFin[eid] || {}); evGrpFin[eid] = fin;
+      if (drawSheetEid === eid) (mealOpen ? renderMeal(eid) : carOpen ? renderCar(eid) : attOpen ? renderAtt(eid) : schedOpen ? null : fc ? renderDrawSheet(eid) : null); }, () => {});
     evRespUnsub = () => { u1(); u2(); u3(); };
     evRespUnsub._eid = eid;
   }
@@ -2255,14 +2256,14 @@
         .gb-btn.ok{background:#16a34a;border-color:#16a34a;color:#fff}
         .gb-add{display:block;width:100%;border:none;border-top:1px dashed #f1d5c7;background:#fffaf7;padding:9px;font-weight:800;color:#c2410c;font-family:inherit;font-size:13px}
         .gb-img{width:100%;border:none;border-radius:14px;padding:12px;font-size:15px;font-weight:900;color:#fff;background:linear-gradient(90deg,#D65A68,#F08339);font-family:inherit;margin-top:10px}</style>
-        <h3>🧩 選組確認</h3><div style="font-size:12.5px;color:var(--sub);margin-top:2px">${esc(E.title)}　確認後，團員的「我的排班」會顯示組別，點進去看得到組長和組員。</div>
+        <h3>🧩 選組確認</h3><div style="font-size:12.5px;color:var(--sub);margin-top:2px">${esc(E.title)}　<b>一人只能在一組</b>，確認後別組就不能再選他（要換組先在原組按「已確認」取消）。確認在車輛組的人，抽籤會分到「指揮官及汽機車組」。</div>
         <button class="gb-img" id="gb-img">🖼️ 產生分組名單圖（全部組別＋人員）</button>
-        ${E.groups.map((g, gi) => { const ok = g.people.filter(p => p.ok).length, wait = g.people.filter(p => !p.ok).length;
+        ${E.groups.map((g, gi) => { const ok = g.people.filter(p => p.ok).length, wait = g.people.filter(p => !p.ok && !okIn(p.k).length).length;
           return `<div class="gb-g"><div class="gb-h"><div><b>${esc(g.n)}</b><small>${g.lead.map(l => esc(l.t + '：' + l.n)).join('　')}</small></div>
             <div class="gb-n">✅ ${ok} / ${g.people.length}${wait ? `<button class="gb-all" data-gall="${gi}">全部確認（${wait}）</button>` : ''}</div></div>
           ${g.people.map((p, pi) => { const other = okIn(p.k).filter(x => x !== g.n);
             return `<div class="gb-r"><div class="nm"><b>${esc(p.name)}</b><div>${[p.pos, p.cert, ATT[p.attend] || '', p.picks.includes(g.n) ? '' : '管理員加入', p.picks.length > 1 ? '也選：' + p.picks.filter(x => x !== g.n).join('、') : ''].filter(Boolean).map(esc).join('・')}${other.length ? ` <span class="warn">・已在 ${esc(other.join('、'))}</span>` : ''}</div></div>
-            <button class="gb-btn ${p.ok ? 'ok' : ''}" data-gb="${gi}|${pi}">${p.ok ? '✅ 已確認' : '確認'}</button></div>`; }).join('') || '<div class="gb-r" style="color:var(--sub);font-size:13px">還沒有人選這組</div>'}
+            ${!p.ok && other.length ? `<span class="gb-btn" style="opacity:.55;border-style:dashed">已分組</span>` : `<button class="gb-btn ${p.ok ? 'ok' : ''}" data-gb="${gi}|${pi}">${p.ok ? '✅ 已確認' : '確認'}</button>`}</div>`; }).join('') || '<div class="gb-r" style="color:var(--sub);font-size:13px">還沒有人選這組</div>'}
           <button class="gb-add" data-gadd="${gi}">＋ 加入沒選這組的人</button></div>`; }).join('')}`;
       $('sheet').scrollTop = y;
       $('gb-img').onclick = () => groupImage(E, CORE);
@@ -2273,9 +2274,8 @@
         paint();
       });
       document.querySelectorAll('[data-gall]').forEach(b => b.onclick = async () => {
-        const g = E.groups[+b.dataset.gall], ks = g.people.filter(p => !p.ok).map(p => p.k);
-        const dup = g.people.filter(p => !p.ok && okIn(p.k).length);
-        if (dup.length && !(await dialog({ title: `「${g.n}」全部確認？`, msg: `其中 ${dup.length} 人已經在別組：${dup.map(p => p.name).join('、')}\n確認後他們會同時在兩組。`, okText: '全部確認' }))) return;
+        const g = E.groups[+b.dataset.gall], ks = g.people.filter(p => !p.ok && !okIn(p.k).length).map(p => p.k);   // 已在別組的人跳過（一人一組）
+        if (!ks.length) return;
         b.disabled = true; b.textContent = '…';
         try { await set(g, ks, true); toast(`✅ 已確認 ${ks.length} 人`); } catch (err) { toast('❌ ' + err.message); }
         paint();
@@ -2344,11 +2344,19 @@
   const DRAW_GROUPS = ['教官及長官', '護理師', 'EMTP、EMT2', 'EMT1', '指揮官及汽機車組', '專業人員及志工', '未對應名冊'];
   const SLOTS = ['前', '中', '後'];
   const certKey = c => String(c || '').toUpperCase().replace(/[-\s]/g, '');
-  function groupOf(ro) {
+  // 有開選組的出席調查：選到（確認在）車輛組的人、車輛組組長、指揮官 → 指揮官及汽機車組（每年依這份登記，不看名冊職位）
+  function carSet(eid) {
+    const ev = eventsCache.find(x => x.id === eid); if (!ev || !ev.askGroups) return null;
+    const GP = parseGroups(ev.groupsText), fin = evGrpFin[eid] || {}, set = new Set();
+    GP.core.filter(c => /指揮官/.test(c.t)).forEach(c => set.add(grpKey(c.n)));
+    GP.gs.filter(g => /車/.test(g.n)).forEach(g => { g.lead.forEach(l => set.add(grpKey(l.n))); Object.keys(fin[g.n] || {}).forEach(k => set.add(k)); });
+    return set;
+  }
+  function groupOf(ro, key, eid) {
     if (!ro) return '未對應名冊';
-    const pos = rv(ro, 'position'), c = certKey(ro.cert);
+    const pos = rv(ro, 'position'), c = certKey(ro.cert), cs = eid ? carSet(eid) : null;
     if (['團長', '秘書長', '教官團', '顧問'].includes(pos)) return '教官及長官';
-    if (['指揮官', '車輛組', '機車組'].includes(pos)) return '指揮官及汽機車組';
+    if (cs ? (pos === '指揮官' || cs.has(key || normName(ro.name))) : ['指揮官', '車輛組', '機車組'].includes(pos)) return '指揮官及汽機車組';
     if (c.includes('護理') || c.includes('醫師')) return '護理師';
     if (c === 'EMTP' || c === 'EMT2' || c.includes('EMTP') || c.includes('EMT2')) return 'EMTP、EMT2';
     if (c.includes('EMT1')) return 'EMT1';
@@ -2365,7 +2373,7 @@
     Object.values(latest).filter(r => r.attend === 'yes' || r.attend === 'join').forEach(r => {
       const ro = (r.rosterId && rosterById(r.rosterId)) || (byName[normName(r.name)] || [])[0] || null;
       const key = normName(r.name), g = (evOver[eid] || {})[key];
-      groups[DRAW_GROUPS.includes(g) ? g : groupOf(ro)].push({ key, name: (ro && ro.name) || r.name, ro, r });
+      groups[DRAW_GROUPS.includes(g) ? g : groupOf(ro, key, eid)].push({ key, name: (ro && ro.name) || r.name, ro, r });
     });
     DRAW_GROUPS.forEach(g => groups[g].sort((a, b) => a.ro && b.ro ? rosterOrder(a.ro, b.ro) : a.ro ? -1 : b.ro ? 1 : 0));
     return groups;
@@ -2467,7 +2475,7 @@
       </div></div>
       ${drPayMode ? '<div style="margin-top:10px;padding:10px 14px;border-radius:12px;background:#16a34a;color:#fff;font-weight:800;">💰 繳費模式：直接點名字 → 變綠底＝已繳；再點一次取消。完成後按上面的按鈕結束。</div>' : ''}
       <div class="dr-grid" style="margin-top:10px;">${DRAW_GROUPS.map(grp).join('') || '<div class="card empty">還沒有人回覆出席</div>'}</div>
-      <div style="font-size:12px;color:var(--sub);margin:10px 2px;line-height:1.7;">※ 分組依名冊的「職位」與「證照」：團長／秘書長／教官團／顧問 → 教官及長官；指揮官／車輛組／機車組 → 指揮官及汽機車組；其他依證照。標「手動」的是你換過組的人。<br>※ 標「代抽」是管理員幫忙抽或指定的，沒標的是團員自己在團員專區抽的。建議回覆截止、名單確定後再開放抽籤，名額才準。</div>`;
+      <div style="font-size:12px;color:var(--sub);margin:10px 2px;line-height:1.7;">※ 分組依名冊的「職位」與「證照」：團長／秘書長／教官團／顧問 → 教官及長官；指揮官，以及這次選組確認在「車輛」組的人（沒開選組時看名冊職位 車輛組／機車組）→ 指揮官及汽機車組；其他依證照。標「手動」的是你換過組的人。<br>※ 標「代抽」是管理員幫忙抽或指定的，沒標的是團員自己在團員專區抽的。建議回覆截止、名單確定後再開放抽籤，名額才準。</div>`;
     document.querySelectorAll('[data-dk]').forEach(b => b.onclick = async () => {
       if (drPayMode) {
         const k = b.dataset.dk, pd = { ...(evPaid[eid] || {}) };

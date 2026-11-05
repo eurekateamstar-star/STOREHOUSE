@@ -473,11 +473,19 @@ async function fsList(tok, path) {
 const normName = s => String(s || '').replace(/[\s　]+/g, '');
 const SLOTS = ['前', '中', '後'];
 const slotTargets = n => { const b = Math.floor(n / 3), m = n % 3; return { 前: b, 中: b + (m >= 2 ? 1 : 0), 後: b + (m >= 1 ? 1 : 0) }; };
-function groupOf(ro) {     // 要跟團員專區的 groupOf 一樣
+// 有開選組：指揮官、車輛組組長、確認在車輛組的人 → 指揮官及汽機車組（要跟團員專區的 carSet 一樣）
+function carSetOf(e, fin) {
+  if (!e || !e.askGroups) return null;
+  const GP = parseGroups(e.groupsText), set = new Set();
+  GP.core.filter(c => /指揮官/.test(c.t)).forEach(c => set.add(leadKey(c.n)));
+  GP.gs.filter(g => /車/.test(g.n)).forEach(g => { g.lead.forEach(l => set.add(leadKey(l.n))); Object.keys((fin || {})[g.n] || {}).forEach(k => set.add(k)); });
+  return set;
+}
+function groupOf(ro, cs) {     // 要跟團員專區的 groupOf 一樣
   if (!ro) return '未對應名冊';
   const pos = ro.position || '團員', c = String(ro.cert || '').toUpperCase().replace(/[-\s]/g, '');
   if (['團長', '秘書長', '教官團', '顧問'].includes(pos)) return '教官及長官';
-  if (['指揮官', '車輛組', '機車組'].includes(pos)) return '指揮官及汽機車組';
+  if (cs ? (pos === '指揮官' || cs.has(normName(ro.name))) : ['指揮官', '車輛組', '機車組'].includes(pos)) return '指揮官及汽機車組';
   if (c.includes('護理') || c.includes('醫師')) return '護理師';
   if (c.includes('EMTP') || c.includes('EMT2')) return 'EMTP、EMT2';
   if (c.includes('EMT1')) return 'EMT1';
@@ -509,7 +517,8 @@ async function lotRoute(req, env, json) {
       const mine = latest[myKey];
       if (!mine || !['yes', 'join'].includes(mine.attend)) return json({ state: 'noreply', name: meRo.name });
       const byName = {}; roster.forEach(x => { const k = normName(x.name); if (!byName[k]) byName[k] = x; });
-      const gOf = k => over[k] || groupOf(byName[k] || null);
+      const gd = e.askGroups ? await fsGet(tok, `events/${eid}/admin/groups`) : null, cs = carSetOf(e, gd ? fobj(gd.fields).final : {});
+      const gOf = k => over[k] || groupOf(byName[k] || null, cs);
       const myG = gOf(myKey);
       if (SLOTS.includes(map[myKey])) return json({ state: 'done', slot: map[myKey], group: myG, name: meRo.name, selfDraw: !!e.selfDraw });
       if (action !== 'draw' || !e.selfDraw) return json({ state: 'ready', group: myG, name: meRo.name, selfDraw: !!e.selfDraw });
@@ -922,13 +931,16 @@ async function groupSetRoute(req, env, json) {
     if (!e.askGroups || !G) return json({ error: '沒有這個組別' }, 404);
     if (!admin) return json({ error: '只有管理員可以確認組別' }, 403);
     const path = `events/${eid}/admin/groups`, cur = await fsGet(tok, path), fin = cur ? (fobj(cur.fields).final || {}) : {};
-    const m = { ...(fin[g] || {}) };
-    keys.forEach(x => { const nk = normName(x); if (on) m[nk] = by || '管理員'; else delete m[nk]; });
+    const m = { ...(fin[g] || {}) }, skipped = [];
+    keys.forEach(x => { const nk = normName(x);
+      if (on && Object.keys(fin).some(o => o !== g && fin[o] && fin[o][nk])) { skipped.push(nk); return; }   // 一人只能在一組
+      if (on) m[nk] = by || '管理員'; else delete m[nk]; });
+    if (on && keys.length === 1 && skipped.length) return json({ error: '這個人已經在別組了，要先在原組取消' }, 409);
     fin[g] = m; if (!Object.keys(m).length) delete fin[g];
     const w = await fetch(`${FS}/${path}?updateMask.fieldPaths=final&updateMask.fieldPaths=at`, { method: 'PATCH', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
       body: JSON.stringify({ fields: { final: tv(fin), at: { timestampValue: new Date().toISOString() } } }) });
     if (!w.ok) return json({ error: 'write failed ' + w.status }, 500);
-    return json({ ok: true, final: fin[g] || {} });
+    return json({ ok: true, final: fin[g] || {}, skipped });
   } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
 }
 // 團員看自己組別的組長、組員：{ idToken, eid }
