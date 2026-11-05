@@ -1994,7 +1994,7 @@
         .lc-tb.dr .lc-dot{width:38px;height:38px}
         .lc-bot{position:sticky;bottom:-24px;margin:12px -14px -24px;padding:10px 14px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(#fff0,#fff 25%)}
         .lc-sv{display:block;width:100%;border:none;border-radius:14px;padding:14px;font:inherit;font-size:16px;font-weight:900;color:#fff;background:linear-gradient(90deg,#D65A68,#F08339);box-shadow:0 6px 16px rgba(214,90,104,.3)}</style>
-        <div class="lc-h"><b class="lc-tt"><span class="lc-ava"><img src="/member/ic/leader.png" alt=""><i>👑</i></span>小隊長檢查</b><button class="lc-x" onclick="document.getElementById('lead-ov').remove()">✕</button></div>
+        <div class="lc-h"><b class="lc-tt"><span class="lc-ava"><img src="/member/ic/leader.png" alt=""></span>小隊長檢查</b><button class="lc-x" onclick="document.getElementById('lead-ov').remove()">✕</button></div>
         <div style="font-size:14px;color:#6b7280;margin-top:2px">${dd.getMonth() + 1}/${dd.getDate()}（${WK[dd.getDay()]}）・<b style="color:#c2414f">${esc(J.team)}</b>・${M.length} 人</div>
         <div class="lc-tabs">${TABS.map(([f, ic, n]) => `<button class="${tab === f ? 'on' : ''} ${C[f + 'At'] ? 'done' : ''}" data-tab="${f}"><span>${ic}</span>${n}</button>`).join('')}</div>
         <div class="lc-hd"><b>${TABS[T][1]} ${{ att: '出發前・到勤點名', meal: '今天用餐', eq: '小組配備盤點', dress: '隊員服裝儀容', charge: '就寢前・充電' }[tab]}</b>${done(tab)}</div>
