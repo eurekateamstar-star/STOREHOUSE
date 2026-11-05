@@ -2553,7 +2553,7 @@
     try { (document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen || (() => {})).call(document.documentElement); } catch (e) {}
     renderBigDraw();
   }
-  function closeBigDraw() { bigEid = null; const ov = $('big-ov'); if (ov) ov.style.display = 'none'; try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) {} }
+  function closeBigDraw() { bigEid = null; bigQ = []; clearTimeout(bigPopT); bigPopT = null; bigCurPop = null; const ov = $('big-ov'); if (ov) ov.style.display = 'none'; try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) {} }
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && bigEid) closeBigDraw(); });
   function renderBigDraw() {
     const ov = $('big-ov'); if (!bigEid || !ov) return;
@@ -2601,9 +2601,13 @@
       .bg-f{display:flex;align-items:center;gap:.6vw;background:rgba(255,255,255,.1);border-radius:.8vw;padding:.45vw .6vw}.bg-f b{font-size:max(13px,1.15vw)}.bg-f small{display:block;font-size:max(9px,.7vw);color:#fed7aa}
       .bg-f i{margin-left:auto;font-style:normal;width:2.3vw;height:2.3vw;min-width:26px;min-height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:max(13px,1.2vw)}
       .bg-f:first-child{animation:bgin .6s ease-out}@keyframes bgin{from{transform:translateX(30%);opacity:0}}
-      .bg-pop{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;background:rgba(0,0,0,.45);animation:bgfade 3s forwards}
+      .bg-pop{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;background:rgba(20,6,6,.72);backdrop-filter:blur(3px);animation:bgfade 3s forwards}
       .bg-pop div{text-align:center;animation:bgzoom .6s cubic-bezier(.2,1.4,.4,1)}.bg-pop small{display:block;font-size:2vw;color:#fed7aa;font-weight:800}.bg-pop b{display:block;font-size:6vw;font-weight:900;text-shadow:0 .4vw 2vw rgba(0,0,0,.5)}
       .bg-pop em{display:inline-flex;align-items:center;justify-content:center;width:11vw;height:11vw;border-radius:50%;font-style:normal;font-size:7vw;font-weight:900;margin-top:1vw;box-shadow:0 0 4vw rgba(253,224,71,.8);border:.5vw solid #fff}
+      .bg-many{display:grid;grid-template-columns:repeat(4,1fr);gap:1vw;margin-top:1.2vw;max-width:80vw}
+      .bg-many span{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:1vw;padding:.8vw .6vw;display:flex;flex-direction:column;align-items:center;gap:.4vw;animation:bgzoom .5s cubic-bezier(.2,1.4,.4,1) backwards}
+      .bg-many span:nth-child(2){animation-delay:.08s}.bg-many span:nth-child(3){animation-delay:.16s}.bg-many span:nth-child(4){animation-delay:.24s}.bg-many span:nth-child(n+5){animation-delay:.32s}
+      .bg-many b{font-size:2.4vw;font-weight:900}.bg-many em{width:4vw!important;height:4vw!important;font-size:2.4vw!important;margin:0!important;border-width:.25vw!important}.bg-many small{font-size:1vw!important}
       @keyframes bgzoom{from{transform:scale(.3);opacity:0}}@keyframes bgfade{0%,80%{opacity:1}100%{opacity:0}}
       .bg-foot{text-align:center;font-size:max(11px,.85vw);color:#fed7aa;opacity:.8}</style>
       <div class="bg-wrap"><button class="bg-x" id="bg-x">✕ 關閉（Esc）</button>
@@ -2613,9 +2617,24 @@
           <div class="bg-feed"><h3>🔔 最新抽籤</h3>${bigFeed.map(f => `<div class="bg-f"><div><b>${esc(f.name)}</b><small>${esc(f.g)}</small></div><i style="background:${SC[f.slot]}">${f.slot}</i></div>`).join('') || '<div style="opacity:.6;font-size:max(12px,1vw)">等待抽籤中…</div>'}</div></div>
         <div class="bg-foot">打開團員專區 → 首頁「🎲 抽籤」，結果會即時出現在這裡</div></div>`;
     $('bg-x').onclick = closeBigDraw;
-    if (fresh.length) { const f = fresh[0]; const pop = document.createElement('div'); pop.className = 'bg-pop';
-      pop.innerHTML = `<div><small>🎉 ${esc(f.g)}</small><b>${esc(f.name)}</b><em style="background:${SC[map[f.key]]}">${map[f.key]}</em></div>`;
-      ov.querySelector('.bg-wrap').appendChild(pop); clearTimeout(bigPopT); bigPopT = setTimeout(() => pop.remove(), 3000); }
+    if (bigCurPop) ov.querySelector('.bg-wrap').appendChild(bigCurPop);
+    fresh.forEach(p => bigQ.push({ name: p.name, g: p.g, slot: map[p.key] }));
+    if (!bigPopT) bigNextPop();
+  }
+  // 跳出動畫排隊：一個一個秀；同時很多人抽 → 一次秀一整批
+  let bigQ = [], bigCurPop = null;
+  function bigNextPop() {
+    const ov = $('big-ov'), wrap = ov && ov.querySelector('.bg-wrap');
+    if (!bigEid || !wrap || !bigQ.length) { bigPopT = null; bigQ = bigEid ? bigQ : []; return; }
+    const SC = { 前: '#f59e0b', 中: '#ef4444', 後: '#8b5cf6' }, pop = document.createElement('div'); pop.className = 'bg-pop';
+    let ms;
+    if (bigQ.length >= 3) { const L = bigQ.splice(0, 12); ms = 3200;
+      pop.innerHTML = `<div><small>🎉 剛剛 ${L.length} 人抽到</small><div class="bg-many">${L.map(f => `<span><b>${esc(f.name)}</b><em style="background:${SC[f.slot]}">${f.slot}</em><small>${esc(f.g)}</small></span>`).join('')}</div></div>`; }
+    else { const f = bigQ.shift(); ms = bigQ.length ? 1800 : 2600;
+      pop.innerHTML = `<div><small>🎉 ${esc(f.g)}</small><b>${esc(f.name)}</b><em style="background:${SC[f.slot]}">${f.slot}</em></div>`; }
+    pop.style.animationDuration = ms + 'ms';
+    wrap.querySelectorAll('.bg-pop').forEach(x => x.remove()); wrap.appendChild(pop); bigCurPop = pop;
+    bigPopT = setTimeout(() => { pop.remove(); bigCurPop = null; bigNextPop(); }, ms);
   }
   function openDrawSheet(eid) {
     drawSheetEid = eid; drSel = null; drPayMode = false; schedOpen = false; $('sheet').classList.add('wide');

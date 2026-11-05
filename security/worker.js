@@ -510,17 +510,19 @@ async function lotRoute(req, env, json) {
     const roster = await fsList(tok, 'member_roster');
     const meRo = roster.find(x => x.id === u.rosterId); if (!meRo) return json({ state: 'unbound' });
     const myKey = normName(meRo.name);
-    for (let tries = 0; tries < 5; tries++) {
+    // 不會變的資料先讀一次（出席名單、選組），迴圈裡只重讀抽籤結果 → 很多人同時抽也很快
+    const latest = {};
+    (await fsList(tok, `events/${eid}/responses`)).forEach(x => { const k = normName(x.name); if (k && (!latest[k] || (x.createdAt || 0) >= (latest[k].createdAt || 0))) latest[k] = x; });
+    const gdoc = e.askGroups ? await fsGet(tok, `events/${eid}/admin/groups`) : null;
+    for (let tries = 0; tries < 15; tries++) {
+      if (tries) await new Promise(r => setTimeout(r, 40 + Math.random() * 120 * Math.min(tries, 6)));   // 撞到別人 → 隨機等一下再試
       const drawDoc = await fsGet(tok, `events/${eid}/admin/draw`);
       const d = drawDoc ? fobj(drawDoc.fields) : {};
       const map = d.map || {}, by = d.by2 || {}, over = d.groupOverride || {};
-      // 出席名單（同一人以最後一次為準）
-      const latest = {};
-      (await fsList(tok, `events/${eid}/responses`)).forEach(x => { const k = normName(x.name); if (k && (!latest[k] || (x.createdAt || 0) >= (latest[k].createdAt || 0))) latest[k] = x; });
       const mine = latest[myKey];
       if (!mine || !['yes', 'join'].includes(mine.attend)) return json({ state: 'noreply', name: meRo.name });
       const byName = {}; roster.forEach(x => { const k = normName(x.name); if (!byName[k]) byName[k] = x; });
-      const gd = e.askGroups ? await fsGet(tok, `events/${eid}/admin/groups`) : null, cs = carSetOf(e, gd ? fobj(gd.fields).final : {});
+      const cs = carSetOf(e, gdoc ? fobj(gdoc.fields).final : {});
       const gOf = k => over[k] || groupOf(byName[k] || null, cs);
       const myG = gOf(myKey);
       if (SLOTS.includes(map[myKey])) return json({ state: 'done', slot: map[myKey], group: myG, name: meRo.name, selfDraw: !!e.selfDraw });
@@ -540,7 +542,7 @@ async function lotRoute(req, env, json) {
       if (w.ok) return json({ state: 'done', slot, group: myG, name: meRo.name, fresh: true, selfDraw: true });
       if (w.status !== 400 && w.status !== 409 && w.status !== 412) return json({ error: 'write failed ' + w.status }, 500);
     }
-    return json({ error: '太多人同時抽，請再試一次' }, 409);
+    return json({ error: '太多人同時抽，請再按一次', busy: true }, 409);
   } catch (e) {
     return json({ error: String((e && e.message) || e) }, 500);
   }
