@@ -1888,7 +1888,7 @@
     const eqLine = myT && myT.eq ? (() => { const [a, ...b] = String(myT.eq).split('　'); return (a ? a.split('、').map(z => `<span style="color:${/AMBU/.test(z) ? '#2563eb' : '#dc2626'}">${esc(z)}</span>`).join('、') : '') + (b.join('') ? `<span style="display:block;color:#6b7280;font-weight:600;font-size:12px">${esc(b.join(' '))}</span>` : ''); })() : '';
     const node = (t, ic, title, body) => `<div class="tl-n"><b class="tl-t">${t}</b><i class="tl-d"><img src="/member/ic/${ic}.png" alt=""></i><div><div class="tl-h">${title}</div>${body ? `<div class="tl-c">${body}</div>` : ''}</div></div>`;
     const reg = !pl ? '' : `<div class="tl-hd">🕒 我的一天 <small>點一下就登記，管理員會看到</small></div><div class="tl">
-        ${eqLine ? node('集合', 'pack', '先檢查裝備', `<span style="font-size:13px;font-weight:800;line-height:1.5">${eqLine}</span>`) : ''}
+        ${eqLine ? node('集合', 'pack', '先檢查裝備', `<span style="font-size:13px;font-weight:800;line-height:1.5">${eqLine}</span><button class="tl-scan" data-kit="1">📷 掃包包 QR・看內容／盤點</button>`) : ''}
         ${node('出發', 'bus_out', '出門坐中巴', car('o'))}
         ${node('中午', 'lunch', '中餐', meal('l'))}
         ${node('白天', 'bus_day', '白天坐中巴', car('y'))}
@@ -1916,7 +1916,7 @@
         .tl{position:relative;padding:12px 16px 2px}.tl:before{content:'';position:absolute;left:94px;top:30px;bottom:30px;width:3px;border-radius:2px;background:#f6dccd}
         .tl-n{position:relative;display:grid;grid-template-columns:44px 46px 1fr;gap:8px;align-items:start;padding-bottom:14px}.tl-t{font-size:12.5px;color:#9a8f8b;text-align:right;padding-top:13px}
         .tl-d{width:46px;height:46px;border-radius:50%;background:#fff7f2;border:2px solid #f6dccd;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px #fff}.tl-d img{width:38px;height:38px;object-fit:contain}.tl-h{font-size:15.5px;font-weight:900;padding-top:11px}.tl-c{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.tl-c .pl-b{min-width:58px;padding:7px 12px;font-size:14px}
-        .tl-all{margin:10px 12px 0;border:1.5px solid #f1e3dc;border-radius:14px;overflow:hidden}.tl-all summary{list-style:none;cursor:pointer;padding:12px 14px;font-weight:900;color:#c2414f;display:flex;justify-content:space-between}.tl-all summary::-webkit-details-marker{display:none}.tl-all[open] summary span{transform:rotate(180deg)}.tl-all summary span{transition:.2s}</style>
+        .tl-scan{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:8px;border:none;border-radius:12px;padding:10px 12px;background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;font:inherit;font-size:14px;font-weight:900;cursor:pointer;box-shadow:0 3px 10px rgba(214,90,104,.3)}.tl-all{margin:10px 12px 0;border:1.5px solid #f1e3dc;border-radius:14px;overflow:hidden}.tl-all summary{list-style:none;cursor:pointer;padding:12px 14px;font-weight:900;color:#c2414f;display:flex;justify-content:space-between}.tl-all summary::-webkit-details-marker{display:none}.tl-all[open] summary span{transform:rotate(180deg)}.tl-all summary span{transition:.2s}</style>
       <div class="tl-top"><button id="md-x" style="position:absolute;top:12px;right:12px;border:none;background:#f1f5f9;border-radius:50%;width:34px;height:34px;font-size:16px;cursor:pointer">✕</button>
         <h2>${x.tag ? `<span style="display:inline-block;font-size:14px;background:#1e3a8a;color:#fff;border-radius:6px;padding:2px 9px;letter-spacing:3px;vertical-align:4px;margin-right:6px">${esc(x.tag)}</span>` : ''}${dd.getMonth() + 1}月${dd.getDate()}日（${WK[dd.getDay()]}）</h2>
         <p>${x.team ? `我在 <b style="color:#c2414f">${esc(x.team)}</b>${myT && myT.m[0] ? '・組長 ' + esc(myT.m[0]) : ''}` : '這天你沒有排班'}${e.cmd.length ? '・指揮官 ' + esc(e.cmd.join('、')) : ''}</p>
@@ -1931,6 +1931,7 @@
     document.body.appendChild(ov); if (keepScroll) ov.querySelector('div').scrollTop = keepScroll;
     { const dt = ov.querySelector('.tl-all'); if (dt) dt.ontoggle = () => { mdAllOpen = dt.open; }; }
     ov.onclick = ev => { if (ev.target === ov || ev.target.id === 'md-x') ov.remove(); };
+    { const k = ov.querySelector('[data-kit]'); if (k) k.onclick = ev => { ev.stopPropagation(); const url = 'https://liff.line.me/2011820105-ofRs4ehy?go=kit'; try { if (inLine()) { liff.openWindow({ url, external: false }); return; } } catch (e) {} location.href = '/?go=kit'; }; }
     ov.querySelectorAll('[data-pa]').forEach(b => b.onclick = ev => { ev.stopPropagation();
       if (b.dataset.lock) { msFlash('管理員已確認，請洽管理員更改', true); return; }
       const [f, v] = b.dataset.pa.split(':');

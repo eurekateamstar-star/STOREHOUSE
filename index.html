@@ -1951,6 +1951,9 @@
     // ===== LINE LIFF 身分識別 + 審核 + 管理員 =====
     const LIFF_ID = '2011820105-ofRs4ehy';
     const SCAN_ENTRY = (() => { try { const q = new URLSearchParams(location.search); return q.get('scan') === '1' || /(^|[?&])scan=1/.test(decodeURIComponent(q.get('liff.state') || '')); } catch (e) { return false; } })();
+    // 團員專區「先檢查裝備」→ 直接開掃描：掃包包 QR 看內容／補包核對
+    let KIT_ENTRY = (() => { try { const q = new URLSearchParams(location.search); return q.get('go') === 'kit' || /(^|[?&])go=kit/.test(decodeURIComponent(q.get('liff.state') || '')); } catch (e) { return false; } })();
+    let kitScanTitle = false;
     let currentUser = null;           // { userId, displayName, pictureUrl, account, role, status }
     let pendingLineProfile = null;
     let appEntered = false, ownUnsub = null;
@@ -2263,6 +2266,9 @@
         if (isAdmin()) loadDevUid();
         preloadAllData();
         if (SCAN_ENTRY) startScanEntry();
+        if (KIT_ENTRY) { KIT_ENTRY = false; try { history.replaceState(null, '', location.pathname); } catch (e) {}
+            const t0 = Date.now(), go = () => { if (!(boxesCache && boxesCache.length) && Date.now() - t0 < 8000) return setTimeout(go, 250); kitScanTitle = true; openScanner('locate'); };
+            setTimeout(go, 300); }
     }
 
     // ===== 掃描入口：https://liff.line.me/<LIFF_ID>?scan=1 =====
@@ -3497,7 +3503,8 @@
 
         let title = '掃描 QR Code';
         let hint = '請將鏡頭對準 QR Code';
-        if (mode === 'locate') { title = '🔍 掃 QR 找位置'; hint = '對準箱子或物品 QR Code 尋找位置'; }
+        if (mode === 'locate' && kitScanTitle) { kitScanTitle = false; title = '🎒 掃包包 QR'; hint = '對準包包上的 QR\n可以看包包內容，也可以按「✅ 補包核對」盤點'; }
+        else if (mode === 'locate') { title = '🔍 掃 QR 找位置'; hint = '對準箱子或物品 QR Code 尋找位置'; }
         else if (mode === 'in') { title = '📥 快速進貨 (還回)'; hint = '掃物品 QR 還回；掃箱子 QR 可整箱一次入庫'; }
         else if (mode === 'out') { title = `📤 快速出貨`; hint = '掃物品 QR 出庫；掃箱子 QR 可勾選整箱帶走；掃成員 QR 換對象'; }
         else if (mode === 'take') { title = '📲 掃 QR 接收物品'; hint = '對準物品上的 QR（每一件都有自己的 QR）\n在庫的 → 登記到你名下；在別人手上的 → 交接給你'; }
