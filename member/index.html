@@ -1884,10 +1884,11 @@
       const ms = [...new Set(ds.map(d => +d.slice(5, 7)))];
       let cells = '';
       for (const c = new Date(st); c <= en; c.setDate(c.getDate() + 1)) { const d = iso(c), x = e.days.find(y => y.d === d), pl = (e.plan || []).find(y => y.d === d);
-        const lab = x ? x.team : pl ? (d < (work[0] || d) ? '前一天' : '登記') : '';
+        const nx = dt => { const t = new Date(dt + 'T12:00:00'); t.setDate(t.getDate() + 1); return iso(t); };
+        const lab = x ? x.team : pl ? (work.includes(nx(d)) ? '前一天' : '登記') : '';
         cells += `<div class="mc-c ${x ? 'w' : pl ? 'p' : ''} ${d === sel ? 'on' : ''} ${d === today ? 'td' : ''}" ${x || pl ? `data-cal="${e.id}|${d}"` : ''}><b>${c.getDate()}</b>${lab ? `<small>${esc(lab)}</small>` : ''}${pl && pl.s ? '<i>🛏</i>' : ''}${x && x.members[0] === e.name ? '<i>👑</i>' : ''}</div>`; }
       const det = d => { const x = e.days.find(y => y.d === d), pl = (e.plan || []).find(y => y.d === d) || {}, dd = new Date(d + 'T12:00:00');
-        const top = `<div class="mc-dh"><b>${dd.getMonth() + 1}/${dd.getDate()}（${WK[dd.getDay()]}）</b>${x && x.tag ? `<span class="ms-tg" style="font-size:12px;padding:2px 7px">${esc(x.tag)}</span>` : ''}${x ? `<span class="ms-tm" style="font-size:14px;padding:3px 9px">${esc(x.team)}</span>` : `<span class="ms-tm" style="background:#94a3b8;font-size:14px;padding:3px 9px">${d < (work[0] || d) ? '前一天' : '未排班'}</span>`}${x && x.members[0] === e.name ? '<span class="mc-lb">你是組長</span>' : ''}${pl.s ? '<span style="font-size:13px">🛏 住宿</span>' : ''}</div>`;
+        const top = `<div class="mc-dh"><b>${dd.getMonth() + 1}/${dd.getDate()}（${WK[dd.getDay()]}）</b>${x && x.tag ? `<span class="ms-tg" style="font-size:12px;padding:2px 7px">${esc(x.tag)}</span>` : ''}${x ? `<span class="ms-tm" style="font-size:14px;padding:3px 9px">${esc(x.team)}</span>` : `<span class="ms-tm" style="background:#94a3b8;font-size:14px;padding:3px 9px">${work.includes(iso(new Date(new Date(d + 'T12:00:00').getTime() + 864e5))) ? '前一天' : '未排班'}</span>`}${x && x.members[0] === e.name ? '<span class="mc-lb">你是組長</span>' : ''}${pl.s ? '<span style="font-size:13px">🛏 住宿</span>' : ''}</div>`;
         if (!x) return `<div class="mc-d" data-cd="${e.id}|${d}" ${d === sel ? '' : 'hidden'}>${top}<div class="mc-mb" style="color:#6b7280">${pl.s ? '提早到、住宿' : '提早到？登記今晚住宿'}</div><div class="mc-bt"><button type="button" class="mc-go" data-msd="${e.id}|${d}">登記 ›</button></div></div>`;
         const [eqA, ...eqT] = String(x.eq || '').split('　'), more = [x.note, x.duty.join('、')].filter(Boolean).map(esc).join('・');
         return `<div class="mc-d" data-cd="${e.id}|${d}" ${d === sel ? '' : 'hidden'}>${top}

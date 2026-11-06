@@ -926,8 +926,9 @@ async function mySchedRoute(req, env, json) {
         ['o', 'y', 'h'].forEach(f => { const v = st[f]; o[f] = v === undefined ? au[f] : (v === 'x' ? '' : v); o.adminCar[f] = (car[d] || {})[f] !== undefined; });
         o.adminMeal = {}; ['l', 'n'].forEach(f => { const ex = (meal[d] || {})[f], sv = (self[d] || {})[f], m = ex !== undefined ? ex : sv; o[f] = !m || m === 'x' ? '' : m; o.adminMeal[f] = ex !== undefined; });
         return o; };
-      const ds = mine.map(x => x.d), first = ds[0], pre = first ? isoAddW(first, -1) : null;
-      const planDays = [...(pre && sc.start && pre >= sc.start ? [pre] : []), ...ds].sort();   // 只有排班前一天＋排班的日子
+      // 每一段連續排班的前一天都要問住宿（分開來的也是）；起駕第一天就不問前一天
+      const ds = mine.map(x => x.d), pres = ds.filter(d => !ds.includes(isoAddW(d, -1)) && !/起駕/.test((info[d] || {}).tag || '')).map(d => isoAddW(d, -1)).filter(p => p >= (sc.start || Object.keys(days).sort()[0] || p));
+      const planDays = [...new Set([...pres, ...ds])].sort();   // 排班前一天＋排班的日子
       return { id: e.id, title: e.title || '', name: myKey, days: mine, cats, cmd, g: myG, plan: planDays.map(plan), grp };
     }));
     return json({ events: res.filter(Boolean) });
