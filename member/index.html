@@ -976,6 +976,8 @@
   const meDev = () => !!DEV_UID && !!profile && profile.userId === DEV_UID;   // 我就是開發者：前台也不顯示管理員
   const isDevU = u => !!u && !!DEV_UID && u.id === DEV_UID;
   const devHidden = u => isDevU(u) && !(profile && u.id === profile.userId);   // 別人看開發者
+  const DEV_HIDE_LIST = true;   // 還沒全面開放：系統會員清單不讓其他幹部看到開發者（全員開放後改成 false）
+  const devOff = u => DEV_HIDE_LIST && devHidden(u);
   function loadDev() {
     getDoc(doc(db, 'meta', 'developer')).then(async s => {
       DEV_UID = s.exists() ? (s.data().uid || '') : '';
@@ -1066,7 +1068,7 @@
     $('st-bound').textContent = rosterLive ? rosterCache.filter(r => r.boundUserId).length : '…';
     const pendApps = appsCache.filter(a => a.status === 'pending').length;
     $('st-pending').textContent = pend.length + pendApps;
-    $('st-users').textContent = usersLive ? usersCache.filter(u => u.status === 'approved').length : '…';
+    $('st-users').textContent = usersLive ? usersCache.filter(u => u.status === 'approved' && !devOff(u)).length : '…';
     { const n = rosterCache.filter(unseen).length; $('tab-roster-c').textContent = n; $('tab-roster-c').classList.toggle('hidden', !n); }
     $('tab-pending-c').textContent = pend.length + pendApps; $('tab-pending-c').classList.toggle('hidden', !(pend.length + pendApps));
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === curTab));
@@ -1755,8 +1757,8 @@
         + (u.recordViewer && !adminOf(u, 'adminRecord') ? ' <span class="pill bound">👀 主控台唯讀</span>' : '')
         : s === 'pending' ? '<span class="pill pending">待審核</span>' : s === 'banned' ? '<span class="pill red">停權</span>' : '<span class="pill red">退回</span>';
     };
-    const rosterPill = u => { const r = u.rosterId && rosterById(u.rosterId); return r ? `<span class="pill bound">📋 ${esc(r.name)}</span>` : '<span class="pill unbound">未對應名冊</span>'; };
-    let list = usersCache.slice().sort((a, b) => String(a.realName || '').localeCompare(String(b.realName || ''), 'zh-Hant'));
+    const rosterPill = u => { const r = u.rosterId && rosterById(u.rosterId); return (r ? `<span class="pill bound">📋 ${esc(r.name)}</span>` : '<span class="pill unbound">未對應名冊</span>') + (DEV_HIDE_LIST && isDevU(u) ? ' <span class="pill unbound">🙈 其他幹部看不到你</span>' : ''); };
+    let list = usersCache.filter(u => !devOff(u)).sort((a, b) => String(a.realName || '').localeCompare(String(b.realName || ''), 'zh-Hant'));
     if (usQuery) list = list.filter(u => [u.realName, u.lineDisplayName, u.certification, u.category].join(' ').toLowerCase().includes(usQuery));
     $('us-table').innerHTML = `<thead><tr><th style="width:44px"></th><th>姓名</th><th>證照</th><th>LINE 名稱</th><th>狀態</th><th>名冊</th><th>救護紀錄表</th><th>倉庫</th><th>團員專區</th></tr></thead><tbody>`
       + (list.map(u => `<tr data-u="${u.id}"><td>${miniAv(u.pictureUrl, u.realName)}</td><td><b>${esc(u.realName || '—')}</b></td>
