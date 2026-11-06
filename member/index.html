@@ -1849,24 +1849,24 @@
       .ms-card{background:#fff;border-radius:16px;box-shadow:0 6px 18px rgba(120,60,50,.07);border:1px solid #f1e8e4;overflow:hidden;margin:12px 0}
       .ms-h{padding:9px 14px;display:flex;justify-content:space-between;align-items:baseline;gap:8px;background:#fdf6f4;font-weight:900;font-size:14px;color:var(--ink);white-space:nowrap}.ms-h small{min-width:0;font-size:11px;color:var(--sub);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
       .ms-row{display:flex;align-items:center;gap:5px;padding:7px 8px;border-top:1px solid #f3ece9;cursor:pointer;-webkit-tap-highlight-color:transparent}.ms-row:active{background:#fff7f5}
-      .ms-dt{width:34px;flex:none;text-align:center;line-height:1.05}.ms-dt b{display:block;font-size:12.5px;color:var(--ink)}.ms-dt span{font-size:9px;color:var(--sub)}
+      .ms-dt{width:38px;flex:none;text-align:center;line-height:1.05;background:#fdf2ee;border:1px solid #f6d9cd;border-radius:9px;padding:3px 0}.ms-dt b{display:block;font-size:12.5px;color:var(--ink)}.ms-dt span{font-size:9px;color:var(--sub)}
       .ms-tm{flex:none;font-size:10px;font-weight:900;color:#fff;background:#c2414f;border-radius:6px;padding:2px 4px}
       .ms-mb{flex:1;min-width:0;font-size:11.5px;letter-spacing:-.5px;color:#4b5563;white-space:nowrap;line-height:1.45;overflow:hidden}.ms-mb .nmw{white-space:nowrap}.ms-mb small{display:block;font-size:10.5px;color:#b91c1c;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
       .ms-dt .ms-tg,.ms-tg{font-size:9px;color:#fff;background:#1e3a8a;border-radius:4px;padding:1px 3px;margin-right:2px;font-weight:700;vertical-align:1px}
-      .ms-ar{flex:none;color:#c9b5ae;font-size:15px;font-weight:700}
+      .ms-ar{flex:none;color:#c9b5ae;font-size:15px;font-weight:700}.ms-go{flex:none;width:22px;height:22px;border-radius:50%;background:#fdeee8;color:#c2410c;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;line-height:1}
       .ms-grp{padding:8px 14px;border-top:1px solid #f3ece9;font-size:13px;color:#374151;background:#fffaf5}.ms-grp b{color:#c2410c}.ms-grp .ok{font-size:11px;color:#15803d;font-weight:800}.ms-grp .wt{font-size:11px;color:#b45309;font-weight:800}.ms-grp .ms-ar{font-size:12px;color:#c2410c}
       .ms-ld{flex:none;display:inline-flex;align-items:center;gap:3px;height:28px;padding:0 9px 0 7px;border:none;border-radius:999px;background:linear-gradient(135deg,#D65A68,#F08339);font:inherit;font-size:12px;font-weight:900;color:#fff;white-space:nowrap;box-shadow:0 2px 6px rgba(214,90,104,.3)}</style>
-      ${evs.map(e => `<div class="ms-card"><div class="ms-h">📅 我的排班</div>${grpLine(e)}
+      ${evs.map(e => `<div class="ms-card"><div class="ms-h">📅 我的排班<small>👆 點日期看當天、登記住宿／中巴／用餐</small></div>${grpLine(e)}
         ${[...new Set([...e.days.map(x => x.d), ...(e.plan || []).map(x => x.d)])].sort().map(d => { const x = e.days.find(y => y.d === d), pl = (e.plan || []).find(y => y.d === d) || {};
           const ic = pl.s ? '🛏' : '';
           if (!x) { const dd = new Date(d + 'T12:00:00'); return `<div class="ms-row" data-msd="${e.id}|${d}"><div class="ms-dt"><b>${dd.getMonth() + 1}/${dd.getDate()}</b><span>(${WK[dd.getDay()]})</span></div>
-            <span class="ms-tm" style="background:#94a3b8">${d < e.days[0].d ? '前一天' : '未排班'}</span><div class="ms-mb">${pl.s ? '提早到、住宿' : '提早到？點這裡登記住宿／中巴'}</div><span class="ms-ar" style="font-size:11px">${ic}</span><span class="ms-ar">›</span></div>`; }
+            <span class="ms-tm" style="background:#94a3b8">${d < e.days[0].d ? '前一天' : '未排班'}</span><div class="ms-mb">${pl.s ? '提早到、住宿' : '提早到？點這裡登記住宿／中巴'}</div><span class="ms-ar" style="font-size:11px">${ic}</span><span class="ms-go">›</span></div>`; }
           return msRow(e, x, ic); }).join('')}</div>`).join('')}`;
     function msRow(e, x, ic) { { const dd = new Date(x.d + 'T12:00:00'), mates = x.members;
           const [eqA, ...eqT] = String(x.eq || '').split('　'), extra = [x.note, x.duty.join('、'), eqA ? '🎒' + eqA : ''].filter(Boolean).map(esc).join('・') + (eqT.join('') ? ` <span style="color:#9ca3af;font-weight:600">${esc(eqT.join(' '))}</span>` : '');
           return `<div class="ms-row" data-msd="${e.id}|${x.d}"><div class="ms-dt"><b>${dd.getMonth() + 1}/${dd.getDate()}</b><span>(${WK[dd.getDay()]})</span>${x.tag ? `<span class="ms-tg" style="display:block;margin:2px 0 0">${esc(x.tag)}</span>` : ''}</div>
             <span class="ms-tm">${esc(x.team)}</span>
-            <div class="ms-mb">${mates.map(n => `<span class="nmw">${n === e.name ? `<b style="color:#b91c1c">${esc(n)}</b>` : esc(n)}</span>`).join('<i style="font-style:normal;color:#cbbdb8">·</i>')}${extra.trim() ? `<small>${extra}</small>` : ''}</div><span class="ms-ar" style="font-size:11px">${ic}</span>${mates[0] === e.name ? `<button type="button" class="ms-ld" data-lead="${e.id}|${x.d}" title="小隊長檢查"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2.5"/><path d="M9 4V3h6v1"/><path d="m8.5 13 2.5 2.5 4.5-5"/></svg>檢查</button>` : ''}<span class="ms-ar">›</span></div>`; } }
+            <div class="ms-mb">${mates.map(n => `<span class="nmw">${n === e.name ? `<b style="color:#b91c1c">${esc(n)}</b>` : esc(n)}</span>`).join('<i style="font-style:normal;color:#cbbdb8">·</i>')}${extra.trim() ? `<small>${extra}</small>` : ''}</div><span class="ms-ar" style="font-size:11px">${ic}</span>${mates[0] === e.name ? `<button type="button" class="ms-ld" data-lead="${e.id}|${x.d}" title="小隊長檢查"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2.5"/><path d="M9 4V3h6v1"/><path d="m8.5 13 2.5 2.5 4.5-5"/></svg>檢查</button>` : ''}<span class="ms-go">›</span></div>`; } }
     box.querySelectorAll('[data-msd]').forEach(el => el.onclick = () => { const [a, b] = el.dataset.msd.split('|'); showMyDay(a, b); });
     box.querySelectorAll('[data-lead]').forEach(el => el.onclick = ev => { ev.stopPropagation(); const [a, b] = el.dataset.lead.split('|'); openLeadCheck(a, b); });
     box.querySelectorAll('[data-myg]').forEach(el => el.onclick = () => openMyGroup(el.dataset.myg));
@@ -2012,7 +2012,7 @@
   async function openKitScan() {
     const ov = document.createElement('div'); ov.id = 'kq-ov';
     ov.style.cssText = 'position:fixed;inset:0;z-index:30000;background:#111;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;font-family:inherit';
-    ov.innerHTML = `<div style="font-size:20px;font-weight:900">🎒 掃包包 QR</div><div id="kq-reader" style="width:min(86vw,360px);aspect-ratio:1;border-radius:18px;overflow:hidden;background:#000"></div>
+    ov.innerHTML = `<div style="font-size:20px;font-weight:900">🎒 掃包包 QR</div><div id="kq-reader" style="width:min(86vw,360px);border-radius:18px;overflow:hidden;background:#000"></div>
       <div id="kq-msg" style="font-size:14px;opacity:.85;text-align:center;line-height:1.6">對準包包上的 QR<br>可以看包包內容，也可以「✅ 補包核對」盤點</div>
       <button id="kq-x" style="border:none;background:rgba(255,255,255,.15);color:#fff;border-radius:99px;padding:10px 26px;font:inherit;font-size:15px;font-weight:800">✕ 關閉</button>`;
     document.body.appendChild(ov);
@@ -2037,7 +2037,7 @@
       } catch (e) { msg('❌ 讀取失敗：' + esc(e.message || e)); }
       finally { setTimeout(() => { busy = false; }, 1200); }
     };
-    try { await qr.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 230, height: 230 } }, onText, () => {}); }
+    try { await qr.start({ facingMode: 'environment' }, { fps: 10, qrbox: (w, h) => { const z = Math.max(160, Math.floor(Math.min(w, h) * 0.68)); return { width: z, height: z }; } }, onText, () => {}); }
     catch (e) { msg('❌ 打不開相機：' + esc(e.message || e) + '<br>請允許相機權限'); }
   }
   let mdAllOpen = false;
@@ -2052,7 +2052,7 @@
     const eqLine = myT && myT.eq ? (() => { const [a, ...b] = String(myT.eq).split('　'); return (a ? a.split('、').map(z => `<span style="color:${/AMBU/.test(z) ? '#2563eb' : '#dc2626'}">${esc(z)}</span>`).join('、') : '') + (b.join('') ? `<span style="display:block;color:#6b7280;font-weight:600;font-size:12px">${esc(b.join(' '))}</span>` : ''); })() : '';
     const node = (t, ic, title, body) => `<div class="tl-n"><b class="tl-t">${t}</b><i class="tl-d"><img src="/member/ic/${ic}.png" alt=""></i><div><div class="tl-h">${title}</div>${body ? `<div class="tl-c">${body}</div>` : ''}</div></div>`;
     const reg = !pl ? '' : `<div class="tl-hd">🕒 我的一天 <small>點一下就登記，管理員會看到</small></div><div class="tl">
-        ${eqLine ? node('集合', 'pack', '先檢查裝備', `<span style="font-size:13px;font-weight:800;line-height:1.5">${eqLine}</span><button class="tl-scan" data-kit="1">📷 掃包包 QR・看內容／盤點</button>`) : ''}
+        ${eqLine ? node('集合', 'pack', '先檢查裝備<button class="tl-scan" data-kit="1">📷 掃包包</button>', `<span style="font-size:13px;font-weight:800;line-height:1.5">${eqLine}</span>`) : ''}
         ${node('出發', 'bus_out', '出門坐中巴', car('o'))}
         ${node('中午', 'lunch', '中餐', meal('l'))}
         ${node('白天', 'bus_day', '白天坐中巴', car('y'))}
@@ -2080,7 +2080,7 @@
         .tl{position:relative;padding:12px 16px 2px}.tl:before{content:'';position:absolute;left:94px;top:30px;bottom:30px;width:3px;border-radius:2px;background:#f6dccd}
         .tl-n{position:relative;display:grid;grid-template-columns:44px 46px 1fr;gap:8px;align-items:start;padding-bottom:14px}.tl-t{font-size:12.5px;color:#9a8f8b;text-align:right;padding-top:13px}
         .tl-d{width:46px;height:46px;border-radius:50%;background:#fff7f2;border:2px solid #f6dccd;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px #fff}.tl-d img{width:38px;height:38px;object-fit:contain}.tl-h{font-size:15.5px;font-weight:900;padding-top:11px}.tl-c{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.tl-c .pl-b{min-width:58px;padding:7px 12px;font-size:14px}
-        .tl-scan{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:8px;border:none;border-radius:12px;padding:10px 12px;background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;font:inherit;font-size:14px;font-weight:900;cursor:pointer;box-shadow:0 3px 10px rgba(214,90,104,.3)}.tl-all{margin:10px 12px 0;border:1.5px solid #f1e3dc;border-radius:14px;overflow:hidden}.tl-all summary{list-style:none;cursor:pointer;padding:12px 14px;font-weight:900;color:#c2414f;display:flex;justify-content:space-between}.tl-all summary::-webkit-details-marker{display:none}.tl-all[open] summary span{transform:rotate(180deg)}.tl-all summary span{transition:.2s}</style>
+        .tl-scan{display:inline-flex;align-items:center;gap:4px;vertical-align:2px;margin-left:8px;border:none;border-radius:999px;padding:4px 11px;background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;font:inherit;font-size:12.5px;font-weight:900;cursor:pointer;box-shadow:0 2px 6px rgba(214,90,104,.3)}.tl-all{margin:10px 12px 0;border:1.5px solid #f1e3dc;border-radius:14px;overflow:hidden}.tl-all summary{list-style:none;cursor:pointer;padding:12px 14px;font-weight:900;color:#c2414f;display:flex;justify-content:space-between}.tl-all summary::-webkit-details-marker{display:none}.tl-all[open] summary span{transform:rotate(180deg)}.tl-all summary span{transition:.2s}</style>
       <div class="tl-top"><button id="md-x" style="position:absolute;top:12px;right:12px;border:none;background:#f1f5f9;border-radius:50%;width:34px;height:34px;font-size:16px;cursor:pointer">✕</button>
         <h2>${x.tag ? `<span style="display:inline-block;font-size:14px;background:#1e3a8a;color:#fff;border-radius:6px;padding:2px 9px;letter-spacing:3px;vertical-align:4px;margin-right:6px">${esc(x.tag)}</span>` : ''}${dd.getMonth() + 1}月${dd.getDate()}日（${WK[dd.getDay()]}）</h2>
         <p>${x.team ? `我在 <b style="color:#c2414f">${esc(x.team)}</b>${myT && myT.m[0] ? '・組長 ' + esc(myT.m[0]) : ''}` : '這天你沒有排班'}${e.cmd.length ? '・指揮官 ' + esc(e.cmd.join('、')) : ''}</p>
