@@ -1876,6 +1876,170 @@
     if (!el) { el = document.createElement('div'); el.id = 'ms-flash'; el.style.cssText = 'position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:99999;padding:10px 18px;border-radius:999px;font-weight:900;font-size:15px;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.25);transition:opacity .3s;pointer-events:none'; document.body.appendChild(el); }
     el.textContent = t; el.style.background = bad ? '#dc2626' : '#16a34a'; el.style.opacity = 1; clearTimeout(el._t); el._t = setTimeout(() => el.style.opacity = 0, 1400);
   }
+
+  // ===== 掃包包 QR：看內容／補包核對（直接在團員專區，不跳倉庫）=====
+  let whBoxes = null, whBoxesP = null;
+  const loadWhBoxes = () => whBoxesP || (whBoxesP = getDocs(collection(db, 'warehouse_boxes')).then(s => { whBoxes = s.docs.map(d => ({ id: d.id, ...d.data() })); return whBoxes; }).catch(e => { whBoxesP = null; throw e; }));
+  const escapeHtml = esc, UNIT = it => (it && String(it.unit || '').trim()) || '個';
+  const targetName = t => { t = String(t || ''); const i = t.indexOf(' - '); return i === -1 ? t : t.slice(i + 3); };
+  (() => { const st = document.createElement('style'); st.textContent = `.exp-ov{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;}.exp-card{background:#fff;width:100%;max-width:520px;max-height:80vh;overflow:auto;border-radius:20px 20px 0 0;padding:14px 14px calc(18px + env(safe-area-inset-bottom));}.exp-h{display:flex;align-items:center;justify-content:space-between;font-size:17px;font-weight:900;color:#b42318;margin:4px 4px 10px;}.exp-x{all:unset;cursor:pointer;font-size:18px;color:#888;padding:4px 8px;}`; document.head.appendChild(st); })();
+    function contentsRows(text) {
+        return String(text || '').split('\n').map(x => x.trim()).filter(Boolean).map(line => {
+            const m = line.match(/^(.+?)[\s:：xX×]+([0-9]+\s*\S{0,2}|選)$/);
+            return m ? { n: m[1].trim(), q: m[2].trim() } : { n: line, q: '' };
+        });
+    }
+    function kitsOf(it) {
+        if (it && Array.isArray(it.kits) && it.kits.some(k => (k.rows || []).length)) return it.kits.filter(k => (k.rows || []).length);
+        const rows = contentsRows(it && it.contents);
+        return rows.length ? [{ from: 0, to: 0, rows }] : [];
+    }
+    const hasKits = it => kitsOf(it).length > 0;
+    function kitsFor(it, unitNo) {   // 掃到第幾件：只給那一件的那組；沒設定就沒有
+        const ks = kitsOf(it); if (!unitNo) return ks;
+        const k = ks.find(k => !k.from || (unitNo >= k.from && unitNo <= k.to)); return k ? [k] : [];
+    }
+    function kitImg(it, name) {
+        const own = (it.kitImgs || {})[name]; if (own) return own;
+        const key = String(name).replace(/\s/g, ''); if (!key) return '';
+        let best = '';
+        (whBoxes || []).some(b => (b.items || []).some(x => {   // 倉庫裡同名的物品有照片就直接借用
+            if (!x.imageUrl) return false;
+            const xn = String(x.name || '').replace(/\s/g, '');
+            if (xn === key) { best = x.imageUrl; return true; }
+            if (!best && key.length >= 2 && (xn.startsWith(key) || key.startsWith(xn) && xn.length >= 2)) best = x.imageUrl;
+            return false;
+        }));
+        return best;
+    }
+    const kitRange = k => (k.from ? `第 ${k.from}～${k.to} ${'件'}` : '每一件');
+    function kitGrid(it, k, big) {
+        const rows = k.rows || [];
+        return `<div style="display:grid;grid-template-columns:repeat(${big ? 4 : 4},1fr);gap:6px">${rows.map(r => { const im = kitImg(it, r.n);
+            return `<div style="background:#fff;border:1px solid #f0e6e3;border-radius:12px;overflow:hidden;position:relative;text-align:center">
+                <div style="aspect-ratio:1;background:#f6f1ef;display:flex;align-items:center;justify-content:center">${im ? `<img src="${escapeHtml(im)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block">` : '<span style="font-size:24px;opacity:.5">📦</span>'}</div>
+                ${r.q ? `<b style="position:absolute;top:4px;right:4px;min-width:22px;padding:1px 6px;border-radius:10px;background:#c2410c;color:#fff;font-size:${big ? 14 : 12}px;line-height:20px">${escapeHtml(r.q)}</b>` : ''}
+                <div style="font-size:${big ? 13 : 11.5}px;font-weight:700;color:#1f2937;padding:4px 3px 5px;line-height:1.25;word-break:break-all">${escapeHtml(r.n)}</div></div>`; }).join('')}</div>`;
+    }
+    function kitRowB(it, r, extra) {
+        const im = kitImg(it, r.n);
+        return `<div ${extra || ''} style="display:flex;align-items:center;gap:7px;padding:6px 3px;border-bottom:1px solid #f3efed;min-width:0">
+            ${extra ? '<u class="ks-c" style="width:24px;height:24px;border-radius:50%;border:2px solid #d6d3d1;flex:none;text-decoration:none;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11.5px;font-weight:900"></u>' : ''}
+            <span style="width:36px;height:36px;border-radius:8px;overflow:hidden;flex:none;border:1px solid #f0e6e3;background:#f6f1ef;display:flex;align-items:center;justify-content:center">${im ? `<img src="${escapeHtml(im)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover">` : '<span style="font-size:16px;opacity:.5">📦</span>'}</span>
+            <span style="flex:1;min-width:0;font-size:14px;font-weight:700;color:#1f2937;line-height:1.2;word-break:break-all">${escapeHtml(r.n)}</span>
+            ${r.q ? `<b style="color:#c2410c;font-size:15px;white-space:nowrap">${/^[0-9]/.test(r.q) ? '×' : ''}${escapeHtml(r.q)}</b>` : ''}</div>`;
+    }
+    function kitsHtml(it, unitNo, big) {
+        const ks = kitsFor(it, unitNo); if (!ks.length) return '';
+        const all = !unitNo && kitsOf(it).length > 1;   // 物品頁一次看全部組：才標示是第幾件
+        return ks.map(k => `<div style="margin-top:10px;text-align:left">
+            <div style="font-weight:900;color:#c2410c;font-size:${big ? 16 : 13.5}px;margin:0 2px 4px">📋 ${escapeHtml(k.name || '裡面有什麼')}（${k.rows.length} 樣）${all && k.from ? `<small style="color:#8a7f7a;font-weight:700;margin-left:6px">${escapeHtml(kitRange(k))}</small>` : ''}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 8px;border-top:1px solid #f0e6e3">${k.rows.map(r => kitRowB(it, r)).join('')}</div>
+            ${kitNote(k)}</div>`).join('');
+    }
+    const kitNote = k => k.note ? `<div style="margin-top:8px;padding:9px 12px;border-radius:12px;background:#fef2f2;border:1px solid #fecaca;color:#b42318;font-weight:900;font-size:15px;text-align:center">⚠️ ${escapeHtml(k.note)}</div>` : '';
+    function kqSheet(it, unitNo, boxName) {
+        const old = document.getElementById('contents-ov'); if (old) old.remove();
+        const ov = document.createElement('div'); ov.className = 'exp-ov'; ov.id = 'contents-ov'; ov.style.zIndex = 9600;
+        const co = Number(it.checkedOutCount) || 0;
+        const u = unitNo && Array.isArray(it.units) ? it.units[unitNo - 1] : null;
+        const outBy = u && u.status === 'out' ? targetName(u.borrower || '不詳') : '';
+        const outBar = outBy ? `<div style="display:flex;align-items:center;gap:10px;margin:2px 0 10px;padding:10px 14px;border-radius:14px;background:linear-gradient(90deg,#dc2626,#ef4444);color:#fff;box-shadow:0 4px 12px rgba(220,38,38,.28)"><span style="flex:none;font-size:12.5px;font-weight:900;background:rgba(255,255,255,.22);border-radius:999px;padding:3px 10px">🔴 外借中</span><b style="flex:1;min-width:0;font-size:24px;font-weight:900;letter-spacing:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(outBy)}</b><span style="flex:none;font-size:12px;opacity:.9;font-weight:700">在他身上</span></div>` : '';
+        const st = u ? (u.status === 'out' ? '' : '<span style="color:#15803d">🟢 這件在庫</span>')
+            : co > 0 ? `<span style="color:#b42318">🔴 已外借 ${co} ${escapeHtml(UNIT(it))}</span>` : `<span style="color:#15803d">🟢 在庫 ${Number(it.qty) || 0} ${escapeHtml(UNIT(it))}</span>`;
+        // 補包核對要用的清單（這一件那組；沒指定件數就全部合併）
+        const ks = kitsFor(it, unitNo);
+        const list = []; ks.forEach(k => k.rows.forEach(r => { if (!list.some(x => x.n === r.n)) list.push(r); }));
+        let tab = 'view', res = [];
+        ov.innerHTML = `<div class="exp-card" style="max-height:94vh">
+            <div class="exp-h" style="color:#1f2937;margin-bottom:6px">${it.imageUrl ? `<img src="${escapeHtml(it.imageUrl)}" alt="" style="width:46px;height:46px;border-radius:10px;object-fit:cover;margin-right:10px;flex:none">` : ''}<span style="flex:1;min-width:0">${escapeHtml(it.name)}${unitNo ? ` <span style="color:#c2410c">第 ${unitNo} 件</span>` : ''}<small style="display:block;font-size:12.5px;color:#8a7f7a;font-weight:600;margin-top:2px">📦 ${escapeHtml(boxName)}${st ? '・' + st : ''}</small></span><button type="button" class="exp-x">✕</button></div>${outBar}
+            <div class="ks-tabs" style="display:flex;background:#f3efed;border-radius:12px;padding:3px;margin-bottom:8px"><button type="button" data-tab="view" style="all:unset;flex:1;text-align:center;padding:8px;border-radius:9px;font-weight:800;font-size:14px;cursor:pointer">📋 看內容</button><button type="button" data-tab="check" style="all:unset;flex:1;text-align:center;padding:8px;border-radius:9px;font-weight:800;font-size:14px;cursor:pointer">✅ 補包核對</button></div>
+            <div class="ks-body"></div></div>`;
+        const body = ov.querySelector('.ks-body');
+        const paintTabs = () => ov.querySelectorAll('[data-tab]').forEach(b => { const on = b.dataset.tab === tab; b.style.background = on ? '#fff' : 'transparent'; b.style.color = on ? '#c2410c' : '#8a7f7a'; b.style.boxShadow = on ? '0 1px 4px rgba(0,0,0,.08)' : 'none'; });
+        const drawView = () => { body.innerHTML = kitsHtml(it, unitNo, true) + `<button type="button" class="exp-ok" style="all:unset;box-sizing:border-box;display:block;width:100%;text-align:center;padding:13px;border-radius:14px;background:#f3efed;font-weight:800;margin-top:12px;cursor:pointer">知道了</button>`; };
+        let pos = 0;
+        const drawCheck = () => {   // 一樣一樣來：大照片、大字，按「缺」或「有，下一樣」
+            const ok = res.filter(x => x === 'y').length, no = res.filter(x => x === 'n').length;
+            const dots = `<div style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-top:10px">${list.map((_, i) => `<i data-go="${i}" style="width:15px;height:15px;border-radius:50%;cursor:pointer;background:${res[i] === 'y' ? '#22c55e' : res[i] === 'n' ? '#ef4444' : '#e5e7eb'};${i === pos ? 'outline:2px solid #c2410c;outline-offset:2px' : ''}"></i>`).join('')}</div>`;
+            const head = `<div style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px;margin:0 2px 8px"><span style="color:#1f2937">${pos < list.length ? `第 ${pos + 1} / ${list.length} 樣` : '核對完成'}</span><span style="color:#15803d">✓${ok}</span><span style="color:#b42318">缺 ${no}</span><i style="flex:1;height:9px;border-radius:5px;background:#e5e7eb;overflow:hidden;display:flex"><b style="width:${ok / list.length * 100}%;background:#22c55e"></b><b style="width:${no / list.length * 100}%;background:#ef4444"></b></i></div>`;
+            if (pos >= list.length) {
+                const miss = list.filter((_, i) => res[i] === 'n');
+                body.innerHTML = head + (miss.length
+                    ? `<div style="text-align:center;font-size:21px;font-weight:900;color:#b42318;margin:6px 0 8px">📝 缺 ${miss.length} 樣，要補：</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:0 8px;border-top:1px solid #f0e6e3">${miss.map(r => kitRowB(it, r)).join('')}</div>`
+                    : '<div style="text-align:center;padding:16px 0"><div style="font-size:56px">🎉</div><div style="font-size:22px;font-weight:900;color:#15803d;margin-top:4px">全部齊了！</div></div>')
+                    + ks.map(kitNote).join('') + dots + `<div style="display:flex;gap:10px;margin-top:14px"><button type="button" class="ks-redo" style="all:unset;flex:1;text-align:center;padding:14px;border-radius:14px;background:#f3efed;font-weight:800;cursor:pointer">重來</button><button type="button" class="exp-ok" style="all:unset;flex:2;text-align:center;padding:14px;border-radius:14px;background:#22c55e;color:#fff;font-weight:900;cursor:pointer">完成</button></div>`;
+            } else {
+                const r = list[pos], im = kitImg(it, r.n);
+                body.innerHTML = head + `<div style="border:1px solid #f0e6e3;border-radius:22px;padding:14px;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.06)">
+                    <div style="width:min(62vw,240px);margin:0 auto;aspect-ratio:1;border-radius:16px;background:#fff;overflow:hidden;display:flex;align-items:center;justify-content:center">${im ? `<img src="${escapeHtml(im)}" alt="" style="width:100%;height:100%;object-fit:contain">` : '<span style="font-size:70px">📦</span>'}</div>
+                    <div style="font-size:28px;font-weight:900;color:#1f2937;margin-top:8px;line-height:1.2">${escapeHtml(r.n)}</div>
+                    ${r.q ? `<div style="font-size:40px;font-weight:900;color:#c2410c;line-height:1.15">${/^[0-9]/.test(r.q) ? '× ' : ''}${escapeHtml(r.q)}</div>` : ''}</div>
+                    <div style="display:flex;gap:10px;margin-top:12px">
+                      <button type="button" class="ks-no" style="all:unset;flex:1;text-align:center;padding:18px 0;border-radius:16px;background:#ef4444;color:#fff;font-size:21px;font-weight:900;cursor:pointer">✗ 缺</button>
+                      <button type="button" class="ks-yes" style="all:unset;flex:1.7;text-align:center;padding:18px 0;border-radius:16px;background:#22c55e;color:#fff;font-size:21px;font-weight:900;cursor:pointer">✓ 有，下一樣</button></div>
+                    ${pos ? '<button type="button" class="ks-back" style="all:unset;display:block;margin:10px auto 0;padding:6px 14px;color:#8a7f7a;font-weight:800;cursor:pointer">↶ 上一樣</button>' : ''}` + dots;
+                const step = v => { res[pos] = v; try { navigator.vibrate && navigator.vibrate(v === 'y' ? 12 : [20, 40, 20]); } catch (e) {} pos++; while (pos < list.length && res[pos]) pos++; drawCheck(); };
+                body.querySelector('.ks-yes').onclick = () => step('y');
+                body.querySelector('.ks-no').onclick = () => step('n');
+                const bk = body.querySelector('.ks-back'); if (bk) bk.onclick = () => { pos--; drawCheck(); };
+            }
+            body.querySelectorAll('[data-go]').forEach(d => d.onclick = () => { pos = +d.dataset.go; drawCheck(); });
+        };
+        const draw = () => { paintTabs(); tab === 'view' ? drawView() : drawCheck(); };
+        ov.onclick = e => {
+            if (e.target === ov || e.target.closest('.exp-x') || e.target.closest('.exp-ok')) { ov.remove(); return; }
+            const t = e.target.closest('[data-tab]'); if (t) { tab = t.dataset.tab; draw(); return; }
+            if (e.target.closest('.ks-redo')) { res = []; pos = 0; drawCheck(); }
+        };
+        if (!list.length) ov.querySelector('.ks-tabs').style.display = 'none';
+        document.body.appendChild(ov); draw();
+    }
+
+  let kqLib = null;
+  const loadQrLib = () => kqLib || (kqLib = new Promise((res, rej) => { if (window.Html5Qrcode) return res(); const s = document.createElement('script'); s.src = 'https://unpkg.com/html5-qrcode'; s.onload = res; s.onerror = () => { kqLib = null; rej(new Error('掃描元件載入失敗')); }; document.head.appendChild(s); }));
+  function findWhItem(text) {
+    if (!whBoxes || !text.startsWith('ITEM_')) return null;
+    const parts = text.split('_'); const itemIndex = parseInt(parts[2], 10); const unitUid = parts[3], consId = parts[3] === '' ? parts[4] : '';
+    let box = whBoxes.find(b => b.id === parts[1]); let item = box && box.items ? box.items[itemIndex] : null;
+    const has = (it, uid) => Array.isArray(it.units) && it.units.some(u => u.uid === uid);
+    if (consId && !(item && item.cid === consId)) { item = null; for (const bx of whBoxes) { const i = (bx.items || []).findIndex(x => x.cid === consId); if (i >= 0) { box = bx; item = bx.items[i]; break; } } }
+    if (unitUid && !consId && !(item && has(item, unitUid))) { item = null; for (const bx of whBoxes) { const it = (bx.items || []).find(x => has(x, unitUid)); if (it) { box = bx; item = it; break; } } }
+    if (!item) return null;
+    const unitNo = unitUid && !consId && Array.isArray(item.units) ? item.units.findIndex(u => u.uid === unitUid) + 1 : 0;
+    return { box, item, unitNo };
+  }
+  async function openKitScan() {
+    const ov = document.createElement('div'); ov.id = 'kq-ov';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:30000;background:#111;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;font-family:inherit';
+    ov.innerHTML = `<div style="font-size:20px;font-weight:900">🎒 掃包包 QR</div><div id="kq-reader" style="width:min(86vw,360px);aspect-ratio:1;border-radius:18px;overflow:hidden;background:#000"></div>
+      <div id="kq-msg" style="font-size:14px;opacity:.85;text-align:center;line-height:1.6">對準包包上的 QR<br>可以看包包內容，也可以「✅ 補包核對」盤點</div>
+      <button id="kq-x" style="border:none;background:rgba(255,255,255,.15);color:#fff;border-radius:99px;padding:10px 26px;font:inherit;font-size:15px;font-weight:800">✕ 關閉</button>`;
+    document.body.appendChild(ov);
+    let qr = null, busy = false;
+    const msg = t => { const m = $('kq-msg'); if (m) m.innerHTML = t; };
+    const stop = async () => { try { if (qr) { await qr.stop(); qr.clear(); } } catch (e) {} qr = null; ov.remove(); };
+    $('kq-x').onclick = stop;
+    loadWhBoxes().catch(() => msg('❌ 讀不到倉庫資料（可能沒有倉庫權限）'));
+    try { await loadQrLib(); } catch (e) { msg('❌ ' + e.message + '，請重新整理再試'); return; }
+    if (!document.body.contains(ov)) return;
+    qr = new Html5Qrcode('kq-reader');
+    const onText = async text => {
+      if (busy) return; busy = true;
+      try {
+        if (!String(text).startsWith('ITEM_')) { msg('⚠️ 這不是物品的 QR，請掃包包上的 QR'); return; }
+        await loadWhBoxes();
+        const f = findWhItem(String(text));
+        if (!f) { msg('❌ 倉庫裡找不到這個 QR 的物品'); return; }
+        if (!kitsFor(f.item, f.unitNo).length) { msg(`ℹ️ 「${esc(f.item.name)}」沒有設定包內清單`); return; }
+        try { navigator.vibrate && navigator.vibrate(40); } catch (e) {}
+        await stop(); kqSheet(f.item, f.unitNo, f.box ? f.box.name : '');
+      } catch (e) { msg('❌ 讀取失敗：' + esc(e.message || e)); }
+      finally { setTimeout(() => { busy = false; }, 1200); }
+    };
+    try { await qr.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 230, height: 230 } }, onText, () => {}); }
+    catch (e) { msg('❌ 打不開相機：' + esc(e.message || e) + '<br>請允許相機權限'); }
+  }
   let mdAllOpen = false;
   function showMyDay(eid, d, keepScroll) {
     const e = (mySchedData || []).find(x => x.id === eid); if (!e) return; const x0 = e.days.find(y => y.d === d), pl = (e.plan || []).find(y => y.d === d);
@@ -1931,7 +2095,7 @@
     document.body.appendChild(ov); if (keepScroll) ov.querySelector('div').scrollTop = keepScroll;
     { const dt = ov.querySelector('.tl-all'); if (dt) dt.ontoggle = () => { mdAllOpen = dt.open; }; }
     ov.onclick = ev => { if (ev.target === ov || ev.target.id === 'md-x') ov.remove(); };
-    { const k = ov.querySelector('[data-kit]'); if (k) k.onclick = ev => { ev.stopPropagation(); const url = 'https://liff.line.me/2011820105-ofRs4ehy?go=kit'; try { if (inLine()) { liff.openWindow({ url, external: false }); return; } } catch (e) {} location.href = '/?go=kit'; }; }
+    { const k = ov.querySelector('[data-kit]'); if (k) k.onclick = ev => { ev.stopPropagation(); openKitScan(); }; }
     ov.querySelectorAll('[data-pa]').forEach(b => b.onclick = ev => { ev.stopPropagation();
       if (b.dataset.lock) { msFlash('管理員已確認，請洽管理員更改', true); return; }
       const [f, v] = b.dataset.pa.split(':');
