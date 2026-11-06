@@ -1032,7 +1032,7 @@ async function myGroupRoute(req, env, json) {
       members: Object.keys(fin[g.n] || {}).filter(k => !g.lead.some(l => leadKey(l.n) === k)).map(k => nm[k] || k) })) });
   } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
 }
-// ===== 小隊長檢查：組長確認整組當天用餐、到勤、配備、服裝儀容、就寢前充電 =====
+// ===== 小組長檢查：組長確認整組當天用餐、到勤、配備、服裝儀容、就寢前充電 =====
 // { idToken, eid, d, l?(管理員看別組), save?: { att, meal:{k:{l,n}}, eq, dress, charge } }
 async function leadRoute(req, env, json) {
   try {
@@ -1049,8 +1049,8 @@ async function leadRoute(req, env, json) {
     const me = u.rosterId ? roster.find(x => x.id === u.rosterId) : null, myKey = me ? normName(me.name) : '';
     const sc = dr ? (fobj(dr.fields).sched || {}) : {}, teams = (sc.days || {})[d] || [];
     const t = teams.find(x => l ? x.l === l : (x.m || [])[0] === myKey);
-    if (!t) return json({ error: '這天你不是小隊長' }, 403);
-    if (!admin && (t.m || [])[0] !== myKey) return json({ error: '只有這組的小隊長可以確認' }, 403);
+    if (!t) return json({ error: '這天你不是小組長' }, 403);
+    if (!admin && (t.m || [])[0] !== myKey) return json({ error: '只有這組的小組長可以確認' }, 403);
     const path = `events/${eid}/admin/lead_${d}_${encodeURIComponent(t.l)}`;
     const H = { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' };
     const selfOf = async k => { const ro = byName[k]; if (!ro) return null; const s0 = await fsGet(tok, `events/${eid}/admin/self_${ro.id}`); return { ro, days: s0 ? (fobj(s0.fields).days || {}) : {} }; };

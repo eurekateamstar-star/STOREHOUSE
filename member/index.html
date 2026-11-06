@@ -1847,7 +1847,7 @@
       return `<div class="ms-grp"${has ? ` data-myg="${e.id}" style="cursor:pointer"` : ''}>${body}${has ? '<span class="ms-ar" style="float:right">看組員 ›</span>' : ''}</div>`; };
     box.innerHTML = `<style>
       .ms-card{background:#fff;border-radius:16px;box-shadow:0 6px 18px rgba(120,60,50,.07);border:1px solid #f1e8e4;overflow:hidden;margin:12px 0}
-      .ms-h{padding:9px 14px;display:flex;justify-content:space-between;align-items:baseline;gap:8px;background:#fdf6f4;font-weight:900;font-size:14px;color:var(--ink);white-space:nowrap}.ms-h small{min-width:0;font-size:11px;color:var(--sub);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .ms-h{padding:12px 16px;display:flex;justify-content:space-between;align-items:baseline;gap:8px;background:#fdf6f4;font-weight:900;font-size:19px;color:var(--ink);white-space:nowrap}.ms-h small{min-width:0;font-size:11px;color:var(--sub);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
       .ms-row{display:flex;align-items:center;gap:5px;padding:7px 8px;border-top:1px solid #f3ece9;cursor:pointer;-webkit-tap-highlight-color:transparent}.ms-row:active{background:#fff7f5}
       .ms-dt{width:38px;flex:none;text-align:center;line-height:1.05;background:#fdf2ee;border:1px solid #f6d9cd;border-radius:9px;padding:3px 0}.ms-dt b{display:block;font-size:12.5px;color:var(--ink)}.ms-dt span{font-size:9px;color:var(--sub)}
       .ms-tm{flex:none;font-size:10px;font-weight:900;color:#fff;background:#c2414f;border-radius:6px;padding:2px 4px}
@@ -1862,8 +1862,8 @@
       .mc-mb{font-size:16px;line-height:1.65;color:#374151;margin-top:6px}.mc-mb b{color:#b91c1c}.mc-mb i{font-style:normal;color:#cbbdb8}.mc-eq{font-size:14px;font-weight:800;color:#b91c1c;margin-top:3px}.mc-eq span{color:#9ca3af;font-weight:600}.mc-mo{font-size:13px;color:#6b7280;margin-top:3px}
       .mc-bt{display:flex;gap:8px;margin-top:10px}.mc-bt .mc-ld{height:36px;padding:0 14px;font-size:14px}.mc-go{flex:1;height:36px;border:none;border-radius:999px;background:#fdeee8;color:#c2410c;font:inherit;font-size:14px;font-weight:900}
       .ms-ld{flex:none;display:inline-flex;align-items:center;gap:3px;height:28px;padding:0 9px 0 7px;border:none;border-radius:999px;background:linear-gradient(135deg,#D65A68,#F08339);font:inherit;font-size:12px;font-weight:900;color:#fff;white-space:nowrap;box-shadow:0 2px 6px rgba(214,90,104,.3)}</style>
-      ${evs.map(e => `<div class="ms-card"><div class="ms-h">📅 我的排班<small>👆 點日期看那天、再點「看當天」登記</small></div>${grpLine(e)}
-        ${msCal(e)}</div>`).join('')}`;
+      ${evs.map(e => `<div class="ms-card"><div class="ms-h">📅 我的排班</div>
+        ${msCal(e)}${grpLine(e)}</div>`).join('')}`;
     function msCal(e) {
       const ds = [...new Set([...e.days.map(x => x.d), ...(e.plan || []).map(x => x.d)])].sort(); if (!ds.length) return '';
       const iso = dt => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`, today = iso(new Date());
@@ -1882,14 +1882,14 @@
         return `<div class="mc-d" data-cd="${e.id}|${d}" ${d === sel ? '' : 'hidden'}>${top}
           <div class="mc-mb">${x.members.map(n => n === e.name ? `<b>${esc(n)}</b>` : esc(n)).join('<i>・</i>')}</div>
           ${eqA ? `<div class="mc-eq">🎒 ${esc(eqA)}${eqT.join('') ? ` <span>${esc(eqT.join(' '))}</span>` : ''}</div>` : ''}${more ? `<div class="mc-mo">${more}</div>` : ''}
-          <div class="mc-bt">${x.members[0] === e.name ? `<button type="button" class="ms-ld mc-ld" data-lead="${e.id}|${d}">📋 小隊長檢查</button>` : ''}<button type="button" class="mc-go" data-msd="${e.id}|${d}">看當天・登記 ›</button></div></div>`; };
+          <div class="mc-bt">${x.members[0] === e.name ? `<button type="button" class="ms-ld mc-ld" data-lead="${e.id}|${d}">📋 小組長檢查</button>` : ''}<button type="button" class="mc-go" data-msd="${e.id}|${d}">看當天・登記 ›</button></div></div>`; };
       return `<div class="mc"><div class="mc-m">${ms.map(m => m + '月').join('～')}</div><div class="mc-wk">${'一二三四五六日'.split('').map(w => `<span>${w}</span>`).join('')}</div><div class="mc-g">${cells}</div></div>${ds.map(det).join('')}`;
     }
     function msRow(e, x, ic) { { const dd = new Date(x.d + 'T12:00:00'), mates = x.members;
           const [eqA, ...eqT] = String(x.eq || '').split('　'), extra = [x.note, x.duty.join('、'), eqA ? '🎒' + eqA : ''].filter(Boolean).map(esc).join('・') + (eqT.join('') ? ` <span style="color:#9ca3af;font-weight:600">${esc(eqT.join(' '))}</span>` : '');
           return `<div class="ms-row" data-msd="${e.id}|${x.d}"><div class="ms-dt"><b>${dd.getMonth() + 1}/${dd.getDate()}</b><span>(${WK[dd.getDay()]})</span>${x.tag ? `<span class="ms-tg" style="display:block;margin:2px 0 0">${esc(x.tag)}</span>` : ''}</div>
             <span class="ms-tm">${esc(x.team)}</span>
-            <div class="ms-mb">${mates.map(n => `<span class="nmw">${n === e.name ? `<b style="color:#b91c1c">${esc(n)}</b>` : esc(n)}</span>`).join('<i style="font-style:normal;color:#cbbdb8">·</i>')}${extra.trim() ? `<small>${extra}</small>` : ''}</div><span class="ms-ar" style="font-size:11px">${ic}</span>${mates[0] === e.name ? `<button type="button" class="ms-ld" data-lead="${e.id}|${x.d}" title="小隊長檢查"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2.5"/><path d="M9 4V3h6v1"/><path d="m8.5 13 2.5 2.5 4.5-5"/></svg>檢查</button>` : ''}<span class="ms-go">›</span></div>`; } }
+            <div class="ms-mb">${mates.map(n => `<span class="nmw">${n === e.name ? `<b style="color:#b91c1c">${esc(n)}</b>` : esc(n)}</span>`).join('<i style="font-style:normal;color:#cbbdb8">·</i>')}${extra.trim() ? `<small>${extra}</small>` : ''}</div><span class="ms-ar" style="font-size:11px">${ic}</span>${mates[0] === e.name ? `<button type="button" class="ms-ld" data-lead="${e.id}|${x.d}" title="小組長檢查"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2.5"/><path d="M9 4V3h6v1"/><path d="m8.5 13 2.5 2.5 4.5-5"/></svg>檢查</button>` : ''}<span class="ms-go">›</span></div>`; } }
     box.querySelectorAll('[data-msd]').forEach(el => el.onclick = () => { const [a, b] = el.dataset.msd.split('|'); showMyDay(a, b); });
     box.querySelectorAll('[data-cal]').forEach(el => el.onclick = () => { const [a, b] = el.dataset.cal.split('|'); msSel[a] = b;
       box.querySelectorAll(`[data-cal^="${a}|"]`).forEach(c => c.classList.toggle('on', c === el));
@@ -2139,7 +2139,7 @@
         msFlash('✅ 已登記');
       } catch (err) { msFlash('❌ 沒有存到，請再點一次', true); mySchedKey = null; loadMySched(); } })(); });
   }
-  // ===== 小隊長檢查：到勤點名、用餐、配備、服裝儀容、就寢前充電（組長或管理員）=====
+  // ===== 小組長檢查：到勤點名、用餐、配備、服裝儀容、就寢前充電（組長或管理員）=====
   async function openLeadCheck(eid, d, l) {
     const call = async body => { const idToken = await auth.currentUser.getIdToken();
       const r = await fetch(AUTH_URL + '/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, eid, d, ...(l ? { l } : {}), ...body }) });
@@ -2206,7 +2206,7 @@
         .lc-tb.dr .lc-dot{width:38px;height:38px}
         .lc-bot{position:sticky;bottom:-24px;margin:12px -14px -24px;padding:10px 14px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(#fff0,#fff 25%)}
         .lc-sv{display:block;width:100%;border:none;border-radius:14px;padding:14px;font:inherit;font-size:16px;font-weight:900;color:#fff;background:linear-gradient(90deg,#D65A68,#F08339);box-shadow:0 6px 16px rgba(214,90,104,.3)}</style>
-        <div class="lc-h"><b class="lc-tt"><span class="lc-ava"><img src="/member/ic/leader.png" alt=""></span>小隊長檢查</b><button class="lc-x" onclick="document.getElementById('lead-ov').remove()">✕</button></div>
+        <div class="lc-h"><b class="lc-tt"><span class="lc-ava"><img src="/member/ic/leader.png" alt=""></span>小組長檢查</b><button class="lc-x" onclick="document.getElementById('lead-ov').remove()">✕</button></div>
         <div style="font-size:14px;color:#6b7280;margin-top:2px">${dd.getMonth() + 1}/${dd.getDate()}（${WK[dd.getDay()]}）・<b style="color:#c2414f">${esc(J.team)}</b>・${M.length} 人</div>
         <div class="lc-tabs">${TABS.map(([f, ic, n]) => `<button class="${tab === f ? 'on' : ''} ${C[f + 'At'] ? 'done' : ''}" data-tab="${f}"><span>${ic}</span>${n}</button>`).join('')}</div>
         <div class="lc-hd"><b>${TABS[T][1]} ${{ att: '出發前・到勤點名', meal: '今天用餐', eq: '小組配備盤點', dress: '隊員服裝儀容', charge: '就寢前・充電' }[tab]}</b>${done(tab)}</div>
@@ -3190,7 +3190,7 @@
       return `<div class="xd" data-day="${d}"><table class="xt"><thead><tr><th class="xc">組別</th><th colspan="${NC}" class="xdate"><span class="xtag ${(info[d] || {}).tag ? '' : 'emp'}" data-tag="${d}">${esc((info[d] || {}).tag || '＋標記')}</span>${dd.getMonth() + 1}月${dd.getDate()}日(${WK[dd.getDay()]})</th><th class="xcmd">指揮官:${esc(cmd)}<div class="xcnt">${ts.length} 組・${pres.length} 人</div></th></tr></thead>
         <tbody>${rows || `<tr><td colspan="${NC + 2}" class="sc-empty">按「自動排班」</td></tr>`}
         ${dutyHtml(info[d]).map(h => `<tr><td colspan="${NC + 2}" class="xf" data-duty="${d}">${h}</td></tr>`).join('')}
-        ${ts.length ? `<tr><td colspan="${NC + 2}" class="xf xlead">📋 小隊長檢查：${ts.map(t => { const c = ((evLead[eid] || {})[d] || {})[t.l] || {}, n = ['attAt', 'mealAt', 'eqAt', 'dressAt', 'chargeAt'].filter(f => c[f]).length;
+        ${ts.length ? `<tr><td colspan="${NC + 2}" class="xf xlead">📋 小組長檢查：${ts.map(t => { const c = ((evLead[eid] || {})[d] || {})[t.l] || {}, n = ['attAt', 'mealAt', 'eqAt', 'dressAt', 'chargeAt'].filter(f => c[f]).length;
           return `<button type="button" data-ldv="${d}|${esc(t.l)}" style="border:1.5px solid ${n === 5 ? '#86efac' : n ? '#fdba74' : '#e5e7eb'};background:${n === 5 ? '#f0fdf4' : n ? '#fff7ed' : '#fff'};color:${n === 5 ? '#15803d' : n ? '#c2410c' : '#9ca3af'};border-radius:999px;padding:1px 8px;margin:1px 2px;font:inherit;font-size:11px;font-weight:800;cursor:pointer">${esc(t.l)} ${n}/5</button>`; }).join('')}</td></tr>` : ''}</tbody></table>
         <div class="xsbar"><button class="xshot" data-shot="${d}">📷 存圖</button></div>
         ${miss.length && ts.length ? `<div class="sc-miss">未排入：${miss.map(k => chip(k, false, d)).join('')}</div>` : ''}</div>`; };
