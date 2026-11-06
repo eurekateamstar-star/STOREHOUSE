@@ -978,6 +978,7 @@
   const devHidden = u => isDevU(u) && !(profile && u.id === profile.userId);   // 別人看開發者
   const DEV_HIDE_LIST = true;   // 還沒全面開放：系統會員清單不讓其他幹部看到開發者（全員開放後改成 false）
   const devOff = u => DEV_HIDE_LIST && devHidden(u);
+  const rosVis = () => DEV_HIDE_LIST && DEV_UID && !(profile && profile.userId === DEV_UID) ? rosterCache.filter(r => r.boundUserId !== DEV_UID) : rosterCache;   // 名冊也先藏開發者
   function loadDev() {
     getDoc(doc(db, 'meta', 'developer')).then(async s => {
       DEV_UID = s.exists() ? (s.data().uid || '') : '';
@@ -1064,8 +1065,8 @@
 
   function renderAdmin() {
     const pend = usersCache.filter(u => (u.status || 'pending') === 'pending');
-    $('st-roster').textContent = rosterLive ? rosterCache.length : '…';
-    $('st-bound').textContent = rosterLive ? rosterCache.filter(r => r.boundUserId).length : '…';
+    $('st-roster').textContent = rosterLive ? rosVis().length : '…';
+    $('st-bound').textContent = rosterLive ? rosVis().filter(r => r.boundUserId).length : '…';
     const pendApps = appsCache.filter(a => a.status === 'pending').length;
     $('st-pending').textContent = pend.length + pendApps;
     $('st-users').textContent = usersLive ? usersCache.filter(u => u.status === 'approved' && !devOff(u)).length : '…';
@@ -1232,6 +1233,7 @@
   }
   let twMapData = null, rmSel = null;
   async function openRosterMap() {
+    const rosterCache = rosVis();
     if (!twMapData) { try { twMapData = await (await fetch('/guardian/twmap.json')).json(); } catch (e) { return toast('地圖載入失敗'); } }
     const groups = {}; const none = [];
     rosterCache.forEach(r => { const c = cityOf(rv(r, 'address')); if (c) (groups[c] = groups[c] || []).push(r); else none.push(r); });
@@ -1313,6 +1315,7 @@
       <div style="font-size:13px;line-height:2.1;"><b>上衣</b>　${ord(sizeCnt(shirts), ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '5XL'])}<br><b>褲子</b>　${ord(sizeCnt(pants), ['S', 'M', 'L', 'XL', '2L', '3L', '4L', '5L', '6L'])}</div></div>`;
   }
   function renderRoster() {
+    const rosterCache = rosVis();
     const certs = {}; rosterCache.forEach(r => { const c = r.cert || '未填'; certs[c] = (certs[c] || 0) + 1; });
     const bound = rosterCache.filter(r => r.boundUserId).length;
     const chip = (k, t) => `<button class="chip ${rsFilter === k ? 'on' : ''}" data-f="${esc(k)}">${esc(t)}</button>`;
