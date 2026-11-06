@@ -1888,7 +1888,7 @@
         cells += `<div class="mc-c ${x ? 'w' : pl ? 'p' : ''} ${d === sel ? 'on' : ''} ${d === today ? 'td' : ''}" ${x || pl ? `data-cal="${e.id}|${d}"` : ''}><b>${c.getDate()}</b>${lab ? `<small>${esc(lab)}</small>` : ''}${pl && pl.s ? '<i>🛏</i>' : ''}${x && x.members[0] === e.name ? '<i>👑</i>' : ''}</div>`; }
       const det = d => { const x = e.days.find(y => y.d === d), pl = (e.plan || []).find(y => y.d === d) || {}, dd = new Date(d + 'T12:00:00');
         const top = `<div class="mc-dh"><b>${dd.getMonth() + 1}/${dd.getDate()}（${WK[dd.getDay()]}）</b>${x && x.tag ? `<span class="ms-tg" style="font-size:12px;padding:2px 7px">${esc(x.tag)}</span>` : ''}${x ? `<span class="ms-tm" style="font-size:14px;padding:3px 9px">${esc(x.team)}</span>` : `<span class="ms-tm" style="background:#94a3b8;font-size:14px;padding:3px 9px">${d < (work[0] || d) ? '前一天' : '未排班'}</span>`}${x && x.members[0] === e.name ? '<span class="mc-lb">你是組長</span>' : ''}${pl.s ? '<span style="font-size:13px">🛏 住宿</span>' : ''}</div>`;
-        if (!x) return `<div class="mc-d" data-cd="${e.id}|${d}" ${d === sel ? '' : 'hidden'}>${top}<div class="mc-mb" style="color:#6b7280">${pl.s ? '提早到、住宿' : '提早到？登記住宿／中巴'}</div><div class="mc-bt"><button type="button" class="mc-go" data-msd="${e.id}|${d}">登記 ›</button></div></div>`;
+        if (!x) return `<div class="mc-d" data-cd="${e.id}|${d}" ${d === sel ? '' : 'hidden'}>${top}<div class="mc-mb" style="color:#6b7280">${pl.s ? '提早到、住宿' : '提早到？登記今晚住宿'}</div><div class="mc-bt"><button type="button" class="mc-go" data-msd="${e.id}|${d}">登記 ›</button></div></div>`;
         const [eqA, ...eqT] = String(x.eq || '').split('　'), more = [x.note, x.duty.join('、')].filter(Boolean).map(esc).join('・');
         return `<div class="mc-d" data-cd="${e.id}|${d}" ${d === sel ? '' : 'hidden'}>${top}
           <div class="mc-cp">${x.members.map((n, i) => `<span class="${i === 0 ? 'ld' : ''} ${n === e.name ? 'me' : ''}">${i === 0 ? '<i>組長</i>' : ''}${esc(n)}</span>`).join('')}</div>
@@ -2091,12 +2091,12 @@
     const node = (t, ic, title, body) => `<div class="tl-n"><b class="tl-t">${t}</b><i class="tl-d"><img src="/member/ic/${ic}.png" alt=""></i><div><div class="tl-h">${title}</div>${body ? `<div class="tl-c">${body}</div>` : ''}</div></div>`;
     const reg = !pl ? '' : `<div class="tl-hd">🕒 我的一天 <small>點一下就登記，管理員會看到</small></div><div class="tl">
         ${eqLine ? node('集合', 'pack', '先檢查裝備<button class="tl-scan" data-kit="1">📷 掃包包</button>', `<span style="font-size:13px;font-weight:800;line-height:1.5">${eqLine}</span>`) : ''}
-        ${node('出發', 'bus_out', '出門坐中巴', car('o'))}
+        ${x.team ? `${node('出發', 'bus_out', '出門坐中巴', car('o'))}
         ${node('中午', 'lunch', '中餐', meal('l'))}
         ${node('白天', 'bus_day', '白天坐中巴', car('y'))}
         ${node('傍晚', 'dinner', '晚餐', meal('n'))}
-        ${node('收隊', 'bus_home', '回家坐中巴', car('h'))}
-        ${node('晚上', 'stay', '今晚', tg(!!pl.s, pl.adminS, 's:' + e.g, '住宿') + tg(!pl.s, pl.adminS, 's:x', '不住'))}</div>
+        ${node('收隊', 'bus_home', '回家坐中巴', car('h'))}` : ''}
+        ${node('晚上', 'stay', x.team ? '今晚' : '今晚要住宿嗎？', tg(!!pl.s, pl.adminS, 's:' + e.g, '住宿') + tg(!pl.s, pl.adminS, 's:x', '不住'))}</div>
         <div style="font-size:11px;color:#9a8f8b;margin:0 16px 4px">例：前一天提早到→「住宿」；最後一天退勤→「不住」、回家不坐中巴。${pl.adminS || Object.values(pl.adminCar).some(Boolean) ? '<span style="display:inline-block;width:10px;height:10px;background:#16a34a;border-radius:3px;vertical-align:-1px"></span> 綠色是管理員已確認，要改請洽管理員。' : ''}</div>`;
     let first = true;
     const rows = x.teams.map(t => { const back = t.l.startsWith('轎後'), cls = back && first ? 'b' : ''; if (back) first = false;
@@ -2121,7 +2121,7 @@
         .tl-scan{display:inline-flex;align-items:center;gap:4px;vertical-align:2px;margin-left:8px;border:none;border-radius:999px;padding:4px 11px;background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;font:inherit;font-size:12.5px;font-weight:900;cursor:pointer;box-shadow:0 2px 6px rgba(214,90,104,.3)}.tl-all{margin:10px 12px 0;border:1.5px solid #f1e3dc;border-radius:14px;overflow:hidden}.tl-all summary{list-style:none;cursor:pointer;padding:12px 14px;font-weight:900;color:#c2414f;display:flex;justify-content:space-between}.tl-all summary::-webkit-details-marker{display:none}.tl-all[open] summary span{transform:rotate(180deg)}.tl-all summary span{transition:.2s}</style>
       <div class="tl-top"><button id="md-x" style="position:absolute;top:12px;right:12px;border:none;background:#f1f5f9;border-radius:50%;width:34px;height:34px;font-size:16px;cursor:pointer">✕</button>
         <h2>${x.tag ? `<span style="display:inline-block;font-size:14px;background:#1e3a8a;color:#fff;border-radius:6px;padding:2px 9px;letter-spacing:3px;vertical-align:4px;margin-right:6px">${esc(x.tag)}</span>` : ''}${dd.getMonth() + 1}月${dd.getDate()}日（${WK[dd.getDay()]}）</h2>
-        <p>${x.team ? `我在 <b style="color:#c2414f">${esc(x.team)}</b>${myT && myT.m[0] ? '・組長 ' + esc(myT.m[0]) : ''}` : '這天你沒有排班'}${e.cmd.length ? '・指揮官 ' + esc(e.cmd.join('、')) : ''}</p>
+        <p>${x.team ? `我在 <b style="color:#c2414f">${esc(x.team)}</b>${myT && myT.m[0] ? '・組長 ' + esc(myT.m[0]) : ''}` : '前一天・提早到請登記住宿'}${e.cmd.length ? '・指揮官 ' + esc(e.cmd.join('、')) : ''}</p>
         ${myT ? `<div class="tl-m">${myT.m.map((k, j) => `<span class="ch ${k === e.name ? 'me' : ''}" style="background:${CAT_BG[e.cats[k]] || '#f3f4f6'}">${j === 0 ? '<i>組長</i>' : ''}${esc(k)}</span>`).join('')}</div>` : ''}</div>
       ${reg}
       ${x.teams.length ? `<details class="tl-all" ${mdAllOpen ? 'open' : ''}><summary>📋 全部組別（${x.teams.length} 組・${x.teams.reduce((n, t) => n + t.m.length, 0)} 人）<span>▾</span></summary>
