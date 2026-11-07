@@ -17,9 +17,19 @@
     background:radial-gradient(900px 500px at 100% 0,#ffd9bf,transparent 60%),radial-gradient(700px 500px at 0 100%,#ffe0e3,transparent 60%),#fbf1ea}
   .card{max-width:520px;margin:0 auto;padding:0 0 calc(24px + env(safe-area-inset-bottom))}
   .cover{position:relative}.cover img{display:block;width:100%;height:auto}
-  .hot{all:unset;position:absolute;cursor:pointer;border-radius:4%;-webkit-tap-highlight-color:transparent;animation:glow 2.4s ease-in-out infinite}
-  .hot:active{background:rgba(255,255,255,.25)}
-  @keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(240,131,57,0)}50%{box-shadow:0 0 0 3px rgba(240,131,57,.55)}}
+  .hot{all:unset;position:absolute;cursor:pointer;border-radius:5%;-webkit-tap-highlight-color:transparent;box-shadow:0 0 0 3px #ff7a1a,0 0 14px rgba(255,122,26,.6);animation:glow 1.6s ease-in-out infinite}
+  .hot:active{background:rgba(255,255,255,.3)}
+  .hot u{position:absolute;right:4%;top:4%;text-decoration:none;background:#e03131;color:#fff;font-size:11.5px;font-weight:900;border-radius:999px;padding:2px 8px;box-shadow:0 2px 6px rgba(0,0,0,.25);animation:bob 1.6s ease-in-out infinite}
+  @keyframes glow{0%,100%{box-shadow:0 0 0 2px #ff7a1a,0 0 6px rgba(255,122,26,.3)}50%{box-shadow:0 0 0 4px #ff7a1a,0 0 18px rgba(255,122,26,.75)}}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+  .tapbar{position:absolute;left:50%;top:43%;transform:translateX(-50%);white-space:nowrap;background:#e03131;color:#fff;font-weight:900;font-size:14.5px;border-radius:999px;padding:5px 14px;box-shadow:0 4px 10px rgba(224,49,49,.4);animation:bob 1.6s ease-in-out infinite;pointer-events:none}
+  .soc{margin:18px 16px 0;background:#fff;border-radius:20px;padding:14px;box-shadow:0 6px 16px rgba(150,60,40,.1)}
+  .soc h2{margin:0 0 10px;font-size:16px;font-weight:900;text-align:center;color:#7c2d12}
+  .soc a{display:flex;align-items:center;gap:12px;text-decoration:none;color:#fff;border-radius:14px;padding:11px 14px;margin-top:8px;font-weight:900;font-size:16px}
+  .soc a img,.soc a svg{width:34px;height:34px;flex:none;border-radius:9px}.soc a svg{background:#fff}
+  .soc a small{display:block;font-size:12px;font-weight:700;opacity:.9}
+  .soc a i{margin-left:auto;font-style:normal;font-size:20px}
+  .soc .ln{background:#06C755}.soc .fb{background:#1877F2}.soc .ig{background:linear-gradient(90deg,#f58529,#dd2a7b 50%,#8134af)}
   .hint{text-align:center;font-size:15px;color:#7c2d12;font-weight:900;margin:12px 0 10px}
   .call{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 16px;text-decoration:none;background:#fff;border:2.5px solid #fca5a5;color:#b91c1c;border-radius:18px;padding:12px;font-weight:900;font-size:17px;box-shadow:0 6px 16px rgba(185,28,28,.12)}.call b{font-size:24px}
   footer{margin:18px 16px 0;text-align:center;color:var(--sub);font-size:12px;line-height:1.7}
@@ -57,9 +67,14 @@
 </head>
 <body>
 <div class="card">
-  <div class="cover"><img src="img/cover.jpg" alt="白沙屯拱天宮醫護團 衛教介紹：外傷處理、防曬與熱傷害、足部保護與水泡、補水與預防抽筋、中暑處置與休息、活動協助與緊急聯絡"><button class="hot" data-i="0" aria-label="外傷處理" style="left:4.7%;top:46.8%;width:30.1%;height:20.2%"></button><button class="hot" data-i="1" aria-label="防曬與熱傷害" style="left:36.1%;top:46.8%;width:28.3%;height:20.2%"></button><button class="hot" data-i="2" aria-label="足部保護與水泡" style="left:65.6%;top:46.8%;width:29.7%;height:20.2%"></button><button class="hot" data-i="3" aria-label="補水與預防抽筋" style="left:4.7%;top:67.7%;width:30.1%;height:20.2%"></button><button class="hot" data-i="4" aria-label="中暑處置與休息" style="left:36.1%;top:67.7%;width:28.3%;height:20.2%"></button><button class="hot" data-i="5" aria-label="活動協助與緊急聯絡" style="left:65.6%;top:67.7%;width:29.7%;height:20.2%"></button></div>
+  <div class="cover"><span class="tapbar">👇 點漫畫看怎麼處理</span><img src="img/cover.jpg" alt="白沙屯拱天宮醫護團 衛教介紹：外傷處理、防曬與熱傷害、足部保護與水泡、補水與預防抽筋、中暑處置與休息、活動協助與緊急聯絡"><button class="hot" data-i="0" aria-label="外傷處理" style="left:4.7%;top:46.8%;width:30.1%;height:20.2%"><u>👆 點我</u></button><button class="hot" data-i="1" aria-label="防曬與熱傷害" style="left:36.1%;top:46.8%;width:28.3%;height:20.2%"><u>👆 點我</u></button><button class="hot" data-i="2" aria-label="足部保護與水泡" style="left:65.6%;top:46.8%;width:29.7%;height:20.2%"><u>👆 點我</u></button><button class="hot" data-i="3" aria-label="補水與預防抽筋" style="left:4.7%;top:67.7%;width:30.1%;height:20.2%"><u>👆 點我</u></button><button class="hot" data-i="4" aria-label="中暑處置與休息" style="left:36.1%;top:67.7%;width:28.3%;height:20.2%"><u>👆 點我</u></button><button class="hot" data-i="5" aria-label="活動協助與緊急聯絡" style="left:65.6%;top:67.7%;width:29.7%;height:20.2%"><u>👆 點我</u></button></div>
   <div class="hint">👆 點上面的漫畫，看怎麼處理</div>
   <a class="call" href="tel:119">🚑 緊急請撥 <b>119</b></a>
+  <div class="soc"><h2>🧡 關注白沙屯拱天宮醫護團</h2>
+    <a class="ln" href="https://line.me/R/ti/p/@393geitc"><svg viewBox="0 0 40 40"><rect width="40" height="40" rx="9" fill="#06C755"/><path fill="#fff" d="M20 8C12.3 8 6 13 6 19.2c0 5.5 4.9 10.1 11.6 11 .5.1 1.1.3 1.2.7.1.4.1.9 0 1.3l-.2 1.2c-.1.4-.3 1.4 1.2.8 1.5-.6 8.1-4.8 11-8.2 2-2.2 3-4.4 3-6.8C34 13 27.7 8 20 8z"/><path fill="#06C755" d="M13 16.5v6h3.6M18.4 16.5v6M21 22.5v-6l4 6v-6M31 16.5h-3.6v6H31M27.4 19.5H31" stroke="#06C755" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg><span>LINE 官方帳號<small>加好友・看更多衛教、找醫護團</small></span><i>›</i></a>
+    <a class="fb" href="https://www.facebook.com/tszshinems/"><img src="/richmenu/ic-fb.png" alt=""><span>Facebook 粉絲專頁<small>活動花絮與最新消息</small></span><i>›</i></a>
+    <a class="ig" href="https://www.instagram.com/tszshinems/"><img src="/richmenu/ic-ig.png" alt=""><span>Instagram<small>@tszshinems</small></span><i>›</i></a>
+  </div>
   <footer>
     <div class="disc">📌 本衛教內容由白沙屯拱天宮醫護團（慈昕醫護協會）製作，歡迎分享轉傳，請勿修改內容或商業使用。內容僅供衛教參考，不能取代醫師診斷；身體不舒服請找穿橘衣的醫護團員，緊急狀況請撥 119。</div>
     ©2026 白沙屯拱天宮醫護團（慈昕醫護協會）・歡迎分享
