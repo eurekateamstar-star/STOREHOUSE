@@ -17,12 +17,23 @@
     background:radial-gradient(900px 500px at 100% 0,#ffd9bf,transparent 60%),radial-gradient(700px 500px at 0 100%,#ffe0e3,transparent 60%),#fbf1ea}
   .card{max-width:520px;margin:0 auto;padding:0 0 calc(24px + env(safe-area-inset-bottom))}
   .cover{position:relative}.cover img{display:block;width:100%;height:auto}
-  .hot{all:unset;position:absolute;cursor:pointer;border-radius:5%;-webkit-tap-highlight-color:transparent;box-shadow:0 0 0 3px #ff7a1a,0 0 14px rgba(255,122,26,.6);animation:glow 1.6s ease-in-out infinite}
-  .hot:active{background:rgba(255,255,255,.3)}
-  .hot u{position:absolute;right:4%;top:4%;text-decoration:none;background:#e03131;color:#fff;font-size:11.5px;font-weight:900;border-radius:999px;padding:2px 8px;box-shadow:0 2px 6px rgba(0,0,0,.25);animation:bob 1.6s ease-in-out infinite}
-  @keyframes glow{0%,100%{box-shadow:0 0 0 2px #ff7a1a,0 0 6px rgba(255,122,26,.3)}50%{box-shadow:0 0 0 4px #ff7a1a,0 0 18px rgba(255,122,26,.75)}}
-  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
-  .tapbar{position:absolute;left:50%;top:43%;transform:translateX(-50%);white-space:nowrap;background:#e03131;color:#fff;font-weight:900;font-size:14.5px;border-radius:999px;padding:5px 14px;box-shadow:0 4px 10px rgba(224,49,49,.4);animation:bob 1.6s ease-in-out infinite;pointer-events:none}
+  .hot{all:unset;position:absolute;cursor:pointer;border-radius:5%;-webkit-tap-highlight-color:transparent;transition:background .15s}
+  .hot:active{background:rgba(255,255,255,.35)}
+  .hint{text-align:center;font-size:15px;color:#7c2d12;font-weight:900;margin:12px 0 10px}
+  .call{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 16px;text-decoration:none;background:#fff;border:2.5px solid #fca5a5;color:#b91c1c;border-radius:18px;padding:12px;font-weight:900;font-size:17px;box-shadow:0 6px 16px rgba(185,28,28,.12)}.call b{font-size:24px}
+  /* IG 限時動態 */
+  .st{margin:14px 0 0;background:#fff;padding:12px 0 10px;box-shadow:0 4px 14px rgba(150,60,40,.08)}
+  .st h2{margin:0 16px 8px;font-size:15px;font-weight:900;display:flex;align-items:center;gap:6px}.st h2 small{margin-left:auto;font-size:12px;color:#8a7f7a;font-weight:700}
+  .st .row{display:flex;gap:12px;overflow-x:auto;padding:4px 16px 4px;scrollbar-width:none}.st .row::-webkit-scrollbar{display:none}
+  .sb{all:unset;flex:none;width:72px;text-align:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .sb .ring{display:block;width:70px;height:70px;border-radius:50%;padding:3px;background:conic-gradient(from 0deg,#feda75,#fa7e1e,#d62976,#962fbf,#4f5bd5,#feda75);animation:spin 4s linear infinite}
+  .sb.seen .ring{background:#d6d0cc;animation:none}
+  .sb .ring img{display:block;width:100%;height:100%;border-radius:50%;object-fit:cover;border:3px solid #fff;animation:unspin 4s linear infinite}
+  .sb.seen .ring img{animation:none}
+  @keyframes spin{to{transform:rotate(360deg)}}@keyframes unspin{to{transform:rotate(-360deg)}}
+  .sb b{display:block;font-size:12px;margin-top:5px;line-height:1.25;color:var(--ink)}
+  .sb i{display:inline-block;font-style:normal;font-size:10px;background:#e03131;color:#fff;border-radius:4px;padding:0 4px;margin-top:2px}
+  .sb.seen i{display:none}
   .soc{margin:18px 16px 0;background:#fff;border-radius:20px;padding:14px;box-shadow:0 6px 16px rgba(150,60,40,.1)}
   .soc h2{margin:0 0 10px;font-size:16px;font-weight:900;text-align:center;color:#7c2d12}
   .soc a{display:flex;align-items:center;gap:12px;text-decoration:none;color:#fff;border-radius:14px;padding:11px 14px;margin-top:8px;font-weight:900;font-size:16px}
@@ -34,22 +45,24 @@
   .call{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 16px;text-decoration:none;background:#fff;border:2.5px solid #fca5a5;color:#b91c1c;border-radius:18px;padding:12px;font-weight:900;font-size:17px;box-shadow:0 6px 16px rgba(185,28,28,.12)}.call b{font-size:24px}
   footer{margin:18px 16px 0;text-align:center;color:var(--sub);font-size:12px;line-height:1.7}
   footer .disc{background:#ffffffcc;border-radius:14px;padding:10px 12px;margin-bottom:10px;text-align:left}
-  /* 漫畫彈窗 */
-  .ov{position:fixed;inset:0;z-index:50;background:rgba(31,36,48,.55);display:none;align-items:flex-end;justify-content:center}
+  /* 限時動態播放器 */
+  .ov{position:fixed;inset:0;z-index:50;background:#000;display:none;justify-content:center}
   .ov.on{display:flex}
-  .sh{background:#fff;width:100%;max-width:560px;max-height:94vh;overflow-y:auto;border-radius:24px 24px 0 0;animation:up .25s ease-out;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
-  @keyframes up{from{transform:translateY(40px);opacity:.4}}
-  .sh-h{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:12px 14px;background:var(--c);color:#fff}
-  .sh-h small{font-size:12px;font-weight:900;background:rgba(255,255,255,.25);border-radius:999px;padding:2px 9px}
-  .sh-h b{flex:1;font-size:21px;font-weight:900}
-  .sh-h button{border:none;background:rgba(255,255,255,.25);color:#fff;width:34px;height:34px;border-radius:50%;font-size:17px;font-weight:900;cursor:pointer}
-  .comic{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;background:#fbf5f1}
-  .comic figure{margin:0;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.08)}
-  .comic img{display:block;width:100%;aspect-ratio:1;object-fit:cover}
-  .comic figcaption{display:flex;align-items:center;gap:6px;padding:7px 8px;font-size:14px;font-weight:900;line-height:1.3;min-height:48px}
-  .comic figcaption i{flex:none;width:22px;height:22px;border-radius:50%;background:var(--c);color:#fff;font-style:normal;font-size:12.5px;display:flex;align-items:center;justify-content:center}
-  .bd{padding:6px 18px 4px}
-  .bd h3{margin:8px 0 2px;font-size:17px;font-weight:900;color:var(--c)}
+  .sv{position:relative;width:100%;max-width:480px;height:100%;display:flex;flex-direction:column;background:#111;color:#fff;overflow:hidden;user-select:none;-webkit-user-select:none}
+  .pg{display:flex;gap:4px;padding:calc(8px + env(safe-area-inset-top)) 10px 0}
+  .pg span{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.35);overflow:hidden}.pg span i{display:block;height:100%;width:0;background:#fff}
+  .sh2{display:flex;align-items:center;gap:9px;padding:10px 12px}
+  .sh2 img{width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid #fff}
+  .sh2 b{font-size:15px}.sh2 small{display:block;font-size:11.5px;opacity:.75;font-weight:700}
+  .sh2 button{margin-left:auto;border:none;background:none;color:#fff;font-size:26px;line-height:1;padding:4px 6px;cursor:pointer}
+  .stage{flex:1;position:relative;display:flex;flex-direction:column;justify-content:center;min-height:0}
+  .stage .pic{width:100%;aspect-ratio:1;object-fit:cover;display:block;animation:zin .35s ease-out}
+  @keyframes zin{from{transform:scale(1.04);opacity:.4}}
+  .cap{margin:14px 16px 0;display:flex;align-items:center;gap:10px;font-size:20px;font-weight:900;line-height:1.35}
+  .cap em{flex:none;width:34px;height:34px;border-radius:50%;background:var(--c);font-style:normal;font-size:17px;display:flex;align-items:center;justify-content:center}
+  .tap{position:absolute;top:0;bottom:0;z-index:2}.tap.l{left:0;width:32%}.tap.r{right:0;width:68%}
+  .sum{flex:1;overflow-y:auto;background:#fff;color:var(--ink);border-radius:22px 22px 0 0;padding:16px 18px 20px;position:relative;z-index:3}
+  .sum h3{margin:0 0 4px;font-size:20px;font-weight:900;color:var(--c)}
   ol{margin:0;padding:0;list-style:none;counter-reset:s}
   ol li{counter-increment:s;position:relative;padding:8px 0 8px 38px;font-size:16px;border-top:1px dashed #f0e4de}
   ol li:first-child{border-top:none}
@@ -59,16 +72,16 @@
   .warn>b{display:block;color:#b91c1c;font-size:16px}
   .warn ul{margin:4px 0 0;padding:0;list-style:none}.warn li{position:relative;padding:3px 0 3px 18px;font-size:15.5px}.warn li:before{content:'!';position:absolute;left:3px;color:#dc2626;font-weight:900}
   .warn a{display:inline-flex;margin-top:8px;text-decoration:none;background:#dc2626;color:#fff;font-weight:900;border-radius:999px;padding:8px 18px;font-size:15px}
-  .nav{display:flex;gap:10px;padding:14px 18px 4px}
-  .nav button{flex:1;border:none;border-radius:14px;padding:12px 6px;font:inherit;font-size:14.5px;font-weight:900;cursor:pointer;background:#f6efeb;color:#7c2d12}
-  .nav button.nx{background:var(--c);color:#fff}
-  .nav button:disabled{opacity:.35}
+  .nav{display:flex;gap:10px;margin-top:14px}
+  .nav button{flex:1;border:none;border-radius:14px;padding:12px 6px;font:inherit;font-size:15px;font-weight:900;cursor:pointer;background:#f6efeb;color:#7c2d12}.nav button.nx{background:var(--c);color:#fff}
+  .tip{position:absolute;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);font-size:12.5px;opacity:.7;white-space:nowrap;pointer-events:none}
 </style>
 </head>
 <body>
 <div class="card">
-  <div class="cover"><span class="tapbar">👇 點漫畫看怎麼處理</span><img src="img/cover.jpg" alt="白沙屯拱天宮醫護團 衛教介紹：外傷處理、防曬與熱傷害、足部保護與水泡、補水與預防抽筋、中暑處置與休息、活動協助與緊急聯絡"><button class="hot" data-i="0" aria-label="外傷處理" style="left:4.7%;top:46.8%;width:30.1%;height:20.2%"><u>👆 點我</u></button><button class="hot" data-i="1" aria-label="防曬與熱傷害" style="left:36.1%;top:46.8%;width:28.3%;height:20.2%"><u>👆 點我</u></button><button class="hot" data-i="2" aria-label="足部保護與水泡" style="left:65.6%;top:46.8%;width:29.7%;height:20.2%"><u>👆 點我</u></button><button class="hot" data-i="3" aria-label="補水與預防抽筋" style="left:4.7%;top:67.7%;width:30.1%;height:20.2%"><u>👆 點我</u></button><button class="hot" data-i="4" aria-label="中暑處置與休息" style="left:36.1%;top:67.7%;width:28.3%;height:20.2%"><u>👆 點我</u></button><button class="hot" data-i="5" aria-label="活動協助與緊急聯絡" style="left:65.6%;top:67.7%;width:29.7%;height:20.2%"><u>👆 點我</u></button></div>
-  <div class="hint">👆 點上面的漫畫，看怎麼處理</div>
+  <div class="st" style="margin:0"><h2>📖 衛教漫畫<small>點圓圈開始看 →</small></h2><div class="row"><button class="sb" data-i="0"><span class="ring"><img src="img/wound-2.jpg" alt=""></span><b>外傷</b><i>NEW</i></button><button class="sb" data-i="1"><span class="ring"><img src="img/sun-1.jpg" alt=""></span><b>防曬</b><i>NEW</i></button><button class="sb" data-i="2"><span class="ring"><img src="img/foot-3.jpg" alt=""></span><b>水泡</b><i>NEW</i></button><button class="sb" data-i="3"><span class="ring"><img src="img/water-4.jpg" alt=""></span><b>補水抽筋</b><i>NEW</i></button><button class="sb" data-i="4"><span class="ring"><img src="img/heat-2.jpg" alt=""></span><b>中暑</b><i>NEW</i></button><button class="sb" data-i="5"><span class="ring"><img src="img/help-1.jpg" alt=""></span><b>找醫護</b><i>NEW</i></button></div></div>
+  <div class="cover"><img src="img/cover.jpg" alt="白沙屯拱天宮醫護團 衛教介紹：外傷處理、防曬與熱傷害、足部保護與水泡、補水與預防抽筋、中暑處置與休息、活動協助與緊急聯絡"><button class="hot" data-i="0" aria-label="外傷處理" style="left:4.7%;top:46.8%;width:30.1%;height:20.2%"></button><button class="hot" data-i="1" aria-label="防曬與熱傷害" style="left:36.1%;top:46.8%;width:28.3%;height:20.2%"></button><button class="hot" data-i="2" aria-label="足部保護與水泡" style="left:65.6%;top:46.8%;width:29.7%;height:20.2%"></button><button class="hot" data-i="3" aria-label="補水與預防抽筋" style="left:4.7%;top:67.7%;width:30.1%;height:20.2%"></button><button class="hot" data-i="4" aria-label="中暑處置與休息" style="left:36.1%;top:67.7%;width:28.3%;height:20.2%"></button><button class="hot" data-i="5" aria-label="活動協助與緊急聯絡" style="left:65.6%;top:67.7%;width:29.7%;height:20.2%"></button></div>
+  <div class="hint" style="margin-top:14px">👆 也可以直接點上面名片的漫畫</div>
   <a class="call" href="tel:119">🚑 緊急請撥 <b>119</b></a>
   <div class="soc"><h2>🧡 關注白沙屯拱天宮醫護團</h2>
     <a class="ln" href="https://line.me/R/ti/p/@393geitc"><svg viewBox="0 0 40 40"><rect width="40" height="40" rx="9" fill="#06C755"/><path fill="#fff" d="M20 8C12.3 8 6 13 6 19.2c0 5.5 4.9 10.1 11.6 11 .5.1 1.1.3 1.2.7.1.4.1.9 0 1.3l-.2 1.2c-.1.4-.3 1.4 1.2.8 1.5-.6 8.1-4.8 11-8.2 2-2.2 3-4.4 3-6.8C34 13 27.7 8 20 8z"/><path fill="#06C755" d="M13 16.5v6h3.6M18.4 16.5v6M21 22.5v-6l4 6v-6M31 16.5h-3.6v6H31M27.4 19.5H31" stroke="#06C755" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg><span>LINE 官方帳號<small>加好友・看更多衛教、找醫護團</small></span><i>›</i></a>
@@ -80,28 +93,52 @@
     ©2026 白沙屯拱天宮醫護團（慈昕醫護協會）・歡迎分享
   </footer>
 </div>
-<div class="ov" id="ov"><div class="sh" id="sh"></div></div>
+<div class="ov" id="ov"><div class="sv" id="sv"></div></div>
 <script>
-const D = [{"k": "wound", "t": "外傷處理", "c": "#E03131", "cap": ["坐下來，先看哪裡受傷", "扭傷：冰敷 15～20 分鐘", "彈性繃帶包紮、抬高", "擦傷：清水沖乾淨、蓋紗布"], "pts": [["先停下來", "坐好，看看哪裡受傷，<b>不要硬走</b>"], ["扭傷冰敷", "冰袋<b>用毛巾包著</b>，敷 15～20 分鐘"], ["包紮抬高", "彈性繃帶固定，坐下時把腳<b>抬高</b>"], ["擦傷沖乾淨", "清水或生理食鹽水沖掉沙子，再用紗布蓋好"]], "warn": ["腳不能踩地、看起來變形", "血壓了 10 分鐘還止不住", "撞到頭後頭痛、嘔吐、想睡"], "call": true}, {"k": "sun", "t": "防曬與熱傷害", "c": "#F59F00", "cap": ["出門前先擦防曬", "戴帽子、穿袖套", "曬紅了先冷敷", "擦蘆薈舒緩"], "pts": [["擦防曬", "SPF 30 以上，流汗後約<b>每 2 小時補擦</b>"], ["遮起來", "寬邊帽、袖套、淺色薄長袖"], ["曬傷冷敷", "冷毛巾敷，讓皮膚降溫"], ["舒緩保濕", "擦蘆薈或乳液，起水泡<b>不要弄破</b>"]], "warn": ["大片起水泡、發燒、發冷", "頭暈、頭痛、噁心想吐（可能是熱傷害）"], "call": false}, {"k": "foot", "t": "足部保護與水泡", "c": "#F08C00", "cap": ["穿合腳的舊鞋", "襪子濕了就換", "磨紅了就貼保護", "休息時脫鞋透氣"], "pts": [["穿合腳舊鞋", "<b>不要穿新鞋</b>上路"], ["排汗襪多帶", "襪子濕了就換"], ["一磨紅就貼", "人工皮或膠布先貼起來；水泡<b>不要自己刺破</b>"], ["讓腳休息", "休息時脫鞋透氣，晚上泡腳、抬高"]], "warn": ["紅、腫、熱、痛越來越嚴重或流膿", "有糖尿病的人腳受傷"], "call": false}, {"k": "water", "t": "補水與預防抽筋", "c": "#1C7ED6", "cap": ["小腿突然抽筋，先停下來", "腳板往身體扳、拉直小腿", "緩解後輕輕按摩", "補充水分和電解質"], "pts": [["先停下來坐好", "腳伸直，<b>不要硬走</b>"], ["拉直小腿", "把<b>腳板慢慢往身體方向扳</b>，維持一下"], ["輕輕按摩", "抽筋緩解後，按摩放鬆"], ["補充水分", "少量多次喝水，流很多汗喝<b>運動飲料</b>"]], "warn": ["反覆抽筋、劇痛或腫脹", "同時頭暈、很虛弱、尿很少"], "call": false}, {"k": "heat", "t": "中暑處置與休息", "c": "#E8590C", "cap": ["移到陰涼處躺下、抬高腳", "搧風、濕毛巾擦身體", "冰敷脖子和腋下", "意識清楚才小口喝水"], "pts": [["移到陰涼處", "躺下、<b>抬高雙腳</b>、鬆開衣物"], ["趕快降溫", "搧風、用濕毛巾擦身體"], ["冰敷", "冰敷<b>脖子、腋下、大腿根部</b>"], ["小口補水", "<b>意識清楚</b>才小口喝，不要硬灌"]], "warn": ["叫不醒、說話怪怪的", "抽搐、昏倒", "體溫很高、皮膚很燙"], "call": true}, {"k": "help", "t": "活動協助與緊急聯絡", "c": "#D6336C", "cap": ["看到橘衣醫護團就揮手", "不舒服就說出來", "緊急狀況撥 119", "醫護團用無線電叫支援"], "pts": [["找醫護團", "穿<b>橘色衣服</b>、戴 EMS 帽子、手臂有臂章"], ["不舒服就說", "跟身邊的人說「需要醫護」，請他幫忙叫人"], ["撥 119 說清楚", "<b>在哪裡</b>（路名、廟、地標）、<b>怎麼了</b>、幾個人"], ["等待時", "陪在旁邊；撞到頭或脖子<b>不要隨便移動</b>"]], "warn": ["昏倒、叫不醒", "胸痛、呼吸困難", "大量出血"], "call": true}];
-const ov = document.getElementById('ov'), sh = document.getElementById('sh');
-function open(i) {
-  const d = D[i];
-  sh.style.setProperty('--c', d.c);
-  sh.innerHTML = `<div class="sh-h"><small>${i + 1} / ${D.length}</small><b>${d.t}</b><button id="x" aria-label="關閉">✕</button></div>
-    <div class="comic">${d.cap.map((c, j) => `<figure><img src="img/${d.k}-${j + 1}.jpg" alt="${c}"><figcaption><i>${j + 1}</i>${c}</figcaption></figure>`).join('')}</div>
-    <div class="bd"><h3>重點整理</h3><ol>${d.pts.map(([a, b]) => `<li><span class="h">${a}</span>${b}</li>`).join('')}</ol>
-      <div class="warn"><b>⚠️ 有這些情況，${d.call ? '請撥 119' : '請找醫護團'}</b><ul>${d.warn.map(w => `<li>${w}</li>`).join('')}</ul>${d.call ? '<a href="tel:119">📞 撥打 119</a>' : ''}</div></div>
-    <div class="nav"><button id="pv" ${i ? '' : 'disabled'}>‹ 上一則</button><button class="nx" id="nx">${i < D.length - 1 ? '下一則 ›' : '看完了 ✓'}</button></div>`;
-  sh.scrollTop = 0; ov.classList.add('on'); document.body.style.overflow = 'hidden';
-  document.getElementById('x').onclick = close;
-  document.getElementById('pv').onclick = () => open(i - 1);
-  document.getElementById('nx').onclick = () => i < D.length - 1 ? open(i + 1) : close();
-  try { history.replaceState(null, '', '#' + d.k); } catch (e) {}
+const D = [{"k": "wound", "t": "外傷處理", "c": "#E03131", "av": "wound-2.jpg", "cap": ["坐下來，先看哪裡受傷", "扭傷：冰敷 15～20 分鐘", "彈性繃帶包紮、抬高", "擦傷：清水沖乾淨、蓋紗布"], "pts": [["先停下來", "坐好，看看哪裡受傷，<b>不要硬走</b>"], ["扭傷冰敷", "冰袋<b>用毛巾包著</b>，敷 15～20 分鐘"], ["包紮抬高", "彈性繃帶固定，坐下時把腳<b>抬高</b>"], ["擦傷沖乾淨", "清水或生理食鹽水沖掉沙子，再用紗布蓋好"]], "warn": ["腳不能踩地、看起來變形", "血壓了 10 分鐘還止不住", "撞到頭後頭痛、嘔吐、想睡"], "call": true}, {"k": "sun", "t": "防曬與熱傷害", "c": "#F59F00", "av": "sun-1.jpg", "cap": ["出門前先擦防曬", "戴帽子、穿袖套", "曬紅了先冷敷", "擦蘆薈舒緩"], "pts": [["擦防曬", "SPF 30 以上，流汗後約<b>每 2 小時補擦</b>"], ["遮起來", "寬邊帽、袖套、淺色薄長袖"], ["曬傷冷敷", "冷毛巾敷，讓皮膚降溫"], ["舒緩保濕", "擦蘆薈或乳液，起水泡<b>不要弄破</b>"]], "warn": ["大片起水泡、發燒、發冷", "頭暈、頭痛、噁心想吐（可能是熱傷害）"], "call": false}, {"k": "foot", "t": "足部保護與水泡", "c": "#F08C00", "av": "foot-3.jpg", "cap": ["穿合腳的舊鞋", "襪子濕了就換", "磨紅了就貼保護", "休息時脫鞋透氣"], "pts": [["穿合腳舊鞋", "<b>不要穿新鞋</b>上路"], ["排汗襪多帶", "襪子濕了就換"], ["一磨紅就貼", "人工皮或膠布先貼起來；水泡<b>不要自己刺破</b>"], ["讓腳休息", "休息時脫鞋透氣，晚上泡腳、抬高"]], "warn": ["紅、腫、熱、痛越來越嚴重或流膿", "有糖尿病的人腳受傷"], "call": false}, {"k": "water", "t": "補水與預防抽筋", "c": "#1C7ED6", "av": "water-4.jpg", "cap": ["小腿突然抽筋，先停下來", "腳板往身體扳、拉直小腿", "緩解後輕輕按摩", "補充水分和電解質"], "pts": [["先停下來坐好", "腳伸直，<b>不要硬走</b>"], ["拉直小腿", "把<b>腳板慢慢往身體方向扳</b>，維持一下"], ["輕輕按摩", "抽筋緩解後，按摩放鬆"], ["補充水分", "少量多次喝水，流很多汗喝<b>運動飲料</b>"]], "warn": ["反覆抽筋、劇痛或腫脹", "同時頭暈、很虛弱、尿很少"], "call": false}, {"k": "heat", "t": "中暑處置與休息", "c": "#E8590C", "av": "heat-2.jpg", "cap": ["移到陰涼處躺下、抬高腳", "搧風、濕毛巾擦身體", "冰敷脖子和腋下", "意識清楚才小口喝水"], "pts": [["移到陰涼處", "躺下、<b>抬高雙腳</b>、鬆開衣物"], ["趕快降溫", "搧風、用濕毛巾擦身體"], ["冰敷", "冰敷<b>脖子、腋下、大腿根部</b>"], ["小口補水", "<b>意識清楚</b>才小口喝，不要硬灌"]], "warn": ["叫不醒、說話怪怪的", "抽搐、昏倒", "體溫很高、皮膚很燙"], "call": true}, {"k": "help", "t": "活動協助與緊急聯絡", "c": "#D6336C", "av": "help-1.jpg", "cap": ["看到橘衣醫護團就揮手", "不舒服就說出來", "緊急狀況撥 119", "醫護團用無線電叫支援"], "pts": [["找醫護團", "穿<b>橘色衣服</b>、戴 EMS 帽子、手臂有臂章"], ["不舒服就說", "跟身邊的人說「需要醫護」，請他幫忙叫人"], ["撥 119 說清楚", "<b>在哪裡</b>（路名、廟、地標）、<b>怎麼了</b>、幾個人"], ["等待時", "陪在旁邊；撞到頭或脖子<b>不要隨便移動</b>"]], "warn": ["昏倒、叫不醒", "胸痛、呼吸困難", "大量出血"], "call": true}];
+const ov = document.getElementById('ov'), sv = document.getElementById('sv');
+const SEEN = (() => { try { return JSON.parse(localStorage.getItem('eduSeen') || '[]'); } catch (e) { return []; } })();
+const DUR = 4500;
+let ti = 0, si = 0, t0 = 0, raf = 0, paused = false, pausedAt = 0;
+function markSeen(i) { if (!SEEN.includes(i)) { SEEN.push(i); try { localStorage.setItem('eduSeen', JSON.stringify(SEEN)); } catch (e) {} } document.querySelectorAll(`.sb[data-i="${i}"]`).forEach(b => b.classList.add('seen')); }
+function render() {
+  const d = D[ti], N = d.cap.length + 1;
+  sv.style.setProperty('--c', d.c);
+  const bars = Array.from({ length: N }, (_, j) => `<span><i style="width:${j < si ? 100 : 0}%"></i></span>`).join('');
+  const head = `<div class="pg">${bars}</div><div class="sh2"><img src="img/${d.av}" alt=""><div><b>${d.t}</b><small>白沙屯拱天宮醫護團・${ti + 1}/${D.length}</small></div><button id="x" aria-label="關閉">✕</button></div>`;
+  if (si < d.cap.length) {
+    sv.innerHTML = head + `<div class="stage"><img class="pic" src="img/${d.k}-${si + 1}.jpg" alt="${d.cap[si]}"><div class="cap"><em>${si + 1}</em>${d.cap[si]}</div>
+      <div class="tap l" id="tl"></div><div class="tap r" id="tr"></div></div><div class="tip">點右邊下一張・點左邊上一張・按住暫停</div>`;
+    const st = sv.querySelector('.stage');
+    st.querySelector('#tl').onclick = prev; st.querySelector('#tr').onclick = next;
+    ['pointerdown'].forEach(ev => st.addEventListener(ev, () => { paused = true; pausedAt = performance.now(); }));
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => st.addEventListener(ev, () => { if (paused) { t0 += performance.now() - pausedAt; paused = false; } }));
+    t0 = performance.now(); paused = false; cancelAnimationFrame(raf); tick();
+  } else {
+    cancelAnimationFrame(raf); markSeen(ti);
+    sv.innerHTML = head + `<div class="sum"><h3>重點整理</h3><ol>${d.pts.map(([a, b]) => `<li><span class="h">${a}</span>${b}</li>`).join('')}</ol>
+      <div class="warn"><b>⚠️ 有這些情況，${d.call ? '請撥 119' : '請找醫護團'}</b><ul>${d.warn.map(w => `<li>${w}</li>`).join('')}</ul>${d.call ? '<a href="tel:119">📞 撥打 119</a>' : ''}</div>
+      <div class="nav"><button id="rp">↺ 再看一次</button><button class="nx" id="nt">${ti < D.length - 1 ? '下一則 ›' : '看完了 ✓'}</button></div></div>`;
+    sv.querySelector('.pg').lastElementChild.firstElementChild.style.width = '100%';
+    sv.querySelector('#rp').onclick = () => { si = 0; render(); };
+    sv.querySelector('#nt').onclick = () => ti < D.length - 1 ? open(ti + 1) : close();
+  }
+  sv.querySelector('#x').onclick = close;
 }
-function close() { ov.classList.remove('on'); document.body.style.overflow = ''; try { history.replaceState(null, '', location.pathname); } catch (e) {} }
-ov.onclick = e => { if (e.target === ov) close(); };
-document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
-document.querySelectorAll('.hot').forEach(b => b.onclick = () => open(+b.dataset.i));
+function tick() {
+  if (!ov.classList.contains('on')) return;
+  const bar = sv.querySelectorAll('.pg span i')[si];
+  if (!paused) { const p = Math.min(1, (performance.now() - t0) / DUR); if (bar) bar.style.width = p * 100 + '%'; if (p >= 1) return next(); }
+  raf = requestAnimationFrame(tick);
+}
+function next() { si++; render(); }
+function prev() { if (si > 0) { si--; render(); } else if (ti > 0) { ti--; si = 0; render(); } else render(); }
+function open(i) { ti = i; si = 0; ov.classList.add('on'); document.body.style.overflow = 'hidden'; render(); try { history.replaceState(null, '', '#' + D[i].k); } catch (e) {} }
+function close() { cancelAnimationFrame(raf); ov.classList.remove('on'); document.body.style.overflow = ''; try { history.replaceState(null, '', location.pathname); } catch (e) {} }
+document.addEventListener('keydown', e => { if (!ov.classList.contains('on')) return; if (e.key === 'Escape') close(); if (e.key === 'ArrowRight') next(); if (e.key === 'ArrowLeft') prev(); });
+{ let y0 = null; sv.addEventListener('touchstart', e => { y0 = e.touches[0].clientY; }, { passive: true }); sv.addEventListener('touchend', e => { if (y0 != null && e.changedTouches[0].clientY - y0 > 110 && !e.target.closest('.sum')) close(); y0 = null; }); }
+document.querySelectorAll('.hot,.sb').forEach(b => b.onclick = () => open(+b.dataset.i));
+SEEN.forEach(i => document.querySelectorAll(`.sb[data-i="${i}"]`).forEach(b => b.classList.add('seen')));
 { const i = D.findIndex(d => '#' + d.k === location.hash); if (i >= 0) open(i); }
 </script>
 </body>
