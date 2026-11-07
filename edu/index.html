@@ -4,267 +4,130 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>進香衛教・白沙屯拱天宮醫護團</title>
-<meta name="description" content="白沙屯媽祖進香常見狀況與照護重點：外傷、防曬熱傷害、足部水泡、補水抽筋、中暑、緊急聯絡。">
+<meta name="description" content="白沙屯媽祖進香衛教漫畫：抽筋、扭傷擦傷、曬傷、中暑熱衰竭、腳底水泡、需要幫忙時。">
 <meta property="og:title" content="進香衛教・白沙屯拱天宮醫護團">
-<meta property="og:description" content="走得平安：外傷、防曬、水泡、補水、中暑、緊急聯絡，一頁看懂。">
-<meta property="og:image" content="https://tsushin-buishatun.pages.dev/edu/img/heat.jpg">
+<meta property="og:description" content="六則四格漫畫，看懂進香路上常見狀況怎麼處理。">
+<meta property="og:image" content="https://tsushin-buishatun.pages.dev/edu/img/heat-2.jpg">
 <meta name="theme-color" content="#D65A68">
 <link rel="icon" href="/share/mascot.png">
 <style>
-  :root{--red:#c2414f;--red2:#D65A68;--org:#F08339;--ink:#1f2430;--sub:#6b6360;--bg:#fbf5f1;--card:#fff;--line:#f1e3dc}
+  :root{--red:#c2414f;--ink:#1f2430;--sub:#6b6360;--bg:#fbf5f1;--line:#f1e3dc}
   *{box-sizing:border-box}
-  html{scroll-behavior:smooth;scroll-padding-top:64px}
+  html{scroll-behavior:smooth;scroll-padding-top:58px}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;-webkit-text-size-adjust:100%;line-height:1.6}
   .wrap{max-width:560px;margin:0 auto;padding:0 16px 40px}
-  /* 頁首 */
-  .hero{background:linear-gradient(120deg,var(--red2),#E97452 55%,var(--org));color:#fff;padding:26px 20px 70px;text-align:center;position:relative;overflow:hidden}
+  .hero{background:linear-gradient(120deg,#D65A68,#E97452 55%,#F08339);color:#fff;padding:26px 20px 70px;text-align:center;position:relative;overflow:hidden}
   .hero:before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.06) 0 14px,transparent 14px 28px)}
   .hero *{position:relative}
-  .hero .org{font-size:13px;letter-spacing:4px;font-weight:800;opacity:.95}
-  .hero .en{font-size:10px;letter-spacing:2.5px;opacity:.8;margin-top:2px}
-  .hero h1{margin:14px 0 4px;font-size:34px;letter-spacing:4px;font-weight:900}
-  .hero p{margin:0;font-size:15px;opacity:.95}
+  .hero .org{font-size:13px;letter-spacing:4px;font-weight:800}.hero .en{font-size:10px;letter-spacing:2.5px;opacity:.8;margin-top:2px}
+  .hero h1{margin:14px 0 4px;font-size:34px;letter-spacing:4px;font-weight:900}.hero p{margin:0;font-size:15px;opacity:.95}
   .sos{display:flex;gap:10px;margin:-48px 0 0;position:relative}
-  .sos a{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;border-radius:18px;padding:14px 10px;font-weight:900;font-size:17px;box-shadow:0 8px 20px rgba(150,40,40,.18)}
-  .sos .call{background:#fff;color:#b91c1c;border:2.5px solid #fca5a5}
-  .sos .call b{font-size:24px;letter-spacing:1px}
-  .sos .find{background:#fff;color:var(--ink);border:2.5px solid var(--line);font-size:15px}
-  /* 目錄 */
-  .toc{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0 6px}
-  .toc a{display:block;text-decoration:none;color:var(--ink);background:var(--card);border-radius:16px;overflow:hidden;border:1px solid var(--line);box-shadow:0 3px 10px rgba(120,60,50,.06)}
-  .toc img{display:block;width:100%;aspect-ratio:1.1;object-fit:cover}
-  .toc span{display:block;text-align:center;font-size:13.5px;font-weight:900;padding:6px 2px 7px;line-height:1.3}
-  .hint{text-align:center;font-size:13px;color:var(--sub);margin:4px 0 0}
-  /* 主題 */
-  .topic{background:var(--card);border-radius:22px;margin-top:22px;overflow:hidden;border:1px solid var(--line);box-shadow:0 6px 18px rgba(120,60,50,.07)}
-  .topic .pic{position:relative}
-  .topic .pic img{display:block;width:100%;aspect-ratio:1.12;object-fit:cover}
-  .topic .num{position:absolute;left:14px;top:14px;background:var(--red);color:#fff;font-weight:900;font-size:14px;border-radius:999px;padding:4px 12px;box-shadow:0 3px 8px rgba(0,0,0,.2)}
-  .topic .body{padding:16px 18px 18px}
-  .topic h2{margin:0 0 4px;font-size:24px;font-weight:900;display:flex;align-items:center;gap:8px}
-  .topic .lead{margin:0 0 12px;color:var(--sub);font-size:15px}
-  h3{margin:14px 0 6px;font-size:16px;font-weight:900;color:#7c2d12;display:flex;align-items:center;gap:6px}
-  ol,ul{margin:0;padding-left:0;list-style:none}
-  ol{counter-reset:s}
-  ol li{counter-increment:s;position:relative;padding:8px 0 8px 40px;font-size:16.5px;border-top:1px dashed #f0e4de}
-  ol li:first-child{border-top:none}
-  ol li:before{content:counter(s);position:absolute;left:0;top:8px;width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--red2),var(--org));color:#fff;font-weight:900;font-size:14px;display:flex;align-items:center;justify-content:center}
-  ul.tip li{position:relative;padding:5px 0 5px 26px;font-size:16px}
-  ul.tip li:before{content:'✓';position:absolute;left:4px;top:5px;color:#16a34a;font-weight:900}
-  ul.no li:before{content:'✕';color:#dc2626}
-  b.k{color:#b91c1c}
-  .warn{margin-top:14px;background:#fef2f2;border:2px solid #fecaca;border-radius:16px;padding:12px 14px}
-  .warn h3{margin:0 0 6px;color:#b91c1c}
-  .warn ul li{position:relative;padding:4px 0 4px 22px;font-size:15.5px}
-  .warn ul li:before{content:'!';position:absolute;left:4px;top:4px;color:#dc2626;font-weight:900}
-  .warn a{display:inline-flex;margin-top:8px;text-decoration:none;background:#dc2626;color:#fff;font-weight:900;border-radius:999px;padding:8px 18px;font-size:15px}
-  .say{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;background:#fff7ed;border-radius:14px;padding:12px 14px;font-size:15.5px;margin-top:8px}
-  .say b{color:#9a3412;white-space:nowrap}
-  .top{display:block;text-align:right;margin-top:12px;font-size:13.5px;color:var(--red);font-weight:800;text-decoration:none}
-  footer{margin-top:28px;text-align:center;color:var(--sub);font-size:13px;line-height:1.8}
-  footer .disc{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 14px;margin-bottom:14px;text-align:left}
+  .sos a{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;border-radius:18px;padding:14px 10px;font-weight:900;font-size:17px;background:#fff;box-shadow:0 8px 20px rgba(150,40,40,.18)}
+  .sos .call{color:#b91c1c;border:2.5px solid #fca5a5}.sos .call b{font-size:24px}
+  .sos .find{color:var(--ink);border:2.5px solid var(--line);font-size:15px}
   .bar{position:sticky;top:0;z-index:5;background:rgba(251,245,241,.94);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
-  .bar .in{max-width:560px;margin:0 auto;display:flex;gap:6px;overflow-x:auto;padding:8px 12px;scrollbar-width:none}
-  .bar .in::-webkit-scrollbar{display:none}
+  .bar .in{max-width:560px;margin:0 auto;display:flex;gap:6px;overflow-x:auto;padding:8px 12px;scrollbar-width:none}.bar .in::-webkit-scrollbar{display:none}
   .bar a{flex:none;text-decoration:none;color:var(--ink);font-size:13.5px;font-weight:800;background:#fff;border:1px solid var(--line);border-radius:999px;padding:5px 12px}
   .bar a.c{background:#dc2626;color:#fff;border-color:#dc2626}
+  .toc{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0 4px}
+  .toc a{display:block;text-decoration:none;background:#fff;border-radius:16px;overflow:hidden;border:2px solid var(--c);box-shadow:0 3px 10px rgba(120,60,50,.06)}
+  .toc img{display:block;width:100%;aspect-ratio:1;object-fit:contain;background:#fff}
+  .toc span{display:block;text-align:center;font-size:14px;font-weight:900;padding:5px 2px 6px;background:var(--c);color:#fff}
+  .hint{text-align:center;font-size:13px;color:var(--sub);margin:6px 0 0}
+  .topic{background:#fff;border-radius:22px;margin-top:22px;overflow:hidden;border:1px solid var(--line);box-shadow:0 6px 18px rgba(120,60,50,.07)}
+  .th{background:var(--c);color:#fff;padding:16px 18px 14px}
+  .th .tag{display:inline-block;font-size:12.5px;font-weight:900;background:rgba(255,255,255,.22);border-radius:999px;padding:2px 10px}
+  .th h2{margin:6px 0 0;font-size:30px;font-weight:900;letter-spacing:2px;line-height:1.2}.th p{margin:2px 0 0;font-size:15px;font-weight:700;opacity:.95}
+  .comic{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;background:var(--l)}
+  .comic figure{margin:0;position:relative;background:#fff;border:2.5px solid var(--ink);border-radius:6px;overflow:hidden}
+  .comic img{display:block;width:100%;aspect-ratio:1;object-fit:contain}
+  .comic figcaption{border-top:2px solid var(--ink);background:var(--l);text-align:center;font-weight:900;font-size:14.5px;padding:6px 4px;line-height:1.3}
+  .comic i{position:absolute;left:6px;top:6px;width:26px;height:26px;border-radius:50%;background:var(--c);color:#fff;font-style:normal;font-weight:900;font-size:14px;display:flex;align-items:center;justify-content:center}
+  .body{padding:14px 18px 16px}
+  h3{margin:0 0 4px;font-size:17px;font-weight:900;color:var(--c)}
+  ol{margin:0;padding:0;list-style:none;counter-reset:s}
+  ol li{counter-increment:s;position:relative;padding:8px 0 8px 40px;font-size:16px;border-top:1px dashed #f0e4de}
+  ol li:first-child{border-top:none}
+  ol li:before{content:counter(s);position:absolute;left:0;top:9px;width:28px;height:28px;border-radius:50%;background:var(--c);color:#fff;font-weight:900;font-size:14px;display:flex;align-items:center;justify-content:center}
+  ol li .h{display:block;font-size:17px;font-weight:900}
+  ol li b{color:#b91c1c}ol li .h{color:var(--ink)}
+  .warn{margin-top:12px;background:#fef2f2;border:2px solid #fecaca;border-radius:16px;padding:12px 14px;color:#7f1d1d}
+  .warn>b{display:block;color:#b91c1c;font-size:16px}
+  .warn ul{margin:4px 0 0;padding:0;list-style:none}.warn li{position:relative;padding:3px 0 3px 18px;font-size:15.5px}.warn li:before{content:'!';position:absolute;left:3px;color:#dc2626;font-weight:900}
+  .warn .cb{display:inline-flex;margin-top:8px;text-decoration:none;background:#dc2626;color:#fff;font-weight:900;border-radius:999px;padding:8px 18px;font-size:15px}
+  .top{display:block;text-align:right;margin-top:10px;font-size:13.5px;color:var(--red);font-weight:800;text-decoration:none}
+  footer{margin-top:28px;text-align:center;color:var(--sub);font-size:13px;line-height:1.8}
+  footer .disc{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:14px;text-align:left}
 </style>
 </head>
 <body>
 <header class="hero">
-  <div class="org">白沙屯拱天宮醫護團</div>
-  <div class="en">BAISHATUN EMS VOLUNTEER TEAM</div>
-  <h1>進香衛教</h1>
-  <p>走得平安・常見狀況與照護重點</p>
+  <div class="org">白沙屯拱天宮醫護團</div><div class="en">BAISHATUN EMS VOLUNTEER TEAM</div>
+  <h1>進香衛教</h1><p>六則小漫畫・看懂常見狀況怎麼處理</p>
 </header>
-
-<div class="wrap">
-  <div class="sos">
-    <a class="call" href="tel:119">🚑 緊急請撥 <b>119</b></a>
-    <a class="find" href="#help">🧡 找醫護團幫忙</a>
-  </div>
-</div>
-
-<nav class="bar"><div class="in">
-  <a href="#wound">🩹 外傷</a><a href="#sun">☀️ 防曬</a><a href="#foot">🦶 水泡</a><a href="#water">💧 補水抽筋</a><a href="#heat">🌡️ 中暑</a><a href="#help">📣 求助</a><a class="c" href="tel:119">📞 119</a>
-</div></nav>
-
+<div class="wrap"><div class="sos"><a class="call" href="tel:119">🚑 緊急請撥 <b>119</b></a><a class="find" href="#help">🧡 找醫護團幫忙</a></div></div>
+<nav class="bar"><div class="in"><a href="#cramp">抽筋</a><a href="#sprain">扭傷・擦傷</a><a href="#sunburn">曬傷</a><a href="#heat">中暑・熱衰竭</a><a href="#blister">腳底水泡</a><a href="#help">需要幫忙時</a><a class="c" href="tel:119">📞 119</a></div></nav>
 <main class="wrap">
-  <div class="toc">
-    <a href="#wound"><img src="img/wound.jpg" alt="外傷處理漫畫"><span>外傷處理</span></a>
-    <a href="#sun"><img src="img/sun.jpg" alt="防曬漫畫"><span>防曬與熱傷害</span></a>
-    <a href="#foot"><img src="img/foot.jpg" alt="足部保護漫畫"><span>足部保護與水泡</span></a>
-    <a href="#water"><img src="img/water.jpg" alt="補水漫畫"><span>補水與預防抽筋</span></a>
-    <a href="#heat"><img src="img/heat.jpg" alt="中暑處置漫畫"><span>中暑處置與休息</span></a>
-    <a href="#help"><img src="img/help.jpg" alt="緊急聯絡漫畫"><span>活動協助與緊急聯絡</span></a>
-  </div>
-  <p class="hint">👆 點圖片看重點</p>
+  <div class="toc"><a href="#cramp" style="--c:#7048E8;--l:#F3F0FF"><img src="img/cramp-4.jpg" alt=""><span>抽筋</span></a><a href="#sprain" style="--c:#0CA678;--l:#E6FCF5"><img src="img/sprain-3.jpg" alt=""><span>扭傷・擦傷</span></a><a href="#sunburn" style="--c:#F59F00;--l:#FFF9DB"><img src="img/sunburn-4.jpg" alt=""><span>曬傷</span></a><a href="#heat" style="--c:#E8590C;--l:#FFF0E6"><img src="img/heat-3.jpg" alt=""><span>中暑・熱衰竭</span></a><a href="#blister" style="--c:#F08C00;--l:#FFF4E0"><img src="img/blister-4.jpg" alt=""><span>腳底水泡</span></a><a href="#help" style="--c:#D6336C;--l:#FFF0F6"><img src="img/help-4.jpg" alt=""><span>需要幫忙時</span></a></div>
+  <p class="hint">👆 點一則看漫畫和重點</p>
 
-  <!-- 1 外傷 -->
-  <section class="topic" id="wound">
-    <div class="pic"><img src="img/wound.jpg" alt="醫護團員幫跌倒擦傷的香燈腳處理傷口"><span class="num">1</span></div>
+  <section class="topic" id="cramp" style="--c:#7048E8;--l:#F3F0FF">
+    <div class="th"><span class="tag">進香衛教 #01</span><h2>抽筋</h2><p>小腿突然抽筋？別硬撐！</p></div>
+    <div class="comic"><figure><i>1</i><img src="img/cramp-1.jpg" alt="小腿突然抽筋！" loading="lazy"><figcaption>小腿突然抽筋！</figcaption></figure><figure><i>2</i><img src="img/cramp-2.jpg" alt="坐下、腳尖往身體扳" loading="lazy"><figcaption>坐下、腳尖往身體扳</figcaption></figure><figure><i>3</i><img src="img/cramp-3.jpg" alt="補充運動飲料" loading="lazy"><figcaption>補充運動飲料</figcaption></figure><figure><i>4</i><img src="img/cramp-4.jpg" alt="休息夠了再慢慢走" loading="lazy"><figcaption>休息夠了再慢慢走</figcaption></figure></div>
     <div class="body">
-      <h2>🩹 外傷處理</h2>
-      <p class="lead">人多路窄，跌倒、擦傷、割傷最常見。</p>
-      <h3>處理步驟</h3>
-      <ol>
-        <li><b class="k">先止血</b>：用乾淨紗布或布直接按住傷口，持續壓 5～10 分鐘，不要一直掀開看。</li>
-        <li><b class="k">沖乾淨</b>：用清水或生理食鹽水把沙土沖掉。</li>
-        <li><b class="k">蓋起來</b>：用乾淨紗布或 OK 繃覆蓋，保持乾燥。</li>
-        <li>之後每天換藥，看有沒有紅、腫、熱、痛或流膿。</li>
-      </ol>
-      <h3>不要這樣做</h3>
-      <ul class="tip no">
-        <li>不要在傷口上塗牙膏、醬油、香灰等偏方。</li>
-        <li>有東西插在身上，<b class="k">不要自己拔出來</b>，固定住並找醫護人員。</li>
-      </ul>
-      <div class="warn"><h3>⚠️ 這些情況請找醫護人員</h3><ul>
-        <li>壓了 10 分鐘血還是止不住</li><li>傷口很深、很大，或裂開合不起來</li><li>被動物咬傷、被生鏽物品刺傷</li><li>撞到頭後頭痛、嘔吐、想睡或意識不清</li>
-      </ul><a href="tel:119">📞 撥打 119</a></div>
+      <h3>重點整理</h3><ol><li><b class="h">先停下來坐好</b>腳伸直，<b>不要硬走</b></li><li><b class="h">慢慢伸展</b>把<b>腳尖往身體方向扳</b>，維持一下，再輕輕按摩</li><li><b class="h">補充電解質</b>喝<b>運動飲料</b>或電解質水，少量多次</li><li><b class="h">休息夠了再走</b>抽筋停了、腳放鬆了，再慢慢走</li></ol>
+      <div class="warn"><b>⚠️ 有這些情況，請找醫護團</b><ul><li>反覆抽筋、休息後也不好</li><li>同時頭暈、很虛弱、尿很少</li></ul></div>
       <a class="top" href="#">回到上面 ↑</a>
     </div>
   </section>
-
-  <!-- 2 防曬 -->
-  <section class="topic" id="sun">
-    <div class="pic"><img src="img/sun.jpg" alt="醫護團員幫香燈腳擦防曬"><span class="num">2</span></div>
+  <section class="topic" id="sprain" style="--c:#0CA678;--l:#E6FCF5">
+    <div class="th"><span class="tag">進香衛教 #02</span><h2>扭傷・擦傷</h2><p>路不平腳扭到了？先休息、冰敷！</p></div>
+    <div class="comic"><figure><i>1</i><img src="img/sprain-1.jpg" alt="路不平，腳扭到了" loading="lazy"><figcaption>路不平，腳扭到了</figcaption></figure><figure><i>2</i><img src="img/sprain-2.jpg" alt="呼叫醫護團" loading="lazy"><figcaption>呼叫醫護團</figcaption></figure><figure><i>3</i><img src="img/sprain-3.jpg" alt="冰敷、包紮、抬高" loading="lazy"><figcaption>冰敷、包紮、抬高</figcaption></figure><figure><i>4</i><img src="img/sprain-4.jpg" alt="走不動別硬撐" loading="lazy"><figcaption>走不動別硬撐</figcaption></figure></div>
     <div class="body">
-      <h2>☀️ 防曬與熱傷害</h2>
-      <p class="lead">白天長時間走在太陽下，曬傷和熱傷害要小心。</p>
-      <h3>出發前做好防曬</h3>
-      <ul class="tip">
-        <li>戴<b class="k">寬邊帽</b>、撐傘，穿淺色、透氣、長袖的衣服。</li>
-        <li>擦防曬乳（SPF 30 以上），流汗後約<b class="k">每 2 小時補擦</b>一次。</li>
-        <li>中午前後（約 10～14 點）陽光最強，能休息就找陰涼處。</li>
-        <li>毛巾用水沾濕掛在脖子上，可以幫忙降溫。</li>
-      </ul>
-      <h3>曬傷了怎麼辦</h3>
-      <ol>
-        <li>用冷水沖或冷毛巾敷，讓皮膚降溫。</li>
-        <li>起水泡<b class="k">不要弄破</b>，用乾淨紗布蓋著。</li>
-        <li>多喝水，衣服穿寬鬆一點，避免再曬。</li>
-      </ol>
-      <div class="warn"><h3>⚠️ 出現這些，可能是熱傷害</h3><ul>
-        <li>頭暈、頭痛、很累、噁心想吐</li><li>流很多汗、臉色蒼白、心跳很快</li>
-      </ul><div style="font-size:15px;margin-top:4px">→ 馬上停下來，到陰涼處休息、補水。看下面的 <a href="#heat" style="display:inline;background:none;color:#b91c1c;padding:0;text-decoration:underline">中暑處置</a>。</div></div>
+      <h3>重點整理</h3><ol><li><b class="h">扭傷先休息</b>停下來，<b>不要再用力踩</b></li><li><b class="h">冰敷</b>冰敷 15～20 分鐘，冰塊要用毛巾包著</li><li><b class="h">包紮、抬高</b>彈性繃帶包紮，坐下時把腳<b>抬高</b></li><li><b class="h">擦傷沖乾淨</b>用清水沖掉沙子，再用紗布或 OK 繃蓋住</li></ol>
+      <div class="warn"><b>⚠️ 有這些情況，請撥 119</b><ul><li>腳不能踩地、看起來變形</li><li>流血壓了 10 分鐘還止不住</li><li>撞到頭後頭痛、嘔吐、想睡</li></ul> <a class="cb" href="tel:119">📞 撥打 119</a></div>
       <a class="top" href="#">回到上面 ↑</a>
     </div>
   </section>
-
-  <!-- 3 足部 -->
-  <section class="topic" id="foot">
-    <div class="pic"><img src="img/foot.jpg" alt="醫護團員幫香燈腳包紮腳部"><span class="num">3</span></div>
+  <section class="topic" id="sunburn" style="--c:#F59F00;--l:#FFF9DB">
+    <div class="th"><span class="tag">進香衛教 #03</span><h2>曬傷</h2><p>皮膚紅紅刺痛？防曬要記得補擦！</p></div>
+    <div class="comic"><figure><i>1</i><img src="img/sunburn-1.jpg" alt="出門前先擦防曬" loading="lazy"><figcaption>出門前先擦防曬</figcaption></figure><figure><i>2</i><img src="img/sunburn-2.jpg" alt="戴帽子、穿袖套" loading="lazy"><figcaption>戴帽子、穿袖套</figcaption></figure><figure><i>3</i><img src="img/sunburn-3.jpg" alt="少量多次喝水" loading="lazy"><figcaption>少量多次喝水</figcaption></figure><figure><i>4</i><img src="img/sunburn-4.jpg" alt="曬傷了就冷敷降溫" loading="lazy"><figcaption>曬傷了就冷敷降溫</figcaption></figure></div>
     <div class="body">
-      <h2>🦶 足部保護與水泡</h2>
-      <p class="lead">一天走好幾十公里，腳是最辛苦的地方。</p>
-      <h3>預防水泡</h3>
-      <ul class="tip">
-        <li>穿<b class="k">已經穿習慣、合腳</b>的鞋，不要穿新鞋上路。</li>
-        <li>穿吸汗的襪子，<b class="k">多帶幾雙</b>，濕了就換。</li>
-        <li>腳一有發熱、刺痛、磨紅的地方，<b class="k">馬上貼人工皮或膠布</b>保護。</li>
-        <li>休息時脫鞋讓腳透氣，晚上泡腳、抬高腳。</li>
-      </ul>
-      <h3>已經起水泡</h3>
-      <ol>
-        <li>小水泡<b class="k">不要自己刺破</b>，貼人工皮保護就好。</li>
-        <li>水泡很大、痛到不能走，請醫護人員用消毒過的器具處理。</li>
-        <li>水泡破了：保持清潔，用紗布或人工皮蓋好，不要撕掉表皮。</li>
-      </ol>
-      <div class="warn"><h3>⚠️ 這些情況請找醫護人員</h3><ul>
-        <li>傷口紅、腫、熱、痛越來越嚴重，或流膿</li><li>有糖尿病的人腳受傷，一定要給醫護人員看</li>
-      </ul></div>
+      <h3>重點整理</h3><ol><li><b class="h">出門前擦防曬</b>SPF 30 以上，流汗後約<b>每 2 小時補擦</b></li><li><b class="h">遮起來</b>寬邊帽、袖套、淺色薄長袖</li><li><b class="h">少量多次喝水</b>不要等口渴才喝</li><li><b class="h">曬傷冷敷降溫</b>冷毛巾敷，起水泡<b>不要弄破</b></li></ol>
+      <div class="warn"><b>⚠️ 有這些情況，請找醫護團</b><ul><li>大片起水泡、發燒、發冷</li><li>頭暈、頭痛、噁心想吐</li></ul></div>
       <a class="top" href="#">回到上面 ↑</a>
     </div>
   </section>
-
-  <!-- 4 補水 -->
-  <section class="topic" id="water">
-    <div class="pic"><img src="img/water.jpg" alt="醫護團員遞水給香燈腳補充水分"><span class="num">4</span></div>
+  <section class="topic" id="heat" style="--c:#E8590C;--l:#FFF0E6">
+    <div class="th"><span class="tag">進香衛教 #04</span><h2>中暑・熱衰竭</h2><p>頭暈想吐、全身無力？先到陰涼處！</p></div>
+    <div class="comic"><figure><i>1</i><img src="img/heat-1.jpg" alt="頭暈想吐、大量流汗？" loading="lazy"><figcaption>頭暈想吐、大量流汗？</figcaption></figure><figure><i>2</i><img src="img/heat-2.jpg" alt="移到陰涼處躺下休息" loading="lazy"><figcaption>移到陰涼處躺下休息</figcaption></figure><figure><i>3</i><img src="img/heat-3.jpg" alt="意識清楚才小口補水" loading="lazy"><figcaption>意識清楚才小口補水</figcaption></figure><figure><i>4</i><img src="img/heat-4.jpg" alt="叫不醒立刻撥 119" loading="lazy"><figcaption>叫不醒立刻撥 119</figcaption></figure></div>
     <div class="body">
-      <h2>💧 補水與預防抽筋</h2>
-      <p class="lead">流汗流掉的不只是水，還有鹽分（電解質）。</p>
-      <h3>怎麼喝水</h3>
-      <ul class="tip">
-        <li><b class="k">少量多次</b>：大約每 15～20 分鐘喝幾口，不要等口渴才喝。</li>
-        <li>流很多汗時，可以喝<b class="k">運動飲料</b>或電解質水補充鹽分。</li>
-        <li>不要一次猛灌一大瓶。</li>
-        <li>看尿的顏色：<b class="k">深黃色＝喝不夠</b>，淡黃色比較剛好。</li>
-        <li>有心臟、腎臟病被醫師限制喝水的人，請照醫師的建議。</li>
-      </ul>
-      <h3>腳抽筋了</h3>
-      <ol>
-        <li>先停下來，坐下或靠著休息。</li>
-        <li>小腿抽筋：腳伸直，<b class="k">把腳尖慢慢往身體方向扳</b>，維持一下。</li>
-        <li>輕輕按摩抽筋的地方，等放鬆再慢慢走。</li>
-        <li>補充水分和電解質。</li>
-      </ol>
-      <div class="warn"><h3>⚠️ 這些情況請找醫護人員</h3><ul>
-        <li>抽筋一直反覆、休息後也不好</li><li>同時有頭暈、很虛弱、尿很少</li>
-      </ul></div>
+      <h3>重點整理</h3><ol><li><b class="h">移到陰涼處</b>躺下、抬高雙腳、<b>鬆開衣物</b></li><li><b class="h">趕快降溫</b>濕毛巾擦身體、搧風，冰敷<b>脖子、腋下、大腿根部</b></li><li><b class="h">小口補水</b><b>意識清楚</b>才小口喝，不要硬灌</li><li><b class="h">不要硬撐</b>好轉前不要繼續走</li></ol>
+      <div class="warn"><b>⚠️ 有這些情況，立刻撥 119</b><ul><li>叫不醒、說話怪怪的</li><li>抽搐、昏倒</li><li>體溫很高、皮膚很燙</li></ul> <a class="cb" href="tel:119">📞 撥打 119</a></div>
       <a class="top" href="#">回到上面 ↑</a>
     </div>
   </section>
-
-  <!-- 5 中暑 -->
-  <section class="topic" id="heat">
-    <div class="pic"><img src="img/heat.jpg" alt="醫護團員幫躺著休息的香燈腳搧風降溫"><span class="num">5</span></div>
+  <section class="topic" id="blister" style="--c:#F08C00;--l:#FFF4E0">
+    <div class="th"><span class="tag">進香衛教 #05</span><h2>腳底水泡</h2><p>腳熱熱刺刺的？先停下來處理！</p></div>
+    <div class="comic"><figure><i>1</i><img src="img/blister-1.jpg" alt="走太久，腳刺刺熱熱" loading="lazy"><figcaption>走太久，腳刺刺熱熱</figcaption></figure><figure><i>2</i><img src="img/blister-2.jpg" alt="先停下來，別硬撐" loading="lazy"><figcaption>先停下來，別硬撐</figcaption></figure><figure><i>3</i><img src="img/blister-3.jpg" alt="水泡別弄破，貼人工皮" loading="lazy"><figcaption>水泡別弄破，貼人工皮</figcaption></figure><figure><i>4</i><img src="img/blister-4.jpg" alt="穿舊鞋、排汗襪多帶" loading="lazy"><figcaption>穿舊鞋、排汗襪多帶</figcaption></figure></div>
     <div class="body">
-      <h2>🌡️ 中暑處置與休息</h2>
-      <p class="lead">中暑會危及生命，要<b class="k">越快降溫越好</b>。</p>
-      <div class="warn" style="margin-top:0"><h3>🚨 有這些情況，立刻撥 119</h3><ul>
-        <li>體溫很高，皮膚很燙（可能很乾，也可能一直流汗）</li><li>意識不清、說話怪怪的、叫不太醒</li><li>昏倒、抽搐</li>
-      </ul><a href="tel:119">📞 撥打 119</a></div>
-      <h3>等救護車時這樣做</h3>
-      <ol>
-        <li><b class="k">移到陰涼</b>、通風的地方，離開人群。</li>
-        <li>讓他躺下，鬆開衣服、拿掉帽子和背包。</li>
-        <li><b class="k">用水降溫</b>：用水噴濕或擦濕全身，一邊搧風。</li>
-        <li>有冰袋或冰水，敷在<b class="k">脖子、腋下、大腿根部</b>。</li>
-        <li>人清醒、能自己喝，才小口給水或運動飲料。</li>
-        <li>陪在旁邊，注意呼吸和意識，等醫護人員到。</li>
-      </ol>
-      <h3>不要這樣做</h3>
-      <ul class="tip no">
-        <li>意識不清的人<b class="k">不要餵水</b>，容易嗆到。</li>
-        <li>不要讓他自己硬撐、繼續走。</li>
-      </ul>
+      <h3>重點整理</h3><ol><li><b class="h">一刺痛就停</b>腳一發熱、磨紅，<b>馬上處理</b></li><li><b class="h">水泡不弄破</b>小水泡<b>不要刺破</b>，貼人工皮保護</li><li><b class="h">穿合腳舊鞋</b>不要穿新鞋上路</li><li><b class="h">排汗襪多帶</b>襪子濕了就換，休息時脫鞋透氣</li></ol>
+      <div class="warn"><b>⚠️ 有這些情況，請找醫護團</b><ul><li>紅、腫、熱、痛越來越嚴重或流膿</li><li>糖尿病的人腳受傷</li></ul></div>
       <a class="top" href="#">回到上面 ↑</a>
     </div>
   </section>
-
-  <!-- 6 求助 -->
-  <section class="topic" id="help">
-    <div class="pic"><img src="img/help.jpg" alt="醫護團員在人群中揮手"><span class="num">6</span></div>
+  <section class="topic" id="help" style="--c:#D6336C;--l:#FFF0F6">
+    <div class="th"><span class="tag">進香衛教 #06</span><h2>需要幫忙時</h2><p>不舒服不要硬撐！找穿橘衣的我們！</p></div>
+    <div class="comic"><figure><i>1</i><img src="img/help-1.jpg" alt="不舒服就說出來" loading="lazy"><figcaption>不舒服就說出來</figcaption></figure><figure><i>2</i><img src="img/help-2.jpg" alt="無線電呼叫支援" loading="lazy"><figcaption>無線電呼叫支援</figcaption></figure><figure><i>3</i><img src="img/help-3.jpg" alt="醫護團馬上趕到" loading="lazy"><figcaption>醫護團馬上趕到</figcaption></figure><figure><i>4</i><img src="img/help-4.jpg" alt="昏倒、胸痛撥 119" loading="lazy"><figcaption>昏倒、胸痛撥 119</figcaption></figure></div>
     <div class="body">
-      <h2>📣 活動協助與緊急聯絡</h2>
-      <p class="lead">身體不舒服不要忍，醫護團就在隊伍裡。</p>
-      <h3>怎麼找到我們</h3>
-      <ul class="tip">
-        <li>找穿<b class="k">橘色背心</b>、戴 <b class="k">EMS 帽子</b>、背紅色醫療包的團員。</li>
-        <li>跟身邊的人說「需要醫護」，請他幫忙叫人。</li>
-        <li>情況緊急，<b class="k">直接撥 119</b>，不用等。</li>
-      </ul>
-      <h3>撥 119 時說清楚</h3>
-      <div class="say">
-        <b>📍 在哪裡</b><span>路名、附近的廟、店家、路口等明顯地標</span>
-        <b>❓ 怎麼了</b><span>例如：有人昏倒、叫不醒、跌倒流很多血</span>
-        <b>👥 幾個人</b><span>幾個人受傷、大概年紀</span>
-        <b>📞 留電話</b><span>不要先掛斷，等對方說可以再掛</span>
-      </div>
-      <h3>等待時</h3>
-      <ul class="tip">
-        <li>陪在旁邊，不要讓他自己一個人。</li>
-        <li>可能撞到頭或脖子的人，<b class="k">不要隨便移動</b>他。</li>
-        <li>請旁邊的人讓出空間，方便救護人員進來。</li>
-      </ul>
-      <div class="sos" style="margin:16px 0 0"><a class="call" href="tel:119" style="box-shadow:none">🚑 撥打 <b>119</b></a></div>
+      <h3>重點整理</h3><ol><li><b class="h">找醫護團</b>穿<b>橘色衣服</b>、戴 EMS 帽子、背紅色醫療包</li><li><b class="h">隊伍前後都有</b>跟身邊的人說「需要醫護」，請他幫忙叫人</li><li><b class="h">撥 119 說清楚</b><b>在哪裡</b>（路名、廟、地標）、<b>怎麼了</b>、幾個人，留電話</li><li><b class="h">等待時</b>陪在旁邊；撞到頭或脖子<b>不要隨便移動</b></li></ol>
+      <div class="warn"><b>⚠️ 有這些情況，立刻撥 119</b><ul><li>昏倒、叫不醒</li><li>胸痛、呼吸困難</li><li>大量出血</li></ul> <a class="cb" href="tel:119">📞 撥打 119</a></div>
       <a class="top" href="#">回到上面 ↑</a>
     </div>
   </section>
-
   <footer>
-    <div class="disc">📌 本頁是一般衛教資訊，不能取代醫師診斷與治療。身體不舒服、或不確定怎麼處理，請找醫護人員或就醫；緊急情況請撥 119。</div>
-    白沙屯拱天宮醫護團<br>祝大家一路平安 🙏
+    <div class="disc">📌 本衛教內容由白沙屯拱天宮醫護團（慈昕醫護協會）製作，歡迎分享轉傳，請勿修改內容或商業使用。內容僅供衛教參考，不能取代醫師診斷；身體不舒服請找醫護人員，緊急狀況請撥 119。</div>
+    ©2026 白沙屯拱天宮醫護團（慈昕醫護協會）・歡迎分享<br>一起平安走完進香路 🙏
   </footer>
 </main>
 </body>
