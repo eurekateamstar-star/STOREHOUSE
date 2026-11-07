@@ -74,6 +74,12 @@
   .warn a{display:inline-flex;margin-top:8px;text-decoration:none;background:#dc2626;color:#fff;font-weight:900;border-radius:999px;padding:8px 18px;font-size:15px}
   .nav{display:flex;gap:10px;margin-top:14px}
   .nav button{flex:1;border:none;border-radius:14px;padding:12px 6px;font:inherit;font-size:15px;font-weight:900;cursor:pointer;background:#f6efeb;color:#7c2d12}.nav button.nx{background:var(--c);color:#fff}
+  .join{display:block;margin-top:12px;text-align:center;text-decoration:none;background:#06C755;color:#fff;font-weight:900;border-radius:14px;padding:11px;font-size:15px}
+  .end{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;background:linear-gradient(160deg,#D65A68,#F08339);text-align:center;position:relative}
+  .end .ex{position:absolute;top:calc(14px + env(safe-area-inset-top));right:14px;border:none;background:rgba(255,255,255,.2);color:#fff;width:38px;height:38px;border-radius:50%;font-size:18px}
+  .end .big{font-size:64px}.end h3{margin:0;font-size:26px;font-weight:900}.end p{margin:0 0 8px;font-size:15.5px;line-height:1.7;opacity:.95}
+  .end a,.end .bk{display:block;width:100%;max-width:320px;text-decoration:none;color:#fff;font:inherit;font-weight:900;font-size:16px;border-radius:14px;padding:13px;border:none}
+  .end .ln{background:#06C755}.end .fb{background:#1877F2}.end .ig{background:linear-gradient(90deg,#f58529,#dd2a7b 50%,#8134af)}.end .bk{background:rgba(255,255,255,.22);margin-top:4px;cursor:pointer}
   .tip{position:absolute;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);font-size:12.5px;opacity:.7;white-space:nowrap;pointer-events:none}
 </style>
 </head>
@@ -81,9 +87,9 @@
 <div class="card">
   <div class="st" style="margin:0"><h2>📖 衛教漫畫<small>點圓圈開始看 →</small></h2><div class="row"><button class="sb" data-i="0"><span class="ring"><img src="img/wound-2.jpg" alt=""></span><b>外傷</b><i>NEW</i></button><button class="sb" data-i="1"><span class="ring"><img src="img/sun-1.jpg" alt=""></span><b>防曬</b><i>NEW</i></button><button class="sb" data-i="2"><span class="ring"><img src="img/foot-3.jpg" alt=""></span><b>水泡</b><i>NEW</i></button><button class="sb" data-i="3"><span class="ring"><img src="img/water-4.jpg" alt=""></span><b>補水抽筋</b><i>NEW</i></button><button class="sb" data-i="4"><span class="ring"><img src="img/heat-2.jpg" alt=""></span><b>中暑</b><i>NEW</i></button><button class="sb" data-i="5"><span class="ring"><img src="img/help-1.jpg" alt=""></span><b>找醫護</b><i>NEW</i></button></div></div>
   <div class="cover"><img src="img/cover.jpg" alt="白沙屯拱天宮醫護團 衛教介紹：外傷處理、防曬與熱傷害、足部保護與水泡、補水與預防抽筋、中暑處置與休息、活動協助與緊急聯絡"><button class="hot" data-i="0" aria-label="外傷處理" style="left:4.7%;top:46.8%;width:30.1%;height:20.2%"></button><button class="hot" data-i="1" aria-label="防曬與熱傷害" style="left:36.1%;top:46.8%;width:28.3%;height:20.2%"></button><button class="hot" data-i="2" aria-label="足部保護與水泡" style="left:65.6%;top:46.8%;width:29.7%;height:20.2%"></button><button class="hot" data-i="3" aria-label="補水與預防抽筋" style="left:4.7%;top:67.7%;width:30.1%;height:20.2%"></button><button class="hot" data-i="4" aria-label="中暑處置與休息" style="left:36.1%;top:67.7%;width:28.3%;height:20.2%"></button><button class="hot" data-i="5" aria-label="活動協助與緊急聯絡" style="left:65.6%;top:67.7%;width:29.7%;height:20.2%"></button></div>
-  <div class="hint" style="margin-top:14px">👆 也可以直接點上面名片的漫畫</div>
+  <div class="hint" style="margin-top:14px">👆 也可以直接點上面名片的漫畫<br><a href="#soc" style="color:#06a34a;text-decoration:none">💬 往下加入醫護團 LINE／FB／IG ↓</a></div>
   <a class="call" href="tel:119">🚑 緊急請撥 <b>119</b></a>
-  <div class="soc"><h2>🧡 關注白沙屯拱天宮醫護團</h2>
+  <div class="soc" id="soc"><h2>🧡 關注白沙屯拱天宮醫護團</h2>
     <a class="ln" href="https://line.me/R/ti/p/@393geitc"><svg viewBox="0 0 40 40"><rect width="40" height="40" rx="9" fill="#06C755"/><path fill="#fff" d="M20 8C12.3 8 6 13 6 19.2c0 5.5 4.9 10.1 11.6 11 .5.1 1.1.3 1.2.7.1.4.1.9 0 1.3l-.2 1.2c-.1.4-.3 1.4 1.2.8 1.5-.6 8.1-4.8 11-8.2 2-2.2 3-4.4 3-6.8C34 13 27.7 8 20 8z"/><path fill="#06C755" d="M13 16.5v6h3.6M18.4 16.5v6M21 22.5v-6l4 6v-6M31 16.5h-3.6v6H31M27.4 19.5H31" stroke="#06C755" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg><span>LINE 官方帳號<small>加好友・看更多衛教、找醫護團</small></span><i>›</i></a>
     <a class="fb" href="https://www.facebook.com/tszshinems/"><img src="/richmenu/ic-fb.png" alt=""><span>Facebook 粉絲專頁<small>活動花絮與最新消息</small></span><i>›</i></a>
     <a class="ig" href="https://www.instagram.com/tszshinems/"><img src="/richmenu/ic-ig.png" alt=""><span>Instagram<small>@tszshinems</small></span><i>›</i></a>
@@ -118,12 +124,20 @@ function render() {
     cancelAnimationFrame(raf); markSeen(ti);
     sv.innerHTML = head + `<div class="sum"><h3>重點整理</h3><ol>${d.pts.map(([a, b]) => `<li><span class="h">${a}</span>${b}</li>`).join('')}</ol>
       <div class="warn"><b>⚠️ 有這些情況，${d.call ? '請撥 119' : '請找醫護團'}</b><ul>${d.warn.map(w => `<li>${w}</li>`).join('')}</ul>${d.call ? '<a href="tel:119">📞 撥打 119</a>' : ''}</div>
-      <div class="nav"><button id="rp">↺ 再看一次</button><button class="nx" id="nt">${ti < D.length - 1 ? '下一則 ›' : '看完了 ✓'}</button></div></div>`;
+      <div class="nav"><button id="rp">↺ 再看一次</button><button class="nx" id="nt">${ti < D.length - 1 ? '下一則 ›' : '看完了 ✓'}</button></div><a class="join" href="https://line.me/R/ti/p/@393geitc">💬 加入醫護團 LINE 官方帳號，看更多衛教 ›</a></div>`;
     sv.querySelector('.pg').lastElementChild.firstElementChild.style.width = '100%';
     sv.querySelector('#rp').onclick = () => { si = 0; render(); };
-    sv.querySelector('#nt').onclick = () => ti < D.length - 1 ? open(ti + 1) : close();
+    sv.querySelector('#nt').onclick = () => ti < D.length - 1 ? open(ti + 1) : endScreen();
   }
   sv.querySelector('#x').onclick = close;
+}
+function endScreen() {
+  cancelAnimationFrame(raf);
+  sv.style.setProperty('--c', '#c2414f');
+  sv.innerHTML = `<div class="end"><button class="ex" id="x" aria-label="關閉">✕</button><div class="big">🎉</div><h3>6 則都看完了！</h3><p>一起平安走完進香路 🙏<br>加入官方帳號，隨時找得到醫護團</p>
+    <a class="ln" href="https://line.me/R/ti/p/@393geitc">💬 加入 LINE 官方帳號</a><a class="fb" href="https://www.facebook.com/tszshinems/">👍 Facebook 粉絲專頁</a><a class="ig" href="https://www.instagram.com/tszshinems/">📷 Instagram</a>
+    <button class="bk" id="bk">回到首頁</button></div>`;
+  sv.querySelector('#x').onclick = close; sv.querySelector('#bk').onclick = () => { close(); setTimeout(() => document.querySelector('.soc').scrollIntoView({ behavior: 'smooth', block: 'center' }), 150); };
 }
 function tick() {
   if (!ov.classList.contains('on')) return;
