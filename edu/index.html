@@ -45,11 +45,9 @@
   .call{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 16px;text-decoration:none;background:#fff;border:2.5px solid #fca5a5;color:#b91c1c;border-radius:18px;padding:12px;font-weight:900;font-size:17px;box-shadow:0 6px 16px rgba(185,28,28,.12)}.call b{font-size:24px}
   footer{margin:18px 16px 0;text-align:center;color:var(--sub);font-size:12px;line-height:1.7}
   footer .disc{background:#ffffffcc;border-radius:14px;padding:10px 12px;margin-bottom:10px;text-align:left}
-  body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
-  .dock{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:rgba(255,250,246,.96);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 -4px 16px rgba(120,50,30,.12)}
-  .dock a{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;height:48px;border-radius:14px;text-decoration:none;color:#fff;font-weight:900;font-size:15px}
-  .dock a img{width:22px;height:22px}.dock a span{font-size:18px}
-  .dock .ln{flex:1.5;background:#06C755}.dock .fb{background:#1877F2}.dock .ig{background:linear-gradient(90deg,#f58529,#dd2a7b 50%,#8134af)}.dock .c9{background:#fff;color:#b91c1c;border:2px solid #fca5a5}
+  .down{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:40;width:52px;height:52px;border-radius:50%;border:1.5px solid rgba(255,255,255,.7);background:rgba(31,36,48,.28);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:#fff;font-size:24px;font-weight:900;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.18);animation:dn 1.8s ease-in-out infinite;transition:opacity .3s}
+  .down.hide{opacity:0;pointer-events:none}
+  @keyframes dn{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,6px)}}
   .hot{overflow:hidden}
   .hot:after{content:'';position:absolute;top:0;bottom:0;left:-60%;width:45%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);transform:skewX(-18deg);animation:shine 3.2s ease-in-out infinite}
   .hot[data-i="1"]:after{animation-delay:.25s}.hot[data-i="2"]:after{animation-delay:.5s}.hot[data-i="3"]:after{animation-delay:.75s}.hot[data-i="4"]:after{animation-delay:1s}.hot[data-i="5"]:after{animation-delay:1.25s}
@@ -94,9 +92,8 @@
 </head>
 <body>
 <div class="card">
+  <div class="st" style="margin:0"><h2>📖 衛教漫畫</h2><div class="row"><button class="sb" data-i="0"><span class="ring"><img src="img/wound-2.jpg" alt=""></span><b>外傷</b><i>NEW</i></button><button class="sb" data-i="1"><span class="ring"><img src="img/sun-1.jpg" alt=""></span><b>防曬</b><i>NEW</i></button><button class="sb" data-i="2"><span class="ring"><img src="img/foot-3.jpg" alt=""></span><b>水泡</b><i>NEW</i></button><button class="sb" data-i="3"><span class="ring"><img src="img/water-4.jpg" alt=""></span><b>補水抽筋</b><i>NEW</i></button><button class="sb" data-i="4"><span class="ring"><img src="img/heat-2.jpg" alt=""></span><b>中暑</b><i>NEW</i></button><button class="sb" data-i="5"><span class="ring"><img src="img/help-1.jpg" alt=""></span><b>找醫護</b><i>NEW</i></button></div></div>
   <div class="cover"><img src="img/cover.jpg" alt="白沙屯拱天宮醫護團 衛教介紹：外傷處理、防曬與熱傷害、足部保護與水泡、補水與預防抽筋、中暑處置與休息、活動協助與緊急聯絡"><button class="hot" data-i="0" aria-label="外傷處理" style="left:4.7%;top:46.8%;width:30.1%;height:20.2%"></button><button class="hot" data-i="1" aria-label="防曬與熱傷害" style="left:36.1%;top:46.8%;width:28.3%;height:20.2%"></button><button class="hot" data-i="2" aria-label="足部保護與水泡" style="left:65.6%;top:46.8%;width:29.7%;height:20.2%"></button><button class="hot" data-i="3" aria-label="補水與預防抽筋" style="left:4.7%;top:67.7%;width:30.1%;height:20.2%"></button><button class="hot" data-i="4" aria-label="中暑處置與休息" style="left:36.1%;top:67.7%;width:28.3%;height:20.2%"></button><button class="hot" data-i="5" aria-label="活動協助與緊急聯絡" style="left:65.6%;top:67.7%;width:29.7%;height:20.2%"></button></div>
-  <div class="hint" style="margin-top:12px">👆 點上面的漫畫，看怎麼處理</div>
-  <a class="call" href="tel:119">🚑 緊急請撥 <b>119</b></a>
   <div class="soc" id="soc"><h2>🧡 關注白沙屯拱天宮醫護團</h2>
     <a class="ln" href="https://line.me/R/ti/p/@393geitc"><svg viewBox="0 0 40 40"><rect width="40" height="40" rx="9" fill="#06C755"/><path fill="#fff" d="M20 8C12.3 8 6 13 6 19.2c0 5.5 4.9 10.1 11.6 11 .5.1 1.1.3 1.2.7.1.4.1.9 0 1.3l-.2 1.2c-.1.4-.3 1.4 1.2.8 1.5-.6 8.1-4.8 11-8.2 2-2.2 3-4.4 3-6.8C34 13 27.7 8 20 8z"/><path fill="#06C755" d="M13 16.5v6h3.6M18.4 16.5v6M21 22.5v-6l4 6v-6M31 16.5h-3.6v6H31M27.4 19.5H31" stroke="#06C755" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg><span>LINE 官方帳號<small>加好友・看更多衛教、找醫護團</small></span><i>›</i></a>
     <a class="fb" href="https://www.facebook.com/tszshinems/"><img src="/richmenu/ic-fb.png" alt=""><span>Facebook 粉絲專頁<small>活動花絮與最新消息</small></span><i>›</i></a>
@@ -107,12 +104,7 @@
     ©2026 白沙屯拱天宮醫護團（慈昕醫護協會）・歡迎分享
   </footer>
 </div>
-<nav class="dock">
-  <a class="ln" href="https://line.me/R/ti/p/@393geitc"><span>💬</span>加入 LINE</a>
-  <a class="fb" href="https://www.facebook.com/tszshinems/"><img src="/richmenu/ic-fb.png" alt="">FB</a>
-  <a class="ig" href="https://www.instagram.com/tszshinems/"><img src="/richmenu/ic-ig.png" alt="">IG</a>
-  <a class="c9" href="tel:119"><span>🚑</span>119</a>
-</nav>
+<button class="down" id="down" aria-label="往下看官方帳號">↓</button>
 <div class="ov" id="ov"><div class="sv" id="sv"></div></div>
 <script>
 const D = [{"k": "wound", "t": "外傷處理", "c": "#E03131", "av": "wound-2.jpg", "cap": ["坐下來，先看哪裡受傷", "扭傷：冰敷 15～20 分鐘", "彈性繃帶包紮、抬高", "擦傷：清水沖乾淨、蓋紗布"], "pts": [["先停下來", "坐好，看看哪裡受傷，<b>不要硬走</b>"], ["扭傷冰敷", "冰袋<b>用毛巾包著</b>，敷 15～20 分鐘"], ["包紮抬高", "彈性繃帶固定，坐下時把腳<b>抬高</b>"], ["擦傷沖乾淨", "清水或生理食鹽水沖掉沙子，再用紗布蓋好"]], "warn": ["腳不能踩地、看起來變形", "血壓了 10 分鐘還止不住", "撞到頭後頭痛、嘔吐、想睡"], "call": true}, {"k": "sun", "t": "防曬與熱傷害", "c": "#F59F00", "av": "sun-1.jpg", "cap": ["出門前先擦防曬", "戴帽子、穿袖套", "曬紅了先冷敷", "擦蘆薈舒緩"], "pts": [["擦防曬", "SPF 30 以上，流汗後約<b>每 2 小時補擦</b>"], ["遮起來", "寬邊帽、袖套、淺色薄長袖"], ["曬傷冷敷", "冷毛巾敷，讓皮膚降溫"], ["舒緩保濕", "擦蘆薈或乳液，起水泡<b>不要弄破</b>"]], "warn": ["大片起水泡、發燒、發冷", "頭暈、頭痛、噁心想吐（可能是熱傷害）"], "call": false}, {"k": "foot", "t": "足部保護與水泡", "c": "#F08C00", "av": "foot-3.jpg", "cap": ["穿合腳的舊鞋", "襪子濕了就換", "磨紅了就貼保護", "休息時脫鞋透氣"], "pts": [["穿合腳舊鞋", "<b>不要穿新鞋</b>上路"], ["排汗襪多帶", "襪子濕了就換"], ["一磨紅就貼", "人工皮或膠布先貼起來；水泡<b>不要自己刺破</b>"], ["讓腳休息", "休息時脫鞋透氣，晚上泡腳、抬高"]], "warn": ["紅、腫、熱、痛越來越嚴重或流膿", "有糖尿病的人腳受傷"], "call": false}, {"k": "water", "t": "補水與預防抽筋", "c": "#1C7ED6", "av": "water-4.jpg", "cap": ["小腿突然抽筋，先停下來", "腳板往身體扳、拉直小腿", "緩解後輕輕按摩", "補充水分和電解質"], "pts": [["先停下來坐好", "腳伸直，<b>不要硬走</b>"], ["拉直小腿", "把<b>腳板慢慢往身體方向扳</b>，維持一下"], ["輕輕按摩", "抽筋緩解後，按摩放鬆"], ["補充水分", "少量多次喝水，流很多汗喝<b>運動飲料</b>"]], "warn": ["反覆抽筋、劇痛或腫脹", "同時頭暈、很虛弱、尿很少"], "call": false}, {"k": "heat", "t": "中暑處置與休息", "c": "#E8590C", "av": "heat-2.jpg", "cap": ["移到陰涼處躺下、抬高腳", "搧風、濕毛巾擦身體", "冰敷脖子和腋下", "意識清楚才小口喝水"], "pts": [["移到陰涼處", "躺下、<b>抬高雙腳</b>、鬆開衣物"], ["趕快降溫", "搧風、用濕毛巾擦身體"], ["冰敷", "冰敷<b>脖子、腋下、大腿根部</b>"], ["小口補水", "<b>意識清楚</b>才小口喝，不要硬灌"]], "warn": ["叫不醒、說話怪怪的", "抽搐、昏倒", "體溫很高、皮膚很燙"], "call": true}, {"k": "help", "t": "活動協助與緊急聯絡", "c": "#D6336C", "av": "help-1.jpg", "cap": ["看到橘衣醫護團就揮手", "不舒服就說出來", "緊急狀況撥 119", "醫護團用無線電叫支援"], "pts": [["找醫護團", "穿<b>橘色衣服</b>、戴 EMS 帽子、手臂有臂章"], ["不舒服就說", "跟身邊的人說「需要醫護」，請他幫忙叫人"], ["撥 119 說清楚", "<b>在哪裡</b>（路名、廟、地標）、<b>怎麼了</b>、幾個人"], ["等待時", "陪在旁邊；撞到頭或脖子<b>不要隨便移動</b>"]], "warn": ["昏倒、叫不醒", "胸痛、呼吸困難", "大量出血"], "call": true}];
@@ -165,6 +157,10 @@ function open(i) { ti = i; si = 0; ov.classList.add('on'); document.body.style.o
 function close() { cancelAnimationFrame(raf); ov.classList.remove('on'); document.body.style.overflow = ''; try { history.replaceState(null, '', location.pathname); } catch (e) {} }
 document.addEventListener('keydown', e => { if (!ov.classList.contains('on')) return; if (e.key === 'Escape') close(); if (e.key === 'ArrowRight') next(); if (e.key === 'ArrowLeft') prev(); });
 { let y0 = null; sv.addEventListener('touchstart', e => { y0 = e.touches[0].clientY; }, { passive: true }); sv.addEventListener('touchend', e => { if (y0 != null && e.changedTouches[0].clientY - y0 > 110 && !e.target.closest('.sum')) close(); y0 = null; }); }
+{ const dn = document.getElementById('down'), soc = document.getElementById('soc');
+  dn.onclick = () => soc.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const upd = () => dn.classList.toggle('hide', soc.getBoundingClientRect().top < innerHeight - 40);
+  addEventListener('scroll', upd, { passive: true }); addEventListener('resize', upd); addEventListener('load', upd); document.querySelectorAll('img').forEach(i => i.addEventListener('load', upd)); upd(); }
 document.querySelectorAll('.hot,.sb').forEach(b => b.onclick = () => open(+b.dataset.i));
 SEEN.forEach(i => document.querySelectorAll(`.sb[data-i="${i}"]`).forEach(b => b.classList.add('seen')));
 { const i = D.findIndex(d => '#' + d.k === location.hash); if (i >= 0) open(i); }
