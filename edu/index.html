@@ -7,7 +7,7 @@
 <meta name="description" content="進香常見狀況與照護重點：外傷、防曬、足部水泡、補水抽筋、中暑、緊急聯絡。">
 <meta property="og:title" content="進香衛教・白沙屯拱天宮醫護團">
 <meta property="og:description" content="六則四格漫畫，看懂進香路上常見狀況怎麼處理。">
-<meta property="og:image" content="https://tsushin-buishatun.pages.dev/edu/img/heat.jpg">
+<meta property="og:image" content="https://tsushin-buishatun.pages.dev/edu/img/cover.jpg">
 <meta name="theme-color" content="#f6e3d6">
 <link rel="icon" href="/share/mascot.png">
 <style>
@@ -15,28 +15,14 @@
   *{box-sizing:border-box}
   html,body{overflow-x:hidden}body{margin:0;min-height:100vh;color:var(--ink);font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;-webkit-text-size-adjust:100%;line-height:1.55;
     background:radial-gradient(900px 500px at 100% 0,#ffd9bf,transparent 60%),radial-gradient(700px 500px at 0 100%,#ffe0e3,transparent 60%),#fbf1ea}
-  .card{max-width:520px;margin:0 auto;padding:18px 14px calc(24px + env(safe-area-inset-bottom));position:relative;overflow:hidden}
-  /* 名片頭 */
-  .swoosh{position:absolute;left:-30px;right:-30px;top:-10px;height:120px;background:linear-gradient(100deg,#f08339cc,#fbb57d55 60%,transparent);border-radius:0 0 60% 40%;transform:rotate(-4deg);z-index:0}
-  .temple{position:absolute;right:10px;top:16px;width:150px;opacity:.35;z-index:0}
-  .hd{position:relative;z-index:1;display:flex;align-items:center;gap:10px;padding-top:30px}
-  .hd svg{width:56px;height:56px;flex:none;filter:drop-shadow(0 2px 4px rgba(194,65,79,.25))}
-  .hd h1{margin:0;font-size:28px;font-weight:900;color:var(--red);letter-spacing:1px;line-height:1.15;text-shadow:0 1px 0 #fff}
-  .hd small{display:block;font-size:9.5px;letter-spacing:1.8px;color:#6b4a3f;font-weight:800;margin-top:3px}
-  .mid{position:relative;z-index:1;display:flex;gap:12px;align-items:center;margin-top:18px}
-  .mid .l{flex:1;min-width:0}
-  .badge{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(90deg,#c2414f,#e8590c);color:#fff;font-size:28px;font-weight:900;letter-spacing:3px;border-radius:999px;padding:6px 20px 6px 14px;box-shadow:0 6px 14px rgba(194,65,79,.3)}
-  .sub{display:inline-flex;align-items:center;gap:4px;margin-top:10px;background:#fff8f0;border:1.5px solid #f5d6c1;border-radius:999px;padding:4px 12px;font-size:14.5px;font-weight:900;color:#7c2d12}
-  .call{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;width:112px;height:112px;border-radius:22px;background:#fff;border:3px solid #fca5a5;text-decoration:none;color:#b91c1c;font-weight:900;box-shadow:0 6px 16px rgba(185,28,28,.15)}
-  .call b{font-size:34px;line-height:1}.call span{font-size:12.5px;margin-top:4px}
-  .hint{position:relative;z-index:1;text-align:center;font-size:14px;color:#7c2d12;font-weight:800;margin:18px 0 8px}
-  .grid{position:relative;z-index:1;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-  .tile{all:unset;cursor:pointer;display:block;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 12px rgba(150,60,40,.14);border:2px solid #fff;-webkit-tap-highlight-color:transparent;transition:transform .15s}
-  .tile:active{transform:scale(.96)}
-  .tile img{display:block;width:100%;aspect-ratio:1.1;object-fit:cover}
-  .tile span{display:flex;align-items:center;justify-content:center;gap:3px;min-height:44px;padding:4px 3px;font-size:12.5px;letter-spacing:-.3px;font-weight:900;text-align:center;line-height:1.25;background:#fffaf5}
-  .tile i{flex:none;width:18px;height:18px;border-radius:50%;color:#fff;font-style:normal;font-size:11px;display:flex;align-items:center;justify-content:center}
-  footer{position:relative;z-index:1;margin-top:20px;text-align:center;color:var(--sub);font-size:12px;line-height:1.7}
+  .card{max-width:520px;margin:0 auto;padding:0 0 calc(24px + env(safe-area-inset-bottom))}
+  .cover{position:relative}.cover img{display:block;width:100%;height:auto}
+  .hot{all:unset;position:absolute;cursor:pointer;border-radius:4%;-webkit-tap-highlight-color:transparent;animation:glow 2.4s ease-in-out infinite}
+  .hot:active{background:rgba(255,255,255,.25)}
+  @keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(240,131,57,0)}50%{box-shadow:0 0 0 3px rgba(240,131,57,.55)}}
+  .hint{text-align:center;font-size:15px;color:#7c2d12;font-weight:900;margin:12px 0 10px}
+  .call{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 16px;text-decoration:none;background:#fff;border:2.5px solid #fca5a5;color:#b91c1c;border-radius:18px;padding:12px;font-weight:900;font-size:17px;box-shadow:0 6px 16px rgba(185,28,28,.12)}.call b{font-size:24px}
+  footer{margin:18px 16px 0;text-align:center;color:var(--sub);font-size:12px;line-height:1.7}
   footer .disc{background:#ffffffcc;border-radius:14px;padding:10px 12px;margin-bottom:10px;text-align:left}
   /* 漫畫彈窗 */
   .ov{position:fixed;inset:0;z-index:50;background:rgba(31,36,48,.55);display:none;align-items:flex-end;justify-content:center}
@@ -71,18 +57,9 @@
 </head>
 <body>
 <div class="card">
-  <div class="swoosh"></div>
-  <svg class="temple" viewBox="0 0 160 80" fill="none" stroke="#e8590c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 30 Q80 8 140 30"/><path d="M14 31 Q30 30 36 24 M146 31 Q130 30 124 24"/><path d="M40 30v40M120 30v40M30 70h100M55 36v34M105 36v34M65 46h30v24H65z"/><path d="M30 46 Q80 34 130 46"/><path d="M80 8v-6"/></svg>
-  <div class="hd">
-    <svg viewBox="0 0 64 64"><path d="M30 54C14 43 6 34 6 23 6 15 12 9 20 9c5 0 9 3 11 7 2-4 6-7 11-7" fill="none" stroke="#c2414f" stroke-width="4.5" stroke-linecap="round"/><path d="M34 52c12-8 20-17 22-25" fill="none" stroke="#e8590c" stroke-width="4" stroke-linecap="round"/><g transform="translate(38 34)" fill="#c2414f"><rect x="-4" y="-15" width="8" height="30" rx="1.5"/><rect x="-4" y="-15" width="8" height="30" rx="1.5" transform="rotate(60)"/><rect x="-4" y="-15" width="8" height="30" rx="1.5" transform="rotate(-60)"/><path d="M0 -11v22" stroke="#fff" stroke-width="1.6"/><path d="M-2 -6c3 1 3 3 0 4s-3 3 0 4 3 3 0 4" stroke="#fff" stroke-width="1.3" fill="none"/></g></svg>
-    <div><h1>白沙屯拱天宮醫護團</h1><small>BAISHATUN EMS VOLUNTEER TEAM</small></div>
-  </div>
-  <div class="mid">
-    <div class="l"><span class="badge">📣 衛教介紹</span><br><span class="sub">📍 進香常見狀況與照護重點</span></div>
-    <a class="call" href="tel:119"><span>🚑 緊急請撥</span><b>119</b></a>
-  </div>
-  <div class="hint">👇 點一張漫畫，看怎麼處理</div>
-  <div class="grid"><button class="tile" data-i="0"><img src="img/wound.jpg" alt=""><span><i style="background:#E03131">1</i>外傷處理</span></button><button class="tile" data-i="1"><img src="img/sun.jpg" alt=""><span><i style="background:#F59F00">2</i>防曬與熱傷害</span></button><button class="tile" data-i="2"><img src="img/foot.jpg" alt=""><span><i style="background:#F08C00">3</i>足部保護與水泡</span></button><button class="tile" data-i="3"><img src="img/water.jpg" alt=""><span><i style="background:#1C7ED6">4</i>補水與預防抽筋</span></button><button class="tile" data-i="4"><img src="img/heat.jpg" alt=""><span><i style="background:#E8590C">5</i>中暑處置與休息</span></button><button class="tile" data-i="5"><img src="img/help.jpg" alt=""><span><i style="background:#D6336C">6</i>活動協助與緊急聯絡</span></button></div>
+  <div class="cover"><img src="img/cover.jpg" alt="白沙屯拱天宮醫護團 衛教介紹：外傷處理、防曬與熱傷害、足部保護與水泡、補水與預防抽筋、中暑處置與休息、活動協助與緊急聯絡"><button class="hot" data-i="0" aria-label="外傷處理" style="left:4.7%;top:46.8%;width:30.1%;height:20.2%"></button><button class="hot" data-i="1" aria-label="防曬與熱傷害" style="left:36.1%;top:46.8%;width:28.3%;height:20.2%"></button><button class="hot" data-i="2" aria-label="足部保護與水泡" style="left:65.6%;top:46.8%;width:29.7%;height:20.2%"></button><button class="hot" data-i="3" aria-label="補水與預防抽筋" style="left:4.7%;top:67.7%;width:30.1%;height:20.2%"></button><button class="hot" data-i="4" aria-label="中暑處置與休息" style="left:36.1%;top:67.7%;width:28.3%;height:20.2%"></button><button class="hot" data-i="5" aria-label="活動協助與緊急聯絡" style="left:65.6%;top:67.7%;width:29.7%;height:20.2%"></button></div>
+  <div class="hint">👆 點上面的漫畫，看怎麼處理</div>
+  <a class="call" href="tel:119">🚑 緊急請撥 <b>119</b></a>
   <footer>
     <div class="disc">📌 本衛教內容由白沙屯拱天宮醫護團（慈昕醫護協會）製作，歡迎分享轉傳，請勿修改內容或商業使用。內容僅供衛教參考，不能取代醫師診斷；身體不舒服請找穿橘衣的醫護團員，緊急狀況請撥 119。</div>
     ©2026 白沙屯拱天宮醫護團（慈昕醫護協會）・歡迎分享
@@ -109,7 +86,7 @@ function open(i) {
 function close() { ov.classList.remove('on'); document.body.style.overflow = ''; try { history.replaceState(null, '', location.pathname); } catch (e) {} }
 ov.onclick = e => { if (e.target === ov) close(); };
 document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
-document.querySelectorAll('.tile').forEach(b => b.onclick = () => open(+b.dataset.i));
+document.querySelectorAll('.hot').forEach(b => b.onclick = () => open(+b.dataset.i));
 { const i = D.findIndex(d => '#' + d.k === location.hash); if (i >= 0) open(i); }
 </script>
 </body>
