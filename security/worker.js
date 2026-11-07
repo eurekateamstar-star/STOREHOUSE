@@ -94,6 +94,8 @@ export default {
     if (path === '/item-cats') return itemCatsRoute(req, env, json);
     if (path === '/wh-members') return whMembersRoute(req, env, json);
     if (path === '/whtake') return whTakeRoute(req, env, json);
+    if (path === '/edu-hit') return eduHitRoute(req, env, json);
+    if (path === '/edu-stats') return eduStatsRoute(req, env, json);
     if (path === '/wh-sched') return whSchedRoute(req, env, json);
 
     try {
@@ -1236,4 +1238,34 @@ function b64url(bytes) {
   let s = '';
   for (const b of bytes) s += String.fromCharCode(b);
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+// ===== 衛教網頁統計（匿名計數，不存任何個資）=====
+const EDU_K = ['wound', 'sun', 'foot', 'water', 'heat', 'help'];
+const eduOk = e => /^(visit|uniq|all|c_line|c_fb|c_ig)$/.test(e) || new RegExp(`^(open|done)_(${EDU_K.join('|')})$`).test(e);
+async function eduHitRoute(req, env, json) {
+  try {
+    const b = await req.json().catch(() => ({}));
+    const evs = [...new Set((Array.isArray(b.e) ? b.e : [b.e]).filter(x => typeof x === 'string' && eduOk(x)))].slice(0, 4);
+    if (!evs.length) return json({ ok: false }, 400);
+    const day = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '');
+    const doc = n => `projects/${PROJECT_ID}/databases/(default)/documents/stats/${n}`;
+    const inc = f => ({ fieldPath: f, increment: { integerValue: '1' } });
+    const writes = [{ transform: { document: doc('edu'), fieldTransforms: evs.map(inc) } }];
+    if (evs.some(e => e === 'visit' || e === 'uniq')) writes.push({ transform: { document: doc('edu_daily'), fieldTransforms: evs.filter(e => e === 'visit' || e === 'uniq').map(e => inc(`${e}_${day}`)) } });
+    const tok = await saToken(env);
+    const r = await fetch(`${FS}:commit`, { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify({ writes }) });
+    return json({ ok: r.ok });
+  } catch (e) { return json({ ok: false }, 500); }
+}
+async function eduStatsRoute(req, env, json) {
+  try {
+    const { idToken } = await req.json();
+    if (!idToken) return json({ error: 'missing' }, 400);
+    const me = await fsUser(idToken, uidOfToken(idToken));
+    if (!memberAdmin(me)) return json({ error: '只有團員專區管理員可以看統計' }, 403);
+    const tok = await saToken(env);
+    const [a, d] = await Promise.all([fsGet(tok, 'stats/edu'), fsGet(tok, 'stats/edu_daily')]);
+    return json({ ok: true, total: a ? fobj(a.fields) : {}, daily: d ? fobj(d.fields) : {} });
+  } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
 }

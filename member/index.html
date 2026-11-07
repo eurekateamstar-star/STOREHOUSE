@@ -575,6 +575,7 @@
         <button class="sbtn" id="btn-richmenu" style="background:#06c755;color:#fff;">🧩 發佈 LINE 圖文選單</button>
         <button class="sbtn" id="btn-journey" style="background:#C4622E;color:#fff;">📸 醫護足跡照片</button>
         <button class="sbtn" id="btn-sharecard" style="background:#1e3a5f;color:#fff;">📤 分享圖文卡片</button>
+        <button class="sbtn" id="btn-edustats" style="background:#c2414f;color:#fff;">📊 衛教網頁統計</button>
       </div>
       <div class="card tbl-wrap"><table class="tbl" id="us-table"></table></div>
       <div class="cards-list" id="us-cards"></div>
@@ -4502,6 +4503,33 @@
   }
 
   // 發佈 LINE 圖文選單（只有最高管理員）：建立訪客／團員兩種選單，再把所有已開通的人換成團員選單
+  // ===== 衛教網頁統計 =====
+  $('btn-edustats').onclick = async () => {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:9600;background:rgba(31,36,48,.5);display:flex;align-items:center;justify-content:center;padding:14px';
+    const box = h => ov.innerHTML = `<div style="background:#fff;border-radius:20px;width:100%;max-width:520px;max-height:90vh;overflow:auto;padding:16px 16px 18px">${h}</div>`;
+    box('<div style="text-align:center;padding:30px;color:#6b7280">⏳ 讀取統計…</div>'); document.body.appendChild(ov);
+    ov.onclick = e => { if (e.target === ov || e.target.id === 'es-x') ov.remove(); };
+    let J; try { const idToken = await auth.currentUser.getIdToken();
+      const r = await fetch(AUTH_URL + '/edu-stats', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken }) });
+      J = await r.json(); if (!J.ok) throw new Error(J.error || 'HTTP ' + r.status); }
+    catch (err) { box(`<div style="color:#b91c1c;padding:20px">❌ ${esc(err.message)}</div><button class="btn ghost" id="es-x">關閉</button>`); return; }
+    const T = J.total || {}, D = J.daily || {}, n = k => +T[k] || 0;
+    const K = [['wound', '外傷處理'], ['sun', '防曬與熱傷害'], ['foot', '足部保護與水泡'], ['water', '補水與預防抽筋'], ['heat', '中暑處置與休息'], ['help', '活動協助與緊急聯絡']];
+    const mx = Math.max(1, ...K.map(([k]) => n('open_' + k)));
+    const days = [...new Set(Object.keys(D).map(k => k.split('_')[1]))].sort().reverse().slice(0, 14);
+    const tile = (v, t, c) => `<div style="flex:1;min-width:0;background:${c};border-radius:14px;padding:10px 6px;text-align:center"><b style="display:block;font-size:24px;line-height:1.1">${v}</b><small style="font-size:11.5px;color:#4b5563;font-weight:800">${t}</small></div>`;
+    box(`<div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:19px">📊 衛教網頁統計</b><button id="es-x" style="border:none;background:#f1f5f9;border-radius:50%;width:34px;height:34px;font-size:16px">✕</button></div>
+      <div style="font-size:12px;color:#9ca3af;margin:2px 0 10px">匿名計數，不記錄任何個人資料・/edu/</div>
+      <div style="display:flex;gap:6px">${tile(n('uniq'), '不同手機', '#fef3c7')}${tile(n('visit'), '總開啟次數', '#ffe4e6')}${tile(n('all'), '6 則全看完', '#dcfce7')}</div>
+      <div style="font-weight:900;margin:14px 0 6px">📖 每則漫畫</div>
+      ${K.map(([k, t]) => `<div style="display:grid;grid-template-columns:118px 1fr 74px;gap:8px;align-items:center;margin:5px 0;font-size:13.5px"><span style="font-weight:800">${t}</span>
+        <i style="height:12px;border-radius:6px;background:#f3efed;overflow:hidden"><b style="display:block;height:100%;width:${n('open_' + k) / mx * 100}%;background:linear-gradient(90deg,#D65A68,#F08339)"></b></i>
+        <span style="text-align:right;color:#6b7280">點開 <b style="color:#1f2430">${n('open_' + k)}</b><br>看完 ${n('done_' + k)}</span></div>`).join('')}
+      <div style="font-weight:900;margin:14px 0 6px">🔗 點官方帳號</div>
+      <div style="display:flex;gap:6px">${tile(n('c_line'), 'LINE', '#dcfce7')}${tile(n('c_fb'), 'Facebook', '#dbeafe')}${tile(n('c_ig'), 'Instagram', '#fce7f3')}</div>
+      ${days.length ? `<div style="font-weight:900;margin:14px 0 6px">📅 最近每天</div><table style="width:100%;border-collapse:collapse;font-size:13.5px"><tr style="color:#9ca3af;font-size:12px"><th style="text-align:left">日期</th><th>不同手機</th><th>開啟次數</th></tr>${days.map(d => `<tr style="border-top:1px solid #f3efed"><td style="padding:5px 0">${+d.slice(4, 6)}/${+d.slice(6)}</td><td style="text-align:center;font-weight:900">${+D['uniq_' + d] || 0}</td><td style="text-align:center">${+D['visit_' + d] || 0}</td></tr>`).join('')}</table>` : '<div style="color:#9ca3af;font-size:13px;margin-top:12px">還沒有人開過</div>'}`);
+  };
   $('btn-richmenu').onclick = async () => {
     if (!user || user.role !== 'admin') return toast('只有最高管理員（全部系統）可以發佈');
     const ok = await dialog({ title: '發佈 LINE 圖文選單？', msg: '會建立 LINE 圖文選單：\n・一般民眾：認識醫護團／衛教須知／醫護足跡／全民醫護證\n・團員：兩頁可左右切換\n　「團員專區」團員專區／救護紀錄表／倉儲管理\n　「一般資訊」同一般民眾那頁\n\n之後審核、停權、踢出都會自動切換。', okText: '發佈' });

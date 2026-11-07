@@ -111,6 +111,12 @@ const D = [{"k": "wound", "t": "外傷處理", "c": "#E03131", "av": "wound-2.jp
 const ov = document.getElementById('ov'), sv = document.getElementById('sv');
 const SEEN = (() => { try { return JSON.parse(localStorage.getItem('eduSeen') || '[]'); } catch (e) { return []; } })();
 const DUR = 4500;
+// 匿名統計（不記錄任何個人資料）
+const HIT = 'https://bst-auth.eurekateamstar.workers.dev/edu-hit', hitSent = new Set();
+function hit(...e) { e = e.filter(x => x && !hitSent.has(x)); if (!e.length) return; e.forEach(x => { if (!/^c_/.test(x)) hitSent.add(x); });
+  try { fetch(HIT, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ e }), keepalive: true, mode: 'cors' }).catch(() => {}); } catch (err) {} }
+{ let first = false; try { first = !localStorage.getItem('eduV'); localStorage.setItem('eduV', '1'); } catch (err) {} hit('visit', ...(first ? ['uniq'] : [])); }
+document.addEventListener('click', ev => { const a = ev.target.closest('a[href]'); if (!a) return; const h = a.href; hit(/line\.me/.test(h) ? 'c_line' : /facebook\.com/.test(h) ? 'c_fb' : /instagram\.com/.test(h) ? 'c_ig' : ''); }, true);
 let ti = 0, si = 0, t0 = 0, raf = 0, paused = false, pausedAt = 0;
 function markSeen(i) { if (!SEEN.includes(i)) { SEEN.push(i); try { localStorage.setItem('eduSeen', JSON.stringify(SEEN)); } catch (e) {} } document.querySelectorAll(`.sb[data-i="${i}"]`).forEach(b => b.classList.add('seen')); }
 function render() {
@@ -127,7 +133,7 @@ function render() {
     ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => st.addEventListener(ev, () => { if (paused) { t0 += performance.now() - pausedAt; paused = false; } }));
     t0 = performance.now(); paused = false; cancelAnimationFrame(raf); tick();
   } else {
-    cancelAnimationFrame(raf); markSeen(ti);
+    cancelAnimationFrame(raf); markSeen(ti); hit('done_' + d.k);
     sv.innerHTML = head + `<div class="sum"><h3>重點整理</h3><ol>${d.pts.map(([a, b]) => `<li><span class="h">${a}</span>${b}</li>`).join('')}</ol>
       <div class="warn"><b>⚠️ 有這些情況，${d.call ? '請撥 119' : '請找醫護團'}</b><ul>${d.warn.map(w => `<li>${w}</li>`).join('')}</ul>${d.call ? '<a href="tel:119">📞 撥打 119</a>' : ''}</div>
       <div class="nav"><button id="rp">↺ 再看一次</button><button class="nx" id="nt">${ti < D.length - 1 ? '下一則 ›' : '看完了 ✓'}</button></div><a class="join" href="https://line.me/R/ti/p/@393geitc">💬 加入醫護團 LINE 官方帳號，看更多衛教 ›</a></div>`;
@@ -138,7 +144,7 @@ function render() {
   sv.querySelector('#x').onclick = close;
 }
 function endScreen() {
-  cancelAnimationFrame(raf);
+  cancelAnimationFrame(raf); hit('all');
   sv.style.setProperty('--c', '#c2414f');
   sv.innerHTML = `<div class="end"><button class="ex" id="x" aria-label="關閉">✕</button><div class="big">🎉</div><h3>6 則都看完了！</h3><p>一起平安走完進香路 🙏<br>加入官方帳號，隨時找得到醫護團</p>
     <a class="ln" href="https://line.me/R/ti/p/@393geitc">💬 加入 LINE 官方帳號</a><a class="fb" href="https://www.facebook.com/tszshinems/">👍 Facebook 粉絲專頁</a><a class="ig" href="https://www.instagram.com/tszshinems/">📷 Instagram</a>
@@ -153,7 +159,7 @@ function tick() {
 }
 function next() { si++; render(); }
 function prev() { if (si > 0) { si--; render(); } else if (ti > 0) { ti--; si = 0; render(); } else render(); }
-function open(i) { ti = i; si = 0; ov.classList.add('on'); document.body.style.overflow = 'hidden'; render(); try { history.replaceState(null, '', '#' + D[i].k); } catch (e) {} }
+function open(i) { ti = i; si = 0; hit('open_' + D[i].k); ov.classList.add('on'); document.body.style.overflow = 'hidden'; render(); try { history.replaceState(null, '', '#' + D[i].k); } catch (e) {} }
 function close() { cancelAnimationFrame(raf); ov.classList.remove('on'); document.body.style.overflow = ''; try { history.replaceState(null, '', location.pathname); } catch (e) {} }
 document.addEventListener('keydown', e => { if (!ov.classList.contains('on')) return; if (e.key === 'Escape') close(); if (e.key === 'ArrowRight') next(); if (e.key === 'ArrowLeft') prev(); });
 { let y0 = null; sv.addEventListener('touchstart', e => { y0 = e.touches[0].clientY; }, { passive: true }); sv.addEventListener('touchend', e => { if (y0 != null && e.changedTouches[0].clientY - y0 > 110 && !e.target.closest('.sum')) close(); y0 = null; }); }
