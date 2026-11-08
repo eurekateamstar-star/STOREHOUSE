@@ -1703,6 +1703,7 @@
     return [{ at: Date.now(), by, role: 'self', action: 'confirm', fields: [] }, ...log].slice(0, 30);
   }
   async function confirmOk() {
+    if (user.idChangeReq && user.idChangeReq.status === 'pending') return toast('⏳ 修改申請審核中，等管理員同意或退回');
     const by = user.realName || profile.displayName || '';
     try {
       await updateDoc(doc(db, 'users', profile.userId), { profileConfirmedAt: serverTimestamp(), confirmRequestedAt: deleteField(), confirmRequestedBy: deleteField() });
@@ -1721,7 +1722,8 @@
   function maybeConfirmPopup() {
     if (!user || user.status !== 'approved' || user.profileConfirmedAt || adminOn) return;
     if (user.rosterId && !myRosterReady) return;   // 等名冊資料載入完再跳，避免顯示空白
-    const key = String(tsMs(user.confirmRequestedAt) || 'first');
+    const chg = user.idChangeReq && user.idChangeReq.status === 'pending' ? user.idChangeReq : null;
+    const key = String(tsMs(user.confirmRequestedAt) || 'first') + '|' + (user.idChangeReq ? user.idChangeReq.status + (user.idChangeReq.at || '') : '');
     if (confirmPopKey === key || $('sheet').style.display === 'block') return;
     confirmPopKey = key;
     const r = myRoster || { name: user.realName, idCard: user.idCard, birthday: user.birthday, certText: user.certification || '' };
@@ -1742,17 +1744,24 @@
       </div>
       <div class="grp">其他資料</div>
       <div class="rows">${SELF_FIELDS.filter(k => !KEY.includes(k)).map(k => row(lab(k), val(k))).join('')}</div>
-      <label class="ins-check"><input type="checkbox" id="cp-agree"> 我已逐項核對，以上資料正確無誤，同意作為進香保險使用。</label>
+      ${chg ? `<div style="margin-top:12px;background:#fffbeb;border:2px solid #fcd34d;border-radius:14px;padding:12px 14px;color:#78350f;font-size:14px;line-height:1.65">
+        <b style="font-size:15.5px;color:#b45309">⏳ 你的修改申請審核中</b><br>
+        ${[['姓名', 'name'], ['身分證', 'idCard'], ['生日', 'birthday']].filter(([, k]) => (chg[k] || '') !== ((chg.from || {})[k] || '')).map(([t, k]) => `${t}：<s style="color:#9ca3af">${esc(k === 'idCard' ? maskId((chg.from || {})[k]) : (chg.from || {})[k] || '—')}</s> → <b style="color:#b91c1c">${esc(chg[k])}</b>`).join('<br>')}
+        <div style="margin-top:6px;font-size:13px">要等管理員<b>同意或退回</b>後，才能確認資料。</div></div>
+      <div class="p-actions" style="display:flex; gap:8px; margin-top:10px;">
+        <button class="sbtn pri" id="cp-edit" style="flex:1; padding:12px;">✏️ 修改申請內容</button>
+        <button class="sbtn" id="cp-ok" style="flex:1; padding:12px; background:#9ca3af; color:#fff;" disabled>⏳ 等待審核</button>
+      </div>` : `<label class="ins-check"><input type="checkbox" id="cp-agree"> 我已逐項核對，以上資料正確無誤，同意作為進香保險使用。</label>
       <div class="p-actions" style="display:flex; gap:8px; margin-top:10px;">
         <button class="sbtn pri" id="cp-edit" style="flex:1; padding:12px;">✏️ 有錯，我要修改</button>
         <button class="sbtn" id="cp-ok" style="flex:1; padding:12px; background:#16a34a; color:#fff;" disabled>✅ 資料正確</button>
-      </div>
+      </div>`}
       <div style="text-align:center; margin-top:10px;"><button class="link-btn" id="cp-later">稍後再確認</button></div>`;
     $('sheet-close').classList.add('hidden'); confirmLock = true;
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open');
     $('sheet').scrollTop = 0;
-    $('cp-agree').onchange = e => { $('cp-ok').disabled = !e.target.checked; };
-    $('cp-ok').onclick = () => { if (!$('cp-agree').checked) return toast('請先勾選確認'); confirmLock = false; confirmOk(); };
+    if ($('cp-agree')) $('cp-agree').onchange = e => { $('cp-ok').disabled = !e.target.checked; };
+    $('cp-ok').onclick = () => { if (chg) return toast('⏳ 修改申請審核中，等管理員同意或退回'); if (!$('cp-agree').checked) return toast('請先勾選確認'); confirmLock = false; confirmOk(); };
     $('cp-edit').onclick = () => { confirmLock = false; editFromConfirm = true; editMe(); };
     $('cp-later').onclick = () => { confirmLock = false; closeSheet(); toast('⚠️ 請記得盡快確認，進香保險需要正確資料'); };
   }
