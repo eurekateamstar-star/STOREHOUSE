@@ -1255,7 +1255,7 @@
             </div>
 
             <div id="consumable-item-panel" style="display:none; text-align: center; margin-bottom: 14px; background: rgba(255,255,255,0.06); padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1);">
-                <div style="font-size:11px; color:#8e8e93; margin-bottom:10px;">耗材只記錄庫存數量與消耗量，不個別追蹤每一件</div>
+                <div style="font-size:11px; color:#8e8e93; margin-bottom:10px;">耗材只記錄庫存數量與消耗量，不個別追蹤每一件</div><div class="qr-lock-note2" style="display:none;font-size:11.5px;color:#c2410c;font-weight:700;margin:-4px 0 10px;">🔒 QR 只貼在實體物品上，請掃貼紙</div>
                 <div id="consumable-lots" style="text-align:left;margin-bottom:12px;"></div>
                 <div id="consumable-qr-container" style="display:inline-block; background:#fff; border-radius:8px; padding:8px; margin-bottom:10px;"></div>
                 <div style="font-size:11px; color:#8e8e93; margin-bottom:4px;">掃這個 QR 進出貨，會跳出視窗輸入這次的數量</div>
@@ -6435,7 +6435,8 @@
     window.renderConsumablePanel = function(it, boxId, idx) {
         const qrEl = document.getElementById('consumable-qr-container');
         qrEl.innerHTML = '';
-        if (!canScan()) { qrEl.style.cursor = ''; qrEl.onclick = null; qrEl.innerHTML = '<div style="width:130px;height:130px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#8a7f7a;font-size:12px;background:#f3efed;border-radius:6px;">🔒<br>QR 只貼在實體物品上</div>'; renderLotsBox(it); return; }
+        document.querySelectorAll('.qr-lock-note2').forEach(n => n.style.display = canScan() ? 'none' : '');
+        if (!canScan()) { qrEl.style.cursor = ''; qrEl.onclick = null; qrEl.innerHTML = it.imageUrl ? `<img src="${escapeHtml(it.imageUrl)}" alt="" style="width:130px;height:130px;object-fit:cover;border-radius:6px;display:block;">` : '<div style="width:130px;height:130px;display:flex;align-items:center;justify-content:center;font-size:44px;background:#f3efed;border-radius:6px;">📦</div>'; renderLotsBox(it); return; }
         qrEl.style.cursor = 'pointer';
         qrEl.onclick = () => showQrZoom(consQr(boxId, idx, it), it.name, '耗材 QR：掃描後輸入數量出貨／入庫');
         new QRCode(qrEl, {
@@ -6699,7 +6700,7 @@
             } else {   // 一般團員看不到 QR：要掃實體貼紙才能領取
                 qrBox.style.cssText += 'background:#f3efed; padding:0; overflow:hidden; position:relative;';
                 qrBox.innerHTML = (it.imageUrl ? `<img src="${escapeHtml(it.imageUrl)}" alt="" loading="lazy" style="width:100%; height:100%; object-fit:cover; display:block;">` : `<span style="font-size:22px;">📦</span>`)
-                    + `<b style="position:absolute; right:2px; bottom:2px; min-width:16px; height:16px; padding:0 4px; border-radius:8px; background:rgba(194,65,12,.9); color:#fff; font-size:10px; line-height:16px; text-align:center;">${uIdx + 1}</b>`;
+                    + `<b style="position:absolute; right:4px; bottom:1px; color:#fff; font-size:15px; font-weight:900; line-height:1; text-shadow:0 0 3px rgba(0,0,0,.85), 0 1px 2px rgba(0,0,0,.9);">${uIdx + 1}</b>`;
             }
 
             const info = document.createElement('div');
