@@ -6,7 +6,8 @@
 <meta name="theme-color" content="#ffffff">
 <title>白沙屯拱天宮醫護團 - 團員專區</title>
 <script>/* 分享卡片頁：不顯示「團員專區」標題 */try{if(/[?&]share=|share%3D/.test(location.search)){document.title='白沙屯拱天宮醫護團';document.documentElement.classList.add('share-mode');}}catch(e){}</script>
-<style>html.share-mode .top{display:none!important}</style>
+<style>html.share-mode .top{display:none!important}  .bad-in{border-color:#ef4444!important;background:#fef2f2!important}.tel-tip{display:none;color:#dc2626;font-size:12px;font-weight:800;margin-top:4px}
+</style>
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <style>
   .rm-ov{position:fixed;inset:0;background:rgba(20,15,15,.45);z-index:9000;display:flex;align-items:flex-end;justify-content:center}
@@ -1623,6 +1624,11 @@
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open');
     $('sheet').scrollTop = 0;
     $('ed-save').onclick = saveEdit;
+    [['phone', x => /^09\d{8}$/.test(x), '手機要 10 碼（09 開頭）'], ['emPhone', x => /^09/.test(x) ? x.length === 10 : /^0[2-8]\d{7,8}$/.test(x), '手機 10 碼，市話要含區碼']].forEach(([k, ok, m]) => {
+      const el = document.querySelector(`#sheet-body [data-k="${k}"]`); if (!el) return;
+      el.setAttribute('inputmode', 'tel'); const tip = document.createElement('div'); tip.className = 'tel-tip'; tip.textContent = '⚠️ ' + m; el.after(tip);
+      const chk = left => { const d = el.value.replace(/\D/g, ''); const show = d.length > 0 && !ok(d) && (left || d.length >= 10); el.classList.toggle('bad-in', show); tip.style.display = show ? 'block' : 'none'; };
+      el.addEventListener('input', () => chk(false)); el.addEventListener('blur', () => chk(true)); chk(true); });
     if ($('ed-chg')) $('ed-chg').onclick = () => openChgReq(r);
     if ($('ed-join-copy')) { $('ed-join-copy').onclick = () => $('btn-app-copy').onclick(); $('ed-join-open').onclick = () => $('btn-app-open').onclick(); }
     if ($('ed-reject')) $('ed-reject').onclick = async () => { if (await rejectApp(r.fromApp)) closeSheet(); };
@@ -1757,6 +1763,11 @@
     const vals = {};
     document.querySelectorAll('#sheet-body [data-k]').forEach(el => vals[el.dataset.k] = el.value.trim());
     const changed = Object.keys(vals).filter(k => r.isNew ? !!vals[k] : vals[k] !== curVal(r, k));
+    { const dig = x => String(x || '').replace(/\D/g, ''), mob = x => /^09\d{8}$/.test(dig(x)), tel = x => { const d = dig(x); return /^09/.test(d) ? d.length === 10 : /^0[2-8]\d{7,8}$/.test(d); };
+      const bad = (k, ok, msg) => { const el = document.querySelector(`#sheet-body [data-k="${k}"]`); if (!el || !vals[k] || ok(vals[k])) return false; el.classList.add('bad-in'); el.focus(); toast(msg); return true; };
+      document.querySelectorAll('#sheet-body .bad-in').forEach(el => el.classList.remove('bad-in'));
+      if (bad('phone', mob, '📱 本人手機要 10 碼（09 開頭），例如 0912345678')) return;
+      if (bad('emPhone', tel, '📱 緊急聯絡人電話不完整：手機要 10 碼，市話要含區碼')) return; }
     if (role === 'self' && 'name' in vals) {
       if (!vals.name) return toast('請填寫姓名');
       if (!/^[A-Z][1289]\d{8}$/.test(normId(vals.idCard))) return toast('身分證字號格式不正確');

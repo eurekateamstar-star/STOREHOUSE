@@ -93,7 +93,7 @@
         <div class="field"><label>LINE 名稱<span class="hint">方便我們找到你</span></label><input name="lineName" maxlength="40"></div>
         <div class="field"><label>出生日期<span class="req">*</span></label><input name="birthday" type="date" max="2015-12-31"><div class="err">請選擇出生日期</div></div>
         <div class="field"><label>身分證字號<span class="req">*</span></label><input name="idCard" maxlength="10" autocapitalize="characters" placeholder="A123456789"><div class="err">身分證字號格式不正確</div></div>
-        <div class="field full"><label>本人聯絡電話<span class="req">*</span></label><input name="phone" type="tel" inputmode="tel" maxlength="20" placeholder="0912-345678"><div class="err">請填寫手機號碼</div></div>
+        <div class="field full"><label>本人聯絡電話<span class="req">*</span></label><input name="phone" type="tel" inputmode="tel" maxlength="20" placeholder="0912-345678"><div class="err" id="err-phone">手機號碼要 10 碼（09 開頭），例如 0912345678</div></div>
         <div class="field full"><label>地址</label><input name="address" maxlength="120" autocomplete="street-address"></div>
         <div class="field"><label>職業</label><input name="job" maxlength="40"></div>
         <div class="field"><label>介紹人</label><input name="introducer" maxlength="20"></div>
@@ -105,7 +105,7 @@
       <div class="grid">
         <div class="field"><label>姓名<span class="req">*</span></label><input name="emName" maxlength="20"><div class="err">請填寫緊急聯絡人</div></div>
         <div class="field"><label>關係<span class="req">*</span></label><input name="emRelation" maxlength="10" placeholder="例如 夫妻、父子、母女"><div class="err">請填寫關係</div></div>
-        <div class="field full"><label>電話<span class="req">*</span></label><input name="emPhone" type="tel" inputmode="tel" maxlength="20"><div class="err">請填寫緊急聯絡人電話</div></div>
+        <div class="field full"><label>電話<span class="req">*</span></label><input name="emPhone" type="tel" inputmode="tel" maxlength="20"><div class="err" id="err-emPhone">電話號碼不完整：手機要 10 碼（09 開頭），市話要含區碼</div></div>
       </div>
     </div>
 
@@ -187,6 +187,13 @@
   const chipVals = key => [...document.querySelectorAll(`[data-chips="${key}"] .chip.on`)].map(c => c.dataset.other ? '' : c.textContent).filter(Boolean);
   const roc = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? `${+m[1] - 1911}.${m[2]}.${m[3]}` : ''; };
 
+  // 手機：09 開頭共 10 碼；緊急聯絡人：手機 10 碼，或含區碼的市話 9～10 碼
+  const dig = x => String(x || '').replace(/\D/g, '');
+  const mobOk = x => /^09\d{8}$/.test(dig(x));
+  const telOk = x => { const d = dig(x); return /^09/.test(d) ? d.length === 10 : /^0[2-8]\d{7,8}$/.test(d); };
+  const liveTel = (n, ok) => { const el = f.elements[n]; if (!el) return; const chk = left => { const d = dig(el.value); el.closest('.field').classList.toggle('bad', d.length > 0 && !ok(el.value) && (left || d.length >= 10)); };
+    el.addEventListener('input', () => chk(false)); el.addEventListener('blur', () => chk(true)); };
+  liveTel('phone', mobOk); liveTel('emPhone', telOk);
   f.onsubmit = async e => {
     e.preventDefault();
     const v = n => (f.elements[n] ? f.elements[n].value.trim() : '');
@@ -196,9 +203,9 @@
     mark('name', !!v('name'));
     mark('birthday', /^\d{4}-\d{2}-\d{2}$/.test(v('birthday')));
     mark('idCard', /^[A-Z][1289]\d{8}$/.test(idCard));
-    mark('phone', v('phone').replace(/\D/g, '').length >= 8);
+    mark('phone', mobOk(v('phone')));
     mark('emName', !!v('emName')); mark('emRelation', !!v('emRelation'));
-    mark('emPhone', v('emPhone').replace(/\D/g, '').length >= 8);
+    mark('emPhone', telOk(v('emPhone')));
     const certs = chipVals('cert'); const other = $('cert-other').value.trim(); if (other) certs.push(other);
     mark('cert', certs.length > 0);
     mark('shirtSize', chipVals('shirtSize').length > 0); mark('pantsSize', chipVals('pantsSize').length > 0);
