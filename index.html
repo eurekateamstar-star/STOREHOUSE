@@ -1233,7 +1233,7 @@
             </div>
 
             <div id="durable-item-panel" style="text-align: center; margin-bottom: 14px; background: rgba(255,255,255,0.06); padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1);">
-                <div style="font-size:11px; color:#8e8e93; margin-bottom:10px;">每一件都有自己專屬的 QR Code 身分，可分別掃描出庫／入庫（點 QR 可放大）</div>
+                <div style="font-size:11px; color:#8e8e93; margin-bottom:10px;">每一件都有自己專屬的 QR Code 身分，可分別掃描出庫／入庫（點 QR 可放大）</div><div id="qr-lock-note" style="display:none;font-size:11.5px;color:#c2410c;font-weight:700;margin:-4px 0 10px;">🔒 QR 只貼在實體物品上，請用「掃 QR 接收物品」掃貼紙</div>
                 <div id="item-units-list" style="display:flex; flex-direction:column; gap:8px; max-height: 300px; overflow-y:auto; text-align:left;"></div>
 
                 <div id="label-font-settings-group" style="display: none;">
@@ -5470,6 +5470,7 @@
             const qrBox = document.createElement('div');
             qrBox.style.cssText = 'background:#fff; border-radius:8px; padding:4px; width:64px; height:64px; flex-shrink:0; cursor:pointer; line-height:0; display:flex; align-items:center; justify-content:center;';
             card.appendChild(qrBox);
+            (window.__myHeldQr = window.__myHeldQr || new Set()).add(String(r.qr));
             new QRCode(qrBox, { text: r.qr, width: 56, height: 56, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
             qrBox.onclick = () => showQrZoom(r.qr, r.name + (r.label ? ' · ' + r.label : ''), '歸還時，管理員用「快速進貨」掃這個 QR');
             const info = document.createElement('div');
@@ -5601,6 +5602,7 @@
     }
     // QR 放大
     window.showQrZoom = function (text, title, sub) {
+        if (/^(ITEM_|BOX_)/.test(String(text)) && !canScan() && !(window.__myHeldQr && window.__myHeldQr.has(String(text)))) { showToast('🔒 QR 只貼在實體物品上'); return; }
         const box = document.getElementById('qr-zoom-qr');
         box.innerHTML = '';
         const size = Math.max(200, Math.min(300, Math.min(window.innerWidth, 480) - 100));
@@ -6433,6 +6435,7 @@
     window.renderConsumablePanel = function(it, boxId, idx) {
         const qrEl = document.getElementById('consumable-qr-container');
         qrEl.innerHTML = '';
+        if (!canScan()) { qrEl.style.cursor = ''; qrEl.onclick = null; qrEl.innerHTML = '<div style="width:130px;height:130px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#8a7f7a;font-size:12px;background:#f3efed;border-radius:6px;">🔒<br>QR 只貼在實體物品上</div>'; renderLotsBox(it); return; }
         qrEl.style.cursor = 'pointer';
         qrEl.onclick = () => showQrZoom(consQr(boxId, idx, it), it.name, '耗材 QR：掃描後輸入數量出貨／入庫');
         new QRCode(qrEl, {
@@ -6686,12 +6689,17 @@
             const qrBox = document.createElement('div');
             qrBox.style.cssText = `background:#fff; border-radius:6px; padding:4px; flex-shrink:0; width:56px; height:56px; display:flex; align-items:center; justify-content:center;${isOut ? ' filter:grayscale(1);' : ''}`;
             row.appendChild(qrBox);
-            qrBox.style.cursor = 'pointer';
-            qrBox.onclick = () => showQrZoom(`ITEM_${boxId}_${idx}_${u.uid}`, it.name, `第 ${uIdx + 1}/${it.units.length} 件${it.stockCode ? ' · 貨號 ' + it.stockCode : ''}`);
-            new QRCode(qrBox, {
-                text: `ITEM_${boxId}_${idx}_${u.uid}`, width: 48, height: 48,
-                colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H
-            });
+            if (canScan()) {
+                qrBox.style.cursor = 'pointer';
+                qrBox.onclick = () => showQrZoom(`ITEM_${boxId}_${idx}_${u.uid}`, it.name, `第 ${uIdx + 1}/${it.units.length} 件${it.stockCode ? ' · 貨號 ' + it.stockCode : ''}`);
+                new QRCode(qrBox, {
+                    text: `ITEM_${boxId}_${idx}_${u.uid}`, width: 48, height: 48,
+                    colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H
+                });
+            } else {   // 一般團員看不到 QR：要掃實體貼紙才能領取
+                qrBox.style.cssText += 'background:#f3efed; flex-direction:column; color:#8a7f7a;';
+                qrBox.innerHTML = `<b style="font-size:18px; line-height:1; color:#c2410c;">${uIdx + 1}</b><span style="font-size:9px; margin-top:2px;">🔒 QR</span>`;
+            }
 
             const info = document.createElement('div');
             info.style.cssText = 'flex:1; min-width:0;';
@@ -6716,6 +6724,7 @@
 
             listEl.appendChild(row);
         });
+        { const n = document.getElementById('qr-lock-note'); if (n) n.style.display = canScan() ? 'none' : ''; }
     };
 
     function isIOS() {
