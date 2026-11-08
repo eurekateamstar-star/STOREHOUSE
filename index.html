@@ -6697,8 +6697,9 @@
                     colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H
                 });
             } else {   // 一般團員看不到 QR：要掃實體貼紙才能領取
-                qrBox.style.cssText += 'background:#f3efed; flex-direction:column; color:#8a7f7a;';
-                qrBox.innerHTML = `<b style="font-size:18px; line-height:1; color:#c2410c;">${uIdx + 1}</b><span style="font-size:9px; margin-top:2px;">🔒 QR</span>`;
+                qrBox.style.cssText += 'background:#f3efed; padding:0; overflow:hidden; position:relative;';
+                qrBox.innerHTML = (it.imageUrl ? `<img src="${escapeHtml(it.imageUrl)}" alt="" loading="lazy" style="width:100%; height:100%; object-fit:cover; display:block;">` : `<span style="font-size:22px;">📦</span>`)
+                    + `<b style="position:absolute; right:2px; bottom:2px; min-width:16px; height:16px; padding:0 4px; border-radius:8px; background:rgba(194,65,12,.9); color:#fff; font-size:10px; line-height:16px; text-align:center;">${uIdx + 1}</b>`;
             }
 
             const info = document.createElement('div');
