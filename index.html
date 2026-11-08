@@ -2286,6 +2286,7 @@
 
     window.changeAccount = async function () {
         if (!currentUser) return;
+        if (!isAdmin()) { showToast('🔒 姓名會用在保險，不能自己改\n請到「團員專區 → 編輯資料」向管理員申請修改', 'info', 3200); return; }
         const n = await showPromptDialog('修改你的真實姓名\n（白沙屯救護紀錄表也會一起更新）', currentUser.account, '我的姓名');
         if (!n || n === currentUser.account) return;
         try {

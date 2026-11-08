@@ -49,8 +49,8 @@ service cloud.firestore {
       let changed = d.diff(o).affectedKeys();
       let hard = ['role', 'adminMember', 'adminWarehouse', 'adminRecord', 'warehouseHelper', 'recordViewer', 'approvedBy', 'warehouseRemoved', 'warehouseRemovedBy', 'warehouseRemovedAt', 'lineUserId'];
       return
-        // 一般更新：頭貼、登入時間、姓名、證照…
-        !changed.hasAny(lockedKeys())
+        // 一般更新：頭貼、登入時間、證照…（已開通後，姓名／身分證／生日只能由管理員改）
+        (!changed.hasAny(lockedKeys()) && !(o.get('status', '') == 'approved' && changed.hasAny(['realName', 'idCard', 'birthday'])))
         // 重新送審 → 待審核
         || (o.get('status', '') != 'banned' && d.get('status', '') == 'pending'
             && !changed.hasAny(hard.concat(['verifiedBy', 'approvedAt', 'rosterId'])))
@@ -58,7 +58,7 @@ service cloud.firestore {
         || (o.get('status', '') != 'banned' && d.get('status', '') == 'approved'
             && !changed.hasAny(hard) && rosterMatches(d))
         // 會員中心「編輯我的資料」：連到自己綁定的名冊
-        || (changed.intersection(lockedKeys().toSet()) == ['rosterId'].toSet()
+        || (changed.intersection(lockedKeys().toSet()) == ['rosterId'].toSet() && !changed.hasAny(['realName', 'idCard', 'birthday'])
             && get(rosterPath(d.rosterId)).data.get('boundUserId', '') == me());
     }
 
@@ -97,7 +97,7 @@ service cloud.firestore {
         || (signedIn() && resource.data.get('boundUserId', '') == me()
             && request.resource.data.get('boundUserId', '') == me()
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-                 'name', 'nameRaw', 'idCard', 'idCardRaw', 'birthday', 'birthdayRaw',
+                 // 姓名、身分證、生日：本人不能改，要向管理員申請
                  'lineName', 'phone', 'emName', 'emRelation', 'emPhone', 'shirtSize', 'pantsSize',
                  'certText', 'cert', 'address', 'job', 'introducer', 'education',
                  'updatedAt', 'updatedBy', 'updatedByRole', 'editLog', 'confirmedAt']))

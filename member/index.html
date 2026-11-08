@@ -547,6 +547,7 @@
         <div style="display:flex; gap:8px; flex-wrap:wrap;"><button class="sbtn" id="btn-app-copy">🔗 複製連結</button><button class="sbtn violet" id="btn-app-open">開啟表單</button></div>
       </div>
       <div id="app-list"></div>
+      <div id="chg-list"></div>
       <div id="pending-list"></div>
     </div>
 
@@ -928,8 +929,9 @@
       } catch (e) {}
       const verified = !!(roster && normName(roster.name) === normName(realName) && (!roster.boundUserId || roster.boundUserId === profile.userId));
 
+      const dupBound = !!(roster && roster.boundUserId && roster.boundUserId !== profile.userId);
       const base = { lineDisplayName: profile.displayName || '', pictureUrl: profile.pictureUrl || '', realName, idCard, birthday,
-        certification: regCert, category: regCert, warehouseCategory: regCert };
+        certification: regCert, category: regCert, warehouseCategory: regCert, dupBound };
       const existed = (await getDoc(ref)).exists();
       if (existed) {
         await updateDoc(ref, { ...base, status: verified ? 'approved' : 'pending', rejectReason: '', resubmittedAt: serverTimestamp(),
@@ -944,7 +946,7 @@
         await updateDoc(doc(db, ROSTER, roster.id), { boundUserId: profile.userId, boundAt: serverTimestamp() }).catch(() => {});
         toast('✅ 與團員名冊相符，已自動開通');
       } else {
-        toast('已送出，等待管理員審核');
+        toast(dupBound ? '⚠️ 這個身分證已綁定過其他 LINE 帳號，已送管理員審核' : '已送出，等待管理員審核');
       }
       isResubmit = false;
       render();
@@ -1068,7 +1070,7 @@
     const pend = usersCache.filter(u => (u.status || 'pending') === 'pending');
     $('st-roster').textContent = rosterLive ? rosVis().length : '…';
     $('st-bound').textContent = rosterLive ? rosVis().filter(r => r.boundUserId).length : '…';
-    const pendApps = appsCache.filter(a => a.status === 'pending').length;
+    const pendApps = appsCache.filter(a => a.status === 'pending').length + usersCache.filter(u => u.idChangeReq && u.idChangeReq.status === 'pending').length;
     $('st-pending').textContent = pend.length + pendApps;
     $('st-users').textContent = usersLive ? usersCache.filter(u => u.status === 'approved' && !devOff(u)).length : '…';
     { const n = rosterCache.filter(unseen).length; $('tab-roster-c').textContent = n; $('tab-roster-c').classList.toggle('hidden', !n); }
@@ -1132,8 +1134,58 @@
   };
   $('btn-app-open').onclick = () => { try { if (inLine()) { liff.openWindow({ url: JOIN_URL, external: true }); return; } } catch (e) {} window.open(JOIN_URL, '_blank'); };
 
+  // 已被綁定的同一身分證（名冊或其他已開通帳號）
+  function dupInfo(u) {
+    const id = normId(u.idCard || ''); if (!id) return [];
+    const out = [];
+    rosterCache.filter(r => normId(r.idCard || '') === id && r.boundUserId && r.boundUserId !== u.id).forEach(r => {
+      const o = userById(r.boundUserId);
+      out.push(`名冊「${esc(r.name)}」已綁定 LINE：<b>${esc(o ? (o.lineDisplayName || o.realName || '') : '另一個帳號')}</b>${r.boundAt ? '（' + esc(fmtAt(tsMs(r.boundAt))) + '）' : ''}`); });
+    usersCache.filter(o => o.id !== u.id && normId(o.idCard || '') === id && o.status === 'approved' && !out.length).forEach(o =>
+      out.push(`已開通帳號 <b>${esc(o.lineDisplayName || o.realName || '')}</b> 用同一個身分證`));
+    return out;
+  }
+  function renderChgReqs() {
+    const el = $('chg-list'); if (!el) return;
+    const L = usersCache.filter(u => u.idChangeReq && u.idChangeReq.status === 'pending');
+    el.innerHTML = L.map(u => { const q = u.idChangeReq, f = q.from || {};
+      const row = (t, a, b) => `<div style="display:grid;grid-template-columns:62px 1fr;gap:6px;font-size:14px;margin:3px 0"><span style="color:var(--sub)">${t}</span><span>${a === b ? esc(b || '—') : `<s style="color:#9ca3af">${esc(t === '身分證' ? maskId(a) : a || '—')}</s> → <b style="color:#b91c1c">${esc(b || '—')}</b>`}</span></div>`;
+      return `<div class="card p-card" style="border:2px solid #fcd34d">
+        <div style="font-weight:900;font-size:16px">📝 資料修改申請：${esc(u.realName || '')}<span style="font-size:12px;color:var(--sub);font-weight:600">　LINE：${esc(u.lineDisplayName || '—')}</span></div>
+        <div style="margin:8px 0">${row('姓名', f.name, q.name)}${row('身分證', f.idCard, q.idCard)}${row('生日', f.birthday, q.birthday)}</div>
+        ${q.note ? `<div style="font-size:13px;background:#fffbeb;border-radius:10px;padding:6px 10px;margin-bottom:6px">💬 ${esc(q.note)}</div>` : ''}
+        <div style="font-size:12px;color:var(--sub)">申請時間 ${esc(fmtAt(q.at || 0))}</div>
+        <div class="p-actions"><button class="sbtn green" data-chg-ok="${u.id}">✅ 同意並修改</button><button class="sbtn red" data-chg-no="${u.id}">退回</button></div></div>`; }).join('');
+    el.querySelectorAll('[data-chg-ok]').forEach(b => b.onclick = () => applyChgReq(b.dataset.chgOk));
+    el.querySelectorAll('[data-chg-no]').forEach(b => b.onclick = async () => {
+      const reason = await dialog({ title: '退回修改申請', msg: '可以留下原因（選填）', input: { placeholder: '例如：請附上身分證確認' }, okText: '退回', danger: true });
+      if (reason === null) return;
+      try { await updateDoc(doc(db, 'users', b.dataset.chgNo), { 'idChangeReq.status': 'rejected', 'idChangeReq.reason': typeof reason === 'string' ? reason : '', 'idChangeReq.by': user.realName || '' }); toast('已退回'); } catch (e) { toast('❌ 操作失敗'); }
+    });
+  }
+  async function applyChgReq(uid) {
+    const u = userById(uid); if (!u || !u.idChangeReq) return;
+    const q = u.idChangeReq, r = u.rosterId && rosterById(u.rosterId);
+    const nid = normId(q.idCard || ''), nbd = q.birthday || '', nname = normName(q.name || '');
+    if (!nname || !/^[A-Z][0-9A-Z]\d{8}$/.test(nid) || !/^\d{4}-\d{2}-\d{2}$/.test(nbd)) return toast('申請的資料格式不正確');
+    const newId = await rosterKey(nid, nbd);
+    if (r && newId !== r.id && rosterById(newId)) return toast('名冊已有相同身分證＋生日的另一筆，請先處理');
+    if (!(await dialog({ title: `同意修改「${u.realName || ''}」的資料？`, msg: `姓名：${q.name}\n身分證：${nid}\n生日：${nbd}\n\n會同時更新名冊與帳號，本人要再核對一次資料。`, okText: '同意並修改' }))) return;
+    try {
+      const by = user.realName || '';
+      if (r) {
+        const upd = { name: nname, nameRaw: q.name, idCard: nid, idCardRaw: nid, birthday: nbd, birthdayRaw: rocBday(nbd), updatedAt: serverTimestamp(), updatedBy: by, updatedByRole: 'admin',
+          editLog: [{ at: Date.now(), by, role: 'admin', fields: ['姓名／身分證／生日（本人申請）'], changes: [] }, ...(r.editLog || [])].slice(0, 30) };
+        if (newId !== r.id) { const base = { ...r }; delete base.id; await setDoc(doc(db, ROSTER, newId), { ...base, ...upd }); await deleteDoc(doc(db, ROSTER, r.id)); }
+        else await setDoc(doc(db, ROSTER, r.id), upd, { merge: true });
+      }
+      await updateDoc(doc(db, 'users', uid), { realName: nname, idCard: nid, birthday: nbd, ...(r ? { rosterId: newId } : {}), profileConfirmedAt: deleteField(),
+        'idChangeReq.status': 'approved', 'idChangeReq.by': by, 'idChangeReq.doneAt': Date.now() });
+      toast('✅ 已修改');
+    } catch (e) { toast('❌ 修改失敗：' + (e.message || e)); }
+  }
   function renderPending() {
-    renderApps();
+    renderApps(); renderChgReqs();
     const list = usersCache.filter(u => (u.status || 'pending') === 'pending').sort((a, b) => tsMs(b.createdAt) - tsMs(a.createdAt));
     const el = $('pending-list');
     if (!list.length) { el.innerHTML = '<div class="card empty">🎉 目前沒有待審核的 LINE 帳號</div>'; return; }
@@ -1144,10 +1196,12 @@
         <div class="p-head">
           <div class="avatar" style="${u.pictureUrl ? `background-image:url('${esc(u.pictureUrl)}')` : ''}">${u.pictureUrl ? '' : esc((u.realName || '?').charAt(0))}</div>
           <div style="flex:1; min-width:0;">
-            <div style="font-size:17px; font-weight:900;">${esc(u.realName || '(未填)')} ${u.certification ? `<span class="pill cert">${esc(u.certification)}</span>` : ''}</div>
+            <div style="font-size:17px; font-weight:900;">${esc(u.realName || '(未填)')} ${u.certification ? `<span class="pill cert">${esc(u.certification)}</span>` : ''}${dupInfo(u).length || u.dupBound ? ' <span class="pill red">⚠️ 身分證已被綁定過</span>' : ''}</div>
             <div style="font-size:12px; color:var(--sub); margin-top:3px;">身分證 ${esc(maskId(u.idCard))}　生日 ${esc(u.birthday || '未填')}　LINE：${esc(u.lineDisplayName || '—')}</div>
           </div>
         </div>
+        ${dupInfo(u).length || u.dupBound ? `<div style="margin:8px 0 4px;background:#fef2f2;border:2px solid #fecaca;border-radius:12px;padding:8px 12px;font-size:13.5px;color:#7f1d1d;line-height:1.6">
+          <b style="color:#b91c1c">⚠️ 這個身分證已經綁定過，沒有自動開通</b><br>${dupInfo(u).join('<br>') || '送出時名冊這筆已被另一個 LINE 綁定'}<br><span style="color:#9ca3af">請確認是不是本人換手機／換 LINE，還是有人冒用</span></div>` : ''}
         ${cands.length ? cands.map(c => `<div class="cand">
             <div class="info"><b>${esc(c.r.name)}</b>　${c.r.cert ? `<span class="pill cert">${esc(c.r.cert)}</span>` : ''}${c.r.boundUserId && c.r.boundUserId !== u.id ? ' <span class="pill red">已被其他 LINE 綁定</span>' : ''}<br>
               ${mk(c.mName, '姓名')}　${mk(c.mId, '身分證')}　${mk(c.mBday, '生日')}　名冊生日 ${esc(c.r.birthday || '—')}</div>
@@ -1542,6 +1596,7 @@
     const inp = ([k, t]) => {
       const v = esc(curVal(r, k));
       if (k === 'position') return `<div class="field"><label>${esc(t)}</label><select data-k="position" class="pos-sel">${POSITIONS.concat(POSITIONS.includes(curVal(r, k)) ? [] : [curVal(r, k)]).map(p => `<option ${p === curVal(r, k) ? 'selected' : ''}>${esc(p)}</option>`).join('')}</select></div>`;
+      if (role === 'self' && ['name', 'birthdayISO', 'idCard'].includes(k)) return `<div class="field"><label>${esc(t)} 🔒</label><div class="lockv" style="padding:10px 12px;border-radius:12px;background:#f3efed;color:#4b5563;font-weight:800">${k === 'idCard' ? esc(maskId(curVal(r, k))) : v || '—'}</div></div>`;
       if (k === 'birthdayISO') return `<div class="field"><label>${esc(t)}</label><input type="date" data-k="${k}" value="${v}"></div>`;
       return `<div class="field ${LONG_FIELDS.includes(k) ? 'full' : ''}"><label>${esc(t)}</label>${LONG_FIELDS.includes(k)
         ? `<textarea data-k="${k}">${v}</textarea>` : `<input data-k="${k}" value="${v}">`}</div>`;
@@ -1557,6 +1612,9 @@
         <textarea id="ed-paste" placeholder="🪄 智慧貼上：把一整串資料貼在這裡（LINE 訊息、表單內容、Excel 複製的一整列都可以），按「🤖 AI 填入」就會分到對應的格子（「🪄 快速填入」不經過 AI，適合格式整齊的資料）。"></textarea>
         <div style="display:flex; gap:8px; justify-content:flex-end;"><button class="sbtn" id="ed-paste-go">🪄 快速填入</button><button class="sbtn pri" id="ed-ai-go">🤖 AI 填入</button></div>
       </div>` : ''}
+      ${role === 'self' ? `<div style="background:#fffbeb;border:1.5px solid #fcd34d;border-radius:14px;padding:10px 12px;margin-bottom:10px;font-size:13.5px;color:#78350f;line-height:1.6">
+        🔒 <b>姓名、身分證、生日</b>會用在保險，不能自己改。${user.idChangeReq && user.idChangeReq.status === 'pending' ? '<br><b style="color:#b45309">⏳ 你的修改申請審核中</b>' : user.idChangeReq && user.idChangeReq.status === 'rejected' ? `<br><b style="color:#b91c1c">✕ 上次申請被退回${user.idChangeReq.reason ? '：' + esc(user.idChangeReq.reason) : ''}</b>` : ''}
+        <button class="sbtn" id="ed-chg" style="display:block;width:100%;margin-top:8px;background:#f59e0b;color:#fff">📝 ${user.idChangeReq && user.idChangeReq.status === 'pending' ? '重新填寫申請' : '有錯，向管理員申請修改'}</button></div>` : ''}
       <div class="edit-form edit-grid">${fields.map(inp).join('')}</div>
       ${r.fromApp ? `<div style="display:flex; gap:10px; margin-top:6px;">
           <button class="btn" id="ed-reject" style="flex:1; background:#fff; color:var(--red); box-shadow: inset 0 0 0 1.5px #fca5a5;">✕ 退回</button>
@@ -1565,6 +1623,7 @@
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open');
     $('sheet').scrollTop = 0;
     $('ed-save').onclick = saveEdit;
+    if ($('ed-chg')) $('ed-chg').onclick = () => openChgReq(r);
     if ($('ed-join-copy')) { $('ed-join-copy').onclick = () => $('btn-app-copy').onclick(); $('ed-join-open').onclick = () => $('btn-app-open').onclick(); }
     if ($('ed-reject')) $('ed-reject').onclick = async () => { if (await rejectApp(r.fromApp)) closeSheet(); };
     const fillFrom = (o, how) => {
@@ -1595,6 +1654,30 @@
       } finally { btn.disabled = false; btn.textContent = '🤖 AI 填入'; }
     };
     if ($('ed-paste-go')) $('ed-paste-go').onclick = () => fillFrom(parsePaste($('ed-paste').value), '🪄');
+  }
+  function openChgReq(r) {
+    const q = user.idChangeReq && user.idChangeReq.status === 'pending' ? user.idChangeReq : {};
+    $('sheet-body').innerHTML = `<h3>📝 申請修改保險資料</h3>
+      <div style="font-size:13px;color:var(--sub);margin:4px 0 12px;line-height:1.6">送出後由管理員確認，通過才會更新。<br>這三項會用在<b style="color:#b91c1c">進香投保</b>，請填正確。</div>
+      <div class="edit-form edit-grid">
+        <div class="field"><label>正確姓名</label><input id="cr-name" value="${esc(q.name || curVal(r, 'name'))}"></div>
+        <div class="field"><label>正確身分證字號</label><input id="cr-id" value="${esc(q.idCard || curVal(r, 'idCard'))}" autocapitalize="characters"></div>
+        <div class="field"><label>正確出生日期</label><input id="cr-bd" type="date" value="${esc(q.birthday || curVal(r, 'birthdayISO'))}"></div>
+        <div class="field full"><label>說明（選填）</label><textarea id="cr-note" placeholder="例如：生日少打一天">${esc(q.note || '')}</textarea></div>
+      </div>
+      <button class="btn" id="cr-send" style="background:#f59e0b">送出申請</button>`;
+    $('sheet').scrollTop = 0;
+    $('cr-send').onclick = async () => {
+      const name = $('cr-name').value.trim(), idCard = normId($('cr-id').value), birthday = $('cr-bd').value, note = $('cr-note').value.trim();
+      if (!name) return toast('請填寫姓名');
+      if (!/^[A-Z][1289]\d{8}$/.test(idCard)) return toast('身分證字號格式不正確');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(birthday)) return toast('請選擇出生日期');
+      const from = { name: curVal(r, 'name'), idCard: normId(curVal(r, 'idCard')), birthday: curVal(r, 'birthdayISO') };
+      if (normName(name) === normName(from.name) && idCard === from.idCard && birthday === from.birthday) return toast('跟目前資料一樣，不用申請');
+      try { await updateDoc(doc(db, 'users', profile.userId), { idChangeReq: { status: 'pending', name, idCard, birthday, note, from, at: Date.now() } });
+        toast('✅ 已送出，等管理員確認'); closeSheet(); if (editFromConfirm || !user.profileConfirmedAt) backToConfirm(); }
+      catch (e) { toast('❌ 送出失敗：' + (e.message || e)); }
+    };
   }
   const editMe = () => {
     const r = myRoster || { id: null, name: user.realName, nameRaw: user.realName, idCard: user.idCard, birthday: user.birthday, certText: user.certification || '' };
@@ -1674,7 +1757,7 @@
     const vals = {};
     document.querySelectorAll('#sheet-body [data-k]').forEach(el => vals[el.dataset.k] = el.value.trim());
     const changed = Object.keys(vals).filter(k => r.isNew ? !!vals[k] : vals[k] !== curVal(r, k));
-    if (role === 'self') {
+    if (role === 'self' && 'name' in vals) {
       if (!vals.name) return toast('請填寫姓名');
       if (!/^[A-Z][1289]\d{8}$/.test(normId(vals.idCard))) return toast('身分證字號格式不正確');
       if (!/^\d{4}-\d{2}-\d{2}$/.test(vals.birthdayISO || '')) return toast('請選擇出生日期');
