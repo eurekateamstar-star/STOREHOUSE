@@ -646,6 +646,9 @@
       .tab-item.done { color: #16a34a; }
       .tab-item.done .step-num { background: #16a34a; color: #fff; }
       .tab-item.done.active { color: #16a34a; }
+      .tab-item { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+      .tab-item.miss { color: #d97706; }
+      .tab-item.miss .step-num { background: #f59e0b; color: #fff; }
 
       /* ★ 人員：搜尋 / 分類 / 區塊（與倉庫管理相同形式） ★ */
       .u-section-title { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 800; margin: 14px 2px 8px; }
@@ -1294,6 +1297,7 @@
     const steps = ['basic', 'scene', 'treatment', 'vitals'];
     let currentStep = 0;
     let completedSteps = new Set();   // ★ 已完成的步驟（顯示綠色）
+    let visitedSteps = new Set([0]);  // 看過的頁：填齊 → 綠色 ✓；還有沒填的 → 橘色 !
     let allRecordsData = []; 
     let availableDates = []; 
     let currentDateIndex = 0; 
@@ -1312,11 +1316,16 @@
     window.updateWizard = function() {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
       document.getElementById('tab-' + steps[currentStep]).classList.add('active');
+      visitedSteps.add(currentStep);
+      let missSteps = new Set();
+      try { const miss = collectMissing(); completedSteps.clear();
+        visitedSteps.forEach(i => { if (miss.some(m => m.step === i)) { if (i !== currentStep) missSteps.add(i); } else completedSteps.add(i); }); } catch (e) {}
       document.querySelectorAll('.tab-item').forEach((el, index) => {
         if(index === currentStep) el.classList.add('active'); else el.classList.remove('active');
         el.classList.toggle('done', completedSteps.has(index));
+        el.classList.toggle('miss', missSteps.has(index));
         const num = el.querySelector('.step-num');
-        if(num) num.innerText = completedSteps.has(index) ? '✓' : String(index + 1);
+        if(num) num.innerText = completedSteps.has(index) ? '✓' : missSteps.has(index) ? '!' : String(index + 1);
       });
       document.getElementById('prevBtn').style.display = (currentStep === 0) ? 'none' : 'block';
       if(currentStep === steps.length - 1) {
@@ -1329,8 +1338,11 @@
       document.querySelector('.content-scroll-area').scrollTop = 0;
       if (typeof updateAdminAdjustBtn === 'function') updateAdminAdjustBtn();
     };
-    window.nextStep = function() { if(currentStep < steps.length - 1) { if(!checkStep(currentStep)) return; completedSteps.add(currentStep); currentStep++; window.updateWizard(); } };
-    window.prevStep = function() { if(currentStep > 0) { currentStep--; window.updateWizard(); } };
+    // 可以隨意換頁（點上面的頁籤或按下一步），先填後面也可以；送出時才檢查，缺的會跳回那一頁
+    window.goStep = function(i) { if (i < 0 || i >= steps.length || i === currentStep) return; document.querySelectorAll('.field-error').forEach(e => e.classList.remove('field-error')); currentStep = i; window.updateWizard(); };
+    window.nextStep = function() { if(currentStep < steps.length - 1) window.goStep(currentStep + 1); };
+    document.querySelectorAll('.tab-item').forEach((el, i) => el.addEventListener('click', () => window.goStep(i)));
+    window.prevStep = function() { if(currentStep > 0) window.goStep(currentStep - 1); };
 
     function setNowTime() {
       const now = new Date();
@@ -2356,7 +2368,9 @@
       if (missing.length === 0) return true;
 
       if (step < 0) { currentStep = missing[0].step; window.updateWizard(); }
-      window.showNotice('error', '尚有必填欄位未填', missing.map(m => '• ' + m.label).join('\n'));
+      const PG = ['基本資料', '現場狀況', '急救處置', '後續交班'];
+      const byPage = [...new Set(missing.map(m => m.step))].map(st => `【第 ${st + 1} 頁・${PG[st]}】\n` + missing.filter(m => m.step === st).map(m => '• ' + m.label).join('\n')).join('\n\n');
+      window.showNotice('error', step < 0 ? `還有 ${missing.length} 項沒填，已跳到第 ${missing[0].step + 1} 頁` : '尚有必填欄位未填', byPage);
       const first = missing.find(m => m.el && m.step === currentStep);
       if (first) setTimeout(() => first.el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60);
       return false;
@@ -3342,7 +3356,7 @@
       selectedPartsData = []; window.updateInjuredDisplay();
       document.querySelectorAll('.body-zone').forEach(el => el.classList.remove('active'));
 
-      completedSteps.clear();
+      completedSteps.clear(); visitedSteps = new Set([0]);
       draftId = null; try { updateDraftBar(); } catch (e) {}
       currentStep = 0; window.updateWizard();
       setNowTime();
@@ -3421,6 +3435,7 @@
 
       document.getElementById('previewOverlay').style.display = 'none';
       document.getElementById('adminConsoleOverlay').style.display = 'none';
+      visitedSteps = new Set([0, 1, 2, 3]);   // 編輯舊紀錄：四頁都標示有沒有填齊
       currentStep = 0; window.updateWizard();
     };
 
@@ -3640,7 +3655,7 @@
       // 直接跳到第一個還沒填的地方（前面的頁打勾）；都填好就跳到最後一頁準備送出
       setTimeout(() => {
         const miss = collectMissing(), first = miss[0], target = first ? first.step : steps.length - 1;
-        completedSteps.clear(); for (let i = 0; i < target; i++) completedSteps.add(i);
+        completedSteps.clear(); visitedSteps = new Set(); for (let i = 0; i <= target; i++) visitedSteps.add(i);
         currentStep = target; window.updateWizard();
         document.querySelectorAll('.field-error').forEach(e => e.classList.remove('field-error'));
         miss.filter(m => m.step === target && m.el).forEach(m => m.el.classList.add('field-error'));
