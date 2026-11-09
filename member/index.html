@@ -230,6 +230,21 @@
   .confirm-card .b .p { background: var(--primary); color: #fff; }
   .confirm-card .b .s { background: #fff; color: #15803d; box-shadow: inset 0 0 0 1.5px #86efac; }
   .edit-btn { border: none; border-radius: 12px; padding: 10px 14px; font-size: 14px; font-weight: 800; cursor: pointer; background: #fff; color: var(--primary); box-shadow: var(--shadow); font-family: inherit; }
+  .rsf{background:#fff;border-radius:18px;padding:10px 12px;margin-bottom:12px;box-shadow:0 2px 10px rgba(0,0,0,.04)}
+  .rsf-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .rsf-seg{display:inline-flex;background:#f3efed;border-radius:12px;padding:3px}.rsf-seg button{border:none;background:none;font:inherit;font-size:14px;font-weight:900;color:#6b7280;padding:7px 14px;border-radius:9px;cursor:pointer}
+  .rsf-seg button.on{background:#fff;color:#c2414f;box-shadow:0 1px 4px rgba(0,0,0,.1)}.rsf-seg button.on.lf{color:#374151}
+  .rsf-seg b{font-size:12px;margin-left:3px;opacity:.8}
+  .rsf-sel{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}
+  .rsf-sel label{display:block;font-size:11px;color:#9a8f8b;font-weight:800;margin:0 0 3px 4px}
+  .rsf-sel select{width:100%;border:1.5px solid #e9e1dd;border-radius:11px;padding:8px 10px;font:inherit;font-size:14px;font-weight:800;color:#1f2430;background:#fff;-webkit-appearance:none;appearance:none;background-image:linear-gradient(45deg,transparent 50%,#9a8f8b 50%),linear-gradient(135deg,#9a8f8b 50%,transparent 50%);background-position:calc(100% - 15px) 55%,calc(100% - 10px) 55%;background-size:5px 5px;background-repeat:no-repeat}
+  .rsf-sel select.on{border-color:#c2414f;background-color:#fff1f2;color:#c2414f}
+  .rsf-foot{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:13px;color:#6b7280;font-weight:700}
+  .rsf-foot button{border:none;background:none;color:#c2414f;font:inherit;font-weight:900;cursor:pointer;padding:0}
+  .rsf-alert{border:none;background:#fef2f2;color:#b91c1c;font:inherit;font-size:13px;font-weight:900;border-radius:999px;padding:6px 12px;cursor:pointer}
+  .rsf-alert.on{background:#b91c1c;color:#fff}
+  @media (max-width:640px){.rsf-sel{grid-template-columns:1fr 1fr}}
+  tr.left-row td{color:#9ca3af}tr.left-row td.c-name b{text-decoration:line-through}
   .chip { border: 1.5px solid #e5e7eb; background: #fff; color: #475569; font-size: 13px; font-weight: 800; padding: 6px 12px; border-radius: 999px; cursor: pointer; font-family: inherit; }
   .chip.on { background: var(--primary); border-color: var(--primary); color: #fff; }
   .sbtn { border: none; border-radius: 10px; padding: 8px 13px; font-size: 13px; font-weight: 800; cursor: pointer; color: #fff; background: #64748b; white-space: nowrap; font-family: inherit; }
@@ -557,8 +572,9 @@
       <div class="toolbar">
         <input class="inp" id="rs-q" placeholder="🔍 搜尋姓名、電話、LINE 名稱、介紹人…">
         <button class="edit-btn" id="btn-add-roster" style="white-space:nowrap; flex-shrink:0;">＋ 新增團員</button>
+        <button class="edit-btn" id="btn-imp-open" style="white-space:nowrap; flex-shrink:0; background:#fff; color:#475569; border:1.5px solid #e5e7eb;">📥 匯入 Excel</button>
       </div>
-      <div class="chips" id="rs-chips"></div>
+      <div id="rs-filter"></div>
       <div class="card tbl-wrap"><table class="tbl" id="rs-table"></table></div>
       <div class="cards-list" id="rs-cards"></div>
     </div>
@@ -586,7 +602,7 @@
     <!-- 匯入名冊 -->
     <div id="tab-import" class="hidden">
       <div class="card" style="padding:18px;">
-        <div style="font-size:16px; font-weight:900; margin-bottom:6px;">📥 匯入舊團員資料（Excel）</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><div style="font-size:16px; font-weight:900;">📥 匯入團員資料（Excel）</div><button class="sbtn" id="imp-back">← 回名冊</button></div>
         <div style="font-size:13px; color:var(--sub); line-height:1.7;">
           選擇團員資料表（.xlsx）。系統會自動辨識「姓名、出生日期、身份證字號、電話、證照、緊急聯絡人…」等欄位。<br>
           檔案只在你的瀏覽器裡讀取，直接寫進資料庫，不會上傳到其他地方。可以重複匯入：同一人（身分證＋生日相同）會更新資料，不會重複。
@@ -694,6 +710,8 @@
   const isWide = () => window.matchMedia('(min-width: 900px)').matches;
 
   let profile = null, user = null, myRoster = null, regCert = '', isResubmit = false, showId = false;
+  let rosterAll = [], rosterLeft = [];
+  const setRoster = L => { rosterAll = L; rosterCache = L.filter(r => !r.left); rosterLeft = L.filter(r => r.left); };
   let adminOn = false, usersCache = [], rosterCache = [], usersUnsub = null, rosterUnsub = null, appsCache = [], appsUnsub = null;
   const JOIN_URL = 'https://tsushin-buishatun.pages.dev/join/';
 
@@ -928,11 +946,12 @@
         const s = await getDoc(doc(db, ROSTER, await rosterKey(idCard, birthday)));
         if (s.exists()) roster = { id: s.id, ...s.data() };
       } catch (e) {}
-      const verified = !!(roster && normName(roster.name) === normName(realName) && (!roster.boundUserId || roster.boundUserId === profile.userId));
+      const verified = !!(roster && !roster.left && normName(roster.name) === normName(realName) && (!roster.boundUserId || roster.boundUserId === profile.userId));
 
       const dupBound = !!(roster && roster.boundUserId && roster.boundUserId !== profile.userId);
+      const wasLeft = !!(roster && roster.left);
       const base = { lineDisplayName: profile.displayName || '', pictureUrl: profile.pictureUrl || '', realName, idCard, birthday,
-        certification: regCert, category: regCert, warehouseCategory: regCert, dupBound };
+        certification: regCert, category: regCert, warehouseCategory: regCert, dupBound, wasLeft };
       const existed = (await getDoc(ref)).exists();
       if (existed) {
         await updateDoc(ref, { ...base, status: verified ? 'approved' : 'pending', rejectReason: '', resubmittedAt: serverTimestamp(),
@@ -961,7 +980,8 @@
   // =========================================================
   // 管理員模式
   // =========================================================
-  let curTab = 'roster', rsFilter = 'all', rsQuery = '', usQuery = '';
+  let curTab = 'roster', rsFilter = 'all', rsQuery = '', usQuery = '', rsView = 'active';
+  const rsF = { bind: '', stat: '', cert: '', pos: '' };
 
   $('btn-admin').onclick = () => {
     adminOn = !adminOn;
@@ -982,6 +1002,7 @@
   const devHidden = u => isDevU(u) && !(profile && u.id === profile.userId);   // 別人看開發者
   const DEV_HIDE_LIST = true;   // 還沒全面開放：系統會員清單不讓其他幹部看到開發者（全員開放後改成 false）
   const devOff = u => DEV_HIDE_LIST && devHidden(u);
+  const rosterLeftVis = () => DEV_HIDE_LIST && DEV_UID && !(profile && profile.userId === DEV_UID) ? rosterLeft.filter(r => r.boundUserId !== DEV_UID) : rosterLeft;
   const rosVis = () => DEV_HIDE_LIST && DEV_UID && !(profile && profile.userId === DEV_UID) ? rosterCache.filter(r => r.boundUserId !== DEV_UID) : rosterCache;   // 名冊也先藏開發者
   function loadDev() {
     getDoc(doc(db, 'meta', 'developer')).then(async s => {
@@ -1012,7 +1033,7 @@
     if (!rosterUnsub) rosterUnsub = onSnapshot(collection(db, ROSTER), { includeMetadataChanges: true }, s => {
       if (s.metadata.fromCache && rosterLive) return;
       if (!s.metadata.fromCache) rosterLive = true;
-      rosterCache = s.docs.map(d => ({ id: d.id, ...d.data() }));
+      setRoster(s.docs.map(d => ({ id: d.id, ...d.data() })));
       updateAdminDot(); if (adminOn) renderAdmin();
     }, () => { rosterUnsub = null; retryAdminWatch(); });
     // 4 秒後還沒拿到伺服器資料 → 直接向伺服器要一次，並重新連線
@@ -1043,7 +1064,7 @@
     try {
       const [us, rs] = await Promise.all([usersLive ? null : one('users'), rosterLive ? null : one(ROSTER)]);
       if (us && !usersLive) { usersCache = us; usersLive = true; }
-      if (rs && !rosterLive) { rosterCache = rs; rosterLive = true; }
+      if (rs && !rosterLive) { setRoster(rs); rosterLive = true; }
       updateAdminDot(); if (adminOn) renderAdmin();
     } catch (e) { console.warn('admin load', e); }
     if (isAdmin() && !(usersLive && rosterLive)) { clearTimeout(startAdminWatch._t); startAdminWatch._t = setTimeout(forceAdminLoad, 3000); }
@@ -1065,7 +1086,7 @@
     $('admin-dot').textContent = n; $('admin-dot').classList.toggle('hidden', !n);
   }
   const userById = id => usersCache.find(u => u.id === id);
-  const rosterById = id => rosterCache.find(r => r.id === id);
+  const rosterById = id => rosterAll.find(r => r.id === id) || rosterCache.find(r => r.id === id);
 
   function renderAdmin() {
     const pend = usersCache.filter(u => (u.status || 'pending') === 'pending');
@@ -1197,7 +1218,7 @@
         <div class="p-head">
           <div class="avatar" style="${u.pictureUrl ? `background-image:url('${esc(u.pictureUrl)}')` : ''}">${u.pictureUrl ? '' : esc((u.realName || '?').charAt(0))}</div>
           <div style="flex:1; min-width:0;">
-            <div style="font-size:17px; font-weight:900;">${esc(u.realName || '(未填)')} ${u.certification ? `<span class="pill cert">${esc(u.certification)}</span>` : ''}${dupInfo(u).length || u.dupBound ? ' <span class="pill red">⚠️ 身分證已被綁定過</span>' : ''}</div>
+            <div style="font-size:17px; font-weight:900;">${esc(u.realName || '(未填)')} ${u.certification ? `<span class="pill cert">${esc(u.certification)}</span>` : ''}${dupInfo(u).length || u.dupBound ? ' <span class="pill red">⚠️ 身分證已被綁定過</span>' : ''}${u.wasLeft || rosterLeft.some(r => normId(r.idCard || '') && normId(r.idCard || '') === normId(u.idCard || '')) ? ' <span class="pill" style="background:#e5e7eb;color:#374151">🚪 在退團名單</span>' : ''}</div>
             <div style="font-size:12px; color:var(--sub); margin-top:3px;">身分證 ${esc(maskId(u.idCard))}　生日 ${esc(u.birthday || '未填')}　LINE：${esc(u.lineDisplayName || '—')}</div>
           </div>
         </div>
@@ -1374,31 +1395,44 @@
     const rosterCache = rosVis();
     const certs = {}; rosterCache.forEach(r => { const c = r.cert || '未填'; certs[c] = (certs[c] || 0) + 1; });
     const bound = rosterCache.filter(r => r.boundUserId).length;
-    const chip = (k, t) => `<button class="chip ${rsFilter === k ? 'on' : ''}" data-f="${esc(k)}">${esc(t)}</button>`;
-    const selfUpd = rosterCache.filter(r => r.updatedByRole === 'self').length;
+    const LV = rosterLeftVis(), isLeft = rsView === 'left';
+    const pc = {}; rosterCache.forEach(r => { const p = rv(r, 'position'); pc[p] = (pc[p] || 0) + 1; });
+    const posList = POSITIONS.filter(p => pc[p]).concat(Object.keys(pc).filter(p => !POSITIONS.includes(p)));
     const nUnseen = rosterCache.filter(unseen).length;
-    $('rs-chips').innerHTML = `<button class="chip" id="rs-mapbtn" style="background:#fff4ef;border-color:#f6c9b6;color:#c2410c;font-weight:800">🗺 縣市分布</button>` + (nUnseen ? chip('unseen', `🔴 未查看的修改 (${nUnseen})`) : '') + chip('all', `全部 (${rosterCache.length})`) + chip('bound', `已綁定 (${bound})`) + chip('unbound', `未綁定 (${rosterCache.length - bound})`)
-      + chip('updated', `✏️ 有更新 (${rosterCache.filter(r => r.updatedAt).length})`) + chip('confirmed', `✅ 已確認 (${rosterCache.filter(isConfirmed).length})`)
-      + Object.keys(certs).sort().map(c => chip('c:' + c, `${c} (${certs[c]})`)).join('')
-      + (() => { const pc = {}; rosterCache.forEach(r => { const p = rv(r, 'position'); if (p !== '團員') pc[p] = (pc[p] || 0) + 1; });
-                 return POSITIONS.filter(p => pc[p]).concat(Object.keys(pc).filter(p => !POSITIONS.includes(p))).map(p => chip('p:' + p, `👔 ${p} (${pc[p]})`)).join(''); })();
-    $('rs-chips').querySelectorAll('[data-f]').forEach(b => b.onclick = () => { rsFilter = b.dataset.f; renderRoster(); });
+    const opt = (v, t, cur) => `<option value="${esc(v)}" ${cur === v ? 'selected' : ''}>${esc(t)}</option>`;
+    const sel = (k, t, opts) => `<div><label>${t}</label><select data-rf="${k}" class="${rsF[k] ? 'on' : ''}">${opts}</select></div>`;
+    const anyF = Object.values(rsF).some(Boolean);
+    $('rs-filter').innerHTML = `<div class="rsf"><div class="rsf-top">
+        <div class="rsf-seg"><button data-v="active" class="${isLeft ? '' : 'on'}">👥 在團名冊<b>${rosterCache.length}</b></button><button data-v="left" class="lf ${isLeft ? 'on' : ''}">🚪 退團名單<b>${LV.length}</b></button></div>
+        ${!isLeft && nUnseen ? `<button class="rsf-alert ${rsF.stat === 'unseen' ? 'on' : ''}" id="rs-unseen">🔴 ${nUnseen} 筆修改未查看</button>` : ''}
+        <button class="chip" id="rs-mapbtn" style="margin-left:auto;${isLeft ? 'display:none;' : ''}background:#fff4ef;border-color:#f6c9b6;color:#c2410c;font-weight:800">🗺 縣市分布</button></div>
+      ${isLeft ? '' : `<div class="rsf-sel">
+        ${sel('bind', 'LINE 綁定', opt('', `全部`, rsF.bind) + opt('bound', `已綁定（${rosterCache.filter(r => r.boundUserId).length}）`, rsF.bind) + opt('unbound', `未綁定（${rosterCache.filter(r => !r.boundUserId).length}）`, rsF.bind))}
+        ${sel('stat', '資料狀態', opt('', '全部', rsF.stat) + opt('updated', `有更新（${rosterCache.filter(r => r.updatedAt).length}）`, rsF.stat) + opt('confirmed', `已確認（${rosterCache.filter(isConfirmed).length}）`, rsF.stat) + opt('notconf', `未確認（${rosterCache.filter(r => !isConfirmed(r)).length}）`, rsF.stat) + (nUnseen ? opt('unseen', `未查看的修改（${nUnseen}）`, rsF.stat) : ''))}
+        ${sel('cert', '證照', opt('', '全部', rsF.cert) + Object.keys(certs).sort().map(c => opt(c, `${c}（${certs[c]}）`, rsF.cert)).join(''))}
+        ${sel('pos', '職位', opt('', '全部', rsF.pos) + posList.map(p => opt(p, `${p}（${pc[p]}）`, rsF.pos)).join(''))}
+      </div>`}
+      <div class="rsf-foot" id="rs-count"></div></div>`;
+    $('rs-filter').querySelectorAll('.rsf-seg button').forEach(b => b.onclick = () => { rsView = b.dataset.v; renderRoster(); });
+    $('rs-filter').querySelectorAll('[data-rf]').forEach(el => el.onchange = () => { rsF[el.dataset.rf] = el.value; renderRoster(); });
+    if ($('rs-unseen')) $('rs-unseen').onclick = () => { rsF.stat = rsF.stat === 'unseen' ? '' : 'unseen'; renderRoster(); };
     $('rs-mapbtn').onclick = () => openRosterMap();
 
-    let list = rosterCache.slice();
-    if (rsFilter === 'bound') list = list.filter(r => r.boundUserId);
-    else if (rsFilter === 'unbound') list = list.filter(r => !r.boundUserId);
-    else if (rsFilter === 'unseen') list = list.filter(unseen).sort((a, b) => lastSelfEdit(b) - lastSelfEdit(a));
-    else if (rsFilter === 'self') list = list.filter(r => r.updatedByRole === 'self').sort((a, b) => tsMs(b.updatedAt) - tsMs(a.updatedAt));
-    else if (rsFilter === 'updated') list = list.filter(r => r.updatedAt);
-    else if (rsFilter === 'confirmed') list = list.filter(isConfirmed);
-    else if (rsFilter.startsWith('p:')) list = list.filter(r => rv(r, 'position') === rsFilter.slice(2));
-    else if (rsFilter.startsWith('c:')) list = list.filter(r => (r.cert || '未填') === rsFilter.slice(2));
+    let list = isLeft ? LV.slice() : rosterCache.slice();
+    if (!isLeft) {
+      if (rsF.bind === 'bound') list = list.filter(r => r.boundUserId); else if (rsF.bind === 'unbound') list = list.filter(r => !r.boundUserId);
+      if (rsF.stat === 'updated') list = list.filter(r => r.updatedAt); else if (rsF.stat === 'confirmed') list = list.filter(isConfirmed);
+      else if (rsF.stat === 'notconf') list = list.filter(r => !isConfirmed(r)); else if (rsF.stat === 'unseen') list = list.filter(unseen);
+      if (rsF.cert) list = list.filter(r => (r.cert || '未填') === rsF.cert);
+      if (rsF.pos) list = list.filter(r => rv(r, 'position') === rsF.pos);
+    }
     if (rsQuery) list = list.filter(r => [r.name, r.phone, r.lineName, r.introducer, r.certText, r.job].join(' ').toLowerCase().includes(rsQuery));
-    if (rsFilter !== 'self' && rsFilter !== 'unseen') list.sort(rosterOrder);   // 依 Excel 原本的順序
+    if (rsF.stat === 'unseen' && !isLeft) list.sort((a, b) => lastSelfEdit(b) - lastSelfEdit(a)); else list.sort(rosterOrder);   // 依 Excel 原本的順序
+    $('rs-count').innerHTML = `${isLeft ? '🚪 退團名單' : '顯示'} <b style="color:#1f2430">${list.length}</b> 人${!isLeft && (anyF || rsQuery) ? ` / 共 ${rosterCache.length} 人　<button id="rs-clear">✕ 清除篩選</button>` : ''}${isLeft ? '　<span style="color:#9ca3af">點名字可「恢復在團」</span>' : ''}`;
+    if ($('rs-clear')) $('rs-clear').onclick = () => { Object.keys(rsF).forEach(k => rsF[k] = ''); rsQuery = ''; $('rs-q').value = ''; renderRoster(); };
 
-    if (!rosterCache.length) {
-      const e = '<div class="empty">名冊是空的</div>';
+    if (!(isLeft ? LV : rosterCache).length) {
+      const e = `<div class="empty">${isLeft ? '退團名單是空的<br><span style="font-size:13px">可以按上方「📥 匯入 Excel」選「退團名單」工作表匯入</span>' : '名冊是空的'}</div>`;
       $('rs-table').innerHTML = `<tr><td>${e}</td></tr>`; $('rs-cards').innerHTML = `<div class="card">${e}</div>`; return;
     }
     const st = r => { const u = r.boundUserId && userById(r.boundUserId);
@@ -1407,11 +1441,11 @@
       return `<span class="line-who">${miniAv(u.pictureUrl, u.lineDisplayName || u.realName)}<span>${esc(u.lineDisplayName || u.realName || '已綁定')}</span></span>`; };
     const av = r => { const u = r.boundUserId && userById(r.boundUserId); return miniAv(u && u.pictureUrl, r.name); };
     $('rs-table').innerHTML = rosterHead() + '<tbody>'
-      + (list.map(r => `<tr data-r="${r.id}">${TBL_COLS().map(([k]) => `<td class="c-${k}">${k === 'name' ? `<span class="nm-cell">${av(r)}<b>${esc(rv(r, k) || '')}</b>${redDot(r)}</span>` : esc(rv(r, k) || '')}</td>`).join('')}<td>${st(r)}</td><td class="c-upd">${updText(r, true)}${confText(r)}</td></tr>`).join('')
+      + (list.map(r => `<tr data-r="${r.id}" class="${r.left ? 'left-row' : ''}">${TBL_COLS().map(([k]) => `<td class="c-${k}">${k === 'name' ? `<span class="nm-cell">${av(r)}<b>${esc(rv(r, k) || '')}</b>${redDot(r)}</span>` : esc(rv(r, k) || '')}</td>`).join('')}<td>${st(r)}</td><td class="c-upd">${updText(r, true)}${confText(r)}</td></tr>`).join('')
         || `<tr><td colspan="${TBL_COLS().length + 2}"><div class="empty">沒有符合的資料</div></td></tr>`) + '</tbody>';
     $('rs-cards').innerHTML = list.map(r => `<div class="card r-card" data-r="${r.id}">${av(r)}
         <div class="main"><div class="nm">${r.serial ? `<span style="color:var(--sub);font-size:13px;">${esc(r.serial)}</span>` : ''}${esc(rv(r, 'name'))}${redDot(r)} <span class="pill ${rv(r, 'position') === '團員' ? 'pos-m' : 'admin'}">${esc(rv(r, 'position'))}</span> ${r.cert ? `<span class="pill cert">${esc(r.cert)}</span>` : ''}</div>
-        <div class="sub">${esc(r.phone || '無電話')}　${esc(rv(r, 'birthdayRaw') || '')}</div>${updText(r, true)}${confText(r)}</div>${st(r)}</div>`).join('')
+        <div class="sub">${esc(r.phone || '無電話')}　${esc(rv(r, 'birthdayRaw') || '')}</div>${r.left ? `<div class="sub" style="color:#6b7280">🚪 ${esc(r.leftNote || r.notes || '已退團')}</div>` : updText(r, true) + confText(r)}</div>${st(r)}</div>`).join('')
       || '<div class="card empty">沒有符合的資料</div>';
     document.querySelectorAll('#rs-table [data-r], #rs-cards [data-r]').forEach(e => e.onclick = () => openRoster(e.dataset.r));
   }
@@ -1427,7 +1461,7 @@
     $('sheet-body').innerHTML = `
       <div style="display:flex; gap:12px; align-items:center;">
         <span class="mini-av" style="width:54px;height:54px;font-size:20px;${u && u.pictureUrl ? `background-image:url('${esc(u.pictureUrl)}')` : ''}">${u && u.pictureUrl ? '' : esc(String(r.name || '?').charAt(0))}</span>
-        <div><h3>${esc(r.name)}</h3><div>${r.cert ? `<span class="pill cert">${esc(r.cert)}</span>` : ''} ${r.boundUserId ? `<span class="pill bound">✔ 已綁定 LINE${u ? '：' + esc(u.lineDisplayName || u.realName || '') : ''}</span>` : '<span class="pill unbound">尚未綁定 LINE</span>'}</div></div>
+        <div><h3>${esc(r.name)}${r.left ? ' <span class="pill" style="background:#e5e7eb;color:#374151;font-size:12px;vertical-align:3px">🚪 已退團</span>' : ''}</h3>${r.left && r.leftNote ? `<div style="font-size:12.5px;color:#6b7280">退團原因：${esc(r.leftNote)}</div>` : ''}<div>${r.cert ? `<span class="pill cert">${esc(r.cert)}</span>` : ''} ${r.boundUserId ? `<span class="pill bound">✔ 已綁定 LINE${u ? '：' + esc(u.lineDisplayName || u.realName || '') : ''}</span>` : '<span class="pill unbound">尚未綁定 LINE</span>'}</div></div>
       </div>
       <div class="grp">團員資料表（與 Excel 相同）</div>
       <div class="rows">${ROSTER_COLS.map(([k, t]) => row(esc(t), esc(rv(r, k) || ''))).join('')}</div>
@@ -1441,10 +1475,22 @@
         <button class="sbtn pri" id="sh-edit">✏️ 編輯資料</button>
         ${r.boundUserId && userById(r.boundUserId) ? '<button class="sbtn violet" id="sh-user">👤 帳號／權限</button>' : ''}
         ${r.boundUserId ? '<button class="sbtn" id="sh-unbind">解除 LINE 綁定</button>' : ''}
+        <button class="sbtn" id="sh-left" style="background:${r.left ? '#16a34a' : '#475569'};color:#fff">${r.left ? '↩️ 恢復在團' : '🚪 移到退團名單'}</button>
         <button class="sbtn red" id="sh-del">刪除此筆名冊</button>
       </div>`;
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open');
     $('sh-edit').onclick = () => openEditForm(r, 'admin');
+    $('sh-left').onclick = async () => {
+      const by = user.realName || '';
+      if (r.left) {
+        if (!(await dialog({ title: `「${r.name}」恢復在團？`, msg: '會回到在團名冊，可以登入、排班、抽籤。', okText: '恢復在團' }))) return;
+        try { await updateDoc(doc(db, ROSTER, r.id), { left: false, leftNote: deleteField(), backAt: serverTimestamp(), editLog: [{ at: Date.now(), by, role: 'admin', fields: ['恢復在團'], changes: [] }, ...(r.editLog || [])].slice(0, 30) }); toast('↩️ 已恢復在團'); closeSheet(); } catch (e) { toast('❌ 操作失敗'); }
+      } else {
+        const note = await dialog({ title: `「${r.name}」移到退團名單？`, msg: '不會刪除資料，之後可以恢復。退團後不能自動開通團員專區。', input: { placeholder: '退團原因（選填），例如 114.10 未再加入群組' }, okText: '移到退團', danger: true });
+        if (note === null || note === false) return;
+        try { await updateDoc(doc(db, ROSTER, r.id), { left: true, leftNote: typeof note === 'string' ? note : '', leftAt: serverTimestamp(), leftBy: by, editLog: [{ at: Date.now(), by, role: 'admin', fields: ['移到退團名單'], changes: [] }, ...(r.editLog || [])].slice(0, 30) }); toast('🚪 已移到退團名單'); closeSheet(); } catch (e) { toast('❌ 操作失敗'); }
+      }
+    };
     if ($('sh-user')) $('sh-user').onclick = () => openUser(r.boundUserId);
     document.querySelectorAll('#sheet-body .log-del').forEach(btn => btn.onclick = async () => {
       const i = +btn.dataset.li, l = (r.editLog || [])[i]; if (!l) return;
@@ -4855,16 +4901,21 @@
   }
   const cellStr = v => v == null ? '' : String(v).trim();
 
-  let importRows = [];
+  let importRows = [], impWb = null, impSheet = null, impLeft = false, impFile = null;
+  $('imp-back').onclick = () => { curTab = 'roster'; renderAdmin(); };
+  $('btn-imp-open').onclick = () => { curTab = 'import'; renderAdmin(); window.scrollTo(0, 0); };
   $('imp-file').onchange = async e => {
-    const f = e.target.files[0]; e.target.value = '';
+    const f = e.target.files[0] || impFile; e.target.value = '';
     if (!f) return;
+    if (f !== impFile) { impFile = f; impSheet = null; }
     $('imp-fname').textContent = f.name;
     $('imp-preview').innerHTML = '<div class="empty">讀取中…</div>';
     try {
       await loadXlsx();
       const wb = XLSX.read(await f.arrayBuffer(), { type: 'array', cellDates: false });
-      const ws = wb.Sheets[wb.SheetNames[0]];
+      impWb = wb;
+      if (impSheet == null || !wb.SheetNames.includes(impSheet)) { impSheet = wb.SheetNames.find(n => /團員資料表|團員資料/.test(n) && !/退/.test(n)) || wb.SheetNames[0]; impLeft = /退/.test(impSheet); }
+      const ws = wb.Sheets[impSheet];
       const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
       const hi = rows.findIndex(r => r && r.some(c => String(c || '').replace(/\s/g, '').includes('姓名')));
       if (hi < 0) throw new Error('找不到「姓名」欄位');
@@ -4898,12 +4949,23 @@
         o.key = idOk ? await rosterKey(idCard, birthday) : await rosterKey('NOID:' + name, `${birthday}|${normId(o.phone)}`);
         importRows.push(o);
       }
-      const existing = new Set(rosterCache.map(r => r.id));
+      const existing = new Set(rosterAll.map(r => r.id)), activeIds = new Set(rosterCache.map(r => r.id));
+      let keptActive = [];
+      if (impLeft) {   // 退團名單：已經在「在團名冊」的人不動（可能又回來了）
+        keptActive = importRows.filter(r => activeIds.has(r.key)).map(r => r.name);
+        importRows = importRows.filter(r => !activeIds.has(r.key));
+        importRows.forEach(r => { r.left = true; r.leftNote = r.notes || ''; });
+      }
       const upd = importRows.filter(r => existing.has(r.key)).length;
       const certCount = {}; importRows.forEach(r => certCount[r.cert || '未填'] = (certCount[r.cert || '未填'] || 0) + 1);
       $('imp-preview').innerHTML = `
+        <div style="background:#fff;border:1.5px solid #e9e1dd;border-radius:14px;padding:10px 12px;margin:12px 0 0">
+          <div style="font-size:12px;color:var(--sub);font-weight:800;margin-bottom:4px">要匯入哪一個工作表？</div>
+          <select id="imp-sheet" style="width:100%;padding:9px;border-radius:10px;border:1.5px solid #e5e7eb;font:inherit;font-weight:800">${wb.SheetNames.map(n => `<option ${n === impSheet ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>
+          <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-weight:900;font-size:14px"><input type="checkbox" id="imp-left" ${impLeft ? 'checked' : ''} style="width:18px;height:18px"> 🚪 這是退團名單（匯入到「退團名單」）</label></div>
+        ${impLeft ? `<div class="warnbox" style="background:#f3f4f6;border-color:#d1d5db;color:#374151;margin-top:10px">🚪 這批會放進<b>退團名單</b>，不會出現在在團名冊，也不能自動開通團員專區。${keptActive.length ? `<br>有 <b>${keptActive.length}</b> 位已經在「在團名冊」，不會被移到退團：${keptActive.slice(0, 12).map(esc).join('、')}${keptActive.length > 12 ? '…' : ''}` : ''}</div>` : ''}
         <div class="warnbox">
-          共讀到 <b>${importRows.length}</b> 位團員：新增 <b>${importRows.length - upd}</b>、更新 <b>${upd}</b>${skipped ? `，略過 ${skipped} 列（沒有姓名）` : ''}<br>
+          共讀到 <b>${importRows.length}</b> 位${impLeft ? '退團團員' : '團員'}：新增 <b>${importRows.length - upd}</b>、更新 <b>${upd}</b>${skipped ? `，略過 ${skipped} 列（沒有姓名）` : ''}<br>
           ${noId ? `⚠️ 有 ${noId} 位沒有身分證字號，仍會匯入名冊，但登入時無法自動驗證，會改成人工審核。<br>` : ''}
           ${noBday ? `⚠️ 有 ${noBday} 位生日讀不到，登入時同樣會改成人工審核。<br>` : ''}
           證照分類：${Object.entries(certCount).map(([k, v]) => `${esc(k)} ${v}`).join('、')}
@@ -4913,8 +4975,11 @@
           ${importRows.slice(0, 8).map(r => `<tr><td>${esc(r.name)}</td><td>${r.idCard ? esc(maskId(r.idCard)) : '⚠️ 無'}</td><td>${esc(r.birthday || ('⚠️ ' + (r.birthdayRaw || '無')))}</td><td>${esc(r.cert)}</td><td>${esc(r.phone || '')}</td></tr>`).join('')}
           ${importRows.length > 8 ? `<tr><td colspan="5" style="color:var(--sub)">…還有 ${importRows.length - 8} 位</td></tr>` : ''}
           </tbody></table></div>
-        <button class="btn" id="imp-go" style="margin-top:14px;">確認匯入 ${importRows.length} 位團員</button>`;
+        <button class="btn" id="imp-go" style="margin-top:14px;${impLeft ? 'background:#475569' : ''}">確認匯入 ${importRows.length} 位${impLeft ? '到退團名單' : '團員'}</button>`;
       $('imp-go').onclick = doImport;
+      const re = () => $('imp-file').onchange({ target: { files: [], value: '' } });
+      $('imp-sheet').onchange = e => { impSheet = e.target.value; impLeft = /退/.test(impSheet); re(); };
+      $('imp-left').onchange = e => { impLeft = e.target.checked; re(); };
     } catch (err) {
       $('imp-preview').innerHTML = `<div class="reason" style="margin-top:12px;">讀取失敗：${esc(err.message || err)}</div>`;
     }
@@ -4931,7 +4996,7 @@
         btn.textContent = `匯入中… ${Math.min(i + 400, importRows.length)} / ${importRows.length}`;
         await b.commit();
       }
-      toast(`✅ 已匯入 ${importRows.length} 位團員`);
+      toast(`✅ 已匯入 ${importRows.length} 位${impLeft ? '到退團名單' : '團員'}`);
       $('imp-preview').innerHTML = `<div class="warnbox" style="background:#ecfdf5;border-color:#a7f3d0;color:#065f46;">✅ 匯入完成，共 ${importRows.length} 位。<br>建議到「👥 系統會員」按「依身分證自動配對名冊」，把已經註冊的會員對應起來。</div>`;
       importRows = [];
     } catch (e) {

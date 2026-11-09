@@ -509,7 +509,7 @@ async function lotRoute(req, env, json) {
     const tok = await saToken(env);
     const ev = await fsGet(tok, `events/${eid}`); if (!ev) return json({ error: 'no event' }, 404);
     const e = fobj(ev.fields);
-    const roster = await fsList(tok, 'member_roster');
+    const roster = (await fsList(tok, 'member_roster')).filter(x => !x.left);
     const meRo = roster.find(x => x.id === u.rosterId); if (!meRo) return json({ state: 'unbound' });
     const myKey = normName(meRo.name);
     // 不會變的資料先讀一次（出席名單、選組），迴圈裡只重讀抽籤結果 → 很多人同時抽也很快
@@ -883,7 +883,7 @@ async function mySchedRoute(req, env, json) {
     const evs = evAll.filter(e => e.schedPublic || e.askGroups);
     const P = {}; evs.forEach(e => { P[e.id] = Promise.all([fsList(tok, `events/${e.id}/responses`), e.askGroups ? fsGet(tok, `events/${e.id}/admin/groups`) : null,
       e.schedPublic ? fsGet(tok, `events/${e.id}/admin/draw`) : null, e.schedPublic ? fsGet(tok, `events/${e.id}/admin/self_${u.rosterId}`) : null]); });
-    const roster = evs.some(e => e.schedPublic) ? await fsList(tok, 'member_roster') : [], byName = {};
+    const roster = evs.some(e => e.schedPublic) ? (await fsList(tok, 'member_roster')).filter(x => !x.left) : [], byName = {};
     roster.forEach(x => { const k = normName(x.name); if (k && !byName[k]) byName[k] = x; });
     const catOf = k => { const c = String((byName[k] || {}).cert || '').toUpperCase().replace(/[-\s]/g, ''); return c.includes('護理') || c.includes('醫師') ? 'N' : c.includes('EMTP') || c.includes('EMT2') ? 'T2' : c.includes('EMT1') ? 'T1' : 'O'; };
     const EQN = { kit: '救護包', ambu: 'AMBU包', inst: '儀器包' };
@@ -973,7 +973,7 @@ async function groupsRoute(req, env, json) {
     if (!admin) return json({ events: [], admin });   // 選組確認只在管理員後台做
     const want = evs.filter(e => parseGroups(e.groupsText).gs.length);
     const pre = {}; want.forEach(e => { pre[e.id] = Promise.all([fsList(tok, `events/${e.id}/responses`), fsGet(tok, `events/${e.id}/admin/groups`)]); });
-    if (eid && want.length) { roster = {}; (await fsList(tok, 'member_roster')).forEach(x => { const k = normName(x.name); if (k && !roster[k]) roster[k] = x; }); }
+    if (eid && want.length) { roster = {}; (await fsList(tok, 'member_roster')).filter(x => !x.left).forEach(x => { const k = normName(x.name); if (k && !roster[k]) roster[k] = x; }); }
     for (const e of want) {
       const GP = parseGroups(e.groupsText);
       const mine = GP.gs;
@@ -1047,7 +1047,7 @@ async function leadRoute(req, env, json) {
     const u = fobj((await meR.json()).fields); if (u.status !== 'approved') return json({ error: 'not member' }, 403);
     const admin = u.role === 'admin' || u.adminMember === true;
     const tok = await saToken(env);
-    const [dr, roster] = await Promise.all([fsGet(tok, `events/${eid}/admin/draw`), fsList(tok, 'member_roster')]);
+    const [dr, roster] = await Promise.all([fsGet(tok, `events/${eid}/admin/draw`), fsList(tok, 'member_roster').then(L => L.filter(x => !x.left))]);
     const byName = {}; roster.forEach(x => { const k = normName(x.name); if (k && !byName[k]) byName[k] = x; });
     const me = u.rosterId ? roster.find(x => x.id === u.rosterId) : null, myKey = me ? normName(me.name) : '';
     const sc = dr ? (fobj(dr.fields).sched || {}) : {}, teams = (sc.days || {})[d] || [];
@@ -1116,7 +1116,7 @@ async function remindRoute(req, env, json) {
     if (!env.LINE_BOT_TOKEN) return json({ error: 'LINE_BOT_TOKEN 尚未設定' }, 501);
     const tok = await saToken(env), want = new Set(names.map(normName));
     const ids = [], found = new Set();
-    (await fsList(tok, 'member_roster')).forEach(x => { const k = normName(x.name); if (want.has(k) && x.boundUserId && !found.has(k)) { found.add(k); ids.push(x.boundUserId); } });
+    (await fsList(tok, 'member_roster')).filter(x => !x.left).forEach(x => { const k = normName(x.name); if (want.has(k) && x.boundUserId && !found.has(k)) { found.add(k); ids.push(x.boundUserId); } });
     const noLine = [...want].filter(k => !found.has(k));
     if (!ids.length) return json({ ok: true, sent: 0, noLine });
     const msg = { type: 'flex', altText: String(text || '請到團員專區登記').slice(0, 300), contents: { type: 'bubble', size: 'kilo',
@@ -1197,7 +1197,7 @@ async function viewSchedRoute(req, env, json) {
     if (!(e.viewers || []).includes(uid) && !memberAdmin(me)) return json({ error: '你沒有這份排班的檢視權限，請洽管理員' }, 403);
     const dr = await fsGet(tok, `events/${eid}/admin/draw`), d = dr ? fobj(dr.fields) : {};
     const resp = (await fsList(tok, `events/${eid}/responses`)).map(x => ({ id: x.id, name: x.name, attend: x.attend, rosterId: x.rosterId || '', createdAt: x.createdAt || 0 }));
-    const roster = (await fsList(tok, 'member_roster')).map(x => ({ id: x.id, name: x.name, nameRaw: x.nameRaw || '', cert: x.cert || '', position: x.position || '', rowIndex: x.rowIndex ?? null, serial: x.serial ?? null,
+    const roster = (await fsList(tok, 'member_roster')).filter(x => !x.left).map(x => ({ id: x.id, name: x.name, nameRaw: x.nameRaw || '', cert: x.cert || '', position: x.position || '', rowIndex: x.rowIndex ?? null, serial: x.serial ?? null,
       idCard: 'X' + (String(x.idCard || '').toUpperCase()[1] || '') }));   // 只給性別碼，不給身分證
     const self = (await fsList(tok, `events/${eid}/admin`)).filter(x => x.id.startsWith('self_')).map(x => ({ key: x.key, days: x.days || {} }));
     return json({ ok: true, event: { id: eid, title: e.title || '', date: e.date || '', schedPublic: !!e.schedPublic },

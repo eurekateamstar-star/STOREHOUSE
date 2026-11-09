@@ -31,6 +31,7 @@ service cloud.firestore {
       let r = get(rosterPath(d.rosterId)).data;
       return d.get('verifiedBy', '') == 'roster'
         && r.get('createdBySelf', false) != true
+        && r.get('left', false) != true          // 退團名單不能自動開通
         && r.get('idCard', '') == d.get('idCard', '')
         && r.get('birthday', '') == d.get('birthday', '')
         && r.get('name', '') == cleanName(d.get('realName', ''))
