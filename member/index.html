@@ -3510,7 +3510,7 @@
           <button class="sbtn" id="sc-auto" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">🔀 排班</button>
           ${days.length && Object.keys(dt).length ? `<button class="sbtn" id="sc-pub" style="background:${e.schedPublic ? '#16a34a' : '#e5e7eb'};color:${e.schedPublic ? '#fff' : '#374151'};">${e.schedPublic ? '👁 已公開' : '🙈 未公開'}</button>` : ''}</div></div>
         ${days.length ? `<div class="sc-row"><b>統計表</b><div class="sc-acts"><button class="sbtn" id="sc-att" style="background:#7c3aed;color:#fff;">🛏 出勤住宿</button><button class="sbtn" id="sc-car" style="background:#0f766e;color:#fff;">🚐 座車</button><button class="sbtn" id="sc-meal" style="background:#ca8a04;color:#fff;">🍱 用餐</button></div></div>` : ''}
-        ${days.length && Object.keys(dt).length ? `<div class="sc-row sc-export"><b>匯出</b><div class="sc-acts"><button class="sbtn" id="sc-xlsx" style="background:#1f2430;color:#fff;">⬇ 排班 Excel</button><button class="sbtn" id="sc-shotall" style="background:#475569;color:#fff;">📷 全部存圖</button>${VIEW_ONLY ? '' : `<button class="sbtn" id="sc-share" style="background:#0ea5e9;color:#fff;">📤 分享${(e.viewers || []).length ? `（${e.viewers.length}）` : ''}</button>`}</div></div>` : ''}
+        ${days.length && Object.keys(dt).length ? `<div class="sc-row sc-export"><b>匯出</b><div class="sc-acts"><button class="sbtn" id="sc-xlsx" style="background:#1f2430;color:#fff;">🛡️ 保險名單 Excel</button><button class="sbtn" id="sc-shotall" style="background:#475569;color:#fff;">📷 全部存圖</button>${VIEW_ONLY ? '' : `<button class="sbtn" id="sc-share" style="background:#0ea5e9;color:#fff;">📤 分享${(e.viewers || []).length ? `（${e.viewers.length}）` : ''}</button>`}</div></div>` : ''}
       </div>`; })()}
       <details class="sc-help"><summary>ⓘ 使用說明</summary>前／中／後＝抽籤時段的值班日期；點下面的名字可以改成全程、自訂日期或不排班。每天把當天值班的人排成 轎前1～4、轎後1～6（約 ${sc.size || 5} 人一組，護理師、EMTP／EMT2、EMT1 平均分配；前一天同組的人盡量不換組）。<br>👆 點某天的名字 → 再點那天想去的組別（變成虛線框）就能換組。</details>
       <div class="sc-leg" style="margin-top:6px">${Object.entries(CAT_TXT).map(([c, t]) => `<span style="background:${CAT_BG[c]}">${t}</span>`).join('')}</div>
@@ -3602,7 +3602,7 @@
       if (v !== null) save({ info: { ...info, [d]: { ...(info[d] || {}), tag: v } } }, v ? '已標記' : '已清除');
     });
     document.querySelectorAll('[data-shot]').forEach(b => b.onclick = e2 => { e2.stopPropagation(); shotDay(b.dataset.shot); });
-    if ($('sc-xlsx')) $('sc-xlsx').onclick = () => exportSchedXlsx(eid);
+    if ($('sc-xlsx')) $('sc-xlsx').onclick = () => exportInsXlsx(eid);
     if ($('sc-shotall')) $('sc-shotall').onclick = () => shotAll();
     if ($('sc-pub')) $('sc-pub').onclick = async () => {
       const on = !e.schedPublic;
@@ -3612,6 +3612,35 @@
     if ($('sc-att')) $('sc-att').onclick = () => { attOpen = true; attBrush = null; renderAtt(eid); $('sheet').scrollTop = 0; };
     if ($('sc-meal')) $('sc-meal').onclick = () => { attOpen = true; mealOpen = true; renderMeal(eid); $('sheet').scrollTop = 0; };
     if ($('sc-car')) $('sc-car').onclick = () => { attOpen = true; carOpen = true; renderCar(eid); $('sheet').scrollTop = 0; };
+  }
+  // 保險名單：所有確定出團（出席調查「出席」）的人：姓名、出生年月日、身分證字號
+  async function exportInsXlsx(eid) {
+    try { await loadExcelJS(); } catch (err) { return toast('❌ 無法載入 Excel 元件'); }
+    const e = eventsCache.find(x => x.id === eid) || {}, sc = evSched[eid] || {}, ppl = Object.values(schedPeople(eid));
+    if (!ppl.length) return toast('還沒有確定出團的人');
+    const roc = new Date((sc.start || new Date().toISOString().slice(0, 10)) + 'T12:00:00').getFullYear() - 1911;
+    const rows = ppl.map(p => { const r = p.ro || {}, bd = /^(\d{4})-(\d{2})-(\d{2})$/.exec(r.birthday || '');
+      return { name: normName(r.name || p.name), bd: bd ? `${+bd[1] - 1911}.${bd[2]}.${bd[3]}` : (r.birthdayRaw || ''), bdW: bd ? `${bd[1]}/${bd[2]}/${bd[3]}` : '', id: normId(r.idCard || ''), ro: r }; })
+      .sort((a, b) => rosterOrder(a.ro, b.ro) || a.name.localeCompare(b.name, 'zh-Hant'));
+    const miss = rows.filter(x => !x.bd || !/^[A-Z][0-9A-Z]\d{8}$/.test(x.id));
+    const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('保險名單', { pageSetup: { orientation: 'portrait', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, horizontalCentered: true } });
+    const thin = { style: 'thin', color: { argb: 'FF555555' } }, border = { top: thin, left: thin, bottom: thin, right: thin }, font = (o = {}) => ({ name: '新細明體', size: 12, ...o });
+    ws.columns = [{ width: 7 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 16 }, { width: 18 }];
+    ws.mergeCells('A1:F1'); Object.assign(ws.getCell('A1'), { value: `${roc}年白沙屯拱天宮醫護團進香 保險名單`, font: font({ size: 16, bold: true }), alignment: { horizontal: 'center', vertical: 'middle' } }); ws.getRow(1).height = 28;
+    ws.mergeCells('A2:F2'); Object.assign(ws.getCell('A2'), { value: `${e.title || ''}　共 ${rows.length} 人　（${new Date().toLocaleDateString('zh-TW')} 匯出）`, font: font({ size: 10, color: { argb: 'FF666666' } }), alignment: { horizontal: 'center' } });
+    const H = ['序號', '姓名', '出生年月日(民國)', '出生年月日(西元)', '身分證字號', '備註'];
+    ws.getRow(3).values = H; ws.getRow(3).eachCell(c => { c.font = font({ bold: true }); c.border = border; c.alignment = { horizontal: 'center', vertical: 'middle' }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFDE9D9' } }; });
+    rows.forEach((x, i) => {
+      const bad = [!x.bd && '缺生日', !/^[A-Z][0-9A-Z]\d{8}$/.test(x.id) && '身分證缺漏或格式不符'].filter(Boolean).join('、');
+      const row = ws.addRow([i + 1, x.name, x.bd, x.bdW, x.id, bad]);
+      row.eachCell({ includeEmpty: true }, (c, n) => { c.border = border; c.font = font(n === 6 && bad ? { color: { argb: 'FFC00000' } } : {}); c.alignment = { horizontal: n === 6 ? 'left' : 'center', vertical: 'middle' }; });
+      ws.getCell(`E${row.number}`).numFmt = '@';
+      if (bad) row.eachCell({ includeEmpty: true }, c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF2CC' } }; });
+    });
+    const buf = await wb.xlsx.writeBuffer();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    a.download = `${roc}年進香保險名單_${rows.length}人.xlsx`; document.body.appendChild(a); a.click(); a.remove();
+    toast(miss.length ? `⚠️ 已下載，有 ${miss.length} 人資料不完整（黃底標示）` : `✅ 已下載保險名單 ${rows.length} 人`);
   }
   async function exportSchedXlsx(eid) {
     try { await loadExcelJS(); } catch (err) { return toast('❌ 無法載入 Excel 元件'); }
