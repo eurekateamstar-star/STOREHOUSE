@@ -4828,7 +4828,8 @@
   async function openShareCards() {
     $('sheet-body').innerHTML = `<h3>📤 分享圖文卡片</h3>
       <div style="font-size:13px;color:var(--sub);line-height:1.7;margin:4px 0 10px">上傳一張圖做成 LINE 卡片。按「分享」選好友或群組就能傳出去；收到的人按卡片下面的「➦ 分享給親友」可以再轉傳，<b>不會用到官方帳號推播額度</b>。</div>
-      <div class="card" style="padding:14px;margin-bottom:14px">
+      <div id="sc-list">讀取中…</div>
+      <details class="card" style="padding:12px 14px;margin-top:16px"><summary style="font-weight:800;cursor:pointer">＋ 自己上傳一張新卡片</summary><div style="margin-top:10px">
         <label class="sbtn" style="background:#1e3a5f;color:#fff;display:inline-block;cursor:pointer">🖼 選擇圖片<input type="file" id="sc-file" accept="image/*" style="display:none"></label>
         <span id="sc-fname" style="font-size:13px;color:var(--sub);margin-left:8px">（直的、橫的都可以）</span>
         <input class="inp" id="sc-title" maxlength="60" placeholder="標題（可不填）" style="width:100%;margin-top:10px;box-sizing:border-box">
@@ -4837,8 +4838,12 @@
         <input class="inp" id="sc-url" placeholder="按鈕連結（預設：加入官方帳號 @393geitc）" style="width:100%;margin-top:8px;box-sizing:border-box">
         <button class="sbtn" id="sc-add" style="background:#06c755;color:#fff;margin-top:10px">＋ 建立卡片</button>
         <span id="sc-amsg" style="font-size:13px;color:var(--sub);margin-left:8px"></span>
-      </div>
-      <div id="sc-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px">讀取中…</div>`;
+      </div></details>
+      <style>.scr{display:flex;gap:12px;align-items:center;background:#fff;border:1px solid #efe4e0;border-radius:16px;padding:10px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+        .scr img{width:96px;height:96px;object-fit:cover;border-radius:12px;flex:none;background:#f3efed}.scr .t{font-weight:900;font-size:15.5px;line-height:1.35}.scr .d{font-size:12.5px;color:var(--sub);margin-top:3px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+        .scr .go{display:block;width:100%;margin-top:8px;border:none;border-radius:12px;padding:10px;background:#06c755;color:#fff;font:inherit;font-weight:900;font-size:15px;cursor:pointer}
+        .scr.hero{flex-direction:column;align-items:stretch;padding:12px;border:2px solid #fca5a5;background:#fff7f5}.scr.hero>img{width:100%;height:auto;aspect-ratio:1}.sc6{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.sc6 img{width:100%!important;height:auto!important;aspect-ratio:1;border-radius:10px}.scr.hero .go{padding:13px;font-size:17px}
+        .sc-h{font-size:13px;font-weight:900;color:var(--sub);margin:14px 2px 8px}</style>`;
     $('sheet-bg').style.display = 'block'; $('sheet').style.display = 'block'; document.body.classList.add('sheet-open'); $('sheet').scrollTop = 0;
     let file = null;
     $('sc-file').onchange = e => { file = e.target.files[0] || null; $('sc-fname').textContent = file ? file.name : '（直的、橫的都可以）'; };
@@ -4857,14 +4862,20 @@
   let scCards = [];
   async function scLoad() {
     try { scCards = (await scApi({ action: 'list' })).cards || []; } catch (e) { $('sc-list').textContent = '❌ ' + (e.message || e); return; }
-    if (!scCards.length) { $('sc-list').innerHTML = '<div style="color:var(--sub);font-size:14px">還沒有卡片，先上傳一張吧。</div>'; return; }
-    $('sc-list').innerHTML = scCards.map(c => `<div>${shareCardHtml(c)}
-      <div style="display:flex;gap:6px;margin-top:8px"><button class="sbtn" data-scs="${c.id}" style="flex:1;background:#06c755;color:#fff">📤 分享</button>
-      <button class="sbtn" data-scl="${c.id}" style="flex:1">🔗 複製連結</button>${c.builtin ? '' : `<button class="sbtn" data-scd="${c.id}" style="color:#dc2626">🗑</button>`}</div>${c.builtin ? '<div style="font-size:12px;color:var(--sub);margin-top:4px">📘 內建衛教小卡</div>' : ''}</div>`).join('');
+    // 6 張衛教小卡只留「一次分享 6 張」那一張；不顯示複製連結
+    const L = scCards.filter(c => !(c.builtin && /^edu-/.test(c.id) && c.id !== 'edu-all'));
+    if (!L.length) { $('sc-list').innerHTML = '<div style="color:var(--sub);font-size:14px">還沒有卡片，先上傳一張吧。</div>'; return; }
+    const img = c => c.imgUrl || AUTH_URL + '/c/' + c.id + '.jpg';
+    const six = scCards.filter(c => c.builtin && /^edu-/.test(c.id) && c.id !== 'edu-all');
+    const row = (c, hero) => `<div class="scr ${hero ? 'hero' : ''}">${hero && six.length ? `<div class="sc6">${six.slice(0, 6).map(x => `<img src="${esc(img(x))}" alt="">`).join('')}</div>` : `<img src="${esc(img(c))}" alt="">`}
+      <div style="flex:1;min-width:0"><div class="t">${esc(c.title || c.alt || '圖文卡片')}</div>${c.text ? `<div class="d">${esc(c.text)}</div>` : ''}
+      <div style="display:flex;gap:6px;align-items:center"><button class="go" data-scs="${c.id}">📤 分享</button>${c.builtin ? '' : `<button class="sbtn" data-scd="${c.id}" style="color:#dc2626;margin-top:8px">🗑</button>`}</div></div></div>`;
+    const edu = L.find(c => c.id === 'edu-all'), bi = L.filter(c => c.builtin && c.id !== 'edu-all'), mine = L.filter(c => !c.builtin);
+    $('sc-list').innerHTML = (edu ? `<div class="sc-h">🩹 衛教小卡（6 張一次分享）</div>${row(edu, true)}` : '')
+      + (bi.length ? `<div class="sc-h">📘 其他內建卡片</div>${bi.map(c => row(c)).join('')}` : '')
+      + (mine.length ? `<div class="sc-h">🖼 自己上傳的</div>${mine.map(c => row(c)).join('')}` : '');
     const byId = id => scCards.find(x => x.id === id);
     document.querySelectorAll('[data-scs]').forEach(b => b.onclick = () => doShare(byId(b.dataset.scs)));
-    document.querySelectorAll('[data-scl]').forEach(b => b.onclick = async () => {
-      const u = shareLink(b.dataset.scl); try { await navigator.clipboard.writeText(u); toast('已複製連結'); } catch (e) { dialog({ title: '分享連結', msg: u, okText: '知道了' }); } });
     document.querySelectorAll('[data-scd]').forEach(b => b.onclick = async () => {
       if (!await dialog({ title: '刪除這張卡片？', msg: '已經傳出去的卡片圖片也會看不到。', okText: '刪除', danger: true })) return;
       try { await scApi({ action: 'del', id: b.dataset.scd }); toast('已刪除'); scLoad(); } catch (e) { toast('❌ ' + e.message); } });
