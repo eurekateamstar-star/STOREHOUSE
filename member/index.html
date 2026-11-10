@@ -3716,7 +3716,7 @@
   // ===================== 出勤／住宿表（每人每天）=====================
   // 出勤代號：2 輪班（排進轎前／轎後自動帶入）、1 指揮車、3 指揮官、4 機車機動組、5 媽祖車、6 物資車、D 醫師、a 復健組、b 教官醫師；住宿：7 男、8 女
   const W_CODES = [['2', '隊伍輪班'], ['1', '指揮車'], ['3', '指揮官'], ['4', '機車機動組'], ['5', '媽祖車駕駛'], ['6', '物資車駕駛'], ['D', '醫師'], ['a', '其他'], ['b', '教官團']];
-  const W_SHORT = { '2': '輪班', '1': '指揮車', '3': '指揮官', '4': '機車', '5': '媽祖車', '6': '物資車', D: '醫師', a: '其他', b: '教官團' };
+  const W_SHORT = { '2': '輪班', '1': '指車', '3': '指官', '4': '機車', '5': '媽祖', '6': '物資', D: '醫師', a: '其他', b: '教官' };   // 表格裡一律兩個字
   const wTxt = c => W_SHORT[c] || c;
   const S_CODES = [['7', '住宿(男)'], ['8', '住宿(女)']];
   const POS_ORDER = ['團長', '秘書長', '指揮官', '教官團', '顧問', '行政組', '物資盤點組', '器材組', '後勤補給組', '媒體文宣紀錄組', '車輛組', '機車組'];
@@ -3752,7 +3752,7 @@
         .at thead th{position:sticky;top:0;background:#fdf6f4;z-index:2;font-size:12px;padding:4px 6px}.at thead tr:first-child th{height:44px;line-height:1.2}.at thead tr:nth-child(2) th{top:44px;height:30px;font-size:10px;color:var(--sub);line-height:1.15}
         .at .nm{position:sticky;left:0;background:#fff;z-index:1;text-align:left;padding:0 6px;width:84px;font-weight:700;text-overflow:ellipsis}.at thead .nm{z-index:3;background:#fdf6f4}
         .at .nm.l4{font-size:11px;letter-spacing:-.3px}.at .nm i{font-style:normal;display:inline-block;width:22px;color:#9a8f8b;font-size:11px;font-weight:700}
-        .at td.c{cursor:pointer;font-weight:800;-webkit-tap-highlight-color:transparent;user-select:none}.at td.c.au{font-weight:800}.at td.c[data-af=w]{font-size:13.5px;letter-spacing:-.3px}.at td.c.sv{color:#1d4ed8}.at td.c.s8{color:#be185d}
+        .at td.c{cursor:pointer;font-weight:800;-webkit-tap-highlight-color:transparent;user-select:none}.at td.c.au{font-weight:800}.at td.c[data-af=w]{font-size:15px}.at td.c.sv{color:#1d4ed8}.at td.c.s8{color:#be185d}
         .eq-ov{position:fixed;inset:0;z-index:9500;background:rgba(31,36,48,.45);display:flex;align-items:center;justify-content:center;padding:16px}
         .eq-box{background:#fff;border-radius:20px;padding:18px;width:100%;max-width:360px;max-height:92vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.25)}
         .eq-t{font-weight:900;font-size:17px;margin-bottom:10px}.eq-btn{display:flex;gap:8px;margin-top:6px}.eq-btn>*{flex:1;text-align:center;border:none;border-radius:12px;padding:11px;font:inherit;font-size:15px;font-weight:900;cursor:pointer}#eq-no{background:#f1f5f9;color:#334155}
@@ -3923,6 +3923,7 @@
   const CAR_CODES = [['9', '中巴'], ['1', '指揮車'], ['4', '機車'], ['5', '媽祖車'], ['6', '物資車']];
   const CAR_BG = { '9': '#e0f2fe', '1': '#dbeafe', '4': '#e9d5ff', '5': '#fecaca', '6': '#fed7aa' };
   const CAR_T = Object.fromEntries(CAR_CODES);
+  const CAR_S = { '9': '中巴', '1': '指揮', '4': '機車', '5': '媽祖', '6': '物資' };   // 表格格子用兩個字
   const CAR_SLOTS = [['o', '出門'], ['y', '白天'], ['h', '回家']];
   function carVals(eid) {   // get(k, d) → { o, y, h, auto:{o,y,h} }；自動規則：有出勤才坐車；開車的人坐自己的車，其他人坐中巴；前一晚有住宿才「出門」、當晚住宿才「回家」
     const sc = evSched[eid] || {}, car = sc.car || {}, ga = attVals(eid), self = evSelf[eid] || {};
@@ -4166,8 +4167,8 @@
         .at thead th{position:sticky;top:0;background:#fdf6f4;z-index:2;font-size:12px;padding:2px}.at thead tr:first-child th{height:40px;line-height:1.2}.at thead tr:nth-child(2) th{top:40px;height:24px;font-size:10px;color:var(--sub)}
         .at .nm{position:sticky;left:0;background:#fff;z-index:1;text-align:left;padding:0 6px;font-weight:700;text-overflow:ellipsis}.at thead .nm{z-index:3;background:#fdf6f4}
         .at .nm i{font-style:normal;display:inline-block;width:20px;color:#9a8f8b;font-size:10px;font-weight:700}.at .nm.l4{font-size:11px;letter-spacing:-.3px}
-        .at td.ro{color:#374151;font-size:12.5px;font-weight:700;background:#fcfaf9}.at td.ro.m{color:#1d4ed8}.at td.ro.f{color:#be185d}
-        .at td.cv{cursor:pointer;font-weight:800;font-size:13px;letter-spacing:-.3px;-webkit-tap-highlight-color:transparent;user-select:none}.at td.cv.au{font-weight:600;opacity:.85}
+        .at td.ro{color:#374151;font-size:14.5px;font-weight:700;background:#fcfaf9}.at td.ro.m{color:#1d4ed8}.at td.ro.f{color:#be185d}
+        .at td.cv{cursor:pointer;font-weight:800;font-size:15px;-webkit-tap-highlight-color:transparent;user-select:none}.at td.cv.au{font-weight:600;opacity:.85}
         .at td.dl{border-left:2px solid #e5d5d0}
         .at tr.sum td,.at tr.sum th{background:#fbf7f6;font-weight:800;font-size:12px}
         .eq-ov{position:fixed;inset:0;z-index:9500;background:rgba(31,36,48,.45);display:flex;align-items:center;justify-content:center;padding:16px}
@@ -4186,7 +4187,7 @@
         <tr><th class="nm" rowspan="2">姓名</th>${days.map(d => `<th colspan="5" class="dl" data-cday="${d}" style="cursor:pointer">${dLabel(d)}${(info[d] || {}).tag || (info[d] || {}).place ? `<br><span style="font-size:10px"><span style="color:#1d4ed8">${esc((info[d] || {}).tag || '')}</span> <span style="color:#9a3412">${esc((info[d] || {}).place || '')}</span></span>` : ''}</th>`).join('')}</tr>
         <tr>${days.map(() => '<th class="dl">出勤</th><th>宿</th><th>出門</th><th>白天</th><th>回家</th>').join('')}</tr></thead><tbody>
         ${list.map((p, i) => `<tr><th class="nm${p.name.length >= 4 ? ' l4' : ''}" style="background:${CAT_BG[p.cat]}"><i>${i + 1}</i>${esc(p.name)}</th>${days.map(d => { const a = ga(p.key, d), c = gc(p.key, d);
-          return `<td class="ro dl">${esc(wTxt(a.w))}</td><td class="ro ${a.s === '7' ? 'm' : a.s === '8' ? 'f' : ''}">${a.s === '7' ? '男' : a.s === '8' ? '女' : ''}</td>` + CAR_SLOTS.map(([f]) => `<td class="cv ${c.auto[f] ? 'au' : ''} ${c.self[f] ? 'sf' : ''}" data-ck="${esc(p.key)}" data-cd="${d}" data-cf="${f}" style="${c[f] ? 'background:' + (CAR_BG[c[f]] || '#f1f5f9') : ''}">${esc(CAR_T[c[f]] || c[f])}</td>`).join(''); }).join('')}</tr>`).join('')}
+          return `<td class="ro dl">${esc(wTxt(a.w))}</td><td class="ro ${a.s === '7' ? 'm' : a.s === '8' ? 'f' : ''}">${a.s === '7' ? '男' : a.s === '8' ? '女' : ''}</td>` + CAR_SLOTS.map(([f]) => `<td class="cv ${c.auto[f] ? 'au' : ''} ${c.self[f] ? 'sf' : ''}" data-ck="${esc(p.key)}" data-cd="${d}" data-cf="${f}" style="${c[f] ? 'background:' + (CAR_BG[c[f]] || '#f1f5f9') : ''}">${esc(CAR_S[c[f]] || c[f])}</td>`).join(''); }).join('')}</tr>`).join('')}
         ${CAR_CODES.map(([code, t]) => `<tr class="sum"><th class="nm">坐${t}人數</th>${days.map(d => `<td class="dl"></td><td></td>${CAR_SLOTS.map(([f]) => `<td>${cnt(d, f, code) || ''}</td>`).join('')}`).join('')}</tr>`).join('')}
       </tbody></table></div>
       <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button class="sbtn" id="car-xlsx" style="background:#1f2430;color:#fff;">⬇ 下載出勤＋座車統計 Excel</button></div>`;
@@ -4198,7 +4199,7 @@
     document.querySelectorAll('[data-cday]').forEach(th => th.onclick = () => {
       const d = th.dataset.cday, I = info[d] || {}, g2 = carVals(eid);
       const on = list.filter(p => { const a = ga(p.key, d), c = g2(p.key, d); return a.w || c.o || c.y || c.h; });
-      const cell = v => v ? `<td style="background:${CAR_BG[v] || '#f1f5f9'}">${esc(CAR_T[v] || v)}</td>` : '<td></td>';
+      const cell = v => v ? `<td style="background:${CAR_BG[v] || '#f1f5f9'}">${esc(CAR_S[v] || v)}</td>` : '<td></td>';
       const sum = CAR_CODES.map(([code, t]) => { const n = CAR_SLOTS.map(([f]) => on.filter(p => g2(p.key, d)[f] === code).length);
         return n.some(x => x) ? `<tr><th style="text-align:left;padding-left:6px;background:${CAR_BG[code]}">${t}</th>${n.map(x => `<td>${x || ''}</td>`).join('')}</tr>` : ''; }).join('');
       const ov = document.createElement('div'); ov.className = 'eq-ov';
@@ -4224,7 +4225,7 @@
       if (c === null) return;
       const car = JSON.parse(JSON.stringify((evSched[eid] || {}).car || {})); car[k] = car[k] || {}; car[k][d] = car[k][d] || {};
       car[k][d][f] = c === '' ? 'x' : c; evSched[eid] = { ...(evSched[eid] || {}), car };
-      td.textContent = CAR_T[c] || ''; td.classList.remove('au'); td.style.background = c ? (CAR_BG[c] || '') : '';
+      td.textContent = CAR_S[c] || ''; td.classList.remove('au'); td.style.background = c ? (CAR_BG[c] || '') : '';
       clearTimeout(pending); pending = setTimeout(saveQuiet, 500);
     });
   }
