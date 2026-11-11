@@ -96,6 +96,8 @@ export default {
     if (path === '/whtake') return whTakeRoute(req, env, json);
     if (path === '/edu-hit') return eduHitRoute(req, env, json);
     if (path === '/edu-stats') return eduStatsRoute(req, env, json);
+    if (path === '/usage') return usageRoute(req, env, json);
+    if (path === '/usage-stats') return usageStatsRoute(req, env, json);
     if (path === '/wh-sched') return whSchedRoute(req, env, json);
 
     try {
@@ -1267,5 +1269,62 @@ async function eduStatsRoute(req, env, json) {
     const tok = await saToken(env);
     const [a, d] = await Promise.all([fsGet(tok, 'stats/edu'), fsGet(tok, 'stats/edu_daily')]);
     return json({ ok: true, total: a ? fobj(a.fields) : {}, daily: d ? fobj(d.fields) : {} });
+  } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
+}
+
+// ===== 使用分析（只有開發者看得到）=====
+// 網頁離開時送一次：{ p: 頁面, v: 開啟次數, q: 今天第一次開, f: { 功能: 次數 }, t: Firebase idToken（可省略＝匿名） }
+// 存在 usage_daily/{YYYYMMDD}（每天一份）與 usage_meta/last（每人最後使用時間、姓名）；前端讀不到，只能透過 /usage-stats
+const USAGE_PAGES = ['member', 'record', 'warehouse', 'attend', 'edu', 'guardian', 'join', 'journey', 'share'];
+let DEV_CACHE = null;
+async function devUid(tok) { if (DEV_CACHE && Date.now() - DEV_CACHE.at < 600e3) return DEV_CACHE.uid;
+  const d = await fsGet(tok, 'meta/developer'); DEV_CACHE = { uid: d ? (fobj(d.fields).uid || '') : '', at: Date.now() }; return DEV_CACHE.uid; }
+const fq = (...a) => a.map(x => '`' + String(x).replace(/[`\\]/g, '') + '`').join('.');
+async function usageRoute(req, env, json) {
+  try {
+    const b = JSON.parse(await req.text() || '{}');
+    const pg = String(b.p || ''); if (!USAGE_PAGES.includes(pg)) return json({ ok: false }, 400);
+    const v = Math.min(5, Math.max(0, b.v | 0)), q = b.q ? 1 : 0;
+    const f = Object.entries(b.f && typeof b.f === 'object' ? b.f : {}).filter(([k, n]) => /^[a-z][a-z0-9_]{0,39}$/.test(k) && n > 0).slice(0, 40).map(([k, n]) => [k, Math.min(50, n | 0)]);
+    if (!v && !f.length) return json({ ok: true });
+    const tok = await saToken(env);
+    let uid = '', name = '';
+    if (typeof b.t === 'string' && b.t.split('.').length === 3) {
+      try { const id = uidOfToken(b.t); const u = await fsUser(b.t, id); if (u && u.status === 'approved') { uid = id; name = u.realName || ''; } } catch (e) {}
+      if (uid && uid === await devUid(tok)) return json({ ok: true, skip: 'dev' });   // 開發者自己不算
+    }
+    const now = Date.now(), tw = new Date(now + 8 * 3600e3), day = tw.toISOString().slice(0, 10).replace(/-/g, ''), hh = 'h' + String(tw.getUTCHours()).padStart(2, '0');
+    const acts = f.reduce((a, [, n]) => a + n, 0);
+    const inc = (path, n) => ({ fieldPath: path, increment: { integerValue: String(n) } });
+    const T = [];
+    if (v) T.push(inc(fq('p', pg), v), inc(fq('h', hh), v)); if (q) T.push(inc(fq('q', pg), 1));
+    f.forEach(([k, n]) => T.push(inc(fq('f', k), n)));
+    if (!uid) { if (v) T.push(inc(fq('anon', pg), v)); }
+    else { if (v) T.push(inc(fq('u', uid, 'v'), v), inc(fq('u', uid, 'pg_' + pg), v)); if (acts) T.push(inc(fq('u', uid, 'a'), acts)); f.forEach(([k, n]) => T.push(inc(fq('u', uid, k), n))); }
+    const D = n => `projects/${PROJECT_ID}/databases/(default)/documents/${n}`;
+    const writes = [{ transform: { document: D('usage_daily/' + day), fieldTransforms: T } }];
+    if (uid) writes.push({ update: { name: D('usage_meta/last'), fields: { n: { mapValue: { fields: { [uid]: { stringValue: name } } } } } }, updateMask: { fieldPaths: [fq('n', uid)] },
+      updateTransforms: [{ fieldPath: fq('t', uid), maximum: { integerValue: String(now) } }] });
+    let r = await fetch(`${FS}:commit`, { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify({ writes }) });
+    if (!r.ok && (r.status === 409 || r.status === 503 || r.status === 429)) { await new Promise(x => setTimeout(x, 400)); r = await fetch(`${FS}:commit`, { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify({ writes }) }); }
+    return json({ ok: r.ok });
+  } catch (e) { return json({ ok: false }, 500); }
+}
+async function usageStatsRoute(req, env, json) {
+  try {
+    const { idToken, days } = await req.json();
+    if (!idToken) return json({ error: 'missing' }, 400);
+    const uid = uidOfToken(idToken); const me = await fsUser(idToken, uid);
+    const tok = await saToken(env);
+    if (!me || uid !== await devUid(tok)) return json({ error: '只有開發者可以看使用分析' }, 403);
+    const N = Math.min(92, Math.max(1, days | 0 || 30)), ids = [];
+    for (let i = 0; i < N; i++) ids.push(new Date(Date.now() + 8 * 3600e3 - i * 864e5).toISOString().slice(0, 10).replace(/-/g, ''));
+    const D = n => `projects/${PROJECT_ID}/databases/(default)/documents/${n}`;
+    const bg = await fetch(`${FS}:batchGet`, { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify({ documents: [...ids.map(d => D('usage_daily/' + d)), D('usage_meta/last')] }) });
+    if (!bg.ok) throw new Error('read ' + bg.status);
+    const out = {}; let last = {};
+    for (const x of await bg.json()) { if (!x.found) continue; const id = x.found.name.split('/').pop(), o = fobj(x.found.fields); if (id === 'last') last = o; else out[id] = o; }
+    const users = (await fsList(tok, 'users')).filter(u => u.status === 'approved' && u.id !== uid).map(u => ({ id: u.id, name: u.realName || u.displayName || '' }));
+    return json({ ok: true, days: ids, daily: out, last, users });
   } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
 }

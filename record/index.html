@@ -685,7 +685,11 @@
       #userSheetModal .modal-card { max-height: 85vh; overflow-y: auto; }
     </style>
 
-  </head>
+  <script src="/usage.js" data-page="record"></script>
+<script>window.bstUsage && bstUsage.wrap({ finalSubmit: 'rec_submit', saveDraft: 'rec_draft', openDrafts: 'rec_drafts', resumeDraft: 'rec_resume', getGPS: 'rec_gps', handleImageUpload: 'rec_photo',
+  confirmInjury: 'rec_injury', showPreview: 'rec_preview', rpToImage: 'rec_image', openAdminConsole: 'adm_console', openDetailRecord: 'adm_rec_detail', openDetailById: 'adm_rec_detail',
+  setMapScope: 'adm_map', setStatsYear: 'adm_stats', switchConsoleTab: t => 'adm_ctab_' + String(t || '').replace(/[^a-z0-9_]/gi, '').toLowerCase().slice(0, 20), renderViewerPanel: 'viewer_panel' });</script>
+</head>
   <body>
 
   <!-- ================= ★ 登入與審核攔截畫面 ★ ================= -->
@@ -1267,6 +1271,7 @@
     // ===== Firebase 身分驗證：LINE → 驗證伺服器（Cloudflare）→ Firebase，資料庫規則靠這個認人 =====
     const AUTH_URL = 'https://bst-auth.eurekateamstar.workers.dev';   // Cloudflare Worker 網址
     const auth = initializeAuth(app, { persistence: (/iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) ? [browserLocalPersistence, inMemoryPersistence] : [indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence] });   // iPhone 的 LINE 從背景回來時 IndexedDB 常會卡死 → iPhone 改用 localStorage
+    try { window.bstUsage && bstUsage.token(() => auth.currentUser && auth.currentUser.getIdToken()); } catch (e) {}   // 使用分析：知道是誰
     const liffUid = () => { try { const t = liff.getDecodedIDToken(); return (t && t.sub) || null; } catch (e) { return null; } };
     let fbAuthError = '';
     async function fbSignIn(uid) {

@@ -789,6 +789,10 @@
         .modal [style*="background:#000"],.modal [style*="background: #000"]{background:var(--soft) !important;}
         [style*="border:1px solid rgba(255,255,255"],[style*="border: 1px solid rgba(255, 255, 255"]{border-color:#ebe6e3 !important;}
     </style>
+<script src="/usage.js" data-page="warehouse"></script>
+<script>window.bstUsage && bstUsage.wrap({ openScanner: m => 'wh_scan_' + String(m || '').replace(/[^a-z]/g, ''), openMapQuery: 'wh_query', openLogsView: 'wh_logs', openEditItemModal: 'wh_edit_item',
+  saveEditingItem: 'wh_save_item', openKitEditor: 'wh_kit_edit', openLotsEditor: 'wh_lots_edit', openUsersView: 'wh_users', openHelperAdmin: 'wh_helper', openExpiryList: 'wh_expiry',
+  startConsumableBatchOut: 'wh_batch_out', openBorrowerModal: 'wh_borrower', confirmBorrowerAndScan: 'wh_borrower_scan' });</script>
 </head>
 <body>
 
@@ -1365,6 +1369,7 @@
     // ===== Firebase 身分驗證：LINE → 驗證伺服器（Cloudflare）→ Firebase，資料庫規則靠這個認人 =====
     const AUTH_URL = 'https://bst-auth.eurekateamstar.workers.dev';   // Cloudflare Worker 網址
     const auth = initializeAuth(app, { persistence: (/iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) ? [browserLocalPersistence, inMemoryPersistence] : [indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence] });   // iPhone 的 LINE 從背景回來時 IndexedDB 常會卡死 → iPhone 改用 localStorage
+    try { window.bstUsage && bstUsage.token(() => auth.currentUser && auth.currentUser.getIdToken()); } catch (e) {}   // 使用分析：知道是誰
     const liffUid = () => { try { const t = liff.getDecodedIDToken(); return (t && t.sub) || null; } catch (e) { return null; } };
     let fbAuthError = '';
     async function fbSignIn(uid) {

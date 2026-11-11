@@ -425,6 +425,18 @@
     padding: 11px 18px; border-radius: 14px; font-size: 14px; font-weight: 700; z-index: 99; opacity: 0; transition: opacity 0.25s; pointer-events: none; white-space: pre-line; text-align: center; }
   .toast.show { opacity: 1; }
   .hidden { display: none !important; }
+  .us-card{padding:16px}.us-seg{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.us-seg button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;font:inherit;font-size:13px;font-weight:800;color:var(--sub)}.us-seg button.on{background:var(--primary);color:#fff;border-color:var(--primary)}
+  .us-tip{font-size:12px;color:var(--sub);background:#f8fafc;border-radius:10px;padding:8px 10px;margin-bottom:12px;line-height:1.6}.us-empty{padding:18px;text-align:center;color:var(--sub);font-size:13px}
+  .us-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.us-kpi div{background:#fff7f5;border-radius:14px;padding:10px 6px;text-align:center}.us-kpi b{display:block;font-size:24px;color:var(--primary)}.us-kpi span{font-size:11.5px;color:var(--sub);font-weight:700}
+  @media(max-width:520px){.us-kpi{grid-template-columns:repeat(2,1fr)}}
+  .us-h{font-size:15px;font-weight:900;margin:18px 0 8px}.us-h small{font-size:11.5px;color:var(--sub);font-weight:700;margin-left:6px}.us-lg{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:-1px;margin:0 3px 0 6px}.us-lg.u{background:var(--primary)}.us-lg.o{background:#fcd7cf}
+  .us-bars{display:flex;align-items:flex-end;gap:2px;height:130px;padding-bottom:16px;border-bottom:1px solid var(--line)}.us-b{flex:1;height:100%;position:relative}.us-b i,.us-b b{position:absolute;left:0;right:0;bottom:0;border-radius:3px 3px 0 0}.us-b i{background:#fcd7cf}.us-b b{background:linear-gradient(180deg,var(--accent),var(--primary));left:12%;right:12%}.us-b span{position:absolute;bottom:-16px;left:-4px;right:-4px;text-align:center;font-size:9.5px;color:var(--sub)}
+  .us-r{display:grid;grid-template-columns:minmax(90px,38%) 1fr 42px;align-items:center;gap:8px;font-size:13px;padding:3px 0}.us-r span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.us-r div{height:12px;background:#f3f4f6;border-radius:6px;overflow:hidden}.us-r i{display:block;height:100%;background:linear-gradient(90deg,var(--primary),var(--accent));border-radius:6px}.us-r b{text-align:right}
+  .us-hr{display:flex;align-items:flex-end;gap:2px;height:90px;padding-bottom:16px}.us-hr div{flex:1;height:100%;position:relative}.us-hr i{position:absolute;left:0;right:0;bottom:0;background:var(--accent);border-radius:3px 3px 0 0}.us-hr span{position:absolute;bottom:-16px;left:-6px;right:-6px;text-align:center;font-size:10px;color:var(--sub)}
+  .us-idle{display:flex;flex-wrap:wrap;gap:6px}.us-idle span{background:#fef3c7;border-radius:10px;padding:5px 9px;font-size:13px;font-weight:800}.us-idle small{display:block;font-size:10.5px;color:#92400e;font-weight:700}
+  .us-tbl{font-size:13px;border:1px solid var(--line);border-radius:12px;overflow:hidden}.us-tr{display:grid;grid-template-columns:1.1fr 1fr .5fr .5fr 2.2fr;gap:6px;padding:7px 10px;border-top:1px solid var(--line);align-items:center}.us-th{background:#f8fafc;font-weight:900;color:var(--sub);border-top:none;font-size:12px}.us-tf{font-size:12px;color:var(--sub)}
+  @media(max-width:520px){.us-tr{grid-template-columns:1fr 1fr .5fr .5fr}.us-tf{grid-column:1/-1}}
+
 .ro #sc-back,.ro .sc-set .sc-row:nth-child(3),.ro #at-auto,.ro #at-okself,.ro #car-okself,.ro #meal-okself,.ro #meal-test,.ro #meal-clear,.ro #sc-xlsx,.ro #at-xlsx,.ro #car-xlsx,.ro #m-nudge,.ro .sc-help,.ro .xtag.emp,.ro .xnote.emp,.ro .sf::after{display:none!important}
   body.viewer-only>*:not(#sheet):not(#toast):not(.pm-ov):not(.eq-ov):not(.dlg-bg):not(script):not(style){display:none!important}
   body.viewer-only #sheet{position:static!important;display:block!important;transform:none!important;max-height:none!important;height:auto!important;border-radius:0!important;box-shadow:none!important;margin:0 auto;max-width:1100px}
@@ -433,6 +445,7 @@
   .ro .dchip input{pointer-events:none}.ro .sf{box-shadow:none!important}.ro .at-tools{display:none!important}
   .ro #sheet-body::before{content:'👀 唯讀檢視・只能看不能改';display:block;text-align:center;font-size:12px;font-weight:800;color:#0369a1;background:#e0f2fe;border-radius:10px;padding:6px;margin-bottom:8px}
 </style>
+<script src="/usage.js" data-page="member"></script>
 </head>
 <body>
 <div class="wrap">
@@ -554,7 +567,11 @@
       <button class="tab on" data-tab="roster">📋 團員名冊<span class="c hidden" id="tab-roster-c"></span></button>
       <button class="tab" data-tab="users">👥 系統會員</button>
       <button class="tab" data-tab="events">📅 出席調查</button>
+      <button class="tab hidden" data-tab="usage" id="tab-btn-usage">📊 使用分析</button>
     </div>
+
+    <!-- 使用分析（只有開發者） -->
+    <div id="tab-usage" class="hidden"></div>
 
     <!-- 待審核 -->
     <div id="tab-pending" class="hidden">
@@ -664,6 +681,7 @@
       } catch (e) { return null; }
     };
     const auth = initializeAuth(app, { persistence: (/iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) ? [browserLocalPersistence, inMemoryPersistence] : [indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence] });   // iPhone 的 LINE 從背景回來時 IndexedDB 常會卡死 → iPhone 改用 localStorage
+    try { window.bstUsage && bstUsage.token(() => auth.currentUser && auth.currentUser.getIdToken()); } catch (e) {}   // 使用分析：知道是誰
     const liffUid = () => { try { const t = liff.getDecodedIDToken(); return (t && t.sub) || null; } catch (e) { return null; } };
     let fbAuthError = '';
     async function fbSignIn(uid) {
@@ -1098,11 +1116,84 @@
     { const n = rosterCache.filter(unseen).length; $('tab-roster-c').textContent = n; $('tab-roster-c').classList.toggle('hidden', !n); }
     $('tab-pending-c').textContent = pend.length + pendApps; $('tab-pending-c').classList.toggle('hidden', !(pend.length + pendApps));
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === curTab));
-    ['pending', 'roster', 'users', 'events', 'import'].forEach(k => $('tab-' + k).classList.toggle('hidden', k !== curTab));
+    if (curTab === 'usage' && !meDev()) curTab = 'roster';
+    $('tab-btn-usage').classList.toggle('hidden', !meDev());
+    ['pending', 'roster', 'users', 'events', 'import', 'usage'].forEach(k => $('tab-' + k).classList.toggle('hidden', k !== curTab));
+    if (curTab === 'usage') renderUsage();
     if (curTab === 'events') renderEvents();
     if (curTab === 'pending') renderPending();
     if (curTab === 'roster') renderRoster();
     if (curTab === 'users') renderUsers();
+  }
+
+  // ---------- 使用分析（只有開發者）----------
+  const US_PAGE = { member: '團員專區', record: '救護紀錄表', warehouse: '倉庫管理', attend: '出席調查表單', edu: '進香衛教', guardian: '全民醫護證', join: '新人申請', journey: '醫護足跡', share: '分享給親友' };
+  const US_F = { my_day: '我的一天', kit_scan: '掃包包', kit_check: '補包核對', lead_check: '小組長檢查', lead_save: '組長確認項目', bff_open: '打開冰友', lot_draw: '抽籤',
+    my_group: '我的組別', group_board: '組別看板', share_cards: '分享圖文卡片', share_send: '分享卡片送出', edit_profile: '編輯資料', edit_save: '儲存資料', chg_req: '申請改保險資料',
+    journey: '醫護足跡', attend_form: '出席調查填寫', sched_viewer: '唯讀排班', sched_day: '點排班日期', day_register: '登記吃飯坐車住宿',
+    adm_open: '進管理員', adm_share_sched: '公開排班', adm_ins_xlsx: '保險名單', adm_sched_xlsx: '排班 Excel', adm_att_xlsx: '出勤 Excel', adm_draw_xlsx: '抽籤 Excel',
+    adm_big_draw: '抽籤大螢幕', adm_draw: '開始抽籤', adm_nudge: '催登記', adm_approve: '審核通過', adm_app_review: '審查新人', adm_roster_open: '打開名冊資料', adm_city_map: '縣市分布', adm_event_form: '編輯出席調查',
+    adm_tab_pending: '分頁：待審核', adm_tab_roster: '分頁：名冊', adm_tab_users: '分頁：系統會員', adm_tab_events: '分頁：出席調查',
+    rec_submit: '送出救護紀錄', rec_draft: '暫存紀錄', rec_drafts: '看暫存', rec_resume: '繼續暫存', rec_gps: '定位', rec_photo: '上傳照片', rec_injury: '標記傷處', rec_preview: '預覽紀錄', rec_image: '紀錄存圖',
+    adm_console: '救護紀錄後台', adm_rec_detail: '看紀錄詳細', adm_map: '紀錄地圖', adm_stats: '紀錄統計', viewer_panel: '教官團檢視',
+    wh_scan_out: '倉庫出庫', wh_scan_in: '倉庫入庫', wh_scan_take: '領取器材', wh_scan_locate: '查位置', wh_scan_helper: '小幫手掃描', wh_scan_pickperson: '掃人', wh_query: '物品去處查詢', wh_logs: '進出紀錄',
+    wh_edit_item: '編輯物品', wh_save_item: '儲存物品', wh_kit_edit: '編輯包包內容', wh_lots_edit: '編輯批號', wh_users: '倉庫人員', wh_helper: '設定小幫手', wh_expiry: '效期清單', wh_batch_out: '耗材批次出庫',
+    wh_borrower: '選借用單位', wh_borrower_scan: '借用掃描', attend_submit: '送出出席調查', attend_uniform: '看團服尺寸', join_submit: '送出入團申請', guardian_save: '全民醫護證儲存', guardian_invite: '全民醫護證邀請', share_go: '分享給親友' };
+  const usLabel = k => US_F[k] || (k.startsWith('adm_ctab_') ? '紀錄後台分頁：' + k.slice(9) : k);
+  let usDays = 30, usData = null, usBusy = false, usErr = '';
+  async function loadUsage() {
+    usBusy = true; usErr = '';
+    try { const idToken = await auth.currentUser.getIdToken();
+      const r = await fetch(AUTH_URL + '/usage-stats', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, days: usDays }) });
+      const j = await r.json(); if (!r.ok || !j.ok) throw new Error(j.error || r.status); usData = j; }
+    catch (e) { usErr = String(e.message || e); }
+    usBusy = false; if (curTab === 'usage') renderUsage();
+  }
+  function renderUsage() {
+    const el = $('tab-usage');
+    if (!usData && !usBusy && !usErr) { loadUsage(); }
+    const seg = `<div class="us-seg">${[7, 30, 90].map(n => `<button class="${usDays === n ? 'on' : ''}" data-usd="${n}">近 ${n} 天</button>`).join('')}<button data-usr="1">↻ 重新整理</button></div>`;
+    if (!usData) { el.innerHTML = `<div class="card us-card">${seg}<div class="us-empty">${usErr ? '❌ ' + esc(usErr) : '讀取中…'}</div></div>`; bindUs(); return; }
+    const { days, daily, last, users } = usData, sum = (o, k) => Object.values(o || {}).reduce((a, b) => a + (+b || 0), 0);
+    const D = days.map(d => ({ d, o: daily[d] || {} })).reverse();
+    const today = daily[days[0]] || {}, uToday = Object.keys(today.u || {}).length, oToday = sum(today.p);
+    const P = {}, Q = {}, F = {}, H = {}, U = {};
+    D.forEach(({ o }) => { Object.entries(o.p || {}).forEach(([k, v]) => P[k] = (P[k] || 0) + v); Object.entries(o.q || {}).forEach(([k, v]) => Q[k] = (Q[k] || 0) + v);
+      Object.entries(o.f || {}).forEach(([k, v]) => F[k] = (F[k] || 0) + v); Object.entries(o.h || {}).forEach(([k, v]) => H[k] = (H[k] || 0) + v);
+      Object.entries(o.u || {}).forEach(([id, x]) => { const u = U[id] || (U[id] = { days: 0, v: 0, a: 0, f: {} }); u.days++; u.v += x.v || 0; u.a += x.a || 0;
+        Object.entries(x).forEach(([k, v]) => { if (k !== 'v' && k !== 'a' && !k.startsWith('pg_')) u.f[k] = (u.f[k] || 0) + v; }); }); });
+    const actDays = D.filter(x => x.o.u), avgU = actDays.length ? Math.round(actDays.reduce((a, x) => a + Object.keys(x.o.u).length, 0) / actDays.length) : 0;
+    const maxU = Math.max(1, ...D.map(x => Object.keys(x.o.u || {}).length)), maxO = Math.max(1, ...D.map(x => sum(x.o.p)));
+    const bars = D.map(({ d, o }) => { const nu = Object.keys(o.u || {}).length, no = sum(o.p), dd = +d.slice(6);
+      return `<div class="us-b" title="${d.slice(4, 6)}/${d.slice(6)}　${nu} 人・開 ${no} 次"><b style="height:${nu / maxU * 100}%"></b><span>${D.length <= 10 || dd % 5 === 1 ? dd : ''}</span></div>`; }).join('');
+    const rank = (o, lab, max = 30) => { const L = Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, max), m = Math.max(1, ...L.map(x => x[1]));
+      return L.length ? L.map(([k, v]) => `<div class="us-r"><span>${esc(lab(k))}</span><div><i style="width:${v / m * 100}%"></i></div><b>${v}</b></div>`).join('') : '<div class="us-empty">還沒有資料</div>'; };
+    const hrs = Array.from({ length: 24 }, (_, i) => H['h' + String(i).padStart(2, '0')] || 0), mh = Math.max(1, ...hrs);
+    const nameOf = id => (last.n || {})[id] || (users.find(u => u.id === id) || {}).name || '（未知）';
+    const now = Date.now(), ago = t => { if (!t) return '從沒用過'; const m = (now - t) / 60e3; return m < 60 ? Math.max(1, Math.round(m)) + ' 分鐘前' : m < 1440 ? Math.round(m / 60) + ' 小時前' : Math.round(m / 1440) + ' 天前'; };
+    const T = last.t || {};
+    const people = users.map(u => ({ id: u.id, name: u.name || nameOf(u.id), t: T[u.id] || 0, ...(U[u.id] || { days: 0, v: 0, a: 0, f: {} }) }))
+      .sort((a, b) => b.t - a.t || a.name.localeCompare(b.name, 'zh-Hant'));
+    const idle = people.filter(p => !p.t || now - p.t > 14 * 864e5);
+    const top = f => Object.entries(f).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${usLabel(k)} ${v}`).join('、');
+    el.innerHTML = `<div class="card us-card">${seg}
+      <div class="us-tip">🔒 只有開發者看得到・你自己的使用不算在內・每個人離開頁面時才會送出，所以會晚幾分鐘</div>
+      <div class="us-kpi"><div><b>${uToday}</b><span>今天使用人數</span></div><div><b>${oToday}</b><span>今天打開次數</span></div>
+        <div><b>${Object.keys(U).length}</b><span>近 ${usDays} 天用過的人</span></div><div><b>${avgU}</b><span>平均每天人數</span></div></div>
+      <div class="us-h">每天使用人數 <small>（手指按住或滑鼠移到長條上看當天打開次數）</small></div><div class="us-bars">${bars}</div>
+      <div class="us-h">各頁面打開次數 <small>（括號＝當天第一次開的人次）</small></div>${rank(P, k => `${US_PAGE[k] || k}（${Q[k] || 0}）`)}
+      <div class="us-h">功能使用排行</div>${rank(F, usLabel, 40)}
+      <div class="us-h">一天中哪個時段最多人用</div><div class="us-hr">${hrs.map((v, i) => `<div title="${i} 點：${v} 次"><i style="height:${v / mh * 100}%"></i><span>${i % 3 ? '' : i}</span></div>`).join('')}</div>
+      <div class="us-h">超過 14 天沒打開（${idle.length} 人）</div><div class="us-idle">${idle.length ? idle.map(p => `<span>${esc(p.name)}<small>${ago(p.t)}</small></span>`).join('') : '<div class="us-empty">大家最近都有用 👍</div>'}</div>
+      <div class="us-h">每個人（${people.length} 位系統會員）</div>
+      <div class="us-tbl"><div class="us-tr us-th"><span>姓名</span><span>最後使用</span><span>天數</span><span>開啟</span><span>常用功能</span></div>
+        ${people.map(p => `<div class="us-tr"><span><b>${esc(p.name)}</b></span><span>${ago(p.t)}</span><span>${p.days}</span><span>${p.v}</span><span class="us-tf">${esc(top(p.f)) || '—'}</span></div>`).join('')}</div>
+    </div>`;
+    bindUs();
+  }
+  function bindUs() {
+    document.querySelectorAll('#tab-usage [data-usd]').forEach(b => b.onclick = () => { usDays = +b.dataset.usd; usData = null; renderUsage(); });
+    document.querySelectorAll('#tab-usage [data-usr]').forEach(b => b.onclick = () => { usData = null; renderUsage(); });
   }
 
   // ---------- 待審核 ----------
@@ -5136,6 +5227,19 @@
       render();
     }, () => fail('無法連線到資料庫，請重新整理。'));
   }
+  // ===== 使用分析：記下大家用了哪些功能（只有開發者看得到統計）=====
+  { const TK = n => { try { window.bstUsage && bstUsage.track(n); } catch (e) {} };
+    const W = (fn, n) => function (...a) { const k = typeof n === 'function' ? n(...a) : n; if (k) TK(k); return fn.apply(this, a); };
+    showMyDay = W(showMyDay, 'my_day'); openKitScan = W(openKitScan, 'kit_scan'); openLeadCheck = W(openLeadCheck, 'lead_check'); openBffApp = W(openBffApp, 'bff_open');
+    lotCall = W(lotCall, (e, a) => a === 'draw' ? 'lot_draw' : ''); openMyGroup = W(openMyGroup, 'my_group'); openGroupBoard = W(openGroupBoard, 'group_board');
+    openShareCards = W(openShareCards, 'share_cards'); doShare = W(doShare, 'share_send'); openEditForm = W(openEditForm, 'edit_profile'); saveEdit = W(saveEdit, 'edit_save');
+    openChgReq = W(openChgReq, 'chg_req'); openJourney = W(openJourney, 'journey'); openRespForm = W(openRespForm, 'attend_form'); openViewer = W(openViewer, 'sched_viewer');
+    shareSched = W(shareSched, 'adm_share_sched'); exportInsXlsx = W(exportInsXlsx, 'adm_ins_xlsx'); exportSchedXlsx = W(exportSchedXlsx, 'adm_sched_xlsx'); exportAttXlsx = W(exportAttXlsx, 'adm_att_xlsx');
+    exportDrawXlsx = W(exportDrawXlsx, 'adm_draw_xlsx'); openBigDraw = W(openBigDraw, 'adm_big_draw'); runDraw = W(runDraw, 'adm_draw'); nudgeMeal = W(nudgeMeal, 'adm_nudge');
+    approveUser = W(approveUser, 'adm_approve'); approveApp = W(approveApp, 'adm_app_review'); openRoster = W(openRoster, 'adm_roster_open'); openRosterMap = W(openRosterMap, 'adm_city_map');
+    openEventForm = W(openEventForm, 'adm_event_form');
+    if (window.bstUsage) bstUsage.clicks({ '[data-cal]': 'sched_day', '.tl [data-pa]': 'day_register', '#lead-ov .lc-sv': 'lead_save', '.ks-yes,.ks-no': 'kit_check',
+      '.tab[data-tab]': el => 'adm_tab_' + el.dataset.tab, '#btn-admin': () => adminOn ? '' : 'adm_open' }); }
   start();
 </script>
 
