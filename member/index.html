@@ -2338,19 +2338,24 @@
     const done = f => C[f + 'At'] ? `<span class="lc-ok">✅ ${esc(C[f + 'By'] || '')} ${tm(C[f + 'At'])} 已確認</span>` : '<span class="lc-no">還沒確認</span>';
     const dd = new Date(d + 'T12:00:00');
     const IC = k => `<img class="lc-im" src="/member/ic/${k}.png" alt="">`;
-    const BFF = { ...(C.bff || {}) };
+    // 冰友：組長只確認自己有開，再看其他組（組長）有沒有在冰友地圖上
+    const B0 = C.bff && typeof C.bff === 'object' ? C.bff : {}; const BFF = { me: !!B0.me, teams: { ...(B0.teams || {}) } };
+    const OT = ((((mySchedData || []).find(x => x.id === eid) || {}).days || []).find(y => y.d === d) || {}).teams || [];
+    const OTH = OT.filter(t => t.l !== J.team && (t.m || []).length);
     const TABS = [['att', IC('att'), '到勤'], ['bff', '<b class="lc-em">🍦</b>', '冰友'], ['meal', IC('meal'), '用餐'], ['eq', IC('kit'), '配備'], ['dress', IC('dress'), '服裝'], ['charge', IC('charge'), '充電']];
     let tab = (TABS.find(([f]) => !C[f + 'At']) || TABS[0])[0];
     const ok = (m, f) => !!dress[m.k][f];
     const paint = () => {
       const T = TABS.findIndex(x => x[0] === tab), stat = {
         att: `${M.filter(m => att[m.k]).length}/${M.length} 到`, meal: `中 ${M.filter(m => meal[m.k].l).length}/${M.length}・晚 ${M.filter(m => meal[m.k].n).length}/${M.length}`,
-        eq: EQ.length ? `${EQ.filter(x => eqc[x[0]]).length}/${EQ.length}` : '這組沒有配備', dress: `${M.filter(m => DR.every(([k]) => ok(m, k))).length}/${M.length} 人 OK`, bff: `${M.filter(m => BFF[m.k]).length}/${M.length} 已開`, charge: `${CH.filter(x => chg[x[0]]).length}/${CH.length}` }[tab];
+        eq: EQ.length ? `${EQ.filter(x => eqc[x[0]]).length}/${EQ.length}` : '這組沒有配備', dress: `${M.filter(m => DR.every(([k]) => ok(m, k))).length}/${M.length} 人 OK`, bff: `自己${BFF.me ? '✓' : '✗'}${OTH.length ? `・他組 ${OTH.filter(t => BFF.teams[t.l]).length}/${OTH.length}` : ''}`, charge: `${CH.filter(x => chg[x[0]]).length}/${CH.length}` }[tab];
       let body = '';
       if (tab === 'att') body = `<div class="lc-tip2">點名字切換「到／未到」</div><div class="lc-g2">${M.map(m => `<button class="lc-card ${att[m.k] ? 'y' : 'n'}" data-at="${m.k}"><b>${esc(m.name)}</b><small>${esc(m.cert)}</small><i>${att[m.k] ? '✓ 到勤' : '✗ 未到'}</i></button>`).join('')}</div>`;
-      if (tab === 'bff') body = `<button class="lc-bff" data-bffopen="1"><span>🍦</span><b>打開冰友 App</b><small>看組員有沒有出現在地圖上</small></button>
-          <div class="lc-cnt"><span>確認每個人的冰友定位都有開</span><button class="lc-mini" data-bffall="1" style="margin-left:auto">全部已開</button></div>
-          <div class="lc-g2">${M.map(m => `<button class="lc-card ${BFF[m.k] ? 'y' : 'n'}" data-bf="${m.k}"><b>${esc(m.name)}</b><small>${esc(m.cert)}</small><i>${BFF[m.k] ? '✓ 冰友已開' : '✗ 還沒開'}</i></button>`).join('')}</div>`;
+      if (tab === 'bff') body = `<button class="lc-bff" data-bffopen="1"><span>🍦</span><b>打開冰友 App</b><small>看其他組有沒有出現在地圖上</small></button>
+          <div class="lc-tip2">① 你自己的冰友定位</div>
+          <button class="lc-card ${BFF.me ? 'y' : 'n'}" data-bfme="1" style="width:100%;margin-bottom:6px"><b>${esc((M[0] || {}).name || '我')}（組長）</b><i>${BFF.me ? '✓ 我的冰友已開' : '✗ 還沒開，點這裡確認'}</i></button>
+          ${OTH.length ? `<div class="lc-cnt"><span>② 其他組有沒有在冰友上</span><button class="lc-mini" data-bffall="1" style="margin-left:auto">全部在線</button></div>
+          <div class="lc-g2">${OTH.map(t => `<button class="lc-card ${BFF.teams[t.l] ? 'y' : 'n'}" data-bft="${esc(t.l)}"><b>${esc(t.l)}</b><small>組長 ${esc(t.m[0] || '')}・${t.m.length} 人</small><i>${BFF.teams[t.l] ? '✓ 在線上' : '✗ 沒看到'}</i></button>`).join('')}</div>` : ''}`;
       if (tab === 'meal') body = `<div class="lc-seg">${[['l', '☀️ 中餐'], ['n', '🌙 晚餐']].map(([f, t]) => `<button class="${mf === f ? 'on' : ''}" data-mf="${f}">${t}<small>${M.filter(m => meal[m.k][f]).length}/${M.length}</small></button>`).join('')}</div>
           <div class="lc-cnt">${[['葷', '葷'], ['素', '素'], ['自', '自理']].map(([v, n]) => `<span>${n} <b>${M.filter(m => meal[m.k][mf] === v).length}</b></span>`).join('')}<span>未選 <b>${M.filter(m => !meal[m.k][mf]).length}</b></span><button class="lc-mini" data-mall="葷">全部葷</button><button class="lc-mini" data-mall="素">全部素</button></div>
           <table class="lc-tb"><tr><th></th><th>葷</th><th>素</th><th>自理</th></tr>${M.map(m => { const lk = mf === 'l' ? m.lockL : m.lockN; return `<tr><td class="nm">${esc(m.name)}${lk ? '<small>管理員設定</small>' : ''}</td>${['葷', '素', '自'].map(v => `<td><button class="lc-dot ${meal[m.k][mf] === v ? 'on' : ''} ${lk ? 'lk' : ''}" ${lk ? 'data-lk="1"' : ''} data-ml="${m.k}|${mf}|${v}">${meal[m.k][mf] === v ? '●' : ''}</button></td>`).join('')}</tr>`; }).join('')}</table>`;
@@ -2397,8 +2402,9 @@
       q('data-dr', v => { const [k, f] = v.split('|'); dress[k][f] = !dress[k][f]; });
       q('data-dall', () => M.forEach(m => DR.forEach(([k]) => dress[m.k][k] = true)));
       q('data-ch', k => { chg[k] = !chg[k]; });
-      q('data-bf', k => { BFF[k] = !BFF[k]; });
-      q('data-bffall', () => M.forEach(m => BFF[m.k] = true));
+      q('data-bfme', () => { BFF.me = !BFF.me; });
+      q('data-bft', l => { BFF.teams[l] = !BFF.teams[l]; });
+      q('data-bffall', () => OTH.forEach(t => BFF.teams[t.l] = true));
       document.querySelectorAll('#lead-ov [data-bffopen]').forEach(b => b.onclick = () => openBffApp());
       document.querySelectorAll('#lead-ov [data-sv]').forEach(b => b.onclick = async () => {
         const f = b.dataset.sv, val = { att, bff: BFF, meal, eq: eqc, dress, charge: chg }[f];
