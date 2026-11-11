@@ -3181,7 +3181,17 @@
   const TUBE = '<svg viewBox="0 0 64 64"><g stroke="#92400e" stroke-width=".8">' + [[-14, 26], [-9, 22], [-4, 20], [1, 19], [6, 21], [11, 23], [15, 27]].map(([dx, top], i) => `<rect x="${30 + dx}" y="${top - 12}" width="4.2" height="30" rx="1.6" fill="${i === 3 ? '#ef4444' : '#fcd34d'}" transform="rotate(${dx * 1.2} ${32 + dx} 44)"/>`).join('') + '</g><path d="M14 32h36l-3 26a4 4 0 0 1-4 3.5H21a4 4 0 0 1-4-3.5z" fill="#c62828" stroke="#d4a017" stroke-width="2.4"/><rect x="12" y="29" width="40" height="6" rx="2.5" fill="#991b1b" stroke="#d4a017" stroke-width="2"/><circle cx="32" cy="47" r="8.5" fill="#fde68a" stroke="#b45309" stroke-width="1.6"/><text x="32" y="51.5" text-anchor="middle" font-size="12" font-weight="900" fill="#b91c1c" font-family="Noto Serif CJK TC,serif">籤</text></svg>';
   // 標題縮到一行放得下（字型載入、視窗大小改變時重算）
   function bigFitTitle() { const h = document.querySelector('#big-ov .bg-t h1'); if (!h) return; h.style.fontSize = ''; let f = parseFloat(getComputedStyle(h).fontSize); while (h.scrollWidth > h.clientWidth && f > 14) { f -= 1; h.style.fontSize = f + 'px'; } }
-  window.addEventListener('resize', () => bigFitTitle());
+  // 名字太多擠不下：每一組自動把名字縮小到全部放得下（不會被切掉或變成…）
+  function bigFitNames() {
+    document.querySelectorAll('#big-ov .bg-card').forEach(c => {
+      c.style.removeProperty('--nf');
+      const lanes = [...c.querySelectorAll('.bg-names')], over = () => lanes.some(l => l.scrollHeight > l.clientHeight + 1 || l.scrollWidth > l.clientWidth + 1);
+      if (!over()) return;
+      let f = parseFloat(getComputedStyle(c.querySelector('.bg-n') || c).fontSize) || 14;
+      while (over() && f > 7) { f -= .5; c.style.setProperty('--nf', f + 'px'); }
+    });
+  }
+  window.addEventListener('resize', () => { bigFitTitle(); bigFitNames(); });
   function renderBigDraw() {
     const ov = $('big-ov'); if (!bigEid || !ov) return;
     const eid = bigEid, e = eventsCache.find(x => x.id === eid) || {}, groups = drawPeople(eid), map = evDraw[eid] || {};
@@ -3217,10 +3227,10 @@
       .bg-lanes{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,1fr);gap:.6vw}
       .bg-lane{background:var(--lane);border-radius:.8vw;padding:.4vw;display:flex;flex-direction:column;min-height:0;border-top:.3vw solid var(--c)}
       .bg-lh{display:flex;justify-content:space-between;align-items:center;padding:0 .3vw .3vw}.bg-lh b{font-size:max(15px,1.35vw);color:#fff;background:var(--c);border-radius:.5vw;padding:0 .55vw;font-weight:900;line-height:1.35}.bg-lh span{font-size:max(10px,.85vw);color:var(--tx);opacity:.75;font-weight:800}
-      .bg-names{display:flex;flex-wrap:wrap;gap:.3vw;align-content:flex-start;overflow:hidden}
-      .bg-n{background:var(--chip);color:var(--chipc);box-shadow:var(--chipsh);border-radius:.5vw;padding:.15vw .5vw;font-size:max(11px,1vw);font-weight:900;white-space:nowrap}
+      .bg-names{flex:1;min-height:0;display:flex;flex-wrap:wrap;gap:.3vw;align-content:flex-start;overflow:hidden}
+      .bg-n{background:var(--chip);color:var(--chipc);box-shadow:var(--chipsh);border-radius:.5vw;padding:.15vw .5vw;font-size:var(--nf,max(11px,1vw));font-weight:900;white-space:nowrap}
       .bg-n.emp{background:transparent;border:1.5px dashed var(--emp);box-shadow:none;width:3.6vw;height:1.6vw;padding:0}
-      .bg-card.dense .bg-names{display:grid;grid-template-columns:1fr 1fr;gap:.25vw}.bg-card.dense .bg-n{font-size:max(10px,.8vw);padding:.12vw .2vw;text-align:center;overflow:hidden;text-overflow:ellipsis}.bg-card.dense .bg-n.emp{width:auto;height:1.3vw}
+      .bg-card.dense .bg-names{display:grid;grid-template-columns:1fr 1fr;gap:.25vw}.bg-card.dense .bg-n{font-size:var(--nf,max(10px,.8vw));padding:.12vw .2vw;text-align:center;line-height:1.35}.bg-card.dense .bg-n.emp{width:auto;height:1.3vw}
       .bg-n.new{animation:bgpop 1.6s ease-out;background:#fde047}
       @keyframes bgpop{0%{transform:scale(2.2);box-shadow:0 0 0 0 #fde047}40%{transform:scale(1);box-shadow:0 0 2vw .6vw #fde047cc}100%{box-shadow:0 0 0 0 transparent}}
       .bg-feed{width:17vw;min-width:150px;background:var(--feed);border:var(--cardb);border-radius:1.2vw;padding:.8vw;display:flex;flex-direction:column;gap:.45vw;overflow:hidden}
@@ -3244,7 +3254,7 @@
           <div class="bg-feed"><h3>🔔 最新抽籤</h3>${bigFeed.map(f => `<div class="bg-f"><div><b>${esc(f.name)}</b><small>${esc(f.g)}</small></div><i style="background:${SC[f.slot]}">${f.slot}</i></div>`).join('') || '<div style="opacity:.6;font-size:max(12px,1vw)">等待抽籤中…</div>'}</div></div>
         <div class="bg-foot">打開團員專區 → 首頁「🎲 抽籤」，結果會即時出現在這裡</div></div>`;
     $('bg-x').onclick = closeBigDraw;
-    bigFitTitle(); try { document.fonts.ready.then(bigFitTitle); } catch (e) {}
+    bigFitTitle(); bigFitNames(); try { document.fonts.ready.then(() => { bigFitTitle(); bigFitNames(); }); } catch (e) {}
     if (bigCurPop) ov.querySelector('.bg-wrap').appendChild(bigCurPop);
     fresh.forEach(p => bigQ.push({ name: p.name, g: p.g, slot: map[p.key] }));
     if (!bigPopT) bigNextPop();
