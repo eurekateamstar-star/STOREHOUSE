@@ -439,6 +439,7 @@ async function webhookRoute(req, env) {
   if (sig !== req.headers.get('x-line-signature')) return new Response('bad signature', { status: 401 });
   let events = [];
   try { events = JSON.parse(body).events || []; } catch (e) { return ok(); }
+  const stat = lineUsage(env, events).catch(() => {});   // 使用分析（不影響回覆）
   for (const ev of events) {
     if (ev.type !== 'message' || ev.message?.type !== 'text' || !ev.replyToken) continue;
     const t0 = String(ev.message.text).trim(), make = REPLIES[t0 === '認識醫療團' ? '認識醫護團' : t0];   // 舊選單的文字也接受
@@ -448,6 +449,7 @@ async function webhookRoute(req, env) {
       body: JSON.stringify({ replyToken: ev.replyToken, messages: [await make(env, new URL(req.url).origin)] }),
     });
   }
+  await stat;
   return ok();
 }
 
@@ -1280,7 +1282,7 @@ async function eduStatsRoute(req, env, json) {
 // ===== 使用分析（只有開發者看得到）=====
 // 網頁離開時送一次：{ p: 頁面, v: 開啟次數, q: 今天第一次開, f: { 功能: 次數 }, t: Firebase idToken（可省略＝匿名） }
 // 存在 usage_daily/{YYYYMMDD}（每天一份）與 usage_meta/last（每人最後使用時間、姓名）；前端讀不到，只能透過 /usage-stats
-const USAGE_PAGES = ['member', 'record', 'warehouse', 'attend', 'edu', 'guardian', 'join', 'journey', 'share'];
+const USAGE_PAGES = ['member', 'record', 'warehouse', 'attend', 'edu', 'guardian', 'join', 'journey', 'share'];   // line＝官方帳號，只由伺服器自己記
 let DEV_CACHE = null;
 async function devUid(tok) { if (DEV_CACHE && Date.now() - DEV_CACHE.at < 600e3) return DEV_CACHE.uid;
   const d = await fsGet(tok, 'meta/developer'); DEV_CACHE = { uid: d ? (fobj(d.fields).uid || '') : '', at: Date.now() }; return DEV_CACHE.uid; }
@@ -1298,22 +1300,46 @@ async function usageRoute(req, env, json) {
       try { const id = uidOfToken(b.t); const u = await fsUser(b.t, id); if (u && u.status === 'approved') { uid = id; name = u.realName || ''; } } catch (e) {}
       if (uid && uid === await devUid(tok)) return json({ ok: true, skip: 'dev' });   // 開發者自己不算
     }
-    const now = Date.now(), tw = new Date(now + 8 * 3600e3), day = tw.toISOString().slice(0, 10).replace(/-/g, ''), hh = 'h' + String(tw.getUTCHours()).padStart(2, '0');
-    const acts = f.reduce((a, [, n]) => a + n, 0);
-    const inc = (path, n) => ({ fieldPath: path, increment: { integerValue: String(n) } });
-    const T = [];
-    if (v) T.push(inc(fq('p', pg), v), inc(fq('h', hh), v)); if (q) T.push(inc(fq('q', pg), 1));
-    f.forEach(([k, n]) => T.push(inc(fq('f', k), n)));
-    if (!uid) { if (v) T.push(inc(fq('anon', pg), v)); }
-    else { if (v) T.push(inc(fq('u', uid, 'v'), v), inc(fq('u', uid, 'pg_' + pg), v)); if (acts) T.push(inc(fq('u', uid, 'a'), acts)); f.forEach(([k, n]) => T.push(inc(fq('u', uid, k), n))); }
-    const D = n => `projects/${PROJECT_ID}/databases/(default)/documents/${n}`;
-    const writes = [{ transform: { document: D('usage_daily/' + day), fieldTransforms: T } }];
-    if (uid) writes.push({ update: { name: D('usage_meta/last'), fields: { n: { mapValue: { fields: { [uid]: { stringValue: name } } } } } }, updateMask: { fieldPaths: [fq('n', uid)] },
-      updateTransforms: [{ fieldPath: fq('t', uid), maximum: { integerValue: String(now) } }] });
-    let r = await fetch(`${FS}:commit`, { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify({ writes }) });
-    if (!r.ok && (r.status === 409 || r.status === 503 || r.status === 429)) { await new Promise(x => setTimeout(x, 400)); r = await fetch(`${FS}:commit`, { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify({ writes }) }); }
+    const r = await writeUsage(tok, { pg, v, q, f, uid, name });
     return json({ ok: r.ok });
   } catch (e) { return json({ ok: false }, 500); }
+}
+// 寫一筆使用紀錄：pg 頁面、v 開啟次數、q 當天第一次、f [[功能, 次數]]、uid／name（可省略＝匿名）、lu＝LINE 使用者（只算人數）
+async function writeUsage(tok, { pg, v = 0, q = 0, f = [], uid = '', name = '', lu = '' }) {
+  const now = Date.now(), tw = new Date(now + 8 * 3600e3), day = tw.toISOString().slice(0, 10).replace(/-/g, ''), hh = 'h' + String(tw.getUTCHours()).padStart(2, '0');
+  const acts = f.reduce((a, [, n]) => a + n, 0);
+  const inc = (path, n) => ({ fieldPath: path, increment: { integerValue: String(n) } });
+  const T = [];
+  if (v) T.push(inc(fq('p', pg), v)); if (v || pg === 'line') T.push(inc(fq('h', hh), v || acts)); if (q) T.push(inc(fq('q', pg), 1));
+  f.forEach(([k, n]) => T.push(inc(fq('f', k), n)));
+  if (lu) T.push(inc(fq('lu', lu), 1));
+  if (!uid) { if (v) T.push(inc(fq('anon', pg), v)); }
+  else { if (v) T.push(inc(fq('u', uid, 'v'), v), inc(fq('u', uid, 'pg_' + pg), v)); if (acts) T.push(inc(fq('u', uid, 'a'), acts)); f.forEach(([k, n]) => T.push(inc(fq('u', uid, k), n))); }
+  const D = n => `projects/${PROJECT_ID}/databases/(default)/documents/${n}`;
+  const writes = [{ transform: { document: D('usage_daily/' + day), fieldTransforms: T } }];
+  if (uid) writes.push({ update: { name: D('usage_meta/last'), fields: { n: { mapValue: { fields: { [uid]: { stringValue: name } } } } } }, updateMask: { fieldPaths: [fq('n', uid)] },
+    updateTransforms: [{ fieldPath: fq('t', uid), maximum: { integerValue: String(now) } }] });
+  const go = () => fetch(`${FS}:commit`, { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify({ writes }) });
+  let r = await go();
+  if (!r.ok && (r.status === 409 || r.status === 503 || r.status === 429)) { await new Promise(x => setTimeout(x, 400)); r = await go(); }
+  return r;
+}
+// LINE 官方帳號：選單四格（送出文字）、切換分頁、加好友／封鎖 → 記到使用分析（頁面＝line）
+const LINE_MENU_F = { '認識醫護團': 'menu_about', '認識醫療團': 'menu_about', '衛教須知': 'menu_edu', '醫護足跡': 'menu_journey', '全民醫護證': 'menu_guardian' };
+async function lineUsage(env, events) {
+  const tok = await saToken(env), dev = await devUid(tok);
+  for (const ev of events) {
+    let k = '';
+    if (ev.type === 'message' && ev.message?.type === 'text') k = LINE_MENU_F[String(ev.message.text).trim()] || '';
+    else if (ev.type === 'postback' && /^tab=(member|public)$/.test(ev.postback?.data || '')) k = 'menu_tab_' + ev.postback.data.slice(4);
+    else if (ev.type === 'follow') k = 'line_follow';
+    else if (ev.type === 'unfollow') k = 'line_unfollow';
+    if (!k) continue;
+    const lu = ev.source?.userId || ''; if (lu && lu === dev) continue;   // 開發者自己不算
+    let uid = '', name = '';
+    if (lu && /^U[0-9a-f]{32}$/.test(lu)) { try { const d = await fsGet(tok, 'users/' + lu); const u = d ? fobj(d.fields) : null; if (u && u.status === 'approved') { uid = lu; name = u.realName || ''; } } catch (e) {} }
+    await writeUsage(tok, { pg: 'line', f: [[k, 1]], uid, name, lu: /^U[0-9a-f]{32}$/.test(lu) ? lu : '' });
+  }
 }
 async function usageStatsRoute(req, env, json) {
   try {

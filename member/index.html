@@ -433,6 +433,8 @@
   .us-bars{display:flex;align-items:flex-end;gap:2px;height:130px;padding-bottom:16px;border-bottom:1px solid var(--line)}.us-b{flex:1;height:100%;position:relative}.us-b i,.us-b b{position:absolute;left:0;right:0;bottom:0;border-radius:3px 3px 0 0}.us-b i{background:#fcd7cf}.us-b b{background:linear-gradient(180deg,var(--accent),var(--primary));left:12%;right:12%}.us-b span{position:absolute;bottom:-16px;left:-4px;right:-4px;text-align:center;font-size:9.5px;color:var(--sub)}
   .us-r{display:grid;grid-template-columns:minmax(90px,38%) 1fr 42px;align-items:center;gap:8px;font-size:13px;padding:3px 0}.us-r span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.us-r div{height:12px;background:#f3f4f6;border-radius:6px;overflow:hidden}.us-r i{display:block;height:100%;background:linear-gradient(90deg,var(--primary),var(--accent));border-radius:6px}.us-r b{text-align:right}
   .us-hr{display:flex;align-items:flex-end;gap:2px;height:90px;padding-bottom:16px}.us-hr div{flex:1;height:100%;position:relative}.us-hr i{position:absolute;left:0;right:0;bottom:0;background:var(--accent);border-radius:3px 3px 0 0}.us-hr span{position:absolute;bottom:-16px;left:-6px;right:-6px;text-align:center;font-size:10px;color:var(--sub)}
+  .us-line{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.us-line div{border:1px solid var(--line);border-radius:14px;padding:10px 4px;text-align:center;background:#fff}.us-line b{display:block;font-size:22px;color:#b4343f}.us-line span{font-size:12px;font-weight:800;color:var(--sub)}
+  .us-line2{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:13px;color:var(--sub);font-weight:700}.us-line2 b{color:var(--ink);font-size:15px;margin-left:3px}
   .us-idle{display:flex;flex-wrap:wrap;gap:6px}.us-idle span{background:#fef3c7;border-radius:10px;padding:5px 9px;font-size:13px;font-weight:800}.us-idle small{display:block;font-size:10.5px;color:#92400e;font-weight:700}
   .us-tbl{font-size:13px;border:1px solid var(--line);border-radius:12px;overflow:hidden}.us-tr{display:grid;grid-template-columns:1.1fr 1fr .5fr .5fr 2.2fr;gap:6px;padding:7px 10px;border-top:1px solid var(--line);align-items:center}.us-th{background:#f8fafc;font-weight:900;color:var(--sub);border-top:none;font-size:12px}.us-tf{font-size:12px;color:var(--sub)}
   @media(max-width:520px){.us-tr{grid-template-columns:1fr 1fr .5fr .5fr}.us-tf{grid-column:1/-1}}
@@ -1127,7 +1129,7 @@
   }
 
   // ---------- 使用分析（只有開發者）----------
-  const US_PAGE = { member: '團員專區', record: '救護紀錄表', warehouse: '倉庫管理', attend: '出席調查表單', edu: '進香衛教', guardian: '全民醫護證', join: '新人申請', journey: '醫護足跡', share: '分享給親友' };
+  const US_PAGE = { member: '團員專區', record: '救護紀錄表', warehouse: '倉庫管理', attend: '出席調查表單', edu: '進香衛教', guardian: '全民醫護證', join: '新人申請', journey: '醫護足跡', share: '分享給親友', line: 'LINE 官方帳號' };
   const US_F = { my_day: '我的一天', kit_scan: '掃包包', kit_check: '補包核對', lead_check: '小組長檢查', lead_save: '組長確認項目', bff_open: '打開冰友', lot_draw: '抽籤',
     my_group: '我的組別', group_board: '組別看板', share_cards: '分享圖文卡片', share_send: '分享卡片送出', edit_profile: '編輯資料', edit_save: '儲存資料', chg_req: '申請改保險資料',
     journey: '醫護足跡', attend_form: '出席調查填寫', sched_viewer: '唯讀排班', sched_day: '點排班日期', day_register: '登記吃飯坐車住宿',
@@ -1138,7 +1140,8 @@
     adm_console: '救護紀錄後台', adm_rec_detail: '看紀錄詳細', adm_map: '紀錄地圖', adm_stats: '紀錄統計', viewer_panel: '教官團檢視',
     wh_scan_out: '倉庫出庫', wh_scan_in: '倉庫入庫', wh_scan_take: '領取器材', wh_scan_locate: '查位置', wh_scan_helper: '小幫手掃描', wh_scan_pickperson: '掃人', wh_query: '物品去處查詢', wh_logs: '進出紀錄',
     wh_edit_item: '編輯物品', wh_save_item: '儲存物品', wh_kit_edit: '編輯包包內容', wh_lots_edit: '編輯批號', wh_users: '倉庫人員', wh_helper: '設定小幫手', wh_expiry: '效期清單', wh_batch_out: '耗材批次出庫',
-    wh_borrower: '選借用單位', wh_borrower_scan: '借用掃描', attend_submit: '送出出席調查', attend_uniform: '看團服尺寸', join_submit: '送出入團申請', guardian_save: '全民醫護證儲存', guardian_invite: '全民醫護證邀請', share_go: '分享給親友' };
+    wh_borrower: '選借用單位', wh_borrower_scan: '借用掃描', attend_submit: '送出出席調查', attend_uniform: '看團服尺寸', join_submit: '送出入團申請', guardian_save: '全民醫護證儲存', guardian_invite: '全民醫護證邀請', share_go: '分享給親友',
+    menu_about: '選單：認識醫護團', menu_edu: '選單：衛教須知', menu_journey: '選單：醫護足跡', menu_guardian: '選單：全民醫護證', menu_tab_member: '選單：切到團員專區', menu_tab_public: '選單：切到一般資訊', line_follow: '加好友', line_unfollow: '封鎖／刪除好友' };
   const usLabel = k => US_F[k] || (k.startsWith('adm_ctab_') ? '紀錄後台分頁：' + k.slice(9) : k);
   let usDays = 30, usData = null, usBusy = false, usErr = '';
   async function loadUsage() {
@@ -1157,8 +1160,8 @@
     const { days, daily, last, users } = usData, sum = (o, k) => Object.values(o || {}).reduce((a, b) => a + (+b || 0), 0);
     const D = days.map(d => ({ d, o: daily[d] || {} })).reverse();
     const today = daily[days[0]] || {}, uToday = Object.keys(today.u || {}).length, oToday = sum(today.p);
-    const P = {}, Q = {}, F = {}, H = {}, U = {};
-    D.forEach(({ o }) => { Object.entries(o.p || {}).forEach(([k, v]) => P[k] = (P[k] || 0) + v); Object.entries(o.q || {}).forEach(([k, v]) => Q[k] = (Q[k] || 0) + v);
+    const P = {}, Q = {}, F = {}, H = {}, U = {}, LU = new Set();
+    D.forEach(({ o }) => { Object.keys(o.lu || {}).forEach(k => LU.add(k)); Object.entries(o.p || {}).forEach(([k, v]) => P[k] = (P[k] || 0) + v); Object.entries(o.q || {}).forEach(([k, v]) => Q[k] = (Q[k] || 0) + v);
       Object.entries(o.f || {}).forEach(([k, v]) => F[k] = (F[k] || 0) + v); Object.entries(o.h || {}).forEach(([k, v]) => H[k] = (H[k] || 0) + v);
       Object.entries(o.u || {}).forEach(([id, x]) => { const u = U[id] || (U[id] = { days: 0, v: 0, a: 0, f: {} }); u.days++; u.v += x.v || 0; u.a += x.a || 0;
         Object.entries(x).forEach(([k, v]) => { if (k !== 'v' && k !== 'a' && !k.startsWith('pg_')) u.f[k] = (u.f[k] || 0) + v; }); }); });
@@ -1181,6 +1184,9 @@
       <div class="us-kpi"><div><b>${uToday}</b><span>今天使用人數</span></div><div><b>${oToday}</b><span>今天打開次數</span></div>
         <div><b>${Object.keys(U).length}</b><span>近 ${usDays} 天用過的人</span></div><div><b>${avgU}</b><span>平均每天人數</span></div></div>
       <div class="us-h">每天使用人數 <small>（手指按住或滑鼠移到長條上看當天打開次數）</small></div><div class="us-bars">${bars}</div>
+      <div class="us-h">LINE 官方帳號選單 <small>（${LU.size} 個 LINE 帳號點過，含還不是團員的民眾）</small></div>
+      <div class="us-line">${[['menu_about', '認識醫護團'], ['menu_edu', '衛教須知'], ['menu_journey', '醫護足跡'], ['menu_guardian', '全民醫護證']].map(([k, n]) => `<div><b>${F[k] || 0}</b><span>${n}</span></div>`).join('')}</div>
+      <div class="us-line2"><span>切到團員專區 <b>${F.menu_tab_member || 0}</b></span><span>切到一般資訊 <b>${F.menu_tab_public || 0}</b></span><span>➕ 加好友 <b style="color:var(--green)">${F.line_follow || 0}</b></span><span>🚫 封鎖 <b style="color:var(--red)">${F.line_unfollow || 0}</b></span></div>
       <div class="us-h">各頁面打開次數 <small>（括號＝當天第一次開的人次）</small></div>${rank(P, k => `${US_PAGE[k] || k}（${Q[k] || 0}）`)}
       <div class="us-h">功能使用排行</div>${rank(F, usLabel, 40)}
       <div class="us-h">一天中哪個時段最多人用</div><div class="us-hr">${hrs.map((v, i) => `<div title="${i} 點：${v} 次"><i style="height:${v / mh * 100}%"></i><span>${i % 3 ? '' : i}</span></div>`).join('')}</div>
