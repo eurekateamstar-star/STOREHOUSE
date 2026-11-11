@@ -667,7 +667,7 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { initializeFirestore, getFirestore, collection, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, limit, serverTimestamp, writeBatch, deleteField, getDocsFromServer }
+  import { initializeFirestore, getFirestore, collection, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, limit, where, serverTimestamp, writeBatch, deleteField, getDocsFromServer }
     from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
@@ -1049,6 +1049,13 @@
   }
   // 名單要等伺服器回來才算數：剛進來時本機只有「自己」那一筆（快取），網路慢會一直停在 1 人
   let usersLive = false, rosterLive = false, adminRetry = 0;
+  // 管理員還沒進「管理員」畫面時，只看「待審核」的人（只讀待審核那幾筆），不讀整份名單 → 省很多讀取次數
+  let badgeUnsub = null, badgeApps = null, pendUsersB = [], pendAppsB = [];
+  function startBadgeWatch() {
+    if (badgeUnsub) return;
+    badgeUnsub = onSnapshot(query(collection(db, 'users'), where('status', '==', 'pending')), s => { pendUsersB = s.docs.map(d => d.id); updateAdminDot(); }, () => { badgeUnsub = null; });
+    badgeApps = onSnapshot(query(collection(db, 'roster_applications'), where('status', '==', 'pending')), s => { pendAppsB = s.docs.map(d => d.id); updateAdminDot(); }, () => { badgeApps = null; });
+  }
   function startAdminWatch() {
     if (!DEV_UID) loadDev();
     if (!usersUnsub) usersUnsub = onSnapshot(collection(db, 'users'), { includeMetadataChanges: true }, s => {
@@ -1069,7 +1076,7 @@
     }, () => { rosterUnsub = null; retryAdminWatch(); });
     // 4 秒後還沒拿到伺服器資料 → 直接向伺服器要一次，並重新連線
     clearTimeout(startAdminWatch._t);
-    startAdminWatch._t = setTimeout(forceAdminLoad, 2500);
+    startAdminWatch._t = setTimeout(forceAdminLoad, 6000);   // 6 秒還沒來才補讀（以前 2.5 秒就補，常常同一份名單讀兩三次）
   }
   // LINE 內建瀏覽器有時 Firestore 即時連線會卡住（一直顯示 …，要重新整理才有）→ 改用一般網路請求（REST）直接讀
   const fsTs = iso => { const ms = Date.parse(iso); return { seconds: Math.floor(ms / 1000), nanoseconds: 0, toMillis: () => ms, toDate: () => new Date(ms) }; };
@@ -1090,18 +1097,18 @@
   }
   const withTimeout = (p, ms) => Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error('timeout')), ms))]);
   async function forceAdminLoad() {
-    if (!isAdmin() || (usersLive && rosterLive)) return;
-    const one = col => Promise.any([withTimeout(getDocsFromServer(collection(db, col)), 8000).then(q => q.docs.map(d => ({ id: d.id, ...d.data() }))), restList(col)]);   // 誰先回來用誰
+    if (!isAdmin() || !adminOn || (usersLive && rosterLive)) return;
+    const one = col => restList(col);   // 直接用一般網路請求讀一次（以前同時用兩種方法讀，會讀兩次）
     try {
       const [us, rs] = await Promise.all([usersLive ? null : one('users'), rosterLive ? null : one(ROSTER)]);
       if (us && !usersLive) { usersCache = us; usersLive = true; }
       if (rs && !rosterLive) { setRoster(rs); rosterLive = true; }
       updateAdminDot(); if (adminOn) renderAdmin();
     } catch (e) { console.warn('admin load', e); }
-    if (isAdmin() && !(usersLive && rosterLive)) { clearTimeout(startAdminWatch._t); startAdminWatch._t = setTimeout(forceAdminLoad, 3000); }
+    if (isAdmin() && adminOn && !(usersLive && rosterLive)) { clearTimeout(startAdminWatch._t); startAdminWatch._t = setTimeout(forceAdminLoad, 8000); }
   }
   // 從背景回到畫面：如果名單還沒讀到，馬上再讀一次
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && isAdmin() && !(usersLive && rosterLive)) forceAdminLoad(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && isAdmin() && adminOn && !(usersLive && rosterLive)) forceAdminLoad(); });
   function retryAdminWatch() {
     if (adminRetry >= 5 || !isAdmin()) { if (adminRetry >= 5) toast('讀取名單失敗，請重新整理'); return; }
     adminRetry++;
@@ -1113,7 +1120,8 @@
     usersLive = false; rosterLive = false;
   }
   function updateAdminDot() {
-    const n = usersCache.filter(u => (u.status || 'pending') === 'pending').length + appsCache.filter(a => a.status === 'pending').length + rosterCache.filter(unseen).length;
+    const n = usersLive ? usersCache.filter(u => (u.status || 'pending') === 'pending').length + appsCache.filter(a => a.status === 'pending').length + rosterCache.filter(unseen).length
+      : pendUsersB.length + pendAppsB.length;
     $('admin-dot').textContent = n; $('admin-dot').classList.toggle('hidden', !n);
   }
   const userById = id => usersCache.find(u => u.id === id);
@@ -5330,7 +5338,7 @@
       if (user && user.status === 'approved') { UT('ready'); watchEvents(); setTimeout(loadMySched, 0); if (pendingView && auth.currentUser) openViewer(pendingView); }
       try { const k = 'bst_menu_' + profile.userId, v = user ? user.status : 'none';
         if (localStorage.getItem(k) !== v && window.__menuSync !== v) (window.__menuSync = v, syncMenu()).then(res => { if (res && res.ok) try { localStorage.setItem(k, v); } catch (e) {} }); } catch (e) {}
-      if (isAdmin()) startAdminWatch();
+      if (isAdmin()) { startBadgeWatch(); if (adminOn) startAdminWatch(); }   // 進管理員畫面才讀整份名單
       else if (wasAdmin) { stopAdminWatch(); adminOn = false; }
       if (user && user.status === 'approved') isResubmit = false;
       if (ENTRY) { ENTRY = false; try { history.replaceState(null, '', location.pathname); } catch (e) {}

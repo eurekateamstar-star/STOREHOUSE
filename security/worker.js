@@ -1368,7 +1368,7 @@ async function usageStatsRoute(req, env, json) {
     if (!bg.ok) throw new Error('read ' + bg.status);
     const out = {}; let last = {};
     for (const x of await bg.json()) { if (!x.found) continue; const id = x.found.name.split('/').pop(), o = fobj(x.found.fields); if (id === 'last') last = o; else out[id] = o; }
-    const [usersL, eduA, evL] = await Promise.all([fsList(tok, 'users'), fsGet(tok, 'stats/edu'), memo('events', 30e3, () => fsList(tok, 'events'))]);
+    const [usersL, eduA, evL] = await Promise.all([memo('users', 600e3, () => fsList(tok, 'users')), fsGet(tok, 'stats/edu'), memo('events', 30e3, () => fsList(tok, 'events'))]);
     const users = usersL.filter(u => u.status === 'approved' && u.id !== uid).map(u => ({ id: u.id, name: u.realName || u.displayName || '' }));
     const trips = evL.filter(e => e.schedPublic || e.schedAt || e.askGroups).map(e => ({ id: e.id, title: e.title || '', at: e.createdAt || 0 }));
     return json({ ok: true, days: ids, daily: out, last, users, edu: eduA ? fobj(eduA.fields) : {}, trips });
