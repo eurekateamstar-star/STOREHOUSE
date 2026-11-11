@@ -869,6 +869,11 @@ async function shareCardRoute(req, env, json) {
   } catch (e) { return json({ error: String((e && e.message) || e) }, e && e.code || 500); }
 }
 // ===== 團員專區：我的排班（管理員在排班表打開「公開給團員看」才會回傳）=====
+// 同一台伺服器短時間內重複讀的共用資料（出席調查清單、名冊、回覆、排班）先記在記憶體，省讀取次數也比較快
+const MEMO = new Map();
+function memo(key, ttl, fn) { const m = MEMO.get(key), now = Date.now(); if (m && now - m.at < ttl) return m.p;
+  const p = Promise.resolve().then(fn); MEMO.set(key, { at: now, p }); p.catch(() => { if (MEMO.get(key) && MEMO.get(key).p === p) MEMO.delete(key); });
+  if (MEMO.size > 200) for (const [k, v] of MEMO) if (now - v.at > 600e3) MEMO.delete(k); return p; }
 async function mySchedRoute(req, env, json) {
   try {
     const { idToken } = await req.json();
@@ -879,13 +884,13 @@ async function mySchedRoute(req, env, json) {
     if (!me.ok) return json({ error: 'not signed in' }, 401);
     const u = fobj((await me.json()).fields);
     if (u.status !== 'approved' || !u.rosterId) return json({ events: [] });
-    const [ro, evAll] = await Promise.all([fsGet(tok, `member_roster/${encodeURIComponent(u.rosterId)}`), fsList(tok, 'events')]);
+    const [ro, evAll] = await Promise.all([fsGet(tok, `member_roster/${encodeURIComponent(u.rosterId)}`), memo('events', 30e3, () => fsList(tok, 'events'))]);
     if (!ro) return json({ events: [] });
     const roF = fobj(ro.fields), myKey = normName(roF.name), myG = String(roF.idCard || '').toUpperCase()[1] === '2' ? '8' : '7';
     const evs = evAll.filter(e => e.schedPublic || e.askGroups);
-    const P = {}; evs.forEach(e => { P[e.id] = Promise.all([fsList(tok, `events/${e.id}/responses`), e.askGroups ? fsGet(tok, `events/${e.id}/admin/groups`) : null,
-      e.schedPublic ? fsGet(tok, `events/${e.id}/admin/draw`) : null, e.schedPublic ? fsGet(tok, `events/${e.id}/admin/self_${u.rosterId}`) : null]); });
-    const roster = evs.some(e => e.schedPublic) ? (await fsList(tok, 'member_roster')).filter(x => !x.left) : [], byName = {};
+    const P = {}; evs.forEach(e => { P[e.id] = Promise.all([memo('rsp:' + e.id, 60e3, () => fsList(tok, `events/${e.id}/responses`)), e.askGroups ? memo('grp:' + e.id, 30e3, () => fsGet(tok, `events/${e.id}/admin/groups`)) : null,
+      e.schedPublic ? memo('draw:' + e.id, 20e3, () => fsGet(tok, `events/${e.id}/admin/draw`)) : null, e.schedPublic ? fsGet(tok, `events/${e.id}/admin/self_${u.rosterId}`) : null]); });
+    const roster = evs.some(e => e.schedPublic) ? (await memo('roster', 300e3, () => fsList(tok, 'member_roster'))).filter(x => !x.left) : [], byName = {};
     roster.forEach(x => { const k = normName(x.name); if (k && !byName[k]) byName[k] = x; });
     const catOf = k => { const c = String((byName[k] || {}).cert || '').toUpperCase().replace(/[-\s]/g, ''); return c.includes('護理') || c.includes('醫師') ? 'N' : c.includes('EMTP') || c.includes('EMT2') ? 'T2' : c.includes('EMT1') ? 'T1' : 'O'; };
     const EQN = { kit: '救護包', ambu: 'AMBU包', inst: '儀器包' };

@@ -2037,6 +2037,7 @@
     if (eventsUnsub) return;
     eventsUnsub = onSnapshot(collection(db, 'events'), async s => {
       eventsCache = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => tsMs(b.createdAt) - tsMs(a.createdAt));
+      eventsLoaded = true;
       renderAttendCards();
       if (adminOn && curTab === 'events') renderEvents();
     }, () => {});
@@ -2059,26 +2060,30 @@
   }
   // ===== 首頁：我的排班（管理員在排班表打開「公開給團員看」才會出現）=====
   let mySchedKey = null, mySchedData = null;
-  async function loadMySched() {
+  let eventsLoaded = false, mySchedAt = 0;
+  async function loadMySched(force) {
     if (!user || user.status !== 'approved' || !user.rosterId || !auth.currentUser) return;
-    const k = eventsCache.filter(e => e.schedPublic || e.askGroups).map(e => e.id + ':' + tsMs(e.schedPublicAt)).join(',');
-    if (k === mySchedKey) return; mySchedKey = k;
-    if (!k) { mySchedData = null; renderMySched(); return; }
-    // 先顯示上次的「我的排班」（存在這支手機），背景再更新 → 不用等
+    // 先顯示上次的「我的排班」（存在這支手機），背景再更新 → 一打開就看得到
     const ck = 'ms_cache_' + (profile && profile.userId);
     if (!mySchedData) { try { const c = JSON.parse(localStorage.getItem(ck) || 'null'); if (c && Array.isArray(c.events)) { mySchedData = c.events; renderMySched(); } } catch (e) {} }
+    // 出席調查清單還沒回來也先去拿（以前要等清單回來才問伺服器，多等好幾秒）
+    const k = !eventsLoaded ? 'boot' : eventsCache.filter(e => e.schedPublic || e.askGroups).map(e => e.id + ':' + tsMs(e.schedPublicAt)).join(',');
+    if (!force && k === mySchedKey) return;
+    if (mySchedKey === 'boot' && k !== 'boot' && !force) { mySchedKey = k; if (!k) { mySchedData = null; renderMySched(); } return; }   // 剛剛已經拿過了
+    mySchedKey = k;
+    if (!k) { mySchedData = null; renderMySched(); return; }
     try {
       const idToken = await auth.currentUser.getIdToken();
       const ac = new AbortController(), to = setTimeout(() => ac.abort(), 15000);
       const r = await fetch(AUTH_URL + '/mysched', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken }), signal: ac.signal });
       clearTimeout(to);
       const j = await r.json(); if (j.error) throw new Error(j.error);
-      mySchedData = j.events || [];
+      mySchedData = j.events || []; mySchedAt = Date.now();
       try { localStorage.setItem(ck, JSON.stringify({ at: Date.now(), events: mySchedData })); } catch (e) {}
     } catch (e) { mySchedKey = null; setTimeout(loadMySched, 3000); if (!mySchedData) return; }
     renderMySched();
   }
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && user && user.status === 'approved') { mySchedKey = null; loadMySched(); } });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && user && user.status === 'approved' && Date.now() - mySchedAt > 60e3) loadMySched(true); });   // 回到畫面：超過 1 分鐘才重抓
   setInterval(() => { if (user && user.status === 'approved' && eventsCache.some(e => e.schedPublic) && mySchedData === null) { mySchedKey = null; loadMySched(); } }, 4000);
   function renderMySched() {
     let box = $('my-sched');
@@ -2390,7 +2395,7 @@
         const r = await fetch(AUTH_URL + '/myplan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, eid, d, [f]: v }) });
         const j = await r.json(); if (!j.ok) throw new Error(j.error || 'fail');
         msFlash('✅ 已登記');
-      } catch (err) { msFlash('❌ 沒有存到，請再點一次', true); mySchedKey = null; loadMySched(); } })(); });
+      } catch (err) { msFlash('❌ 沒有存到，請再點一次', true); loadMySched(true); } })(); });
   }
   // ===== 小組長檢查：到勤點名、用餐、配備、服裝儀容、就寢前充電（組長或管理員）=====
   // 冰友（MixerBox BFF）：Android 直接開 App（沒裝就到 Play 商店）；iPhone 開官方下載連結，有裝會顯示「打開」
@@ -2494,7 +2499,7 @@
       document.querySelectorAll('#lead-ov [data-sv]').forEach(b => b.onclick = async () => {
         const f = b.dataset.sv, val = { att, bff: BFF, meal, eq: eqc, dress, charge: chg }[f];
         b.disabled = true; b.textContent = '儲存中…';
-        try { const r = await call({ save: { [f]: val } }); Object.assign(C, r.check || {}); toast('✅ 已確認'); if (f === 'meal') { mySchedKey = null; loadMySched(); }
+        try { const r = await call({ save: { [f]: val } }); Object.assign(C, r.check || {}); toast('✅ 已確認'); if (f === 'meal') loadMySched(true);
           const i = TABS.findIndex(x => x[0] === f); if (i < TABS.length - 1) tab = TABS[i + 1][0]; }
         catch (err) { toast('❌ ' + err.message); }
         paint(); const bx = document.getElementById('lead-box'); if (bx) bx.scrollTop = 0;
