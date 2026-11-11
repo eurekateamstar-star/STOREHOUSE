@@ -2302,6 +2302,14 @@
       } catch (err) { msFlash('❌ 沒有存到，請再點一次', true); mySchedKey = null; loadMySched(); } })(); });
   }
   // ===== 小組長檢查：到勤點名、用餐、配備、服裝儀容、就寢前充電（組長或管理員）=====
+  // 冰友（MixerBox BFF）：Android 直接開 App（沒裝就到 Play 商店）；iPhone 開官方下載連結，有裝會顯示「打開」
+  function openBffApp() {
+    const android = /Android/i.test(navigator.userAgent);
+    const url = android ? 'intent://#Intent;package=com.mixerbox.tomodoko;S.browser_fallback_url=' + encodeURIComponent('https://play.google.com/store/apps/details?id=com.mixerbox.tomodoko') + ';end'
+      : 'https://mbapp.io/cotwlp-bff-ios';
+    if (!android && inLine() && liff.openWindow) { try { liff.openWindow({ url, external: true }); return; } catch (e) {} }
+    location.href = url;
+  }
   async function openLeadCheck(eid, d, l) {
     const call = async body => { const idToken = await auth.currentUser.getIdToken();
       const r = await fetch(AUTH_URL + '/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, eid, d, ...(l ? { l } : {}), ...body }) });
@@ -2330,15 +2338,19 @@
     const done = f => C[f + 'At'] ? `<span class="lc-ok">✅ ${esc(C[f + 'By'] || '')} ${tm(C[f + 'At'])} 已確認</span>` : '<span class="lc-no">還沒確認</span>';
     const dd = new Date(d + 'T12:00:00');
     const IC = k => `<img class="lc-im" src="/member/ic/${k}.png" alt="">`;
-    const TABS = [['att', IC('att'), '到勤'], ['meal', IC('meal'), '用餐'], ['eq', IC('kit'), '配備'], ['dress', IC('dress'), '服裝'], ['charge', IC('charge'), '充電']];
+    const BFF = { ...(C.bff || {}) };
+    const TABS = [['att', IC('att'), '到勤'], ['bff', '<b class="lc-em">🍦</b>', '冰友'], ['meal', IC('meal'), '用餐'], ['eq', IC('kit'), '配備'], ['dress', IC('dress'), '服裝'], ['charge', IC('charge'), '充電']];
     let tab = (TABS.find(([f]) => !C[f + 'At']) || TABS[0])[0];
     const ok = (m, f) => !!dress[m.k][f];
     const paint = () => {
       const T = TABS.findIndex(x => x[0] === tab), stat = {
         att: `${M.filter(m => att[m.k]).length}/${M.length} 到`, meal: `中 ${M.filter(m => meal[m.k].l).length}/${M.length}・晚 ${M.filter(m => meal[m.k].n).length}/${M.length}`,
-        eq: EQ.length ? `${EQ.filter(x => eqc[x[0]]).length}/${EQ.length}` : '這組沒有配備', dress: `${M.filter(m => DR.every(([k]) => ok(m, k))).length}/${M.length} 人 OK`, charge: `${CH.filter(x => chg[x[0]]).length}/${CH.length}` }[tab];
+        eq: EQ.length ? `${EQ.filter(x => eqc[x[0]]).length}/${EQ.length}` : '這組沒有配備', dress: `${M.filter(m => DR.every(([k]) => ok(m, k))).length}/${M.length} 人 OK`, bff: `${M.filter(m => BFF[m.k]).length}/${M.length} 已開`, charge: `${CH.filter(x => chg[x[0]]).length}/${CH.length}` }[tab];
       let body = '';
       if (tab === 'att') body = `<div class="lc-tip2">點名字切換「到／未到」</div><div class="lc-g2">${M.map(m => `<button class="lc-card ${att[m.k] ? 'y' : 'n'}" data-at="${m.k}"><b>${esc(m.name)}</b><small>${esc(m.cert)}</small><i>${att[m.k] ? '✓ 到勤' : '✗ 未到'}</i></button>`).join('')}</div>`;
+      if (tab === 'bff') body = `<button class="lc-bff" data-bffopen="1"><span>🍦</span><b>打開冰友 App</b><small>看組員有沒有出現在地圖上</small></button>
+          <div class="lc-cnt"><span>確認每個人的冰友定位都有開</span><button class="lc-mini" data-bffall="1" style="margin-left:auto">全部已開</button></div>
+          <div class="lc-g2">${M.map(m => `<button class="lc-card ${BFF[m.k] ? 'y' : 'n'}" data-bf="${m.k}"><b>${esc(m.name)}</b><small>${esc(m.cert)}</small><i>${BFF[m.k] ? '✓ 冰友已開' : '✗ 還沒開'}</i></button>`).join('')}</div>`;
       if (tab === 'meal') body = `<div class="lc-seg">${[['l', '☀️ 中餐'], ['n', '🌙 晚餐']].map(([f, t]) => `<button class="${mf === f ? 'on' : ''}" data-mf="${f}">${t}<small>${M.filter(m => meal[m.k][f]).length}/${M.length}</small></button>`).join('')}</div>
           <div class="lc-cnt">${[['葷', '葷'], ['素', '素'], ['自', '自理']].map(([v, n]) => `<span>${n} <b>${M.filter(m => meal[m.k][mf] === v).length}</b></span>`).join('')}<span>未選 <b>${M.filter(m => !meal[m.k][mf]).length}</b></span><button class="lc-mini" data-mall="葷">全部葷</button><button class="lc-mini" data-mall="素">全部素</button></div>
           <table class="lc-tb"><tr><th></th><th>葷</th><th>素</th><th>自理</th></tr>${M.map(m => { const lk = mf === 'l' ? m.lockL : m.lockN; return `<tr><td class="nm">${esc(m.name)}${lk ? '<small>管理員設定</small>' : ''}</td>${['葷', '素', '自'].map(v => `<td><button class="lc-dot ${meal[m.k][mf] === v ? 'on' : ''} ${lk ? 'lk' : ''}" ${lk ? 'data-lk="1"' : ''} data-ml="${m.k}|${mf}|${v}">${meal[m.k][mf] === v ? '●' : ''}</button></td>`).join('')}</tr>`; }).join('')}</table>`;
@@ -2348,7 +2360,8 @@
       if (tab === 'charge') body = `<div class="lc-tip2">🌙 就寢前確認整組都插上充電</div><div class="lc-g3">${CH.map(([k, n]) => `<button class="lc-tile ${chg[k] ? 'y' : ''}" data-ch="${k}"><span>${IC(k)}</span><b>${n}</b><small>${chg[k] ? '已充電' : '未充電'}</small><i>${chg[k] ? '🔋' : ''}</i></button>`).join('')}</div>`;
       shell(`<style>
         .lc-h{display:flex;justify-content:space-between;align-items:center}.lc-tt{display:flex;align-items:center;gap:10px}.lc-ava{position:relative;flex:none;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#ffe4d1,#fff3ea);box-shadow:inset 0 0 0 2px #f6c9a8}.lc-ava img{width:100%;height:100%;border-radius:50%;object-fit:cover;object-position:top}.lc-ava i{position:absolute;top:-11px;left:50%;transform:translateX(-50%) rotate(-8deg);font-style:normal;font-size:17px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}.lc-h b{font-size:20px}.lc-x{border:none;background:#f1f5f9;border-radius:50%;width:34px;height:34px;font-size:16px}
-        .lc-tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:12px 0 10px}
+        .lc-tabs{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin:12px 0 10px}.lc-tabs button{font-size:12.5px!important}.lc-em{display:block;font-size:24px;line-height:30px;height:30px}.lc-hd .lc-em{display:inline;font-size:22px}
+        .lc-bff{display:flex;align-items:center;gap:10px;width:100%;border:none;border-radius:16px;padding:12px 14px;margin:0 0 6px;font:inherit;text-align:left;color:#fff;background:linear-gradient(135deg,#1f2937,#111827);box-shadow:0 6px 16px rgba(0,0,0,.18)}.lc-bff span{font-size:30px}.lc-bff b{font-size:17px;flex:1}.lc-bff small{display:block;font-size:11.5px;font-weight:700;color:#fbcfe8;flex-basis:100%;margin-top:-6px;padding-left:40px}.lc-bff{flex-wrap:wrap}
         .lc-tabs button{position:relative;border:2px solid #f1e3dc;background:#fff;border-radius:14px;padding:7px 2px 6px;font:inherit;font-size:13px;font-weight:900;color:#6b7280;line-height:1.25}
         .lc-tabs button span{display:block;font-size:20px}.lc-tabs .lc-im{width:30px;height:30px}.lc-im{display:block;margin:0 auto;object-fit:contain}.lc-tile .lc-im{width:58px;height:58px}.lc-hd .lc-im{display:inline-block;width:26px;height:26px;vertical-align:-6px;margin-right:2px}.lc-tabs button.on{border-color:#c2414f;background:#fff1f2;color:#c2414f}
         .lc-tabs button.done::after{content:'✓';position:absolute;top:-7px;right:-5px;width:19px;height:19px;border-radius:50%;background:#16a34a;color:#fff;font-size:12px;line-height:19px}
@@ -2371,7 +2384,7 @@
         <div class="lc-h"><b class="lc-tt"><span class="lc-ava"><img src="/member/ic/leader.png" alt=""></span>小組長檢查</b><button class="lc-x" onclick="document.getElementById('lead-ov').remove()">✕</button></div>
         <div style="font-size:14px;color:#6b7280;margin-top:2px">${dd.getMonth() + 1}/${dd.getDate()}（${WK[dd.getDay()]}）・<b style="color:#c2414f">${esc(J.team)}</b>・${M.length} 人</div>
         <div class="lc-tabs">${TABS.map(([f, ic, n]) => `<button class="${tab === f ? 'on' : ''} ${C[f + 'At'] ? 'done' : ''}" data-tab="${f}"><span>${ic}</span>${n}</button>`).join('')}</div>
-        <div class="lc-hd"><b>${TABS[T][1]} ${{ att: '出發前・到勤點名', meal: '今天用餐', eq: '小組配備盤點', dress: '隊員服裝儀容', charge: '就寢前・充電' }[tab]}</b>${done(tab)}</div>
+        <div class="lc-hd"><b>${TABS[T][1]} ${{ att: '出發前・到勤點名', bff: '冰友定位有沒有開', meal: '今天用餐', eq: '小組配備盤點', dress: '隊員服裝儀容', charge: '就寢前・充電' }[tab]}</b>${done(tab)}</div>
         ${body}
         <div class="lc-bot"><button class="lc-sv" data-sv="${tab}">確認${TABS[T][2]}（${stat}）${T < TABS.length - 1 ? '・下一項 ›' : ''}</button></div>`);
       const q = (a, f) => document.querySelectorAll(`#lead-ov [${a}]`).forEach(b => b.onclick = () => { f(b.getAttribute(a)); paint(); });
@@ -2384,8 +2397,11 @@
       q('data-dr', v => { const [k, f] = v.split('|'); dress[k][f] = !dress[k][f]; });
       q('data-dall', () => M.forEach(m => DR.forEach(([k]) => dress[m.k][k] = true)));
       q('data-ch', k => { chg[k] = !chg[k]; });
+      q('data-bf', k => { BFF[k] = !BFF[k]; });
+      q('data-bffall', () => M.forEach(m => BFF[m.k] = true));
+      document.querySelectorAll('#lead-ov [data-bffopen]').forEach(b => b.onclick = () => openBffApp());
       document.querySelectorAll('#lead-ov [data-sv]').forEach(b => b.onclick = async () => {
-        const f = b.dataset.sv, val = { att, meal, eq: eqc, dress, charge: chg }[f];
+        const f = b.dataset.sv, val = { att, bff: BFF, meal, eq: eqc, dress, charge: chg }[f];
         b.disabled = true; b.textContent = '儲存中…';
         try { const r = await call({ save: { [f]: val } }); Object.assign(C, r.check || {}); toast('✅ 已確認'); if (f === 'meal') { mySchedKey = null; loadMySched(); }
           const i = TABS.findIndex(x => x[0] === f); if (i < TABS.length - 1) tab = TABS[i + 1][0]; }
@@ -3352,8 +3368,8 @@
       return `<div class="xd" data-day="${d}"><table class="xt"><thead><tr><th class="xc">組別</th><th colspan="${NC}" class="xdate"><span class="xtag ${(info[d] || {}).tag ? '' : 'emp'}" data-tag="${d}">${esc((info[d] || {}).tag || '＋標記')}</span>${dd.getMonth() + 1}月${dd.getDate()}日(${WK[dd.getDay()]})</th><th class="xcmd">指揮官:${esc(cmd)}<div class="xcnt">${ts.length} 組・${pres.length} 人</div></th></tr></thead>
         <tbody>${rows || `<tr><td colspan="${NC + 2}" class="sc-empty">按「自動排班」</td></tr>`}
         ${dutyHtml(info[d]).map(h => `<tr><td colspan="${NC + 2}" class="xf" data-duty="${d}">${h}</td></tr>`).join('')}
-        ${ts.length ? `<tr><td colspan="${NC + 2}" class="xf xlead">📋 小組長檢查：${ts.map(t => { const c = ((evLead[eid] || {})[d] || {})[t.l] || {}, n = ['attAt', 'mealAt', 'eqAt', 'dressAt', 'chargeAt'].filter(f => c[f]).length;
-          return `<button type="button" data-ldv="${d}|${esc(t.l)}" style="border:1.5px solid ${n === 5 ? '#86efac' : n ? '#fdba74' : '#e5e7eb'};background:${n === 5 ? '#f0fdf4' : n ? '#fff7ed' : '#fff'};color:${n === 5 ? '#15803d' : n ? '#c2410c' : '#9ca3af'};border-radius:999px;padding:1px 8px;margin:1px 2px;font:inherit;font-size:11px;font-weight:800;cursor:pointer">${esc(t.l)} ${n}/5</button>`; }).join('')}</td></tr>` : ''}</tbody></table>
+        ${ts.length ? `<tr><td colspan="${NC + 2}" class="xf xlead">📋 小組長檢查：${ts.map(t => { const c = ((evLead[eid] || {})[d] || {})[t.l] || {}, n = ['attAt', 'bffAt', 'mealAt', 'eqAt', 'dressAt', 'chargeAt'].filter(f => c[f]).length;
+          return `<button type="button" data-ldv="${d}|${esc(t.l)}" style="border:1.5px solid ${n === 6 ? '#86efac' : n ? '#fdba74' : '#e5e7eb'};background:${n === 6 ? '#f0fdf4' : n ? '#fff7ed' : '#fff'};color:${n === 6 ? '#15803d' : n ? '#c2410c' : '#9ca3af'};border-radius:999px;padding:1px 8px;margin:1px 2px;font:inherit;font-size:11px;font-weight:800;cursor:pointer">${esc(t.l)} ${n}/6</button>`; }).join('')}</td></tr>` : ''}</tbody></table>
         <div class="xsbar"><button class="xshot" data-shot="${d}">📷 存圖</button></div>
         ${miss.length && ts.length ? `<div class="sc-miss">未排入：${miss.map(k => chip(k, false, d)).join('')}</div>` : ''}</div>`; };
     $('sheet-body').innerHTML = `

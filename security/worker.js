@@ -1060,7 +1060,7 @@ async function leadRoute(req, env, json) {
     if (save) {
       const by = me ? me.name : (u.realName || ''), now = new Date().toISOString(), cur = await fsGet(tok, path), old = cur ? fobj(cur.fields) : {};
       const doc = { ...old, team: t.l, d, by, at: Date.now() };
-      ['att', 'eq', 'dress', 'charge'].forEach(f => { if (save[f] && typeof save[f] === 'object') { doc[f] = save[f]; doc[f + 'At'] = Date.now(); doc[f + 'By'] = by; } });
+      ['att', 'bff', 'eq', 'dress', 'charge'].forEach(f => { if (save[f] && typeof save[f] === 'object') { doc[f] = save[f]; doc[f + 'At'] = Date.now(); doc[f + 'By'] = by; } });
       if (save.meal && typeof save.meal === 'object') {   // 用餐：寫回每個人自己的登記（管理員設定過的不動）
         const adm = sc.meal || {};
         for (const k of (t.m || [])) { const v = save.meal[k]; if (!v) continue; const S = await selfOf(k); if (!S) continue;
