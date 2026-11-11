@@ -99,6 +99,7 @@ export default {
     if (path === '/usage') return usageRoute(req, env, json);
     if (path === '/usage-stats') return usageStatsRoute(req, env, json);
     if (path === '/usage-trip') return usageTripRoute(req, env, json);
+    if (path === '/usage-quota') return usageQuotaRoute(req, env, json);
     if (path === '/wh-sched') return whSchedRoute(req, env, json);
 
     try {
@@ -1409,5 +1410,46 @@ async function usageTripRoute(req, env, json) {
       const I = (sc.info || {})[d] || {};
       return { d, tag: I.tag || '', place: I.place || '', teams: ts.length, sched, att, attTeams, full, part, rec: rc[d] || 0, out: out[d] || 0, in: inn[d] || 0 }; });
     return json({ ok: true, days: rows, before: { rec: rc[isoAddW(ds[0], -1)] || 0, out: out[isoAddW(ds[0], -1)] || 0 } });
+  } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
+}
+
+// 資料庫用量（只有開發者）：從 Google Cloud Monitoring 讀 Firestore 讀取／寫入／刪除次數
+// 服務帳戶要有「Monitoring 檢視者」(roles/monitoring.viewer) 角色才讀得到
+let monTok = null;
+async function monitorToken(env) {
+  if (monTok && monTok.exp > Date.now() + 60000) return monTok.t;
+  const sa = JSON.parse(env.SERVICE_ACCOUNT), now = Math.floor(Date.now() / 1000);
+  const jwt = await signJwt(sa, { iss: sa.client_email, scope: 'https://www.googleapis.com/auth/monitoring.read', aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 });
+  const r = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'grant_type=' + encodeURIComponent('urn:ietf:params:oauth:grant-type:jwt-bearer') + '&assertion=' + jwt });
+  const j = await r.json(); if (!j.access_token) throw new Error('monitoring token failed');
+  monTok = { t: j.access_token, exp: Date.now() + (j.expires_in || 3600) * 1000 }; return monTok.t;
+}
+const laDay = ms => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms));
+async function usageQuotaRoute(req, env, json) {
+  try {
+    const { idToken } = await req.json();
+    if (!idToken) return json({ error: 'missing' }, 400);
+    const uid = uidOfToken(idToken); const me = await fsUser(idToken, uid); const tok = await saToken(env);
+    if (!me || uid !== await devUid(tok)) return json({ error: '只有開發者可以看' }, 403);
+    const sa = JSON.parse(env.SERVICE_ACCOUNT), mt = await monitorToken(env);
+    const end = new Date(), start = new Date(Date.now() - 8 * 864e5);
+    const one = async m => {
+      const q = new URLSearchParams({ filter: `metric.type="firestore.googleapis.com/document/${m}"`, 'interval.startTime': start.toISOString(), 'interval.endTime': end.toISOString(),
+        'aggregation.alignmentPeriod': '3600s', 'aggregation.perSeriesAligner': 'ALIGN_SUM', 'aggregation.crossSeriesReducer': 'REDUCE_SUM' });
+      const r = await fetch(`https://monitoring.googleapis.com/v3/projects/${PROJECT_ID}/timeSeries?${q}`, { headers: { Authorization: 'Bearer ' + mt } });
+      if (!r.ok) { const t = await r.text(); throw Object.assign(new Error(t.slice(0, 300)), { status: r.status }); }
+      const pts = ((await r.json()).timeSeries || []).flatMap(ts => ts.points || []);
+      const byDay = {}, byHour = {};
+      pts.forEach(p => { const t = Date.parse(p.interval.endTime) - 1, v = +(p.value.int64Value || p.value.doubleValue || 0), d = laDay(t);
+        byDay[d] = (byDay[d] || 0) + v; if (d === laDay(Date.now())) { const h = new Date(t + 8 * 3600e3).getUTCHours(); byHour[h] = (byHour[h] || 0) + v; } });
+      return { byDay, byHour };
+    };
+    let reads, writes, deletes;
+    try { [reads, writes, deletes] = await Promise.all(['read_count', 'write_count', 'delete_count'].map(one)); }
+    catch (e) { if (e.status === 403 || e.status === 401) return json({ ok: false, needRole: true, sa: sa.client_email, project: PROJECT_ID }); throw e; }
+    // 下一次歸零：美西時間半夜（台灣下午 3 點或 4 點）
+    let nx = Date.now(); const today = laDay(nx); while (laDay(nx) === today) nx += 600e3;
+    return json({ ok: true, today, resetAt: nx, limit: { reads: 50000, writes: 20000, deletes: 20000 }, reads, writes, deletes });
   } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
 }

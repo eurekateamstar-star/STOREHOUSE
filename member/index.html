@@ -442,6 +442,10 @@
   .us-trip .us-tr{grid-template-columns:.8fr 1fr .9fr 1.1fr .8fr .9fr .7fr}.us-trip small{display:block;font-size:10.5px;color:var(--sub)}.us-tag{display:inline-block!important;margin-left:4px;background:#1e3a8a;color:#fff!important;border-radius:5px;padding:0 4px}
   @media(max-width:520px){.us-trip .us-tr{grid-template-columns:1fr 1fr 1fr;row-gap:2px}.us-trip .us-th{display:none}.us-trip .us-tr span:nth-child(n+2)::before{display:block;font-size:10px;color:var(--sub)}
     .us-trip .us-tr span:nth-child(2)::before{content:'排班'}.us-trip .us-tr span:nth-child(3)::before{content:'到勤'}.us-trip .us-tr span:nth-child(4)::before{content:'組長檢查'}.us-trip .us-tr span:nth-child(5)::before{content:'救護紀錄'}.us-trip .us-tr span:nth-child(6)::before{content:'出庫／入庫'}.us-trip .us-tr span:nth-child(7)::before{content:'使用人數'}}
+  .us-mini{float:right;border:1px solid var(--line);background:#fff;border-radius:999px;padding:3px 10px;font:inherit;font-size:13px;font-weight:800}
+  .us-q{margin-bottom:9px}.us-qt{display:flex;align-items:baseline;gap:8px;font-size:13px}.us-qt>b{font-size:15px;width:36px}.us-qt span{flex:1;color:var(--sub)}.us-qt span b{color:var(--ink);font-size:15px}.us-qt em{font-style:normal;font-weight:900}
+  .us-qb{height:12px;background:#f3f4f6;border-radius:6px;overflow:hidden;margin-top:3px}.us-qb i{display:block;height:100%;border-radius:6px}
+  .us-q7{grid-template-columns:1.3fr 1fr 1fr 1fr!important}.us-role{background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:12px 14px;font-size:13.5px;line-height:1.7}.us-role ol{margin:6px 0 4px;padding-left:20px}.us-role code{background:#fff;border-radius:6px;padding:1px 5px;font-size:12px;word-break:break-all}.us-role small{color:var(--sub)}
   .us-idle{display:flex;flex-wrap:wrap;gap:6px}.us-idle span{background:#fef3c7;border-radius:10px;padding:5px 9px;font-size:13px;font-weight:800}.us-idle small{display:block;font-size:10.5px;color:#92400e;font-weight:700}
   .us-tbl{font-size:13px;border:1px solid var(--line);border-radius:12px;overflow:hidden}.us-tr{display:grid;grid-template-columns:1.1fr 1fr .5fr .5fr 2.2fr;gap:6px;padding:7px 10px;border-top:1px solid var(--line);align-items:center}.us-th{background:#f8fafc;font-weight:900;color:var(--sub);border-top:none;font-size:12px}.us-tf{font-size:12px;color:var(--sub)}
   @media(max-width:520px){.us-tr{grid-template-columns:1fr 1fr .5fr .5fr}.us-tf{grid-column:1/-1}}
@@ -1165,6 +1169,36 @@
   const US_B = [['b1', '<1秒'], ['b2', '1–2'], ['b3', '2–3'], ['b5', '3–5'], ['b8', '5–8'], ['b12', '8–12'], ['bx', '>12秒']];
   const EDU_N = { wound: '外傷', sun: '防曬', foot: '水泡', water: '補水抽筋', heat: '中暑', help: '找醫護' };
   let usTrip = { eid: '', data: null, busy: false, err: '' };
+  let usQ = { data: null, busy: false, err: '', at: 0 };
+  async function loadQuota() {
+    usQ.busy = true; usQ.err = '';
+    try { const idToken = await auth.currentUser.getIdToken();
+      const r = await fetch(AUTH_URL + '/usage-quota', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken }) });
+      const j = await r.json(); if (!r.ok || j.error) throw new Error(j.error || r.status); usQ.data = j; usQ.at = Date.now(); }
+    catch (e) { usQ.err = String(e.message || e); }
+    usQ.busy = false; if (curTab === 'usage') renderUsage();
+  }
+  function usQuotaHtml() {
+    if (!usQ.data && !usQ.busy && !usQ.err) loadQuota();
+    const Q = usQ.data, head = `<div class="us-h">資料庫用量 <small>（Firebase 免費額度・每天台灣下午 3～4 點歸零）</small><button class="us-mini" id="us-q-re">${usQ.busy ? '讀取中…' : '↻'}</button></div>`;
+    if (usQ.err) return head + `<div class="us-empty">❌ ${esc(usQ.err)}</div>`;
+    if (!Q) return head + '<div class="us-empty">讀取中…</div>';
+    if (Q.needRole) return head + `<div class="us-role"><b>還差一個設定：讓伺服器可以讀用量</b>
+      <ol><li>電腦打開 <a href="https://console.cloud.google.com/iam-admin/iam?project=${esc(Q.project)}" target="_blank" rel="noopener">Google Cloud 主控台 → IAM</a>（用 Firebase 的 Google 帳號登入）</li>
+      <li>找到這個服務帳戶：<code>${esc(Q.sa)}</code>，按右邊的 ✏️ 鉛筆</li>
+      <li>「新增其他角色」→ 搜尋「<b>Monitoring 檢視者</b>」（Monitoring Viewer）→ 儲存</li>
+      <li>等 1～2 分鐘，回來按右上角 ↻</li></ol><small>這個角色只能「看」用量數字，不能改任何東西。</small></div>`;
+    const day = Q.today, M = [['reads', '讀取', Q.reads], ['writes', '寫入', Q.writes], ['deletes', '刪除', Q.deletes]];
+    const rs = new Date(Q.resetAt), resetTxt = `${rs.getHours() >= 12 ? '下午 ' + (rs.getHours() - 12 || 12) : '上午 ' + rs.getHours()} 點`;
+    const meters = M.map(([k, n, d]) => { const used = Math.round((d.byDay || {})[day] || 0), lim = Q.limit[k], pct = Math.min(100, used / lim * 100), col = pct < 60 ? 'var(--green)' : pct < 85 ? 'var(--amber)' : 'var(--red)';
+      return `<div class="us-q"><div class="us-qt"><b>${n}</b><span>已用 <b>${used.toLocaleString()}</b> / ${lim.toLocaleString()}</span><em style="color:${col}">剩 ${Math.max(0, lim - used).toLocaleString()}</em></div><div class="us-qb"><i style="width:${pct}%;background:${col}"></i></div></div>`; }).join('');
+    const hr = Q.reads.byHour || {}, hv = Array.from({ length: 24 }, (_, i) => hr[i] || 0), hm = Math.max(1, ...hv);
+    const days = [...new Set([...Object.keys(Q.reads.byDay || {}), ...Object.keys(Q.writes.byDay || {})])].sort().reverse().slice(0, 7);
+    return head + `<div class="us-sub">今天的額度在台灣${resetTxt}歸零・數字大約晚 3～5 分鐘</div>${meters}
+      <div class="us-sub" style="margin-top:10px">今天每小時讀取（台灣時間）</div><div class="us-hr" style="height:70px">${hv.map((v, i) => `<div title="${i} 點：${Math.round(v)} 次"><i style="height:${v / hm * 100}%;background:#60a5fa"></i><span>${i % 3 ? '' : i}</span></div>`).join('')}</div>
+      <div class="us-tbl" style="margin-top:6px"><div class="us-tr us-th us-q7"><span>日期（美西）</span><span>讀取</span><span>寫入</span><span>刪除</span></div>
+      ${days.map(d => `<div class="us-tr us-q7"><span>${d.slice(5).replace('-', '/')}${d === day ? ' 今天' : ''}</span>${M.map(([k, , o]) => { const v = Math.round((o.byDay || {})[d] || 0), over = v > Q.limit[k]; return `<span style="${over ? 'color:var(--red);font-weight:900' : ''}">${v.toLocaleString()}${over ? ' ⚠' : ''}</span>`; }).join('')}</div>`).join('')}</div>`;
+  }
   function usExtra(F, data) {
     // ① 從哪裡進來
     const src = {}; Object.entries(F).forEach(([k, v]) => { const m = k.match(/^src_([a-z]+)_(.+)$/); if (m) { (src[m[1]] = src[m[1]] || {})[m[2]] = v; } });
@@ -1241,6 +1275,8 @@
     const top = f => Object.entries(f).filter(([k]) => !META(k)).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${usLabel(k)} ${v}`).join('、');
     el.innerHTML = `<div class="card us-card">${seg}
       <div class="us-tip">🔒 只有開發者看得到・你自己的使用不算在內・每個人離開頁面時才會送出，所以會晚幾分鐘</div>
+      ${usQuotaHtml()}
+      <div class="us-h">使用人數</div>
       <div class="us-kpi"><div><b>${uToday}</b><span>今天使用人數</span></div><div><b>${oToday}</b><span>今天打開次數</span></div>
         <div><b>${Object.keys(U).length}</b><span>近 ${usDays} 天用過的人</span></div><div><b>${avgU}</b><span>平均每天人數</span></div></div>
       <div class="us-h">每天使用人數 <small>（手指按住或滑鼠移到長條上看當天打開次數）</small></div><div class="us-bars">${bars}</div>
@@ -1262,6 +1298,7 @@
     document.querySelectorAll('#tab-usage [data-usd]').forEach(b => b.onclick = () => { usDays = +b.dataset.usd; usData = null; renderUsage(); });
     document.querySelectorAll('#tab-usage [data-usr]').forEach(b => b.onclick = () => { usData = null; renderUsage(); });
     const ts = $('us-trip-sel'); if (ts) ts.onchange = () => { usTrip.eid = ts.value; usTrip.data = null; renderUsage(); };
+    const qr = $('us-q-re'); if (qr) qr.onclick = () => { if (!usQ.busy) loadQuota(); };
     const tg = $('us-trip-go'); if (tg) tg.onclick = () => { if (!usTrip.busy) loadTrip(); };
   }
 
