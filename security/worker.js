@@ -98,6 +98,7 @@ export default {
     if (path === '/edu-stats') return eduStatsRoute(req, env, json);
     if (path === '/usage') return usageRoute(req, env, json);
     if (path === '/usage-stats') return usageStatsRoute(req, env, json);
+    if (path === '/usage-trip') return usageTripRoute(req, env, json);
     if (path === '/wh-sched') return whSchedRoute(req, env, json);
 
     try {
@@ -446,7 +447,7 @@ async function webhookRoute(req, env) {
     if (!make) continue;
     await fetch('https://api.line.me/v2/bot/message/reply', {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + env.LINE_BOT_TOKEN },
-      body: JSON.stringify({ replyToken: ev.replyToken, messages: [await make(env, new URL(req.url).origin)] }),
+      body: JSON.stringify({ replyToken: ev.replyToken, messages: [tagSrc(await make(env, new URL(req.url).origin), 'menu')] }),
     });
   }
   await stat;
@@ -819,7 +820,15 @@ EDU_CARDS['record-entry'] = { id: 'record-entry', builtin: true, w: 1040, h: 160
 // 倉庫入口：整張長圖滿版，點圖就開倉庫（不放分享鈕）
 const whEntryFlex = c => ({ type: 'flex', altText: c.alt, contents: { type: 'bubble', size: 'giga',
   hero: { type: 'image', url: c.imgUrl, size: 'full', aspectRatio: '1040:1600', aspectMode: 'cover', action: { type: 'uri', label: '開啟倉庫管理', uri: c.url } } } });
-const cardFlex = (c, origin) => /^(wh|member|record)-entry$/.test(c.id) ? whEntryFlex(c) : c.id === 'guardian' ? guardianFlex() : c.id === 'edu-all' ? eduAllFlex(origin) : shareFlex(c, origin);
+// 連結加上來源（src=menu／share／n_xxx），網頁打開時記到使用分析「從哪裡進來」
+function tagSrc(o, src) {
+  o = JSON.parse(JSON.stringify(o));   // 複製一份，不改到共用的資料
+  const walk = x => { if (Array.isArray(x)) return x.forEach(walk); if (!x || typeof x !== 'object') return;
+    if (x.type === 'uri' && typeof x.uri === 'string' && /^https:\/\/(liff\.line\.me\/2011820105-|tsushin-buishatun\.pages\.dev\/)/.test(x.uri) && !/[?&]src=/.test(x.uri)) {
+      const h = x.uri.indexOf('#'), a = h < 0 ? x.uri : x.uri.slice(0, h), t = h < 0 ? '' : x.uri.slice(h); x.uri = a + (a.includes('?') ? '&' : '?') + 'src=' + src + t; }
+    Object.values(x).forEach(walk); };
+  walk(o); return o; }
+const cardFlex = (c, origin) => tagSrc(/^(wh|member|record)-entry$/.test(c.id) ? whEntryFlex(c) : c.id === 'guardian' ? guardianFlex() : c.id === 'edu-all' ? eduAllFlex(origin) : shareFlex(c, origin), 'share');
 // 全民醫護證邀請卡（跟證件同風格：米白底、紅框、紅按鈕）
 function guardianFlex() {
   const RED = '#D7262B', INK = '#1F1A18', SUB = '#6E625C';
@@ -1056,7 +1065,7 @@ async function leadRoute(req, env, json) {
     const u = fobj((await meR.json()).fields); if (u.status !== 'approved') return json({ error: 'not member' }, 403);
     const admin = u.role === 'admin' || u.adminMember === true;
     const tok = await saToken(env);
-    const [dr, roster] = await Promise.all([fsGet(tok, `events/${eid}/admin/draw`), fsList(tok, 'member_roster').then(L => L.filter(x => !x.left))]);
+    const [dr, roster] = await Promise.all([fsGet(tok, `events/${eid}/admin/draw`), memo('roster', 300e3, () => fsList(tok, 'member_roster')).then(L => L.filter(x => !x.left))]);
     const byName = {}; roster.forEach(x => { const k = normName(x.name); if (k && !byName[k]) byName[k] = x; });
     const me = u.rosterId ? roster.find(x => x.id === u.rosterId) : null, myKey = me ? normName(me.name) : '';
     const sc = dr ? (fobj(dr.fields).sched || {}) : {}, teams = (sc.days || {})[d] || [];
@@ -1133,10 +1142,11 @@ async function remindRoute(req, env, json) {
         { type: 'text', text: '📣 醫護團提醒', weight: 'bold', size: 'lg', color: '#c2414f' },
         { type: 'text', text: String(text || '').slice(0, 300), wrap: true, size: 'sm', color: '#374151' } ] },
       footer: { type: 'box', layout: 'vertical', paddingAll: '12px', contents: [
-        { type: 'button', style: 'primary', color: '#D65A68', action: { type: 'uri', label: '打開團員專區登記', uri: 'https://liff.line.me/2011820105-x1KU6xLW' } } ] } } };
+        { type: 'button', style: 'primary', color: '#D65A68', action: { type: 'uri', label: '打開團員專區登記', uri: 'https://liff.line.me/2011820105-x1KU6xLW?src=n_remind' } } ] } } };
     const r = await fetch('https://api.line.me/v2/bot/message/multicast', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + env.LINE_BOT_TOKEN },
       body: JSON.stringify({ to: ids.slice(0, 500), messages: [msg] }) });
     if (!r.ok) return json({ error: 'LINE 傳送失敗：' + (await r.text()).slice(0, 200) }, 502);
+    try { await writeUsage(tok, { pg: 'line', f: [['sent_n_remind', ids.length]] }); } catch (e) {}
     return json({ ok: true, sent: ids.length, noLine });
   } catch (e) { return json({ error: String((e && e.message) || e) }, e && e.code || 500); }
 }
@@ -1186,9 +1196,11 @@ async function nudgeRoute(req, env, json) {
     if (!list.length) return json({ error: '這些人都還沒綁定 LINE' }, 400);
     const msg = String(text || '').slice(0, 600), ttl = String(title || '提醒').slice(0, 40);
     const link = /^https:\/\/liff\.line\.me\//.test(url || '') ? url : 'https://liff.line.me/2011820105-x1KU6xLW';
-    const flex = noticeFlex(body, ttl, msg, btn, link);
+    const ncode = { '排班分享': 'n_sched', '用餐登記': 'n_meal' }[body.kind] || 'n_other';
+    const flex = tagSrc(noticeFlex(body, ttl, msg, btn, link), ncode);
     const r = await lineApi(env, '/v2/bot/message/multicast', { method: 'POST', type: 'application/json', body: JSON.stringify({ to: list, messages: [flex] }) });
     if (!r.ok) return json({ error: 'LINE ' + r.status + ' ' + (await r.text()).slice(0, 200) }, 502);
+    try { await writeUsage(await saToken(env), { pg: 'line', f: [['sent_' + ncode, list.length]] }); } catch (e) {}
     return json({ ok: true, sent: list.length, ...(await quota()) });
   } catch (e) { return json({ error: String((e && e.message) || e) }, e && e.code || 500); }
 }
@@ -1355,7 +1367,47 @@ async function usageStatsRoute(req, env, json) {
     if (!bg.ok) throw new Error('read ' + bg.status);
     const out = {}; let last = {};
     for (const x of await bg.json()) { if (!x.found) continue; const id = x.found.name.split('/').pop(), o = fobj(x.found.fields); if (id === 'last') last = o; else out[id] = o; }
-    const users = (await fsList(tok, 'users')).filter(u => u.status === 'approved' && u.id !== uid).map(u => ({ id: u.id, name: u.realName || u.displayName || '' }));
-    return json({ ok: true, days: ids, daily: out, last, users });
+    const [usersL, eduA, evL] = await Promise.all([fsList(tok, 'users'), fsGet(tok, 'stats/edu'), memo('events', 30e3, () => fsList(tok, 'events'))]);
+    const users = usersL.filter(u => u.status === 'approved' && u.id !== uid).map(u => ({ id: u.id, name: u.realName || u.displayName || '' }));
+    const trips = evL.filter(e => e.schedPublic || e.schedAt || e.askGroups).map(e => ({ id: e.id, title: e.title || '', at: e.createdAt || 0 }));
+    return json({ ok: true, days: ids, daily: out, last, users, edu: eduA ? fobj(eduA.fields) : {}, trips });
+  } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
+}
+
+// 進香每日總表（只有開發者）：每天排班人數、到勤、組長檢查完成、救護紀錄件數、器材出入庫
+async function usageTripRoute(req, env, json) {
+  try {
+    const { idToken, eid } = await req.json();
+    if (!idToken || !/^[A-Za-z0-9_-]{1,64}$/.test(eid || '')) return json({ error: 'missing' }, 400);
+    const uid = uidOfToken(idToken); const me = await fsUser(idToken, uid); const tok = await saToken(env);
+    if (!me || uid !== await devUid(tok)) return json({ error: '只有開發者可以看' }, 403);
+    const dr = await fsGet(tok, `events/${eid}/admin/draw`); const sc = dr ? (fobj(dr.fields).sched || {}) : {}, days = sc.days || {};
+    const ds = Object.keys(days).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+    if (!ds.length) return json({ ok: true, days: [] });
+    const D = n => `projects/${PROJECT_ID}/databases/(default)/documents/${n}`;
+    const leadNames = []; ds.forEach(d => (days[d] || []).forEach(t => leadNames.push(D(`events/${eid}/admin/lead_${d}_${encodeURIComponent(t.l)}`))));
+    const leads = {};
+    for (let i = 0; i < leadNames.length; i += 100) {
+      const r = await fetch(`${FS}:batchGet`, { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify({ documents: leadNames.slice(i, i + 100) }) });
+      if (r.ok) for (const x of await r.json()) if (x.found) { const o = fobj(x.found.fields); leads[o.d + '|' + o.team] = o; } }
+    // 救護紀錄、倉庫紀錄：只讀進香期間（台灣時間 ds[0] 前一天 ～ 最後一天）
+    const t0 = Date.parse(isoAddW(ds[0], -1) + 'T00:00:00+08:00'), t1 = Date.parse(ds[ds.length - 1] + 'T23:59:59+08:00');
+    const q = (coll, field, isTs, sel) => fetch(`${FS}:runQuery`, { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify({ structuredQuery: {
+      from: [{ collectionId: coll }], select: { fields: sel.map(f => ({ fieldPath: f })) },
+      where: { compositeFilter: { op: 'AND', filters: [
+        { fieldFilter: { field: { fieldPath: field }, op: 'GREATER_THAN_OR_EQUAL', value: isTs ? { timestampValue: new Date(t0).toISOString() } : { integerValue: String(t0) } } },
+        { fieldFilter: { field: { fieldPath: field }, op: 'LESS_THAN_OR_EQUAL', value: isTs ? { timestampValue: new Date(t1).toISOString() } : { integerValue: String(t1) } } }] } } } }) })
+      .then(r => r.ok ? r.json() : []).then(L => L.filter(x => x.document).map(x => fobj(x.document.fields)));
+    const [recs, logs] = await Promise.all([q('medical_records', 'timestamp', true, ['timestamp']), q('warehouse_logs', 'timestamp', false, ['timestamp', 'type', 'qty'])]);
+    const dayOf = ms => new Date(ms + 8 * 3600e3).toISOString().slice(0, 10);
+    const rc = {}, out = {}, inn = {}; recs.forEach(x => { const k = dayOf(x.timestamp); rc[k] = (rc[k] || 0) + 1; });
+    logs.forEach(x => { const k = dayOf(x.timestamp), n = +x.qty || 1; if (x.type === '出庫') out[k] = (out[k] || 0) + n; else if (x.type === '入庫') inn[k] = (inn[k] || 0) + n; });
+    const F6 = ['attAt', 'bffAt', 'mealAt', 'eqAt', 'dressAt', 'chargeAt'];
+    const rows = ds.map(d => { const ts = (days[d] || []).filter(t => (t.m || []).length); let sched = 0, att = 0, attTeams = 0, full = 0, part = 0;
+      ts.forEach(t => { sched += t.m.length; const c = leads[d + '|' + t.l] || {}; if (c.attAt) { attTeams++; att += Object.values(c.att || {}).filter(Boolean).length; }
+        const n = F6.filter(f => c[f]).length; if (n === 6) full++; else if (n) part++; });
+      const I = (sc.info || {})[d] || {};
+      return { d, tag: I.tag || '', place: I.place || '', teams: ts.length, sched, att, attTeams, full, part, rec: rc[d] || 0, out: out[d] || 0, in: inn[d] || 0 }; });
+    return json({ ok: true, days: rows, before: { rec: rc[isoAddW(ds[0], -1)] || 0, out: out[isoAddW(ds[0], -1)] || 0 } });
   } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
 }

@@ -435,6 +435,13 @@
   .us-hr{display:flex;align-items:flex-end;gap:2px;height:90px;padding-bottom:16px}.us-hr div{flex:1;height:100%;position:relative}.us-hr i{position:absolute;left:0;right:0;bottom:0;background:var(--accent);border-radius:3px 3px 0 0}.us-hr span{position:absolute;bottom:-16px;left:-6px;right:-6px;text-align:center;font-size:10px;color:var(--sub)}
   .us-line{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.us-line div{border:1px solid var(--line);border-radius:14px;padding:10px 4px;text-align:center;background:#fff}.us-line b{display:block;font-size:22px;color:#b4343f}.us-line span{font-size:12px;font-weight:800;color:var(--sub)}
   .us-line2{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:13px;color:var(--sub);font-weight:700}.us-line2 b{color:var(--ink);font-size:15px;margin-left:3px}
+  .us-sub{font-size:11.5px;color:var(--sub);margin:-2px 0 6px}.us-src .us-tr span{text-align:center}.us-src .us-tr span:first-child{text-align:left}
+  .us-sp{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:#fff}.us-sp b{font-size:14px}.us-sp small{display:block;font-size:12px;color:var(--sub);margin-top:2px}.us-sp em{font-style:normal;font-weight:900;color:var(--ink)}
+  .us-spb{display:flex;align-items:flex-end;gap:4px;height:60px;padding-bottom:16px;margin-top:6px}.us-spb div{flex:1;height:100%;position:relative}.us-spb i{position:absolute;left:0;right:0;bottom:0;border-radius:3px 3px 0 0;min-height:1px}.us-spb span{position:absolute;bottom:-16px;left:-4px;right:-4px;text-align:center;font-size:10px;color:var(--sub)}
+  .us-tot{background:#fff7f5;font-weight:800}.us-trip-bar{display:flex;gap:8px;margin-bottom:8px}.us-trip-bar select{flex:1;min-width:0;font:inherit;font-size:14px;padding:8px;border-radius:10px;border:1px solid var(--line);background:#fff}
+  .us-trip .us-tr{grid-template-columns:.8fr 1fr .9fr 1.1fr .8fr .9fr .7fr}.us-trip small{display:block;font-size:10.5px;color:var(--sub)}.us-tag{display:inline-block!important;margin-left:4px;background:#1e3a8a;color:#fff!important;border-radius:5px;padding:0 4px}
+  @media(max-width:520px){.us-trip .us-tr{grid-template-columns:1fr 1fr 1fr;row-gap:2px}.us-trip .us-th{display:none}.us-trip .us-tr span:nth-child(n+2)::before{display:block;font-size:10px;color:var(--sub)}
+    .us-trip .us-tr span:nth-child(2)::before{content:'排班'}.us-trip .us-tr span:nth-child(3)::before{content:'到勤'}.us-trip .us-tr span:nth-child(4)::before{content:'組長檢查'}.us-trip .us-tr span:nth-child(5)::before{content:'救護紀錄'}.us-trip .us-tr span:nth-child(6)::before{content:'出庫／入庫'}.us-trip .us-tr span:nth-child(7)::before{content:'使用人數'}}
   .us-idle{display:flex;flex-wrap:wrap;gap:6px}.us-idle span{background:#fef3c7;border-radius:10px;padding:5px 9px;font-size:13px;font-weight:800}.us-idle small{display:block;font-size:10.5px;color:#92400e;font-weight:700}
   .us-tbl{font-size:13px;border:1px solid var(--line);border-radius:12px;overflow:hidden}.us-tr{display:grid;grid-template-columns:1.1fr 1fr .5fr .5fr 2.2fr;gap:6px;padding:7px 10px;border-top:1px solid var(--line);align-items:center}.us-th{background:#f8fafc;font-weight:900;color:var(--sub);border-top:none;font-size:12px}.us-tf{font-size:12px;color:var(--sub)}
   @media(max-width:520px){.us-tr{grid-template-columns:1fr 1fr .5fr .5fr}.us-tf{grid-column:1/-1}}
@@ -1152,6 +1159,59 @@
     catch (e) { usErr = String(e.message || e); }
     usBusy = false; if (curTab === 'usage') renderUsage();
   }
+  const META = k => /^(src_|t_|sent_|line_|menu_)/.test(k);
+  const US_SRC = { menu: 'LINE 選單', share: '親友分享', n_sched: '排班通知', n_meal: '用餐通知', n_remind: '催登記通知', n_other: '其他通知', direct: '直接開／掃 QR' };
+  const US_T = { ready: '打開到看到會員卡', schedc: '看到排班（手機裡的）', sched: '拿到最新排班' };
+  const US_B = [['b1', '<1秒'], ['b2', '1–2'], ['b3', '2–3'], ['b5', '3–5'], ['b8', '5–8'], ['b12', '8–12'], ['bx', '>12秒']];
+  const EDU_N = { wound: '外傷', sun: '防曬', foot: '水泡', water: '補水抽筋', heat: '中暑', help: '找醫護' };
+  let usTrip = { eid: '', data: null, busy: false, err: '' };
+  function usExtra(F, data) {
+    // ① 從哪裡進來
+    const src = {}; Object.entries(F).forEach(([k, v]) => { const m = k.match(/^src_([a-z]+)_(.+)$/); if (m) { (src[m[1]] = src[m[1]] || {})[m[2]] = v; } });
+    const srcKeys = [...new Set(Object.values(src).flatMap(o => Object.keys(o)))].sort((a, b) => Object.keys(US_SRC).indexOf(a) - Object.keys(US_SRC).indexOf(b));
+    const srcT = Object.keys(src).length ? `<div class="us-tbl us-src"><div class="us-tr us-th" style="grid-template-columns:1.3fr repeat(${srcKeys.length},1fr)"><span>頁面</span>${srcKeys.map(k => `<span>${esc(US_SRC[k] || k)}</span>`).join('')}</div>
+      ${Object.entries(src).sort((a, b) => Object.values(b[1]).reduce((x, y) => x + y, 0) - Object.values(a[1]).reduce((x, y) => x + y, 0)).map(([pg, o]) => `<div class="us-tr" style="grid-template-columns:1.3fr repeat(${srcKeys.length},1fr)"><span><b>${esc(US_PAGE[pg] || pg)}</b></span>${srcKeys.map(k => `<span>${o[k] || '·'}</span>`).join('')}</div>`).join('')}</div>` : '<div class="us-empty">還沒有資料</div>';
+    // ② 通知成效
+    const NC = ['n_sched', 'n_meal', 'n_remind', 'n_other'].map(c => { const sent = F['sent_' + c] || 0, open = Object.values(src).reduce((a, o) => a + (o[c] || 0), 0); return { c, sent, open }; }).filter(x => x.sent || x.open);
+    const notT = NC.length ? NC.map(x => `<div class="us-r"><span>${US_SRC[x.c]}</span><div><i style="width:${x.sent ? Math.min(100, x.open / x.sent * 100) : 0}%"></i></div><b>${x.sent ? Math.round(x.open / x.sent * 100) + '%' : '—'}</b></div><div class="us-sub">發出 ${x.sent} 人・點開 ${x.open} 次</div>`).join('') : '<div class="us-empty">這段時間沒有發通知</div>';
+    // ③ 衛教
+    const E = data.edu || {}, em = Math.max(1, ...Object.keys(EDU_N).map(k => E['open_' + k] || 0));
+    const eduT = `<div class="us-line2" style="margin:0 0 8px"><span>打開衛教頁 <b>${E.visit || 0}</b></span><span>不同的人 <b>${E.uniq || 0}</b></span><span>分享到 LINE <b>${E.c_line || 0}</b></span><span>FB <b>${E.c_fb || 0}</b></span><span>IG <b>${E.c_ig || 0}</b></span></div>
+      ${Object.entries(EDU_N).map(([k, n]) => `<div class="us-r"><span>${n}</span><div><i style="width:${(E['open_' + k] || 0) / em * 100}%"></i></div><b>${E['open_' + k] || 0}</b></div><div class="us-sub">看完 ${E['done_' + k] || 0} 次</div>`).join('')}
+      <div class="us-sub" style="margin-top:4px">衛教是從上線到現在的累計（不分天）</div>`;
+    // ④ 速度
+    const spT = Object.entries(US_T).map(([m, n]) => { const c = US_B.map(([b]) => F[`t_${m}_${b}`] || 0), tot = c.reduce((a, b) => a + b, 0);
+      if (!tot) return `<div class="us-sp"><b>${n}</b><div class="us-empty" style="padding:6px">還沒有資料</div></div>`;
+      let acc = 0, med = ''; for (let i = 0; i < c.length; i++) { acc += c[i]; if (!med && acc >= tot / 2) med = US_B[i][1]; }
+      const fast = Math.round((c[0] + c[1] + c[2]) / tot * 100);
+      return `<div class="us-sp"><b>${n}</b><small>一半的人在 <em>${med}${/秒/.test(med) ? '' : ' 秒'}</em> 內・${fast}% 在 3 秒內（${tot} 次）</small><div class="us-spb">${c.map((v, i) => `<div><i style="height:${v / Math.max(...c) * 100}%;background:${i < 3 ? 'var(--green)' : i < 5 ? 'var(--amber)' : 'var(--red)'}"></i><span>${US_B[i][1]}</span></div>`).join('')}</div></div>`; }).join('');
+    // ⑤ 進香每日總表
+    const trips = data.trips || []; if (!usTrip.eid && trips.length) usTrip.eid = trips[0].id;
+    const T = usTrip.data;
+    const tripT = !trips.length ? '<div class="us-empty">還沒有公開排班的活動</div>' : `<div class="us-trip-bar"><select id="us-trip-sel">${trips.map(t => `<option value="${esc(t.id)}" ${t.id === usTrip.eid ? 'selected' : ''}>${esc(t.title || t.id)}</option>`).join('')}</select><button class="sbtn" id="us-trip-go">${usTrip.busy ? '讀取中…' : T ? '↻ 重新讀取' : '📋 載入總表'}</button></div>
+      ${usTrip.err ? `<div class="us-empty">❌ ${esc(usTrip.err)}</div>` : ''}
+      ${T ? (T.days.length ? `<div class="us-tbl us-trip"><div class="us-tr us-th"><span>日期</span><span>排班</span><span>到勤</span><span>組長檢查</span><span>救護紀錄</span><span>出庫／入庫</span><span>使用人數</span></div>
+        ${T.days.map(r => { const ud = (data.daily[r.d.replace(/-/g, '')] || {}).u, dt = new Date(r.d + 'T12:00:00');
+          return `<div class="us-tr"><span><b>${dt.getMonth() + 1}/${dt.getDate()}</b>${r.tag ? `<small class="us-tag">${esc(r.tag)}</small>` : ''}</span><span>${r.sched} 人・${r.teams} 組</span>
+            <span>${r.attTeams ? `${r.att}／${r.sched}` : '—'}${r.attTeams && r.attTeams < r.teams ? `<small>${r.attTeams}/${r.teams} 組回報</small>` : ''}</span>
+            <span style="color:${r.full === r.teams ? 'var(--green)' : r.full ? 'var(--amber)' : 'var(--sub)'}"><b>${r.full}/${r.teams}</b> 組完成${r.part ? `<small>${r.part} 組做一半</small>` : ''}</span>
+            <span><b>${r.rec}</b> 件</span><span>${r.out}／${r.in}</span><span>${ud ? Object.keys(ud).length : '—'}</span></div>`; }).join('')}
+        <div class="us-tr us-tot"><span><b>合計</b></span><span>${T.days.reduce((a, r) => a + r.sched, 0)} 人次</span><span>${T.days.reduce((a, r) => a + r.att, 0)}</span><span>${T.days.reduce((a, r) => a + r.full, 0)}/${T.days.reduce((a, r) => a + r.teams, 0)}</span><span>${T.days.reduce((a, r) => a + r.rec, 0)} 件</span><span>${T.days.reduce((a, r) => a + r.out, 0)}／${T.days.reduce((a, r) => a + r.in, 0)}</span><span></span></div></div>
+        <div class="us-sub">出發前一天：救護紀錄 ${T.before.rec} 件・出庫 ${T.before.out}　｜　「使用人數」要在近 ${usDays} 天內才看得到</div>` : '<div class="us-empty">這個活動還沒有排班日期</div>') : ''}`;
+    return `<div class="us-h">從哪裡進來 <small>（數字＝打開次數）</small></div>${srcT}
+      <div class="us-h">LINE 通知發出後有多少人點開</div>${notT}
+      <div class="us-h">衛教小卡</div>${eduT}
+      <div class="us-h">載入速度 <small>（綠＝3 秒內、黃＝3～8 秒、紅＝更久）</small></div>${spT}
+      <div class="us-h">進香每日總表 <small>（按了才讀，會讀一些資料庫）</small></div>${tripT}`;
+  }
+  async function loadTrip() {
+    usTrip.busy = true; usTrip.err = ''; renderUsage();
+    try { const idToken = await auth.currentUser.getIdToken();
+      const r = await fetch(AUTH_URL + '/usage-trip', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, eid: usTrip.eid }) });
+      const j = await r.json(); if (!r.ok || !j.ok) throw new Error(j.error || r.status); usTrip.data = j; }
+    catch (e) { usTrip.err = String(e.message || e); }
+    usTrip.busy = false; renderUsage();
+  }
   function renderUsage() {
     const el = $('tab-usage');
     if (!usData && !usBusy && !usErr) { loadUsage(); }
@@ -1178,7 +1238,7 @@
     const people = users.map(u => ({ id: u.id, name: u.name || nameOf(u.id), t: T[u.id] || 0, ...(U[u.id] || { days: 0, v: 0, a: 0, f: {} }) }))
       .sort((a, b) => b.t - a.t || a.name.localeCompare(b.name, 'zh-Hant'));
     const idle = people.filter(p => !p.t || now - p.t > 14 * 864e5);
-    const top = f => Object.entries(f).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${usLabel(k)} ${v}`).join('、');
+    const top = f => Object.entries(f).filter(([k]) => !META(k)).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${usLabel(k)} ${v}`).join('、');
     el.innerHTML = `<div class="card us-card">${seg}
       <div class="us-tip">🔒 只有開發者看得到・你自己的使用不算在內・每個人離開頁面時才會送出，所以會晚幾分鐘</div>
       <div class="us-kpi"><div><b>${uToday}</b><span>今天使用人數</span></div><div><b>${oToday}</b><span>今天打開次數</span></div>
@@ -1188,8 +1248,9 @@
       <div class="us-line">${[['menu_about', '認識醫護團'], ['menu_edu', '衛教須知'], ['menu_journey', '醫護足跡'], ['menu_guardian', '全民醫護證']].map(([k, n]) => `<div><b>${F[k] || 0}</b><span>${n}</span></div>`).join('')}</div>
       <div class="us-line2"><span>切到團員專區 <b>${F.menu_tab_member || 0}</b></span><span>切到一般資訊 <b>${F.menu_tab_public || 0}</b></span><span>➕ 加好友 <b style="color:var(--green)">${F.line_follow || 0}</b></span><span>🚫 封鎖 <b style="color:var(--red)">${F.line_unfollow || 0}</b></span></div>
       <div class="us-h">各頁面打開次數 <small>（括號＝當天第一次開的人次）</small></div>${rank(P, k => `${US_PAGE[k] || k}（${Q[k] || 0}）`)}
-      <div class="us-h">功能使用排行</div>${rank(F, usLabel, 40)}
+      <div class="us-h">功能使用排行</div>${rank(Object.fromEntries(Object.entries(F).filter(([k]) => !META(k))), usLabel, 40)}
       <div class="us-h">一天中哪個時段最多人用</div><div class="us-hr">${hrs.map((v, i) => `<div title="${i} 點：${v} 次"><i style="height:${v / mh * 100}%"></i><span>${i % 3 ? '' : i}</span></div>`).join('')}</div>
+      ${usExtra(F, usData)}
       <div class="us-h">超過 14 天沒打開（${idle.length} 人）</div><div class="us-idle">${idle.length ? idle.map(p => `<span>${esc(p.name)}<small>${ago(p.t)}</small></span>`).join('') : '<div class="us-empty">大家最近都有用 👍</div>'}</div>
       <div class="us-h">每個人（${people.length} 位系統會員）</div>
       <div class="us-tbl"><div class="us-tr us-th"><span>姓名</span><span>最後使用</span><span>天數</span><span>開啟</span><span>常用功能</span></div>
@@ -1200,6 +1261,8 @@
   function bindUs() {
     document.querySelectorAll('#tab-usage [data-usd]').forEach(b => b.onclick = () => { usDays = +b.dataset.usd; usData = null; renderUsage(); });
     document.querySelectorAll('#tab-usage [data-usr]').forEach(b => b.onclick = () => { usData = null; renderUsage(); });
+    const ts = $('us-trip-sel'); if (ts) ts.onchange = () => { usTrip.eid = ts.value; usTrip.data = null; renderUsage(); };
+    const tg = $('us-trip-go'); if (tg) tg.onclick = () => { if (!usTrip.busy) loadTrip(); };
   }
 
   // ---------- 待審核 ----------
@@ -2067,11 +2130,12 @@
   // ===== 首頁：我的排班（管理員在排班表打開「公開給團員看」才會出現）=====
   let mySchedKey = null, mySchedData = null;
   let eventsLoaded = false, mySchedAt = 0;
+  const UT = m => { try { window.bstUsage && bstUsage.time(m, performance.now()); } catch (e) {} };   // 使用分析：打開後幾秒看到
   async function loadMySched(force) {
     if (!user || user.status !== 'approved' || !user.rosterId || !auth.currentUser) return;
     // 先顯示上次的「我的排班」（存在這支手機），背景再更新 → 一打開就看得到
     const ck = 'ms_cache_' + (profile && profile.userId);
-    if (!mySchedData) { try { const c = JSON.parse(localStorage.getItem(ck) || 'null'); if (c && Array.isArray(c.events)) { mySchedData = c.events; renderMySched(); } } catch (e) {} }
+    if (!mySchedData) { try { const c = JSON.parse(localStorage.getItem(ck) || 'null'); if (c && Array.isArray(c.events)) { mySchedData = c.events; renderMySched(); UT('schedc'); } } catch (e) {} }
     // 出席調查清單還沒回來也先去拿（以前要等清單回來才問伺服器，多等好幾秒）
     const k = !eventsLoaded ? 'boot' : eventsCache.filter(e => e.schedPublic || e.askGroups).map(e => e.id + ':' + tsMs(e.schedPublicAt)).join(',');
     if (!force && k === mySchedKey) return;
@@ -2084,7 +2148,7 @@
       const r = await fetch(AUTH_URL + '/mysched', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken }), signal: ac.signal });
       clearTimeout(to);
       const j = await r.json(); if (j.error) throw new Error(j.error);
-      mySchedData = j.events || []; mySchedAt = Date.now();
+      mySchedData = j.events || []; mySchedAt = Date.now(); UT('sched');
       try { localStorage.setItem(ck, JSON.stringify({ at: Date.now(), events: mySchedData })); } catch (e) {}
     } catch (e) { mySchedKey = null; setTimeout(loadMySched, 3000); if (!mySchedData) return; }
     renderMySched();
@@ -5226,7 +5290,7 @@
       }
       first = false;
       watchMyRoster(user && user.status === 'approved' ? user.rosterId : null);
-      if (user && user.status === 'approved') { watchEvents(); setTimeout(loadMySched, 0); if (pendingView && auth.currentUser) openViewer(pendingView); }
+      if (user && user.status === 'approved') { UT('ready'); watchEvents(); setTimeout(loadMySched, 0); if (pendingView && auth.currentUser) openViewer(pendingView); }
       try { const k = 'bst_menu_' + profile.userId, v = user ? user.status : 'none';
         if (localStorage.getItem(k) !== v && window.__menuSync !== v) (window.__menuSync = v, syncMenu()).then(res => { if (res && res.ok) try { localStorage.setItem(k, v); } catch (e) {} }); } catch (e) {}
       if (isAdmin()) startAdminWatch();
