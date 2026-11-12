@@ -619,11 +619,11 @@
     <div id="tab-users" class="hidden">
       <div class="toolbar">
         <input class="inp" id="us-q" placeholder="🔍 搜尋姓名、LINE 名稱…">
-        <button class="sbtn violet" id="btn-autopair">🔗 依身分證自動配對名冊</button>
+        <span id="full-tools" class="hidden" style="display:contents"><button class="sbtn violet" id="btn-autopair">🔗 依身分證自動配對名冊</button>
         <button class="sbtn" id="btn-richmenu" style="background:#06c755;color:#fff;">🧩 發佈 LINE 圖文選單</button>
         <button class="sbtn" id="btn-journey" style="background:#C4622E;color:#fff;">📸 醫護足跡照片</button>
         <button class="sbtn" id="btn-sharecard" style="background:#1e3a5f;color:#fff;">📤 分享圖文卡片</button>
-        <button class="sbtn" id="btn-edustats" style="background:#c2414f;color:#fff;">📊 衛教網頁統計</button>
+        <button class="sbtn" id="btn-edustats" style="background:#c2414f;color:#fff;">📊 衛教網頁統計</button></span>
       </div>
       <div class="card tbl-wrap"><table class="tbl" id="us-table"></table></div>
       <div class="cards-list" id="us-cards"></div>
@@ -1028,7 +1028,9 @@
 
   // 開發者帳號：不顯示管理員身分、其他管理員不能刪除／停權／改權限（meta/developer 只能設定一次）
   let DEV_UID = ''; try { DEV_UID = localStorage.getItem('bstDevUid') || ''; } catch (e) {}
-  const meDev = () => !!DEV_UID && !!profile && profile.userId === DEV_UID;   // 我就是開發者：前台也不顯示管理員
+  const meDev = () => !!DEV_UID && !!profile && profile.userId === DEV_UID;
+  // 完整管理員（全部系統）或開發者：才看得到圖文選單、足跡照片、分享卡片、衛教統計，也才能改別人的管理員權限
+  const isFull = () => meDev() || !!(user && user.status === 'approved' && user.role === 'admin');   // 我就是開發者：前台也不顯示管理員
   const isDevU = u => !!u && !!DEV_UID && u.id === DEV_UID;
   const devHidden = u => isDevU(u) && !(profile && u.id === profile.userId);   // 別人看開發者
   const DEV_HIDE_LIST = true;   // 還沒全面開放：系統會員清單不讓其他幹部看到開發者（全員開放後改成 false）
@@ -1139,6 +1141,7 @@
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === curTab));
     if (curTab === 'usage' && !meDev()) curTab = 'roster';
     $('tab-btn-usage').classList.toggle('hidden', !meDev());
+    $('full-tools').classList.toggle('hidden', !isFull());
     ['pending', 'roster', 'users', 'events', 'import', 'usage'].forEach(k => $('tab-' + k).classList.toggle('hidden', k !== curTab));
     if (curTab === 'usage') renderUsage();
     if (curTab === 'events') renderEvents();
@@ -4847,7 +4850,9 @@
         ${row('團員專區 上次登入', esc(fmt(tsMs(u.memberLastLoginAt))))}
       </div>
 
-      ${devHidden(u) ? '' : `<div class="grp">⭐ 管理員權限</div>
+      ${devHidden(u) ? '' : !isFull() ? `<div class="grp">⭐ 管理員權限</div>
+      <div class="adm-box" style="display:block;font-size:14px">${adminList(u).length ? (adminList(u).length === 3 ? '全部系統' : adminList(u).join('、')) : '一般團員（不是管理員）'}
+        <div style="font-size:12px;color:var(--sub);margin-top:4px">🔒 只有完整管理員（全部系統）或開發者可以修改管理員權限</div></div>` : `<div class="grp">⭐ 管理員權限</div>
       <div class="adm-box">
         <label class="adm-all"><input type="checkbox" id="adm-all" ${adminList(u).length === 3 ? 'checked' : ''}> 全部系統</label>
         ${ADMIN_APPS.map(([k, t]) => `<label><input type="checkbox" data-adm="${k}" ${adminOf(u, k) ? 'checked' : ''}> ${t}</label>`).join('')}
@@ -4858,7 +4863,7 @@
       <div class="grp">🏷️ 分類</div>
       <div class="cat-row">${[...CATS, ''].map(c => `<button class="chip-s ${cat === c ? 'on' : ''}" data-cat="${esc(c)}">${c || '未分類'}</button>`).join('')}</div>
 
-      ${devHidden(u) ? '' : `<div class="grp">帳號處理</div>
+      ${devHidden(u) || (!isFull() && u.role === 'admin' && !isMe) ? '' : `<div class="grp">帳號處理</div>
       <div class="p-actions" style="flex-wrap:wrap;">
         ${r ? '<button class="sbtn pri" id="us-roster">📋 名冊資料／編輯</button>' : ''}
         ${st === 'banned' ? '<button class="sbtn green" id="us-unban">解除停權</button>' : '<button class="sbtn" id="us-ban" style="background:#1f2430">🚫 停權</button>'}

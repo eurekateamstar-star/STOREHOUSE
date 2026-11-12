@@ -223,6 +223,9 @@ async function fsUser(idToken, uid) {
   return { role: v('role'), status: v('status'), adminMember: v('adminMember') === true, adminWarehouse: v('adminWarehouse') === true, warehouseHelper: v('warehouseHelper') === true, warehouseRemoved: v('warehouseRemoved') === true, realName: v('realName') || '' };
 }
 const memberAdmin = u => !!u && u.status === 'approved' && (u.role === 'admin' || u.adminMember);
+// 完整管理員（全部系統）或開發者：可以管理圖文選單、醫護足跡照片、分享卡片、衛教統計、管理員權限
+async function fullAdmin(me, idToken, env) { if (!me || me.status !== 'approved') return false; if (me.role === 'admin') return true;
+  try { return uidOfToken(idToken) === await devUid(await saToken(env)); } catch (e) { return false; } }
 
 // 依會員狀態切換某人的選單：{ idToken, uid? }，uid 省略＝自己；改別人要團員專區管理員
 async function menuRoute(req, env, json) {
@@ -256,7 +259,7 @@ async function menuSetupRoute(req, env, json) {
     if (!env.LINE_BOT_TOKEN) return json({ error: 'LINE_BOT_TOKEN 尚未設定' }, 501);
     const { idToken } = await req.json();
     const meDoc = await fsUser(idToken, uidOfToken(idToken));
-    if (!meDoc || meDoc.status !== 'approved' || meDoc.role !== 'admin') return json({ error: 'admin only' }, 403);
+    if (!(await fullAdmin(meDoc, idToken, env))) return json({ error: 'admin only' }, 403);
     // 1) 先把三個選單都建好、上傳圖片
     const made = {};
     for (const [key, m] of Object.entries(MENUS)) {
@@ -573,7 +576,7 @@ async function journeyRoute(req, env, json) {
     const body = await req.json(), { idToken, action } = body;
     if (!idToken) return json({ error: 'missing' }, 400);
     const me = await fsUser(idToken, uidOfToken(idToken));
-    if (!memberAdmin(me)) return json({ error: '只有團員專區管理員可以管理照片' }, 403);
+    if (!(await fullAdmin(me, idToken, env))) return json({ error: '只有完整管理員可以管理照片' }, 403);
     const tok = await saToken(env), H = { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' };
     const list = async () => (await fsList(tok, 'journey')).sort((x, y) => (x.order ?? 0) - (y.order ?? 0));
     const patch = (path, fields) => fetch(`${FS}/${path}?${Object.keys(fields).map(k => 'updateMask.fieldPaths=' + k).join('&')}`, { method: 'PATCH', headers: H, body: JSON.stringify({ fields: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, tv(v)])) }) });
@@ -856,7 +859,7 @@ async function shareCardRoute(req, env, json) {
     const body = await req.json(), { idToken, action } = body;
     if (!idToken) return json({ error: 'missing' }, 400);
     const me = await fsUser(idToken, uidOfToken(idToken));
-    if (!memberAdmin(me)) return json({ error: '只有團員專區管理員可以管理分享卡片' }, 403);
+    if (!(await fullAdmin(me, idToken, env))) return json({ error: '只有完整管理員可以管理分享卡片' }, 403);
     const tok = await saToken(env), H = { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' };
     const patch = (path, fields) => fetch(`${FS}/${path}?${Object.keys(fields).map(k => 'updateMask.fieldPaths=' + k).join('&')}`, { method: 'PATCH', headers: H, body: JSON.stringify({ fields: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, tv(v)])) }) });
     const clean = b => ({ title: String(b.title || '').slice(0, 60), text: String(b.text || '').slice(0, 300), btn: String(b.btn || '').slice(0, 30),
@@ -1285,7 +1288,7 @@ async function eduStatsRoute(req, env, json) {
     const { idToken } = await req.json();
     if (!idToken) return json({ error: 'missing' }, 400);
     const me = await fsUser(idToken, uidOfToken(idToken));
-    if (!memberAdmin(me)) return json({ error: '只有團員專區管理員可以看統計' }, 403);
+    if (!(await fullAdmin(me, idToken, env))) return json({ error: '只有完整管理員可以看統計' }, 403);
     const tok = await saToken(env);
     const [a, d] = await Promise.all([fsGet(tok, 'stats/edu'), fsGet(tok, 'stats/edu_daily')]);
     return json({ ok: true, total: a ? fobj(a.fields) : {}, daily: d ? fobj(d.fields) : {} });
