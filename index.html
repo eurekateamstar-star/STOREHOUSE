@@ -885,8 +885,8 @@
                 </div>
                 <div class="menu-card" id="menu-card-locate" onclick="openScanner('locate')">
                     <div class="menu-card-icon">🔍</div>
-                    <div class="menu-card-title">掃 QR 找位置</div>
-                    <div class="menu-card-desc">尋找箱子與借出狀態</div>
+                    <div class="menu-card-title" id="locate-title">掃 QR 找位置</div>
+                    <div class="menu-card-desc" id="locate-desc">尋找箱子與借出狀態</div>
                 </div>
                 <div class="menu-card" id="menu-card-in" onclick="openScanner('in')">
                     <div class="menu-card-icon">📥</div>
@@ -919,7 +919,7 @@
                     <div class="menu-card-title">進出庫小幫手</div>
                     <div class="menu-card-desc">選團員幫忙掃碼進出庫</div>
                 </div>
-                <div class="menu-card" onclick="openMapQuery()" style="grid-column: span 2;">
+                <div class="menu-card" id="menu-card-map" onclick="openMapQuery()" style="grid-column: span 2;">
                     <div class="menu-card-icon">🗺️</div>
                     <div class="menu-card-title">平面圖與全庫存總覽</div>
                     <div class="menu-card-desc">極速載入、檢視與編輯</div>
@@ -1650,6 +1650,7 @@
         let bgColor = 'rgba(52, 199, 89, 0.95)';
         if (type === 'error') bgColor = 'rgba(255, 59, 48, 0.95)';
         else if (type === 'out' || type === 'info') bgColor = 'rgba(215, 38, 56, 0.95)';
+        else if (type === 'gray') bgColor = 'rgba(58, 58, 64, 0.94)';
 
         toast.style.cssText = `background:${bgColor}; color:#fff; padding:20px 24px; border-radius:18px; font-size:16px; font-weight:700; box-shadow:0 12px 40px rgba(0,0,0,0.6); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); width:100%; text-align:center; pointer-events:auto; white-space:pre-line; line-height:1.6; border: 1px solid rgba(255,255,255,0.25);`;
         toast.innerText = message;
@@ -2246,6 +2247,13 @@
         ['logs', 'lookup'].forEach(k => setDisp('menu-card-' + k, admin));
         ['in', 'out'].forEach(k => setDisp('menu-card-' + k, canScan()));   // 小幫手也可以進出庫
         setDisp('menu-card-helpers', admin);
+        setDisp('menu-card-map', canScan());   // 平面圖與全庫存：只有管理員、小幫手看得到
+        {   // 一般團員：「掃 QR 找位置」改成「掃包包內容」
+            const lt = _el('locate-title'), ld = _el('locate-desc'), li = _el('menu-card-locate'), ic = li && li.querySelector('.menu-card-icon');
+            if (lt) lt.textContent = canScan() ? '掃 QR 找位置' : '掃包包內容';
+            if (ld) ld.textContent = canScan() ? '尋找箱子與借出狀態' : '掃包包上的 QR，看裡面裝什麼';
+            if (ic) ic.textContent = canScan() ? '🔍' : '🎒';
+        }
         const loc = _el('menu-card-locate'); if (loc) loc.style.gridColumn = '';
         const tk = _el('menu-card-take'); if (tk) tk.style.gridColumn = canScan() ? 'span 2' : '';
         setDisp('btn-item-history', admin);
@@ -2773,6 +2781,7 @@
     };
 
     window.openMapQuery = async function() {
+        if (!canScan()) return showToast('🔒 平面圖與庫存只有管理員和進出庫小幫手可以看', 'error', 1400);
         document.getElementById('main-menu-view').style.display = 'none';
         document.getElementById('warehouse-system-view').style.display = 'block';
         const ov = document.getElementById('map-loading-overlay');
@@ -3510,6 +3519,7 @@
         let title = '掃描 QR Code';
         let hint = '請將鏡頭對準 QR Code';
         if (mode === 'locate' && kitScanTitle) { kitScanTitle = false; title = '🎒 掃包包 QR'; hint = '對準包包上的 QR\n可以看包包內容，也可以按「✅ 補包核對」盤點'; }
+        else if (mode === 'locate' && !canScan()) { title = '🎒 掃包包內容'; hint = '對準包包上的 QR，就會跳出裡面裝的東西'; }
         else if (mode === 'locate') { title = '🔍 掃 QR 找位置'; hint = '對準箱子或物品 QR Code 尋找位置'; }
         else if (mode === 'in') { title = '📥 快速進貨 (還回)'; hint = '掃物品 QR 還回；掃箱子 QR 可整箱一次入庫'; }
         else if (mode === 'out') { title = `📤 快速出貨`; hint = '掃物品 QR 出庫；掃箱子 QR 可勾選整箱帶走；掃成員 QR 換對象'; }
@@ -3598,6 +3608,7 @@
             const bid = scannedText.startsWith('BOX_') ? scannedText.slice(4) : (!scannedText.startsWith('ITEM_') ? scannedText : '');
             const bx = bid && boxesCache.find(b => b.id === bid);
             if (bx && (scannerMode === 'in' || scannerMode === 'out')) { playBeep(2700, 90); vibrateFeedback(60); openBoxBatch(bx); return; }
+            if (bx && scannerMode === 'locate' && !canScan()) { closeScanner(); playBeep(1800, 90); vibrateFeedback(40); showToast(`📦 ${bx.name || '箱子'}\n\n沒有內容物可以看\n（請掃包包上的 QR）`, 'gray', 2200); return; }
             if (bx && scannerMode === 'locate') { closeScanner(); await locateAndOpenBox(bx); return; }
         }
 
@@ -3859,6 +3870,13 @@
         lastScannedCode = scannedText; lastScannedAt = now;
 
         closeScanner();
+        if (scannerMode === 'locate' && !canScan()) {   // 一般團員：只看包包內容，不進平面圖
+            const bx2 = boxesCache.find(b => b.id === targetBoxId);
+            if (scannedItemInfo && kitsFor(scannedItemInfo.item, scannedItemInfo.unitNo).length) { playBeep(2700, 90); vibrateFeedback(60); showContentsSheet(scannedItemInfo.item, scannedItemInfo.unitNo, bx2 ? bx2.name : ''); }
+            else if (scannedItemInfo || bx2) { playBeep(1800, 90); vibrateFeedback(40); showToast(`📦 ${scannedItemInfo ? scannedItemInfo.name : (bx2.name || '這個物品')}\n\n沒有內容物`, 'gray', 2200); }
+            else { playBeep(900, 240); vibrateFeedback([80, 60, 80]); showToast('❌ 查不到這個 QR Code', 'error', 1200); }
+            return;
+        }
         const box = boxesCache.find(b => b.id === targetBoxId);
         if (box) {
             document.getElementById('main-menu-view').style.display = 'none';
@@ -5341,6 +5359,9 @@
             scanSuccessFeedback('👤', `已選：${user.account}`);
             closeScanner();
             setTimeout(() => openScanner('out'), 500);
+        } else if (scannerMode === 'locate' && !canScan()) {
+            scanErrorFeedback('🎒', '請掃包包 QR');
+            showToast('ℹ️ 這是成員 QR，請掃包包上的 QR', 'error', 1200);
         } else if (scannerMode === 'locate') {
             scanSuccessFeedback('👤', user.account);
             closeScanner();
