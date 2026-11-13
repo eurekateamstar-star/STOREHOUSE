@@ -29,6 +29,7 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
     { const m = new URL(req.url).pathname.match(/^\/j\/([A-Za-z0-9_-]{6,40})\.jpg$/); if (m && req.method === 'GET') return journeyImg(m[1], env, req); }
     { const m = new URL(req.url).pathname.match(/^\/c\/([A-Za-z0-9_-]{6,40})\.jpg$/); if (m && req.method === 'GET') return journeyImg(m[1], env, req, 'share_img'); }
+    { const m = new URL(req.url).pathname.match(/^\/gc\/([A-Za-z0-9_-]{6,40})\.jpg$/); if (m && req.method === 'GET') return journeyImg(m[1], env, req, 'guardian_img'); }
     if (new URL(req.url).pathname === '/pic' && req.method === 'GET') {   // LINE 大頭貼代理（讓 canvas 可以存圖）
       const u = new URL(req.url).searchParams.get('u') || '';
       let h = ''; try { h = new URL(u).hostname; } catch (e) {}
@@ -91,6 +92,7 @@ export default {
     if (path === '/journey') return journeyRoute(req, env, json);
     if (path === '/sharecard') return shareCardRoute(req, env, json);
     if (path === '/guardian-no') return guardianNoRoute(req, env, json);
+    if (path === '/guardian-img') return guardianImgRoute(req, env, json);
     if (path === '/item-cats') return itemCatsRoute(req, env, json);
     if (path === '/wh-members') return whMembersRoute(req, env, json);
     if (path === '/whtake') return whTakeRoute(req, env, json);
@@ -446,6 +448,11 @@ async function webhookRoute(req, env) {
   try { events = JSON.parse(body).events || []; } catch (e) { return ok(); }
   const stat = lineUsage(env, events).catch(() => {});   // 使用分析（不影響回覆）
   for (const ev of events) {
+    if (ev.type === 'follow' && ev.replyToken) {   // 新加好友（例如點了親友分享的全民醫護證連結）：直接送上全民醫護證（回覆訊息，免費）
+      try { await fetch('https://api.line.me/v2/bot/message/reply', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + env.LINE_BOT_TOKEN },
+        body: JSON.stringify({ replyToken: ev.replyToken, messages: [tagSrc(await REPLIES['全民醫護證'](env, new URL(req.url).origin), 'follow')] }) }); } catch (e) {}
+      continue;
+    }
     if (ev.type !== 'message' || ev.message?.type !== 'text' || !ev.replyToken) continue;
     const t0 = String(ev.message.text).trim(), make = REPLIES[t0 === '認識醫療團' ? '認識醫護團' : t0];   // 舊選單的文字也接受
     if (!make) continue;
@@ -1454,5 +1461,29 @@ async function usageQuotaRoute(req, env, json) {
     // 下一次歸零：美西時間半夜（台灣下午 3 點或 4 點）
     let nx = Date.now(); const today = laDay(nx); while (laDay(nx) === today) nx += 600e3;
     return json({ ok: true, today, resetAt: nx, limit: { reads: 50000, writes: 20000, deletes: 20000 }, reads, writes, deletes });
+  } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
+}
+
+// 全民醫護證：把自己的醫護證圖片存起來，給 LINE 分享用（圖片訊息需要網址）
+async function guardianImgRoute(req, env, json) {
+  try {
+    const { accessToken, data } = await req.json();
+    if (!accessToken || typeof data !== 'string' || !/^[A-Za-z0-9+/=]+$/.test(data.slice(0, 200))) return json({ error: 'missing' }, 400);
+    if (data.length > 950000) return json({ error: '圖片太大' }, 413);
+    const [v, p] = await Promise.all([
+      fetch('https://api.line.me/oauth2/v2.1/verify?access_token=' + encodeURIComponent(accessToken)),
+      fetch('https://api.line.me/v2/profile', { headers: { Authorization: 'Bearer ' + accessToken } })]);
+    if (!v.ok || !p.ok) return json({ error: 'invalid token' }, 401);
+    const info = await v.json(); if (String(info.client_id) !== LINE_CHANNEL_ID) return json({ error: 'wrong channel' }, 401);
+    const { userId } = await p.json(); if (!/^U[0-9a-f]{32}$/.test(userId || '')) return json({ error: 'no user' }, 401);
+    const tok = await saToken(env), H = { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' };
+    const g = await fsGet(tok, `guardian/${userId}`); if (!g) return json({ error: '請先領取醫護證' }, 400);
+    const old = fobj(g.fields).img || '';
+    const id = 'g' + Array.from(crypto.getRandomValues(new Uint8Array(12)), b => b.toString(36).padStart(2, '0')).join('').slice(0, 20);
+    const w = await fetch(`${FS}/guardian_img/${id}`, { method: 'PATCH', headers: H, body: JSON.stringify({ fields: { data: { stringValue: data }, at: { integerValue: String(Date.now()) } } }) });
+    if (!w.ok) return json({ error: 'save ' + w.status }, 500);
+    await fetch(`${FS}/guardian/${userId}?updateMask.fieldPaths=img`, { method: 'PATCH', headers: H, body: JSON.stringify({ fields: { img: { stringValue: id } } }) });
+    if (old && /^g[a-z0-9]{6,30}$/.test(old)) fetch(`${FS}/guardian_img/${old}`, { method: 'DELETE', headers: H }).catch(() => {});   // 舊的刪掉
+    return json({ ok: true, url: `${new URL(req.url).origin}/gc/${id}.jpg` });
   } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
 }

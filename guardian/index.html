@@ -130,8 +130,7 @@
       <label class="btn ghost" style="margin:0">📷 換照片<input type="file" id="file" accept="image/*" style="display:none"></label>
       <button class="btn ghost" id="edit">✏️ 修改資料</button>
     </div>
-    <button class="btn main" id="save">⬇ 存成圖片</button>
-    <button class="btn line" id="invite">➦ 邀請親友一起領</button>
+    <button class="btn line" id="invite">➦ 分享我的醫護證給親友</button>
     <a class="btn ghost mapbtn" href="map.html">🗺️ 看看全台守護員分布</a>
     <div class="note">🔒 照片只在你的手機上合成，不會上傳</div>
     <div class="copy">© 2026 白沙屯慈昕醫護文化協會 版權所有</div>
@@ -277,20 +276,27 @@
     cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
   })();
 
-  // 存圖
-  $('save').onclick = () => {
-    draw(); let url; try { url = $('cv').toDataURL('image/jpeg', 0.92); } catch (e) { return toast('產生圖片失敗，請換一張照片再試'); }
-    const ov = document.createElement('div'); ov.className = 'ov';
-    ov.innerHTML = `<div class="t">📱 長按圖片 →「儲存圖片」或直接分享</div><img src="${url}" alt="全民醫護證">
-      <div class="row2"><a class="btn" style="background:#fff;color:#111" download="全民醫護證.jpg" href="${url}">⬇ 下載</a><button class="btn ghost" id="ovx">關閉</button></div>`;
-    document.body.appendChild(ov); ov.querySelector('#ovx').onclick = () => ov.remove(); ov.onclick = e => { if (e.target === ov) ov.remove(); };
-  };
-  // 邀請親友（傳的是邀請卡，不含個人照片）
+  // 分享：一段邀請文字（連結會帶回醫護團官方 LINE 領證）＋ 我的醫護證圖片（不提供下載）
+  const INVITE_URL = 'https://tsushin-buishatun.pages.dev/g/';
+  function cardJpeg() {   // 縮成寬 1000 的 JPEG（LINE 圖片訊息、存放都夠用）
+    draw(); const src = $('cv'), w = Math.min(1000, src.width), h = Math.round(src.height * w / src.width);
+    const t = document.createElement('canvas'); t.width = w; t.height = h; t.getContext('2d').drawImage(src, 0, 0, w, h);
+    for (const q of [0.85, 0.75, 0.65]) { const d = t.toDataURL('image/jpeg', q).split(',')[1]; if (d.length < 900000) return d; }
+    return t.toDataURL('image/jpeg', 0.5).split(',')[1];
+  }
   $('invite').onclick = async () => {
     if (!hasLiff() || !liff.isApiAvailable('shareTargetPicker')) return toast('請在 LINE 裡打開這個頁面才能分享');
-    try { const r = await fetch(AUTH_URL + '/share-get?id=guardian'), j = await r.json(); if (!j.ok) throw new Error(j.error || '讀不到卡片');
-      const res = await liff.shareTargetPicker([j.card.flex], { isMultiple: true }); if (res) toast('✅ 已分享'); }
-    catch (e) { toast('分享失敗：' + (e.message || e), 3500); }
+    const b = $('invite'), lab = b.textContent; b.disabled = true; b.textContent = '準備圖片中…';
+    try {
+      let data; try { data = cardJpeg(); } catch (e) { throw new Error('產生圖片失敗，請換一張照片再試'); }
+      const r = await fetch(AUTH_URL + '/guardian-img', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ accessToken: liff.getAccessToken(), data }) });
+      const j = await r.json(); if (!j.ok) throw new Error(j.error || '圖片上傳失敗');
+      const nm = (st.name || '').trim();
+      const text = `嗨！${nm ? '我是' + nm + '，' : ''}我領到白沙屯拱天宮醫護團的「全民醫護證」了 🪪\n不用證照，只要一顆願意幫忙的心～\n你也來領一張，一起守護進香路上的每個人！\n👉 ${INVITE_URL}`;
+      const res = await liff.shareTargetPicker([{ type: 'text', text }, { type: 'image', originalContentUrl: j.url, previewImageUrl: j.url }], { isMultiple: true });
+      if (res) toast('✅ 已分享');
+    } catch (e) { toast('分享失敗：' + (e.message || e), 3500); }
+    finally { b.disabled = false; b.textContent = lab; }
   };
 
   // ---------- 啟動 ----------
