@@ -856,8 +856,7 @@ function guardianFlex() {
       ] },
       { type: 'box', layout: 'vertical', margin: 'lg', backgroundColor: RED, cornerRadius: '10px', paddingAll: '13px', action: { type: 'uri', label: '領取我的全民醫護證', uri: GUARDIAN_URL },
         contents: [{ type: 'text', text: '領取我的全民醫護證  ›', size: 'md', weight: 'bold', color: '#FFFFFF', align: 'center' }] },
-      { type: 'text', text: '➦ 分享給親友', size: 'sm', weight: 'bold', color: RED, align: 'center', margin: 'lg', action: { type: 'uri', label: '分享給親友', uri: `${SHARE_LIFF}?share=guardian` } },
-      { type: 'text', text: '白沙屯拱天宮醫護團 ・ 聖容慈悲心 佑民護萬年', size: 'xxs', color: '#A39690', align: 'center', margin: 'md' },
+      { type: 'text', text: '白沙屯拱天宮醫護團 ・ 聖容慈悲心 佑民護萬年', size: 'xxs', color: '#A39690', align: 'center', margin: 'lg' },
     ] } } };
 }
 // ===== 分享卡片：管理員上傳圖文，團員用 LIFF shareTargetPicker 轉傳給親友／群組 =====
