@@ -310,7 +310,7 @@
   // ---------- 啟動 ----------
   async function start() {
     st.date = today();
-    const assets = Promise.all([load('gc-tpl.jpg?v=3'), load('gc-badge.png?v=2')]).then(([a, b]) => { st.tpl = a; st.badge = b; }).catch(() => toast('圖片載入失敗，請重新整理'));
+    const assets = Promise.all([load('gc-tpl.jpg?v=4'), load('gc-badge.png?v=2')]).then(([a, b]) => { st.tpl = a; st.badge = b; }).catch(() => toast('圖片載入失敗，請重新整理'));
     if (hasLiff()) {
       try { await Promise.race([liff.init({ liffId: LIFF_ID }), new Promise((_, r) => setTimeout(() => r(new Error('逾時')), 9000))]); } catch (e) {}
       try {
