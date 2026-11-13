@@ -291,9 +291,16 @@
       let data; try { data = cardJpeg(); } catch (e) { throw new Error('產生圖片失敗，請換一張照片再試'); }
       const r = await fetch(AUTH_URL + '/guardian-img', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ accessToken: liff.getAccessToken(), data }) });
       const j = await r.json(); if (!j.ok) throw new Error(j.error || '圖片上傳失敗');
-      const nm = (st.name || '').trim();
-      const text = `嗨！${nm ? '我是' + nm + '，' : ''}我領到白沙屯拱天宮醫護團的「全民醫護證」了 🪪\n不用證照，只要一顆願意幫忙的心～\n你也來領一張，一起守護進香路上的每個人！\n👉 ${INVITE_URL}`;
-      const res = await liff.shareTargetPicker([{ type: 'text', text }, { type: 'image', originalContentUrl: j.url, previewImageUrl: j.url }], { isMultiple: true });
+      const nm = (st.name || '').trim(), link = { type: 'uri', label: '我也要領', uri: INVITE_URL };
+      const flex = { type: 'flex', altText: `${nm || '我'}領到全民醫護證了！你也來領一張 🪪`, contents: { type: 'bubble', size: 'mega',
+        hero: { type: 'image', url: j.url, size: 'full', aspectRatio: '2:3', aspectMode: 'cover', action: link },
+        body: { type: 'box', layout: 'vertical', paddingAll: '16px', spacing: 'sm', backgroundColor: '#FBF3EA', contents: [
+          { type: 'text', text: `${nm ? nm + ' ' : ''}領到全民醫護證了！`, weight: 'bold', size: 'lg', color: '#C8102E', wrap: true },
+          { type: 'text', text: '不用證照，只要一顆願意幫忙的心～你也來領一張，一起守護進香路上的每個人！', size: 'sm', color: '#555555', wrap: true }] },
+        footer: { type: 'box', layout: 'vertical', paddingAll: '12px', backgroundColor: '#FBF3EA', contents: [
+          { type: 'button', style: 'primary', color: '#D62828', height: 'md', action: { type: 'uri', label: '🪪 我也要領全民醫護證', uri: INVITE_URL } },
+          { type: 'text', text: '白沙屯拱天宮醫護團', size: 'xxs', color: '#999999', align: 'center', margin: 'md' }] } } };
+      const res = await liff.shareTargetPicker([flex], { isMultiple: true });
       if (res) toast('✅ 已分享');
     } catch (e) { toast('分享失敗：' + (e.message || e), 3500); }
     finally { b.disabled = false; b.textContent = lab; }
