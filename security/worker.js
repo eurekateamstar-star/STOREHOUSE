@@ -88,6 +88,8 @@ export default {
     if (path === '/remind') return remindRoute(req, env, json);
     if (path === '/parse') return parseRoute(req, env, json);
     if (path === '/menu') return menuRoute(req, env, json);
+    if (path === '/gate') return json({ open: await memberGate(env) });
+    if (path === '/gate-set') return gateSetRoute(req, env, json);
     if (path === '/menu-setup') return menuSetupRoute(req, env, json);
     if (path === '/journey') return journeyRoute(req, env, json);
     if (path === '/sharecard') return shareCardRoute(req, env, json);
@@ -222,7 +224,7 @@ async function fsUser(idToken, uid) {
   if (!r.ok) throw Object.assign(new Error('not allowed'), { code: r.status === 403 ? 403 : 401 });
   const f = (await r.json()).fields || {};
   const v = k => f[k] && (f[k].stringValue ?? f[k].booleanValue);
-  return { role: v('role'), status: v('status'), adminMember: v('adminMember') === true, adminWarehouse: v('adminWarehouse') === true, warehouseHelper: v('warehouseHelper') === true, warehouseRemoved: v('warehouseRemoved') === true, realName: v('realName') || '' };
+  return { role: v('role'), status: v('status'), adminMember: v('adminMember') === true, adminWarehouse: v('adminWarehouse') === true, warehouseHelper: v('warehouseHelper') === true, warehouseRemoved: v('warehouseRemoved') === true, adminRecord: v('adminRecord') === true, realName: v('realName') || '' };
 }
 const memberAdmin = u => !!u && u.status === 'approved' && (u.role === 'admin' || u.adminMember);
 // 完整管理員（全部系統）或開發者：可以管理圖文選單、醫護足跡照片、分享卡片、衛教統計、管理員權限
@@ -240,7 +242,8 @@ async function menuRoute(req, env, json) {
     const target = uid || me;
     if (target !== me && !memberAdmin(meDoc)) return json({ error: 'admin only' }, 403);
     const u = target === me ? meDoc : await fsUser(idToken, target);
-    const kind = u && u.status === 'approved' ? 'member' : 'guest';
+    let kind = u && u.status === 'approved' ? 'member' : 'guest';
+    if (kind === 'member' && isRegular(u) && !(await memberGate(env)) && target !== await devUid(await saToken(env))) kind = 'guest';   // 團員功能關閉中：一般團員先用民眾選單
     let r;
     if (kind === 'member') {
       const a = await lineApi(env, '/v2/bot/richmenu/alias/' + MENUS.member.alias);
@@ -1484,5 +1487,37 @@ async function guardianImgRoute(req, env, json) {
     await fetch(`${FS}/guardian/${userId}?updateMask.fieldPaths=img`, { method: 'PATCH', headers: H, body: JSON.stringify({ fields: { img: { stringValue: id } } }) });
     if (old && /^g[a-z0-9]{6,30}$/.test(old)) fetch(`${FS}/guardian_img/${old}`, { method: 'DELETE', headers: H }).catch(() => {});   // 舊的刪掉
     return json({ ok: true, url: `${new URL(req.url).origin}/gc/${id}.jpg` });
+  } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
+}
+
+// ===== 團員功能開關（完整管理員一鍵）：關閉時，一般團員（不是任何管理員）的 LINE 選單變回民眾版，團員專區只顯示會員卡 =====
+const isRegular = u => !!u && !(u.role === 'admin' || u.adminMember || u.adminWarehouse || u.adminRecord);
+async function memberGate(env) {
+  return memo('gate', 30e3, async () => { const d = await fsGet(await saToken(env), 'meta/gate'); return d ? fobj(d.fields).memberOpen !== false : true; });
+}
+async function gateSetRoute(req, env, json) {
+  try {
+    const { idToken, open } = await req.json();
+    if (!idToken || typeof open !== 'boolean') return json({ error: 'missing' }, 400);
+    const uid = uidOfToken(idToken), me = await fsUser(idToken, uid);
+    if (!(await fullAdmin(me, idToken, env))) return json({ error: '只有完整管理員或開發者可以切換' }, 403);
+    const tok = await saToken(env);
+    const w = await fetch(`${FS}/meta/gate`, { method: 'PATCH', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields: { memberOpen: { booleanValue: open }, at: { integerValue: String(Date.now()) }, by: { stringValue: uid } } }) });
+    if (!w.ok) return json({ error: 'save ' + w.status }, 500);
+    MEMO.delete('gate');
+    // 一般團員的選單一起換
+    const dev = await devUid(tok);
+    const ids = (await fsList(tok, 'users')).filter(u => u.status === 'approved' && isRegular(u) && u.id !== dev && /^U[0-9a-f]{32}$/.test(u.id)).map(u => u.id);
+    let menuId = '';
+    if (open) { const a = await lineApi(env, '/v2/bot/richmenu/alias/' + MENUS.member.alias); if (!a.ok) return json({ ok: true, open, users: ids.length, warn: '選單還沒發佈，請先按「發佈 LINE 圖文選單」' }); menuId = (await a.json()).richMenuId; }
+    let fail = 0;
+    for (let i = 0; i < ids.length; i += 500) {
+      const userIds = ids.slice(i, i + 500);
+      const r = open ? await lineApi(env, '/v2/bot/richmenu/bulk/link', { method: 'POST', type: 'application/json', body: JSON.stringify({ richMenuId: menuId, userIds }) })
+                     : await lineApi(env, '/v2/bot/richmenu/bulk/unlink', { method: 'POST', type: 'application/json', body: JSON.stringify({ userIds }) });
+      if (!r.ok) fail += userIds.length;
+    }
+    return json({ ok: true, open, users: ids.length, fail });
   } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
 }

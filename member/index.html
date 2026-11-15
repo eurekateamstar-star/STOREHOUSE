@@ -425,6 +425,9 @@
     padding: 11px 18px; border-radius: 14px; font-size: 14px; font-weight: 700; z-index: 99; opacity: 0; transition: opacity 0.25s; pointer-events: none; white-space: pre-line; text-align: center; }
   .toast.show { opacity: 1; }
   .hidden { display: none !important; }
+  .gate-note{display:none;padding:16px 18px;margin:14px 0;background:#fff7ed;border:1.5px solid #fdba74}.gate-note b{display:block;font-size:17px;margin-bottom:4px}.gate-note div{font-size:13.5px;color:#7c2d12;line-height:1.7}
+  body.gate-off .gate-note{display:block}body.gate-off #attend-cards,body.gate-off #lot-cards,body.gate-off #my-sched,body.gate-off #v-member .col-r{display:none!important}
+  #btn-gate.on{background:#dcfce7;color:#166534;border-color:#86efac}#btn-gate.off{background:#fee2e2;color:#991b1b;border-color:#fca5a5}
   .us-card{padding:16px}.us-seg{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.us-seg button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;font:inherit;font-size:13px;font-weight:800;color:var(--sub)}.us-seg button.on{background:var(--primary);color:#fff;border-color:var(--primary)}
   .us-tip{font-size:12px;color:var(--sub);background:#f8fafc;border-radius:10px;padding:8px 10px;margin-bottom:12px;line-height:1.6}.us-empty{padding:18px;text-align:center;color:var(--sub);font-size:13px}
   .us-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.us-kpi div{background:#fff7f5;border-radius:14px;padding:10px 6px;text-align:center}.us-kpi b{display:block;font-size:24px;color:var(--primary)}.us-kpi span{font-size:11.5px;color:var(--sub);font-weight:700}
@@ -536,6 +539,7 @@
         <span class="hidden" id="m-pos"></span>
       </div>
 
+      <div class="card gate-note" id="gate-note"><b>🔒 團員功能準備中</b><div>抽籤、排班、出勤這些團員功能還沒開放，開放後這裡就會出現。<br>目前 LINE 選單先顯示一般民眾版，衛教、醫護足跡、全民醫護證都可以使用。</div></div>
       <div id="attend-cards"></div>
       <div class="confirm-card hidden" id="confirm-card">
         <div class="t">⚠️ 重要‼️ 請確認你的團員資料</div>
@@ -619,7 +623,7 @@
     <div id="tab-users" class="hidden">
       <div class="toolbar">
         <input class="inp" id="us-q" placeholder="🔍 搜尋姓名、LINE 名稱…">
-        <span id="full-tools" class="hidden" style="display:contents"><button class="sbtn violet" id="btn-autopair">🔗 依身分證自動配對名冊</button>
+        <span id="full-tools" class="hidden" style="display:contents"><button class="sbtn" id="btn-gate">…</button><button class="sbtn violet" id="btn-autopair">🔗 依身分證自動配對名冊</button>
         <button class="sbtn" id="btn-richmenu" style="background:#06c755;color:#fff;">🧩 發佈 LINE 圖文選單</button>
         <button class="sbtn" id="btn-journey" style="background:#C4622E;color:#fff;">📸 醫護足跡照片</button>
         <button class="sbtn" id="btn-sharecard" style="background:#1e3a5f;color:#fff;">📤 分享圖文卡片</button>
@@ -902,6 +906,7 @@
       return;
     }
 
+    document.body.classList.toggle('gate-off', gated());
     const name = user.realName || '';
     const cert = user.certification || (myRoster && myRoster.cert) || '';
     const cat = (('category' in user) ? (user.category || '') : (user.warehouseCategory || '')) || cert;
@@ -1030,7 +1035,18 @@
   let DEV_UID = ''; try { DEV_UID = localStorage.getItem('bstDevUid') || ''; } catch (e) {}
   const meDev = () => !!DEV_UID && !!profile && profile.userId === DEV_UID;
   // 完整管理員（全部系統）或開發者：才看得到圖文選單、足跡照片、分享卡片、衛教統計，也才能改別人的管理員權限
-  const isFull = () => meDev() || !!(user && user.status === 'approved' && user.role === 'admin');   // 我就是開發者：前台也不顯示管理員
+  const isFull = () => meDev() || !!(user && user.status === 'approved' && user.role === 'admin');
+  // 團員功能開關：關閉時，一般團員（不是任何系統的管理員）只看到會員卡，LINE 選單是民眾版
+  let GATE_OPEN = (() => { try { return localStorage.getItem('bst_gate') !== '0'; } catch (e) { return true; } })();
+  const isRegularMe = () => !!user && !(user.role === 'admin' || user.adminMember || user.adminWarehouse || user.adminRecord) && !meDev();
+  const gated = () => !GATE_OPEN && !!user && user.status === 'approved' && isRegularMe();
+  async function loadGate() {
+    try { const r = await fetch(AUTH_URL + '/gate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }); const j = await r.json();
+      const was = gated(); GATE_OPEN = j.open !== false; try { localStorage.setItem('bst_gate', GATE_OPEN ? '1' : '0'); } catch (e) {}
+      if (user) { render(); if (was && !gated() && user.status === 'approved') { watchEvents(); loadMySched(true); } }
+      if (adminOn) paintGateBtn(); } catch (e) {}
+  }
+  function paintGateBtn() { const b = $('btn-gate'); if (!b) return; b.textContent = GATE_OPEN ? '🔓 團員功能：開放中' : '🔒 團員功能：已關閉'; b.classList.toggle('on', GATE_OPEN); b.classList.toggle('off', !GATE_OPEN); }   // 我就是開發者：前台也不顯示管理員
   const isDevU = u => !!u && !!DEV_UID && u.id === DEV_UID;
   const devHidden = u => isDevU(u) && !(profile && u.id === profile.userId);   // 別人看開發者
   const DEV_HIDE_LIST = true;   // 還沒全面開放：系統會員清單不讓其他幹部看到開發者（全員開放後改成 false）
@@ -1141,7 +1157,7 @@
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === curTab));
     if (curTab === 'usage' && !meDev()) curTab = 'roster';
     $('tab-btn-usage').classList.toggle('hidden', !meDev());
-    $('full-tools').classList.toggle('hidden', !isFull());
+    $('full-tools').classList.toggle('hidden', !isFull()); paintGateBtn();
     ['pending', 'roster', 'users', 'events', 'import', 'usage'].forEach(k => $('tab-' + k).classList.toggle('hidden', k !== curTab));
     if (curTab === 'usage') renderUsage();
     if (curTab === 'events') renderEvents();
@@ -2151,7 +2167,7 @@
   let pendingEventId = readEventParam();
 
   function watchEvents() {
-    if (eventsUnsub) return;
+    if (eventsUnsub || gated()) return;
     eventsUnsub = onSnapshot(collection(db, 'events'), async s => {
       eventsCache = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => tsMs(b.createdAt) - tsMs(a.createdAt));
       eventsLoaded = true;
@@ -2180,6 +2196,7 @@
   let eventsLoaded = false, mySchedAt = 0;
   const UT = m => { try { window.bstUsage && bstUsage.time(m, performance.now()); } catch (e) {} };   // 使用分析：打開後幾秒看到
   async function loadMySched(force) {
+    if (gated()) return;
     if (!user || user.status !== 'approved' || !user.rosterId || !auth.currentUser) return;
     // 先顯示上次的「我的排班」（存在這支手機），背景再更新 → 一打開就看得到
     const ck = 'ms_cache_' + (profile && profile.userId);
@@ -5126,6 +5143,22 @@
 
 
   // 依身分證＋姓名，把已存在的會員自動配對到名冊
+  $('btn-gate').onclick = async () => {
+    const toOpen = !GATE_OPEN;
+    const ok = await dialog({ title: toOpen ? '🔓 開放團員功能？' : '🔒 關閉團員功能？',
+      msg: toOpen ? '一般團員的 LINE 選單會換回團員版，團員專區恢復抽籤、排班、出勤等功能。' : '一般團員（不是任何系統管理員的人）的 LINE 選單會換成民眾版，團員專區只顯示會員卡和基本資料。\n管理員、開發者不受影響。隨時可以再打開。',
+      okText: toOpen ? '開放' : '關閉', danger: !toOpen });
+    if (!ok) return;
+    const b = $('btn-gate'); b.disabled = true; b.textContent = '切換中…';
+    try {
+      const idToken = await auth.currentUser.getIdToken();
+      const r = await fetch(AUTH_URL + '/gate-set', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, open: toOpen }) });
+      const j = await r.json(); if (!j.ok) throw new Error(j.error || r.status);
+      GATE_OPEN = toOpen; try { localStorage.setItem('bst_gate', toOpen ? '1' : '0'); } catch (e) {}
+      toast(`${toOpen ? '✅ 已開放' : '🔒 已關閉'}團員功能・${j.users} 位一般團員的 LINE 選單已${toOpen ? '換回團員版' : '換成民眾版'}${j.fail ? `（${j.fail} 位失敗）` : ''}${j.warn ? '・' + j.warn : ''}`, 4500);
+    } catch (e) { toast('切換失敗：' + (e.message || e), 3500); }
+    b.disabled = false; paintGateBtn();
+  };
   $('btn-autopair').onclick = async () => {
     const byId = {}; rosterCache.forEach(r => { if (r.idCard) (byId[normId(r.idCard)] = byId[normId(r.idCard)] || []).push(r); });
     const pairs = [];
@@ -5375,7 +5408,7 @@
     openEventForm = W(openEventForm, 'adm_event_form');
     if (window.bstUsage) bstUsage.clicks({ '[data-cal]': 'sched_day', '.tl [data-pa]': 'day_register', '#lead-ov .lc-sv': 'lead_save', '.ks-yes,.ks-no': 'kit_check',
       '.tab[data-tab]': el => 'adm_tab_' + el.dataset.tab, '#btn-admin': () => adminOn ? '' : 'adm_open' }); }
-  start();
+  start(); loadGate();
 </script>
 
 <!-- 讀取太久提示：6 秒還卡在讀取畫面，就提示把 LINE 完全關閉再打開 -->
