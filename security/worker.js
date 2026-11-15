@@ -224,7 +224,7 @@ async function fsUser(idToken, uid) {
   if (!r.ok) throw Object.assign(new Error('not allowed'), { code: r.status === 403 ? 403 : 401 });
   const f = (await r.json()).fields || {};
   const v = k => f[k] && (f[k].stringValue ?? f[k].booleanValue);
-  return { role: v('role'), status: v('status'), adminMember: v('adminMember') === true, adminWarehouse: v('adminWarehouse') === true, warehouseHelper: v('warehouseHelper') === true, warehouseRemoved: v('warehouseRemoved') === true, adminRecord: v('adminRecord') === true, realName: v('realName') || '' };
+  return { role: v('role'), status: v('status'), adminMember: v('adminMember') === true, adminWarehouse: v('adminWarehouse') === true, warehouseHelper: v('warehouseHelper') === true, warehouseRemoved: v('warehouseRemoved') === true, adminRecord: v('adminRecord') === true, earlyAccess: v('earlyAccess') === true, realName: v('realName') || '' };
 }
 const memberAdmin = u => !!u && u.status === 'approved' && (u.role === 'admin' || u.adminMember);
 // 完整管理員（全部系統）或開發者：可以管理圖文選單、醫護足跡照片、分享卡片、衛教統計、管理員權限
@@ -243,7 +243,7 @@ async function menuRoute(req, env, json) {
     if (target !== me && !memberAdmin(meDoc)) return json({ error: 'admin only' }, 403);
     const u = target === me ? meDoc : await fsUser(idToken, target);
     let kind = u && u.status === 'approved' ? 'member' : 'guest';
-    if (kind === 'member' && isRegular(u) && !(await memberGate(env)) && target !== await devUid(await saToken(env))) kind = 'guest';   // 團員功能關閉中：一般團員先用民眾選單
+    if (kind === 'member' && isRegular(u) && !u.earlyAccess && !(await memberGate(env)) && target !== await devUid(await saToken(env))) kind = 'guest';   // 團員功能關閉中：一般團員先用民眾選單
     let r;
     if (kind === 'member') {
       const a = await lineApi(env, '/v2/bot/richmenu/alias/' + MENUS.member.alias);
@@ -1508,7 +1508,7 @@ async function gateSetRoute(req, env, json) {
     MEMO.delete('gate');
     // 一般團員的選單一起換
     const dev = await devUid(tok);
-    const ids = (await fsList(tok, 'users')).filter(u => u.status === 'approved' && isRegular(u) && u.id !== dev && /^U[0-9a-f]{32}$/.test(u.id)).map(u => u.id);
+    const ids = (await fsList(tok, 'users')).filter(u => u.status === 'approved' && isRegular(u) && !(u.earlyAccess === true && !open) && u.id !== dev && /^U[0-9a-f]{32}$/.test(u.id)).map(u => u.id);
     let menuId = '';
     if (open) { const a = await lineApi(env, '/v2/bot/richmenu/alias/' + MENUS.member.alias); if (!a.ok) return json({ ok: true, open, users: ids.length, warn: '選單還沒發佈，請先按「發佈 LINE 圖文選單」' }); menuId = (await a.json()).richMenuId; }
     let fail = 0;

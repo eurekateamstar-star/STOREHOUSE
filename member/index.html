@@ -1039,7 +1039,7 @@
   // 團員功能開關：關閉時，一般團員（不是任何系統的管理員）只看到會員卡，LINE 選單是民眾版
   let GATE_OPEN = (() => { try { return localStorage.getItem('bst_gate') !== '0'; } catch (e) { return true; } })();
   const isRegularMe = () => !!user && !(user.role === 'admin' || user.adminMember || user.adminWarehouse || user.adminRecord) && !meDev();
-  const gated = () => !GATE_OPEN && !!user && user.status === 'approved' && isRegularMe();
+  const gated = () => !GATE_OPEN && !!user && user.status === 'approved' && isRegularMe() && !user.earlyAccess;
   async function loadGate() {
     try { const r = await fetch(AUTH_URL + '/gate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }); const j = await r.json();
       const was = gated(); GATE_OPEN = j.open !== false; try { localStorage.setItem('bst_gate', GATE_OPEN ? '1' : '0'); } catch (e) {}
@@ -2131,6 +2131,7 @@
       const al = isDevU(u) ? [] : adminList(u);
       return s === 'approved' ? (al.length === 3 ? '<span class="pill admin">⭐ 管理員（全部）</span>' : al.length ? `<span class="pill admin">⭐ ${esc(al.join('・'))}</span>` : '<span class="pill bound">已核准</span>')
         + (u.warehouseRemoved ? ' <span class="pill red">⛔ 移出倉庫</span>' : '')
+        + (!GATE_OPEN && u.earlyAccess && !al.length ? ' <span class="pill bound">🔓 單獨開放</span>' : '')
         + (u.recordViewer && !adminOf(u, 'adminRecord') ? ' <span class="pill bound">👀 主控台唯讀</span>' : '')
         : s === 'pending' ? '<span class="pill pending">待審核</span>' : s === 'banned' ? '<span class="pill red">停權</span>' : '<span class="pill red">退回</span>';
     };
@@ -4877,6 +4878,11 @@
       </div>
       <div style="font-size:12px;color:var(--sub);margin:4px 2px 0;">團員專區管理員可以審核、編輯名冊、管理所有帳號；倉庫／救護紀錄表管理員只管各自的系統。</div>`}
 
+      ${isFull() && u.status === 'approved' && !adminList(u).length && !devHidden(u) ? `<div class="grp">🔓 團員功能</div>
+      <div class="adm-box" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:180px;font-size:14px">${GATE_OPEN ? '目前團員功能<b>全部開放中</b>，這位團員可以正常使用。' : u.earlyAccess ? '✅ <b>已單獨開放</b>：這位團員可以使用團員功能（LINE 選單是團員版）。' : '🔒 目前團員功能<b>關閉中</b>，這位團員只看得到民眾版。'}</div>
+        ${GATE_OPEN ? '' : `<button class="sbtn ${u.earlyAccess ? '' : 'violet'}" id="us-early">${u.earlyAccess ? '取消單獨開放' : '🔓 單獨開放給他'}</button>`}
+      </div>` : ''}
       <div class="grp">🏷️ 分類</div>
       <div class="cat-row">${[...CATS, ''].map(c => `<button class="chip-s ${cat === c ? 'on' : ''}" data-cat="${esc(c)}">${c || '未分類'}</button>`).join('')}</div>
 
@@ -4906,6 +4912,13 @@
         : { role: 'user', adminMember: v.adminMember, adminWarehouse: v.adminWarehouse, adminRecord: v.adminRecord };
       const names = ADMIN_APPS.filter(([k]) => v[k]).map(([, t]) => t);
       await patch(data, names.length ? `⭐ 已設為管理員：${all ? '全部系統' : names.join('、')}` : '已取消管理員');
+    };
+    if ($('us-early')) $('us-early').onclick = async () => {
+      const on = !u.earlyAccess;
+      try { await updateDoc(doc(db, 'users', uid), { earlyAccess: on ? true : deleteField() }); } catch (e) { return toast('儲存失敗：' + (e.message || e)); }
+      const m = await syncMenu(uid);
+      toast(on ? `🔓 已單獨開放給 ${u.realName || '這位團員'}${m && m.ok ? '・LINE 選單已換成團員版' : ''}` : `🔒 已取消 ${u.realName || '這位團員'} 的單獨開放`, 3200);
+      setTimeout(() => { if (sheetUid === uid) openUser(uid); }, 400);
     };
     // 分類
     document.querySelectorAll('[data-cat]').forEach(b => b.onclick = () => patch({ category: b.dataset.cat, warehouseCategory: b.dataset.cat }, b.dataset.cat ? `🏷️ 已分類：${b.dataset.cat}` : '已改為未分類'));
