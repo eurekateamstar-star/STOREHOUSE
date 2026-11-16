@@ -65,7 +65,7 @@ body.bst-gated{overflow:hidden!important}`;
   function paint() { if (forced) return; if (gated(last)) show(); else hide(); }
 
   function refresh() {
-    return fetch(GATE_URL, { cache: 'no-store' }).then(r => r.json()).then(j => {
+    return fetch(GATE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(r => r.json()).then(j => {
       open = j.open !== false; fetched = true;
       try { localStorage.setItem(KEY, open ? '1' : '0'); } catch (e) {}
       paint();
