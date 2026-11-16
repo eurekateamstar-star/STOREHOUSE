@@ -146,7 +146,7 @@
       <div class="field"><label>姓名<span class="req">*</span></label><input name="name" maxlength="20" autocomplete="name"><div class="err">請填寫姓名</div></div>
       <div class="field"><label>您 LINE 上的名稱<span class="req">*</span></label><input name="lineName" maxlength="40"><div class="err">請填寫 LINE 名稱</div></div>
     </div>
-    <div class="card">
+    <div class="card" id="att-card">
       <h2>📅 是否出席</h2>
       <div class="field" data-f="attend"><div class="opts">
         <button type="button" class="opt" data-v="yes">✅ 是，出席</button>
@@ -182,6 +182,7 @@
         <div class="u-total" id="u-total"></div>
       </div>
     </div>
+    <div class="card hidden" id="uni-link" style="font-size:14px;line-height:1.8;color:#7c2d12;background:#fff7ed;border:1.5px solid #fed7aa;">👕 <b>團服</b>請到另一張「<span id="uni-link-t">團服登記</span>」填寫，填過的不用再填 🙏<a id="uni-link-a" style="display:block;margin-top:8px;text-align:center;text-decoration:none;background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;font-weight:900;padding:11px;border-radius:12px;">前往團服登記</a></div>
     <div class="card hidden" id="grp-skip" style="padding:14px 18px;font-size:14px;font-weight:800;color:#9a3412;background:#fff7ed;">🧩 你是幹部／組長／教官團，這次不需要選組 🙏</div>
     <div class="card hidden" id="grp-card">
       <h2>🧩 選組（可複選）<span class="req">*</span></h2>
@@ -189,7 +190,7 @@
       <div class="field" data-f="grp"><div id="grp-list"></div><div class="err">請至少選一組</div></div>
       <div class="gp-hint">送出後由各組組長確認，確認後會顯示在團員專區的「我的排班」。</div>
     </div>
-    <div class="card">
+    <div class="card" id="cmt-card">
       <h2>💬 其他意見及建議</h2>
       <div class="field"><label>如對團隊運作有任何建議，或行前教育訓練想加強學習的內容，請在此留言（選填）</label><textarea name="comment" maxlength="500"></textarea></div>
     </div>
@@ -229,10 +230,12 @@
   const U = { mem: '', buy: '', shirts: [], pants: [] };
   const FREE_SHIRTS = 2, MIN_PANTS = 2;
   const uFix = () => { if (U.mem === 'new') { while (U.shirts.length < FREE_SHIRTS) U.shirts.push(''); while (U.pants.length < MIN_PANTS) U.pants.push(''); } };
-  const uOn = () => !!(ev && ev.askUniform) && attend !== 'no';
+  const UONLY = () => !!(ev && ev.uniformOnly);
+  const uOn = () => UONLY() || (!!(ev && ev.askUniform) && !ev.uniformFrom && attend !== 'no');
   const uNeedPick = () => U.mem === 'new' || (U.mem === 'old' && U.buy === 'yes');
   function uRender() {
     $('uni-card').classList.toggle('hidden', !uOn());
+    $('uni-link').classList.toggle('hidden', !(ev && !UONLY() && ev.askUniform && ev.uniformFrom && attend && attend !== 'no'));
     document.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === U.mem));
     document.querySelectorAll('[data-b]').forEach(b => b.classList.toggle('on', b.dataset.b === U.buy));
     $('u-new').classList.toggle('hidden', U.mem !== 'new'); $('u-old').classList.toggle('hidden', U.mem !== 'old'); $('u-pick').classList.toggle('hidden', !uNeedPick());
@@ -303,6 +306,8 @@
     document.title = (ev.title || '出席調查') + '｜白沙屯拱天宮醫護團';
     if (!ev.open) return msg('🔒', '已截止回覆', '這個出席調查已經截止，如需更改請直接聯絡管理員。');
     if (ev.askLunch === false) $('lunch-card').classList.add('hidden');
+    if (UONLY()) { ['att-card', 'lunch-card', 'cmt-card'].forEach(id => $(id).classList.add('hidden')); attend = 'yes'; $('btn-submit').textContent = '送出團服登記'; }
+    if (ev.uniformFrom) { $('uni-link-a').href = '?e=' + encodeURIComponent(ev.uniformFrom); getDoc(doc(db, 'events', ev.uniformFrom)).then(x => { if (x.exists()) $('uni-link-t').textContent = x.data().title || '團服登記'; }).catch(() => {}); }
     $('msg').classList.add('hidden'); f.classList.remove('hidden');
     GP = parseGroups(ev.groupsText); uRender(); gRender();
     try { const last = JSON.parse(localStorage.getItem('attend_me') || '{}'); if (last.name) f.elements.name.value = last.name; if (last.lineName) f.elements.lineName.value = last.lineName; } catch (e) {}
@@ -331,7 +336,7 @@
   $('btn-again').onclick = () => {
     $('msg').classList.add('hidden'); f.classList.remove('hidden');
     uRender(); gRender();
-    const btn = $('btn-submit'); btn.disabled = false; btn.textContent = '送出回覆';
+    const btn = $('btn-submit'); btn.disabled = false; btn.textContent = UONLY() ? '送出團服登記' : '送出回覆';
     window.scrollTo(0, 0);
   };
   $('btn-close').onclick = () => {
@@ -346,7 +351,7 @@
     const mark = (el, ok) => { el.classList.toggle('bad', !ok); if (!ok) bad.push(el); };
     mark(f.elements.name.closest('.field'), !!v('name'));
     mark(f.elements.lineName.closest('.field'), !!v('lineName'));
-    mark(document.querySelector('[data-f="attend"]'), !!attend);
+    if (!UONLY()) mark(document.querySelector('[data-f="attend"]'), !!attend);
     if (attend === 'join') mark($('reason-box'), !!v('reason'));
     if (!$('lunch-card').classList.contains('hidden')) mark(document.querySelector('[data-f="lunch"]'), !!lunch);
     if (uOn()) {
@@ -363,19 +368,19 @@
     const btn = $('btn-submit'); btn.disabled = true; btn.textContent = '送出中…';
     try {
       await addDoc(collection(db, 'events', eid, 'responses'), {
-        name: v('name'), lineName: v('lineName'), attend, lunch: attend === 'yes' ? lunch : '',
+        name: v('name'), lineName: v('lineName'), attend: UONLY() ? '' : attend, lunch: attend === 'yes' && !UONLY() ? lunch : '',
         reason: attend === 'join' ? v('reason') : '', comment: v('comment'), createdAt: serverTimestamp(), src: 'form',
         ...(uData() ? { uniform: uData() } : {}),
         ...(gOn() ? { groups: GP.gs.map(g => g.n).filter(n => picks.has(n)) } : {})
       });
       try { localStorage.setItem('attend_me', JSON.stringify({ name: v('name'), lineName: v('lineName') })); } catch (err) {}
       f.classList.add('hidden'); window.scrollTo(0, 0);
-      const label = { yes: '✅ 出席', join: '⚠️ 無法出席，但參與團隊進香', no: '❌ 不出席，亦不參與進香' }[attend];
+      const label = UONLY() ? '👕 已登記團服' : { yes: '✅ 出席', join: '⚠️ 無法出席，但參與團隊進香', no: '❌ 不出席，亦不參與進香' }[attend];
       msg('✅', '已收到你的回覆，謝謝！', `<b>${v('name').replace(/</g, '&lt;')}</b>：${label}${lunch && attend === 'yes' ? '<br>午膳：' + lunch : ''}${uData() ? '<br>團服：' + uText(uData()) : ''}${gOn() && picks.size ? '<br>選組：' + escH(GP.gs.map(g => g.n).filter(n => picks.has(n)).join('、')) + '（待組長確認）' : ''}<br><span style="font-size:12px">要更改的話，重新填寫一次即可，以最後一次為準。</span>`
         );
       $('done-act').classList.remove('hidden');
     } catch (err) {
-      console.error(err); btn.disabled = false; btn.textContent = '送出回覆'; toast('送出失敗，請稍後再試');
+      console.error(err); btn.disabled = false; btn.textContent = UONLY() ? '送出團服登記' : '送出回覆'; toast('送出失敗，請稍後再試');
     }
   };
 </script>

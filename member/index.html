@@ -1608,6 +1608,15 @@
     return UNI_ROWS.concat(extra).map(z => ({ z, s: so[z] || 0, p: po[z] || 0 })); };
   const uniText = d => { if (!d) return ''; const it = uniItems(d);
     return (d.member === 'new' ? '🆕 新團員' : d.buy ? '舊團員加購' : '舊團員・不加購') + (it.shirts.length ? `・上衣 ${cntTxt(it.shirts)}` : '') + (it.pants.length ? `・褲子 ${cntTxt(it.pants)}` : '') + (d.total ? `・$${d.total}` : ''); };
+  function uniFromNote(e, rs) {
+    const src = eventsCache.find(x => x.id === e.uniformFrom), m = uniLatest(e.uniformFrom), here = new Set(rs.map(r => normName(r.name)));
+    const got = rs.filter(r => m[normName(r.name)]).length, only = Object.keys(m).filter(k => !here.has(k)).map(k => m[k].name);
+    const miss = rs.filter(r => r.attend !== 'no' && !m[normName(r.name)]).map(r => r.name);
+    return `<div class="card" style="background:#fff7ed;border:1.5px solid #fed7aa;font-size:13.5px;line-height:1.8;color:#7c2d12">
+      <b>👕 團服資料從「${esc(src ? src.title : '團服登記')}」帶入</b>（依姓名對應）<br>
+      已對應 <b>${got}</b> 人　·　這張表有填、還沒登記團服 <b>${miss.length}</b> 人${miss.length ? '：' + miss.map(esc).join('、') : ''}<br>
+      有登記團服、但還沒填這張表 <b>${only.length}</b> 人${only.length ? '：' + only.map(esc).join('、') : ''}</div>`;
+  }
   function uniSummary(rs) {
     const list = rs.filter(r => r.uniform && r.attend !== 'no'); if (!list.length) return '';
     let shirts = [], pants = [], money = 0, nNew = 0, nBuy = 0;
@@ -2163,7 +2172,7 @@
   const eventLink = id => `https://tsushin-buishatun.pages.dev/attend/?e=${encodeURIComponent(id)}`;   // 公開表單：不用先綁團員專區
   let evPaid = {}, drPayMode = false, evSched = {}, schedOpen = false, schSel = null, schPk = null, attOpen = false, attBrush = null, schFold = (() => { try { return JSON.parse(localStorage.getItem('schFold') || '{}'); } catch (e) { return {}; } })(), carOpen = false, mealOpen = false, evSelf = {};
   let evDraw = {}, evDrawBy = {}, evOver = {}, evGrpFin = {}, evLead = {}, drawSheetEid = null, drSel = null;
-  let eventsCache = [], eventsUnsub = null, myResp = {}, evRespCache = {}, evRespUnsub = null, evOpenId = null, evFilter = 'all', evQ = {}, evSort = { k: 'time', d: 1 };
+  let eventsCache = [], eventsUnsub = null, myResp = {}, evRespCache = {}, evRespRaw = {}, uniSrcUnsub = null, evRespUnsub = null, evOpenId = null, evFilter = 'all', evQ = {}, evSort = { k: 'time', d: 1 };
   // 連結 liff.line.me/…?e=活動ID：LIFF 開啟時參數可能包在 liff.state 裡
   const readEventParam = () => { try { const q = new URLSearchParams(location.search); if (q.get('e')) return q.get('e');
     const st = q.get('liff.state'); if (st) return new URLSearchParams(st.replace(/^[^?]*\?/, '')).get('e') || ''; } catch (e) {} return ''; };
@@ -2708,20 +2717,32 @@
       </div>`).join('') : '<div class="card empty">還沒有出席調查，按「＋ 新增出席調查」建立</div>';
     el.querySelectorAll('[data-ev]').forEach(c => c.onclick = () => { evOpenId = c.dataset.ev; renderEventDetail(evOpenId); });
   }
+  // 團服登記（獨立表單）→ 依姓名併進這張出席調查的回覆；同一人填多次以最後一次為準
+  function uniLatest(uf) {
+    const m = {}; (evRespRaw[uf] || []).forEach(r => { if (!r.uniform) return; const k = normName(r.name); if (!m[k] || tsMs(r.createdAt || r.updatedAt) >= tsMs(m[k].createdAt || m[k].updatedAt)) m[k] = r; }); return m;
+  }
+  function mergeUniform(eid) {
+    const raw = evRespRaw[eid] || [], e = eventsCache.find(x => x.id === eid), uf = e && e.uniformFrom;
+    if (!uf || uf === eid) return raw;
+    const m = uniLatest(uf);
+    return raw.map(r => { const u = m[normName(r.name)]; return u ? { ...r, uniform: u.uniform, uniFrom: true } : r; });
+  }
   function watchEventResponses(eid) {
     if (evRespUnsub && evRespUnsub._eid === eid) return;
     if (evRespUnsub) evRespUnsub();
-    const u1 = onSnapshot(collection(db, 'events', eid, 'responses'), s => {
-      evRespCache[eid] = s.docs.map(d => ({ id: d.id, ...d.data() })); if (bigEid === eid) renderBigDraw();
-      if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid);
-    }, () => toast('讀取回覆失敗'));
+    const refresh = () => { evRespCache[eid] = mergeUniform(eid); if (bigEid === eid) renderBigDraw(); if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid); };
+    const u1 = onSnapshot(collection(db, 'events', eid, 'responses'), s => { evRespRaw[eid] = s.docs.map(d => ({ id: d.id, ...d.data() })); refresh(); }, () => toast('讀取回覆失敗'));
+    // 團服從獨立的「團服登記」帶入 → 一起監看那張表
+    if (uniSrcUnsub) { uniSrcUnsub(); uniSrcUnsub = null; }
+    const ev0 = eventsCache.find(x => x.id === eid), uf = ev0 && ev0.uniformFrom;
+    if (uf && uf !== eid) uniSrcUnsub = onSnapshot(collection(db, 'events', uf, 'responses'), s => { evRespRaw[uf] = s.docs.map(d => ({ id: d.id, ...d.data() })); refresh(); }, () => {});
     const u2 = onSnapshot(doc(db, 'events', eid, 'admin', 'draw'), s => { const d = s.exists() ? s.data() : {}; evDraw[eid] = d.map || {}; evDrawBy[eid] = d.by2 || {}; evOver[eid] = d.groupOverride || {}; evPaid[eid] = d.paid || {}; evSched[eid] = schedFromDb(d.sched); if (bigEid === eid) renderBigDraw(); if (drawSheetEid === eid) (mealOpen ? renderMeal(eid) : carOpen ? renderCar(eid) : attOpen ? renderAtt(eid) : schedOpen ? renderSched(eid) : renderDrawSheet(eid)); if (adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid); }, () => {});
     const u3 = onSnapshot(collection(db, 'events', eid, 'admin'), s => { const o = {}; let fin = {}; const ld = {}; s.docs.forEach(d => { if (d.id.startsWith('lead_')) { const x = d.data(); if (x.d && x.team) (ld[x.d] = ld[x.d] || {})[x.team] = x; } }); const lc = JSON.stringify(ld) !== JSON.stringify(evLead[eid] || {}); evLead[eid] = ld; if (lc && schedOpen && drawSheetEid === eid) setTimeout(() => renderSched(eid), 0);
       s.docs.forEach(d => { if (d.id === 'groups') fin = d.data().final || {}; if (d.id.startsWith('self_')) { const x = d.data(); if (x.key) o[x.key] = x.days || {}; } }); evSelf[eid] = o;
       const fc = JSON.stringify(fin) !== JSON.stringify(evGrpFin[eid] || {}); evGrpFin[eid] = fin;
       if (fc && adminOn && curTab === 'events' && evOpenId === eid) renderEventDetail(eid);
       if (drawSheetEid === eid) (mealOpen ? renderMeal(eid) : carOpen ? renderCar(eid) : attOpen ? renderAtt(eid) : schedOpen ? null : fc ? renderDrawSheet(eid) : null); }, () => {});
-    evRespUnsub = () => { u1(); u2(); u3(); };
+    evRespUnsub = () => { u1(); u2(); u3(); if (uniSrcUnsub) { uniSrcUnsub(); uniSrcUnsub = null; } };
     evRespUnsub._eid = eid;
   }
   function renderEventDetail(eid) {
@@ -2786,12 +2807,12 @@
             ${e.askGroups && rs.some(r => r.src === 'test' && r.attend !== 'no' && !(r.groups || []).length) ? '<button class="sbtn" id="ev-test-grp" style="background:#fff7ed;color:#c2410c;">🧩 幫測試回覆加上選組</button>' : ''}
             ${testN ? `<button class="sbtn" id="ev-test-clear" style="background:#fef2f2;color:#b91c1c;">🧹 清除測試回覆（${testN}）</button>` : ''}</div></div>
         <div class="ev-stats">
-          ${st('all', '已回覆', rs.length)}${st('yes', '出席', cnt('yes'), 'var(--green)')}${st('join', '不出席但參與進香', cnt('join'), '#b45309')}
+          ${e.uniformOnly ? st('all', '已登記', rs.length) + st('none', '名冊中未登記', notYet.length) : `${st('all', '已回覆', rs.length)}${st('yes', '出席', cnt('yes'), 'var(--green)')}${st('join', '不出席但參與進香', cnt('join'), '#b45309')}
           ${st('no', '不參與', cnt('no'), 'var(--red)')}${st('none', '名冊中未回覆', notYet.length)}
-          ${e.askLunch === false ? '' : LUNCH.map(l => st('l:' + l, '午膳・' + l, lc(l))).join('')}
+          ${e.askLunch === false ? '' : LUNCH.map(l => st('l:' + l, '午膳・' + l, lc(l))).join('')}`}
         </div>
         <div style="font-size:12px; color:var(--sub);">👆 點上面的數字，下方就只列出那一類的人</div>
-      </div>${e.askUniform ? uniSummary(rs) : ''}
+      </div>${e.uniformFrom ? uniFromNote(e, rs) : ''}${e.askUniform ? uniSummary(rs) : ''}
       <div class="grp-t">📋 ${esc(fTitle)}（<span id="ev-fn">${evFilter === 'none' ? notYet.length : shown.length}</span>）</div>
       ${evFilter === 'none' ? '' : (() => { const G = e.askGroups ? parseGroups(e.groupsText).gs.map(g => g.n) : [];
         const sel = (id, label, opts) => `<select id="${id}" class="ev-fsel"><option value="">${label}</option>${opts.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join('')}</select>`;
@@ -4805,12 +4826,16 @@
         <div class="field"><label>標題</label><input id="ev-title" value="${esc(e.title)}" placeholder="例如：115 丙午年白沙屯媽祖往北港進香 行前教育訓練"></div>
         <div class="field"><label>日期／時間</label><input id="ev-date" value="${esc(e.date)}" placeholder="例如：115/01/10（六）09:00"></div>
         <div class="field"><label>說明（選填）</label><textarea id="ev-desc" placeholder="地點、注意事項…">${esc(e.desc || '')}</textarea></div>
+        <label style="display:flex; gap:8px; align-items:center; font-size:14px; font-weight:800; margin:6px 2px 12px; background:#fff7ed; border:1.5px solid #fed7aa; border-radius:12px; padding:10px 12px;"><input type="checkbox" id="ev-uonly" ${e.uniformOnly ? 'checked' : ''} style="width:18px;height:18px;"> 👕 這是獨立的「團服登記」表（只填姓名＋團服）</label>
+        <div id="ev-normal" class="${e.uniformOnly ? 'hidden' : ''}">
         <label style="display:flex; gap:8px; align-items:center; font-size:14px; font-weight:800; margin:6px 2px 12px;"><input type="checkbox" id="ev-lunch" ${e.askLunch === false ? '' : 'checked'} style="width:18px;height:18px;"> 詢問午膳（葷／素／自行處理）</label>
-        <label style="display:flex; gap:8px; align-items:center; font-size:14px; font-weight:800; margin:-4px 2px 12px;"><input type="checkbox" id="ev-uni" ${e.askUniform ? 'checked' : ''} style="width:18px;height:18px;"> 詢問團服訂購（新團員配發／舊團員加購）</label>
+        <label style="display:flex; gap:8px; align-items:center; font-size:14px; font-weight:800; margin:-4px 2px 12px;"><input type="checkbox" id="ev-uni" ${e.askUniform ? 'checked' : ''} style="width:18px;height:18px;"> 團服訂購（新團員配發／舊團員加購）</label>
+        <div class="field ${e.askUniform ? '' : 'hidden'}" id="ev-ufrom-box" style="margin:-6px 2px 12px 28px;"><label>團服資料</label><select id="ev-ufrom" style="width:100%;padding:10px;border-radius:12px;border:1.5px solid #e5e7eb;font:inherit;font-size:14px;"><option value="">在這張表裡填</option>${eventsCache.filter(x => x.uniformOnly && x.id !== (e.id || '')).map(x => `<option value="${esc(x.id)}" ${e.uniformFrom === x.id ? 'selected' : ''}>從「${esc(x.title)}」帶入（這張表不再問團服）</option>`).join('')}</select></div>
         <label style="display:flex; gap:8px; align-items:center; font-size:14px; font-weight:800; margin:-4px 2px 8px;"><input type="checkbox" id="ev-grp" ${e.askGroups ? 'checked' : ''} style="width:18px;height:18px;"> 詢問選組（可複選，組長確認）</label>
         <div class="field ${e.askGroups ? '' : 'hidden'}" id="ev-grp-box"><label>分組架構與職責（直接貼上；「1️⃣ 組名」開頭一組、「組長：姓名」是組長、「▫️」是職責）</label><textarea id="ev-grptext" style="min-height:220px;font-size:13px;">${esc(e.groupsText || DEFAULT_GROUPS_TEXT)}</textarea><div id="ev-grp-prev" style="font-size:12px;color:var(--sub);margin-top:4px;white-space:pre-wrap;line-height:1.6;"></div>
           <label style="margin-top:12px;">另外加入免選組的人（名字用「、」或空白分開）</label><input id="ev-grpadd" value="${esc((e.grpSkipAdd || []).join('、'))}" placeholder="例如：王小明、陳大華">
           <div style="font-size:12px;color:var(--sub);margin:8px 0 4px;">免選組名單（點名字可以取消／恢復）：</div><div id="ev-grpskip" style="display:flex;flex-wrap:wrap;gap:6px;"></div></div>
+        </div>
       </div>
       <button class="btn" id="ev-save">${isNew ? '建立並取得連結' : '儲存'}</button>
       ${isNew ? '' : '<button class="btn ghost" id="ev-del" style="margin-top:8px; color:var(--red);">刪除這個出席調查</button>'}`;
@@ -4825,14 +4850,18 @@
       document.querySelectorAll('[data-skn]').forEach(b => b.onclick = () => { const n = b.dataset.skn; skipOff.has(n) ? skipOff.delete(n) : skipOff.add(n); grpPrev(); }); };
     $('ev-grpadd').oninput = grpPrev;
     $('ev-grp').onchange = () => $('ev-grp-box').classList.toggle('hidden', !$('ev-grp').checked);
+    $('ev-uonly').onchange = () => $('ev-normal').classList.toggle('hidden', $('ev-uonly').checked);
+    $('ev-uni').onchange = () => $('ev-ufrom-box').classList.toggle('hidden', !$('ev-uni').checked);
     $('ev-grptext').oninput = grpPrev; grpPrev();
     $('ev-save').onclick = async () => {
       const title = $('ev-title').value.trim(); if (!title) return toast('請填寫標題');
-      const data = { title, date: $('ev-date').value.trim(), desc: $('ev-desc').value.trim(), askLunch: $('ev-lunch').checked, askUniform: $('ev-uni').checked, askGroups: $('ev-grp').checked };
+      const uOnly = $('ev-uonly').checked;
+      const data = uOnly ? { title, date: $('ev-date').value.trim(), desc: $('ev-desc').value.trim(), uniformOnly: true, askUniform: true, askLunch: false, askGroups: false, uniformFrom: '' }
+        : { title, date: $('ev-date').value.trim(), desc: $('ev-desc').value.trim(), uniformOnly: false, askLunch: $('ev-lunch').checked, askUniform: $('ev-uni').checked, askGroups: $('ev-grp').checked, uniformFrom: $('ev-uni').checked ? $('ev-ufrom').value : '' };
       if (data.askGroups) { data.groupsText = $('ev-grptext').value.trim(); if (!parseGroups(data.groupsText).gs.length) return toast('分組架構裡找不到組別（每組要用「1️⃣ 組名」或「1. 組名」開頭）'); data.grpSkipAdd = addList(); data.grpSkipOff = [...skipOff]; data.grpSkip = grpSkipList(data.groupsText, data.grpSkipAdd, data.grpSkipOff); }
       try {
         if (isNew) { const id = 'ev' + Date.now().toString(36); await setDoc(doc(db, 'events', id), { ...data, open: true, createdAt: serverTimestamp(), createdBy: user.realName || '' }); evOpenId = id; }
-        else await updateDoc(doc(db, 'events', e.id), data);
+        else { await updateDoc(doc(db, 'events', e.id), data); if (evRespUnsub && evRespUnsub._eid === e.id) { evRespUnsub(); evRespUnsub = null; } }
         closeSheet(); toast(isNew ? '✅ 已建立，請複製連結傳到群組' : '✅ 已儲存');
         setTimeout(renderEvents, 300);
       } catch (err) { toast('❌ 儲存失敗'); }
