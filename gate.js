@@ -2,7 +2,9 @@
 // 團員功能關閉時，一般團員登入後整個畫面被公告蓋住；管理員、單獨開放的團員不受影響。
 // 用法：bstGate.apply(使用者資料)；資料有變動時再呼叫一次即可。
 (function () {
-  const URL = 'https://bst-auth.eurekateamstar.workers.dev/gate';
+  // 用 gate.js 自己的位置找圖片：GitHub Pages（/STOREHOUSE/ 底下）和 pages.dev 都能用
+  const BASE = (() => { try { return new URL('.', document.currentScript.src).href; } catch (e) { return '/'; } })();
+  const GATE_URL = 'https://bst-auth.eurekateamstar.workers.dev/gate';
   const KEY = 'bst_gate';
   let open = (() => { try { return localStorage.getItem(KEY) !== '0'; } catch (e) { return true; } })();
   let last = null, fetched = false, forced = false;
@@ -35,7 +37,7 @@ body.bst-gated{overflow:hidden!important}`;
     if (document.getElementById('bst-gate')) return;
     const d = document.createElement('div'); d.id = 'bst-gate';
     d.innerHTML = `<div class="bg-card">
-  <img class="bg-car" src="/member/car-mazu.png" alt="媽祖車">
+  <img class="bg-car" src="${BASE}member/car-mazu.png" alt="媽祖車">
   <h2>醫護團小通知</h2>
   <div class="bg-tag">🔒 尚未開放</div>
   <div class="bg-body">
@@ -63,7 +65,7 @@ body.bst-gated{overflow:hidden!important}`;
   function paint() { if (forced) return; if (gated(last)) show(); else hide(); }
 
   function refresh() {
-    return fetch(URL, { cache: 'no-store' }).then(r => r.json()).then(j => {
+    return fetch(GATE_URL, { cache: 'no-store' }).then(r => r.json()).then(j => {
       open = j.open !== false; fetched = true;
       try { localStorage.setItem(KEY, open ? '1' : '0'); } catch (e) {}
       paint();
