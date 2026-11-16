@@ -311,6 +311,20 @@
     $('msg').classList.add('hidden'); f.classList.remove('hidden');
     GP = parseGroups(ev.groupsText); uRender(); gRender();
     try { const last = JSON.parse(localStorage.getItem('attend_me') || '{}'); if (last.name) f.elements.name.value = last.name; if (last.lineName) f.elements.lineName.value = last.lineName; } catch (e) {}
+    let prev = null; try { prev = JSON.parse(localStorage.getItem('attend_last_' + eid) || 'null'); } catch (e) {}
+    if (prev && prev.name) {
+      f.elements.name.value = prev.name; f.elements.lineName.value = prev.lineName || '';
+      f.elements.reason.value = prev.reason || ''; f.elements.comment.value = prev.comment || '';
+      if (!UONLY() && prev.attend) { const b = document.querySelector(`.opt[data-v="${prev.attend}"]`); if (b) b.click(); }
+      if (prev.lunch) document.querySelectorAll('[data-f="lunch"] .chip').forEach(c => { if (c.textContent === prev.lunch) c.click(); });
+      if (prev.U) { Object.assign(U, prev.U); }
+      (prev.picks || []).forEach(n => picks.add(n));
+      uRender(); gRender();
+      f.classList.add('hidden');
+      const lab = UONLY() ? '👕 已登記團服' : { yes: '✅ 出席', join: '⚠️ 無法出席，但參與團隊進香', no: '❌ 不出席，亦不參與進香' }[prev.attend] || '';
+      msg('📝', '你已經填過了', `<b>${escH(prev.name)}</b>：${lab}${uData() ? '<br>團服：' + uText(uData()) : ''}<br><span style="font-size:12px">要修改的話按「重新填寫」，會帶入你上次填的內容，送出後以最後一次為準。</span>`);
+      $('done-act').classList.remove('hidden');
+    }
   })();
 
   document.querySelectorAll('.opt').forEach(b => b.onclick = () => {
@@ -368,12 +382,13 @@
     const btn = $('btn-submit'); btn.disabled = true; btn.textContent = '送出中…';
     try {
       await addDoc(collection(db, 'events', eid, 'responses'), {
-        name: v('name'), lineName: v('lineName'), attend: UONLY() ? '' : attend, lunch: attend === 'yes' && !UONLY() ? lunch : '',
+        name: v('name'), lineName: v('lineName'), attend: UONLY() ? 'yes' : attend, lunch: attend === 'yes' && !UONLY() ? lunch : '',
         reason: attend === 'join' ? v('reason') : '', comment: v('comment'), createdAt: serverTimestamp(), src: 'form',
         ...(uData() ? { uniform: uData() } : {}),
         ...(gOn() ? { groups: GP.gs.map(g => g.n).filter(n => picks.has(n)) } : {})
       });
-      try { localStorage.setItem('attend_me', JSON.stringify({ name: v('name'), lineName: v('lineName') })); } catch (err) {}
+      try { localStorage.setItem('attend_me', JSON.stringify({ name: v('name'), lineName: v('lineName') }));
+        localStorage.setItem('attend_last_' + eid, JSON.stringify({ name: v('name'), lineName: v('lineName'), attend, lunch, reason: v('reason'), comment: v('comment'), U: { mem: U.mem, buy: U.buy, shirts: U.shirts.slice(), pants: U.pants.slice() }, picks: [...picks] })); } catch (err) {}
       f.classList.add('hidden'); window.scrollTo(0, 0);
       const label = UONLY() ? '👕 已登記團服' : { yes: '✅ 出席', join: '⚠️ 無法出席，但參與團隊進香', no: '❌ 不出席，亦不參與進香' }[attend];
       msg('✅', '已收到你的回覆，謝謝！', `<b>${v('name').replace(/</g, '&lt;')}</b>：${label}${lunch && attend === 'yes' ? '<br>午膳：' + lunch : ''}${uData() ? '<br>團服：' + uText(uData()) : ''}${gOn() && picks.size ? '<br>選組：' + escH(GP.gs.map(g => g.n).filter(n => picks.has(n)).join('、')) + '（待組長確認）' : ''}<br><span style="font-size:12px">要更改的話，重新填寫一次即可，以最後一次為準。</span>`
