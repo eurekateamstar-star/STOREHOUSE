@@ -5,7 +5,7 @@
   const URL = 'https://bst-auth.eurekateamstar.workers.dev/gate';
   const KEY = 'bst_gate';
   let open = (() => { try { return localStorage.getItem(KEY) !== '0'; } catch (e) { return true; } })();
-  let last = null, fetched = false;
+  let last = null, fetched = false, forced = false;
 
   const isRegular = u => !!u && !(u.role === 'admin' || u.adminMember === true || u.adminWarehouse === true || u.adminRecord === true);
   const gated = u => !open && !!u && u.status === 'approved' && isRegular(u) && u.earlyAccess !== true;
@@ -60,7 +60,7 @@ body.bst-gated{overflow:hidden!important}`;
     document.body && document.body.classList.remove('bst-gated');
   }
 
-  function paint() { if (gated(last)) show(); else hide(); }
+  function paint() { if (forced) return; if (gated(last)) show(); else hide(); }
 
   function refresh() {
     return fetch(URL, { cache: 'no-store' }).then(r => r.json()).then(j => {
@@ -73,7 +73,8 @@ body.bst-gated{overflow:hidden!important}`;
   window.bstGate = {
     apply(u) { last = u || null; paint(); if (!fetched && last && isRegular(last)) refresh(); },
     refresh,
-    isGated: () => gated(last)
+    isGated: () => gated(last),
+    force(on) { forced = !!on; if (on) show(); else hide(); }   // 團員專區自己判斷（含開發者例外）
   };
   // 回到前景時重新確認（管理員可能剛開放）
   document.addEventListener('visibilitychange', () => { if (!document.hidden && last && isRegular(last)) refresh(); });
