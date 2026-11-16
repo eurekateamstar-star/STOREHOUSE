@@ -17,7 +17,7 @@
 #bst-gate{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:22px;
   background:linear-gradient(160deg,#fff7ed 0%,#fef2f2 55%,#fff 100%);font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC","PingFang TC",sans-serif;overflow:auto}
 #bst-gate .bg-card{width:100%;max-width:420px;background:#fff;border-radius:22px;box-shadow:0 10px 40px rgba(220,38,38,.14);padding:26px 20px 22px;text-align:center;border:1.5px solid #fed7aa}
-#bst-gate .bg-ico{font-size:54px;line-height:1;margin-bottom:10px}
+#bst-gate .bg-car{display:block;width:72%;max-width:260px;height:auto;margin:-4px auto 10px}
 #bst-gate h2{margin:0 0 4px;font-size:21px;color:#b91c1c;font-weight:900;letter-spacing:.5px}
 #bst-gate .bg-tag{display:inline-block;margin:6px 0 16px;padding:4px 14px;border-radius:99px;background:#fee2e2;color:#b91c1c;font-size:13px;font-weight:800}
 #bst-gate .bg-body{font-size:15px;line-height:1.75;color:#374151;text-align:left}
@@ -35,7 +35,7 @@ body.bst-gated{overflow:hidden!important}`;
     if (document.getElementById('bst-gate')) return;
     const d = document.createElement('div'); d.id = 'bst-gate';
     d.innerHTML = `<div class="bg-card">
-  <div class="bg-ico">🚑</div>
+  <img class="bg-car" src="/member/car-mazu.png" alt="媽祖車">
   <h2>醫護團小通知</h2>
   <div class="bg-tag">🔒 尚未開放</div>
   <div class="bg-body">
