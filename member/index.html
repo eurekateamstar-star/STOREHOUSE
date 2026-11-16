@@ -2797,7 +2797,7 @@
         <div style="font-size:18px; font-weight:900;">${e.open ? '🟢' : '⚪'} ${esc(e.title || '')}</div>
         <div style="font-size:13px; color:var(--sub); margin-top:4px;">${esc(e.date || '')}</div>
         <div class="join-link" style="margin-top:10px;"><div><b>🔗 回覆連結（傳到 LINE 群組）</b><div class="u">${esc(eventLink(e.id))}</div></div>
-          <div style="display:flex; gap:6px; flex-wrap:wrap;"><button class="sbtn" id="ev-copy">複製連結</button>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;"><button class="sbtn" id="ev-share" style="background:#06c755;color:#fff">📤 分享連結</button><button class="sbtn" id="ev-copy">複製連結</button>
           <button class="sbtn ${e.open ? 'red' : 'green'}" id="ev-toggle">${e.open ? '截止回覆' : '重新開放'}</button>
           <button class="sbtn violet" id="ev-edit">編輯</button><button class="sbtn" id="ev-csv">⬇ 匯出</button></div>
           <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; padding-top:8px; border-top:1px dashed rgba(0,0,0,.12);">
@@ -2846,6 +2846,7 @@
     if ($('ev-fs')) $('ev-fs').onchange = () => { evSort = { k: $('ev-fs').value, d: 1 }; renderEventDetail(eid); };
     $('ev-back').onclick = () => { evOpenId = null; evFilter = 'all'; evQ = {}; renderEvents(); };
     document.querySelectorAll('[data-evf]').forEach(b => b.onclick = () => { evFilter = evFilter === b.dataset.evf && b.dataset.evf !== 'all' ? 'all' : b.dataset.evf; renderEventDetail(eid); });
+    $('ev-share').onclick = () => shareEvent(e);
     $('ev-copy').onclick = async () => { try { await navigator.clipboard.writeText(eventLink(e.id)); toast('🔗 已複製回覆連結'); } catch (err) { await dialog({ title: '回覆連結', msg: eventLink(e.id), okText: '好' }); } };
     $('ev-toggle').onclick = async () => { try { await updateDoc(doc(db, 'events', e.id), { open: !e.open }); toast(e.open ? '已截止回覆' : '已重新開放'); } catch (err) { toast('❌ 操作失敗'); } };
     $('ev-edit').onclick = () => openEventForm(e);
@@ -5096,6 +5097,40 @@
   }
   $('btn-journey').onclick = () => openJourney();
 
+  // ===== 出席調查／團服登記 → 分享圖文卡 =====
+  function eventFlex(e) {
+    const IMG = 'https://tsushin-buishatun.pages.dev/attend/img/', url = eventLink(e.id) + '&src=share';
+    const T = (t, o = {}) => ({ type: 'text', text: String(t), wrap: true, ...o });
+    const row = (k, v) => ({ type: 'box', layout: 'baseline', spacing: 'md', margin: 'md', contents: [T(k, { size: 'sm', weight: 'bold', color: '#9A3412', flex: 0 }), T(v, { size: 'sm', color: '#374151', flex: 1 })] });
+    const rows = [];
+    if (e.uniformOnly) rows.push(row('🆕 新團員', '上衣 2 件免費・褲子至少 2 件（每件 400 元）'), row('👕 舊團員', '可加購，每件 400 元'), row('📏 尺寸　', '表單內附尺寸表，每件可選不同尺寸'));
+    else {
+      rows.push(row('✅ 出席', '出席／不出席請務必回覆'));
+      if (e.askLunch !== false) rows.push(row('🍱 午膳', '葷／素／自行處理'));
+      if (e.askUniform) rows.push(row('👕 團服', e.uniformFrom ? '另填團服登記表' : '新團員配發／舊團員加購'));
+      if (e.askGroups) rows.push(row('🧩 選組', '可複選，組長確認'));
+    }
+    const body = [T('白沙屯拱天宮醫護團', { size: 'xs', weight: 'bold', color: '#D65A68' }), T(e.title || '出席調查', { size: 'lg', weight: 'bold', color: '#1F2937', margin: 'sm' })];
+    if (e.date) body.push(T('📅 ' + e.date, { size: 'sm', weight: 'bold', color: '#6B7280', margin: 'sm' }));
+    body.push({ type: 'separator', margin: 'lg', color: '#F0E3DC' });
+    if (e.desc && !e.uniformOnly) body.push(T(e.desc.slice(0, 200), { size: 'sm', color: '#4B5563', margin: 'lg', maxLines: 4 }));
+    body.push({ type: 'box', layout: 'vertical', margin: 'md', contents: rows });
+    return { type: 'flex', altText: '📋 ' + (e.title || '出席調查'), contents: { type: 'bubble', size: 'mega',
+      hero: { type: 'image', url: IMG + (e.uniformOnly ? 'share-uniform.jpg' : 'share-event.jpg') + '?v=1', size: 'full', aspectRatio: '1040:560', aspectMode: 'cover', action: { type: 'uri', uri: url } },
+      body: { type: 'box', layout: 'vertical', paddingAll: '18px', contents: body },
+      footer: { type: 'box', layout: 'vertical', paddingTop: '4px', contents: [
+        { type: 'button', style: 'primary', color: '#E0603F', height: 'md', action: { type: 'uri', label: '✍️ 立即填寫', uri: url } },
+        T('填過的人再點一次，可以修改', { size: 'xxs', color: '#9CA3AF', align: 'center', margin: 'md' })] } } };
+  }
+  async function shareEvent(e) {
+    if (!e.open) return toast('這個調查已截止，先「重新開放」才分享');
+    if (!window.liff || !liff.isApiAvailable || !liff.isApiAvailable('shareTargetPicker')) {
+      try { await navigator.clipboard.writeText(eventLink(e.id)); } catch (err) {}
+      return dialog({ title: '這裡不能分享圖文', msg: '圖文分享要在 LINE 裡打開團員專區才能用。已幫你複製連結：\n' + eventLink(e.id), okText: '好' });
+    }
+    try { const res = await liff.shareTargetPicker([eventFlex(e)], { isMultiple: true }); if (res) toast('✅ 已分享'); }
+    catch (err) { dialog({ title: '分享失敗', msg: String(err.message || err), okText: '知道了' }); }
+  }
   // ===== 分享圖文卡片：管理員上傳，任何人按「分享給親友」用 shareTargetPicker 轉傳 =====
   const shareLink = id => `https://liff.line.me/2011820105-Is9eno4N?share=${id}`;   // 分享專用 LIFF
   async function doShare(c) {
