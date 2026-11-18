@@ -1551,12 +1551,13 @@ async function locTeams(env) {
   return memo('locTeams', 60e3, async () => {
     const tok = await saToken(env), today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
     const evs = (await memo('events', 30e3, () => fsList(tok, 'events'))).filter(e => e.schedPublic).sort((a, b) => (b.schedPublicAt || 0) - (a.schedPublicAt || 0));
-    const out = { today: {}, leads: {} };
+    const out = { today: {}, leads: {} }, best = {};   // today：今天有排班用今天，沒有就用最接近的排班日（之後最近的一天，都過了就用最後一天）
+    const score = d => d === today ? 0 : d > today ? 1 + (Date.parse(d) - Date.parse(today)) / 864e5 : 1e6 + (Date.parse(today) - Date.parse(d)) / 864e5;
     for (const e of evs) { const dr = await memo('draw:' + e.id, 20e3, () => fsGet(tok, `events/${e.id}/admin/draw`)); if (!dr) continue;
       const D = (fobj(dr.fields).sched || {}).days || {};
-      Object.keys(D).sort().forEach(d => (D[d] || []).forEach(t => { const m = (t.m || []).filter(Boolean);
+      Object.keys(D).sort().forEach(d => (D[d] || []).forEach(t => { const m = (t.m || []).filter(Boolean), sc = score(d);
         if (m[0] && (!out.leads[m[0]] || d <= today)) out.leads[m[0]] = t.l || '';
-        if (d === today) m.forEach(k => { out.today[k] = t.l || ''; }); }));
+        m.forEach(k => { if (!(k in best) || sc < best[k]) { best[k] = sc; out.today[k] = t.l || ''; } }); }));
       if (Object.keys(D).length) break; }
     return out;
   });

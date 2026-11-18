@@ -57,6 +57,7 @@
   .mk .b { width:38px; height:38px; border-radius:50%; border:3px solid #fff; display:flex; align-items:center; justify-content:center; font-size:19px; box-shadow:0 3px 10px rgba(0,0,0,.3); }
   .mk .tip { width:0; height:0; border:7px solid transparent; border-top-color:#fff; margin-top:-2px; }
   .mk .l { position:absolute; top:100%; margin-top:-2px; white-space:nowrap; background:rgba(255,255,255,.95); border-radius:8px; padding:1px 7px; font-size:12px; font-weight:800; box-shadow:0 1px 5px rgba(0,0,0,.2); }
+  .mk .l .tm { background:#c2414f; color:#fff; border-radius:5px; padding:0 4px; margin-right:4px; font-size:11px; }
   .mk .l small { font-weight:600; color:var(--sub); margin-left:3px; }
   .mk.stale .b { filter:grayscale(1); opacity:.65; }
   .av { width:100%; height:100%; border-radius:50%; object-fit:cover; display:block; }
@@ -199,12 +200,12 @@
   function iconFor(i) {
     const st = now - i.loc.at > STALE;
     const tag = st ? `<small>${esc(ago(i.loc.tst, now))}</small>` : '';
-    return L.divIcon({ className: '', iconSize: [0, 0], html: `<div class="mk ${st ? 'stale' : ''}"><div class="b k-${esc(i.kind)} ${i.pic ? 'p' : ''}" style="${i.pic ? 'border-color:' + KC[i.kind] : ''}">${face(i)}</div><div class="tip" style="${i.pic ? 'border-top-color:' + KC[i.kind] : ''}"></div><div class="l">${esc(label(i))}${tag}</div></div>` });
+    return L.divIcon({ className: '', iconSize: [0, 0], html: `<div class="mk ${st ? 'stale' : ''}"><div class="b k-${esc(i.kind)} ${i.pic ? 'p' : ''}" style="${i.pic ? 'border-color:' + KC[i.kind] : ''}">${face(i)}</div><div class="tip" style="${i.pic ? 'border-top-color:' + KC[i.kind] : ''}"></div><div class="l">${i.team ? `<span class="tm">${esc(i.team)}</span>` : ''}${esc(i.name)}${tag}</div></div>` });
   }
   function popup(i) {
     const l = i.loc, bits = [];
     bits.push(`<b style="font-size:15px">${i.pic ? '' : (EMOJI[i.kind] || '') + ' '}${esc(label(i))}</b>`);
-    bits.push(`${esc(i.kind)}${i.uname ? '・' + esc(i.uname) : ''}`);
+    bits.push(esc(sub(i)));
     bits.push(`更新：${esc(ago(l.tst, now))}`);
     if (l.vel != null && l.vel >= 2) bits.push(`速度：約 ${Math.round(l.vel)} km/h`);
     if (l.batt != null) bits.push(`手機電量：${l.batt}%${l.batt <= 20 ? ' ⚠️' : ''}`);
@@ -212,10 +213,13 @@
     bits.push(`<a href="https://www.google.com/maps/dir/?api=1&destination=${l.lat},${l.lon}" target="_blank" rel="noopener">🧭 Google 導航過去</a>`);
     return bits.join('<br>');
   }
-  const shown = i => filter === '全部' || i.kind === filter;
+  const shown = i => filter === '全部' || i.kind === filter || sideOf(i) === filter;
   const KC = { 小組長: '#2563eb', 指揮車: '#dc2626', 物資車: '#d97706', 其他: '#6b7280' };
   const face = i => i.pic ? `<img class="av" src="${esc(i.pic)}" referrerpolicy="no-referrer" alt="" onerror="this.replaceWith(document.createTextNode('${EMOJI[i.kind] || '📍'}'))">` : (EMOJI[i.kind] || '📍');
   const label = i => (i.team ? i.team + ' ' : '') + i.name;
+  const LO = l => { const m = /^轎(前|後)(\d+)/.exec(l || ''); return !m ? 999 : m[1] === '前' ? 100 - +m[2] : 200 + +m[2]; };   // 轎前（大到小）→ 轎後（小到大）
+  const sideOf = i => /^轎前/.test(i.team || '') ? '轎前' : /^轎後/.test(i.team || '') ? '轎後' : '';
+  const sub = i => [i.kind, i.uname && i.uname !== i.name ? i.uname : ''].filter(Boolean).join('・');
   const MODE = { 2: 'Move 即時', 1: 'Significant 省電', 0: 'Manual 手動', '-1': 'Quiet 停止' };
   const modeTxt = (i) => i.mode == null ? '' : (i.duty !== false && i.mode !== 2) || (i.duty === false && i.mode === 2) ? '手機切換中…' : 'App：' + (MODE[i.mode] || i.mode);
   async function setDuty(body) {
@@ -246,16 +250,17 @@
     if (pts.length === 1) map.setView(pts[0], 16); else if (pts.length) map.fitBounds(pts, { paddingTopLeft: [40, 90], paddingBottomRight: [40, ($('sheet').offsetHeight || 0) + 30], maxZoom: 17 });
   }
   function renderList() {
-    const cnt = k => items.filter(i => k === '全部' || i.kind === k).length;
-    $('filters').innerHTML = ['全部', ...KINDS].filter(k => k === '全部' || cnt(k)).map(k => `<button class="chip ${k === filter ? 'on' : ''}" data-f="${k}">${k === '全部' ? '全部' : EMOJI[k] + ' ' + k} ${cnt(k)}</button>`).join('');
+    const cnt = k => items.filter(i => k === '全部' || i.kind === k || sideOf(i) === k).length;
+    const ic = { 轎前: '⬆️', 轎後: '⬇️' };
+    $('filters').innerHTML = ['全部', '轎前', '轎後', ...KINDS].filter(k => k === '全部' || cnt(k)).map(k => `<button class="chip ${k === filter ? 'on' : ''}" data-f="${k}">${k === '全部' ? '全部' : (ic[k] || EMOJI[k]) + ' ' + k} ${cnt(k)}</button>`).join('');
     $('filters').querySelectorAll('[data-f]').forEach(b => b.onclick = () => { filter = b.dataset.f; draw(); fitAll(); });
-    const L2 = items.filter(shown).sort((a, b) => ((a.duty === false) - (b.duty === false)) || (!!b.loc - !!a.loc) || (KINDS.indexOf(a.kind) - KINDS.indexOf(b.kind)) || a.name.localeCompare(b.name, 'zh-Hant'));
+    const L2 = items.filter(shown).sort((a, b) => ((a.duty === false) - (b.duty === false)) || (!!b.loc - !!a.loc) || (LO(a.team) - LO(b.team)) || (KINDS.indexOf(a.kind) - KINDS.indexOf(b.kind)) || a.name.localeCompare(b.name, 'zh-Hant'));
     $('cnt').textContent = `${items.filter(i => i.loc && now - i.loc.at <= STALE).length} 台即時・${items.filter(i => i.duty !== false).length} 台值勤・共 ${items.length} 台`;
     $('list').innerHTML = L2.length ? L2.map(i => {
       const l = i.loc, st = l && now - l.at > STALE;
       return `<div class="row ${!l ? 'off' : st ? 'stale' : ''} ${i.id === selId ? 'sel' : ''}" data-id="${esc(i.id)}">
         <div class="e k-${esc(i.kind)} ${i.pic ? 'p' : ''}" style="--kc:${KC[i.kind]}">${face(i)}</div>
-        <div class="m"><div class="n">${esc(label(i))}</div><div class="d">${esc(i.kind)}${i.uname ? '・' + esc(i.uname) : ''}${l && l.batt != null ? `・🔋${l.batt}%` : ''}${l && l.vel >= 2 ? `・${Math.round(l.vel)} km/h` : ''}</div></div>
+        <div class="m"><div class="n">${esc(label(i))}</div><div class="d">${esc(sub(i))}${l && l.batt != null ? `・🔋${l.batt}%` : ''}${l && l.vel >= 2 ? `・${Math.round(l.vel)} km/h` : ''}</div></div>
         <div class="r">${i.duty === false ? `<div class="ago" style="color:#6b7280">🌙 退勤</div>不顯示位置` : l ? `<div class="ago">${esc(ago(l.tst, now))}</div>${st ? '訊號中斷' : '即時'}` : '<div class="ago">尚未連線</div>12 小時內沒有位置'}</div>
         ${mgr ? `<button class="duty ${i.duty === false ? 'off' : 'on'}" data-duty="${esc(i.id)}">${i.duty === false ? '退勤' : '值勤'}</button>` : ''}</div>`;
     }).join('') : `<div class="hint" style="padding:14px;text-align:center;color:#6b7280">${mgr ? '還沒有任何裝置，按右上「⚙️ 管理」新增' : '目前沒有裝置'}</div>`;
