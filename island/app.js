@@ -424,13 +424,13 @@ PL.forEach((p,pi)=>{const g=new THREE.Group();g.position.set(p.x,p.bridge?0:p.h,
   [[-1.42,-.55],[1.42,-.5],[-1.2,-1.05],[1.22,-1.02],[-1.55,.1],[1.55,.15]].forEach(([x,z],i)=>{if(p.model==='park'&&i>3)return;const t=blobTree(.95+hash(pi,i)*.4,i+pi);t.position.set(x,.18,z);g.add(t)});
   for(const x of[-.75,.75]){const l=lamp();l.position.set(x,.18,1.35);if(big)l.scale.setScalar(1/p.s*1.3);g.add(l)}
   for(const x of[-1.25,1.25]){g.add(C(.012,.012,.62,0x8a6a4a,x,.18,.95,5));const f=B(.01,.16,.24,x<0?0xe85a8c:0xf2c14e,x,.62,.83);g.add(f)}
-  const tx=lane?1.5:1.0,tzz=lane?.05:.62;if(p.roles.includes('gtmed')){const t=medicTent();t.position.set(-tx,.18,tzz);t.rotation.y=.35;if(big)t.scale.setScalar(1/p.s);g.add(t);tagDefs.push({t:'醫護站',c:'emt',v:W(-tx,tzz),dy:.5*(big?1:p.s)})}
-  if(p.roles.includes('snack')){const t=snackTent();t.position.set(tx+.02,.18,tzz);t.rotation.y=-.35;if(big)t.scale.setScalar(1/p.s);g.add(t);tagDefs.push({t:'點心站',c:'',v:W(tx+.02,tzz),dy:.5*(big?1:p.s)})}
+  const tx=lane?1.5:1.0,tzz=lane?.05:.62;if(p.roles.includes('gtmed')){const t=medicTent();t.position.set(-tx,.18,tzz);t.rotation.y=.35;t.scale.setScalar(big?1/p.s:Math.max(1,.92/p.s));g.add(t);tagDefs.push({t:'醫護站',c:'emt',v:W(-tx,tzz),dy:.5*(big?1:p.s)})}
+  if(p.roles.includes('snack')){const t=snackTent();t.position.set(tx+.02,.18,tzz);t.rotation.y=-.35;t.scale.setScalar(big?1/p.s:Math.max(1,.92/p.s));g.add(t);tagDefs.push({t:'點心站',c:'',v:W(tx+.02,tzz),dy:.5*(big?1:p.s)})}
   if(p.model==='park'){tagDefs.push({t:'八人大轎',c:'',v:W(.5,-.68),dy:.8*p.s});fallsDeco(g,p,W)}
   if(big0(p))beigangDeco(g,p,W);if(home)homeDeco(g,p,W);
   if(big)for(const sx of[-.6,.6])for(let z=.05;z<1.82;z+=.125){if(z<.72)crowdList.push({v:W(sx,z),s:1,rot:sx<0?1.57:-1.57,d:kindOf('ctg',0),k:'ctg'})}
   const n=big?460:home?250:p.key?26:14;for(let i=0;i<n;i++){let x,z,t=0,bad;do{x=(hash(pi+i,t)-.5)*(lane?3.6:2.6);z=(lane?-.12:.08)+hash(t,pi*3+i)*(lane?1.9:1.4);t++;bad=lane?(Math.hypot(x,z)>1.8||Math.abs(x)<(big?.72:.5)||(Math.abs(x)>1.25&&Math.abs(x)<1.75&&z<.35)||(home&&Math.abs(x)>.95&&z>.85)):(Math.hypot(x,z)>1.6||(Math.abs(x)>.55&&z>.3&&z<1.0)||Math.abs(x)<.16)}while(bad&&t<40);if(bad&&lane)continue;
-   const k=lane?(i%19===0?'police':i%31===3?'medic':i%13===5?'local':'pilgrim'):i%11===0?'police':i%7===0?'local':i%9===4?'vol':'pilgrim';crowdList.push({v:W(x,z),s:lane?1:p.s,rot:(lane?Math.atan2(-x,0):Math.atan2(-x,-.4-z))+(hash(i,pi)-.5)*(lane?.5:1),d:kindOf(k,i+pi),k})}
+   const k=lane?(i%19===0?'police':i%31===3?'medic':i%13===5?'local':'pilgrim'):i%11===0?'police':i%7===0?'local':i%9===4?'vol':'pilgrim';crowdList.push({v:W(x,z),s:lane?1:Math.max(.92,p.s),rot:(lane?Math.atan2(-x,0):Math.atan2(-x,-.4-z))+(hash(i,pi)-.5)*(lane?.5:1),d:kindOf(k,i+pi),k})}
  }else{const m=MODELS[p.model]();g.add(m);p.inner=m}
  sh(g);placeG.add(g);
  const hit=new THREE.Mesh(new THREE.SphereGeometry(p.bridge?1.2:p.r,8,6),new THREE.MeshBasicMaterial({visible:false}));hit.position.set(p.x,p.h+.4,p.z);hit.userData.place=p.id;placeG.add(hit);pickables.push(hit);
