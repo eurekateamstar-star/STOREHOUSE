@@ -2225,7 +2225,7 @@
   const UT = m => { try { window.bstUsage && bstUsage.time(m, performance.now()); } catch (e) {} };   // 使用分析：打開後幾秒看到
   async function loadMySched(force) {
     if (gated()) return;
-    if (!user || user.status !== 'approved' || !user.rosterId || !auth.currentUser) return;
+    if (!user || user.status !== 'approved' || !(user.rosterId || user.realName) || !auth.currentUser) return;
     // 先顯示上次的「我的排班」（存在這支手機），背景再更新 → 一打開就看得到
     const ck = 'ms_cache_' + (profile && profile.userId);
     if (!mySchedData) { try { const c = JSON.parse(localStorage.getItem(ck) || 'null'); if (c && Array.isArray(c.events)) { mySchedData = c.events; renderMySched(); UT('schedc'); } } catch (e) {} }
@@ -2252,7 +2252,11 @@
     let box = $('my-sched');
     if (!box) { box = document.createElement('div'); box.id = 'my-sched'; ($('lot-cards') || $('attend-cards')).after(box); }
     const evs = (mySchedData || []).filter(e => e.days.length || e.grp);
-    if (!evs.length) { box.innerHTML = ''; return; }
+    if (!evs.length) {   // 排班已公開、但沒排到：給一張提示卡（以前整塊不見，會以為壞掉）
+      const pub = mySchedData && eventsCache.find(e => e.schedPublic);
+      box.innerHTML = pub ? `<div style="background:#fff;border-radius:16px;border:1px solid #f1e8e4;box-shadow:0 6px 18px rgba(120,60,50,.07);margin:12px 0;padding:14px 16px">
+        <div style="font-weight:900;font-size:17px">📅 我的排班</div><div style="font-size:13.5px;color:#6b7280;line-height:1.7;margin-top:4px">${esc(pub.title || '')}<br>這次排班沒有排到你（${esc(user.realName || '')}）。如果應該有，請找管理員確認名字是否一致。</div></div>` : '';
+      return; }
     const grpLine = e => { if (!e.grp) return ''; const g = e.grp, role = g.role || [], has = g.final.length || role.length;
       const body = role.length ? `🧩 今年職務：<b>${role.map(esc).join('、')}</b>${(() => { const led = role.map(r => r.split(' ')[0]), more = g.final.filter(x => !led.includes(x)); return more.length ? `　也在 <b>${more.map(esc).join('、')}</b>` : ''; })()}`
         : g.final.length ? `🧩 今年組別：<b>${g.final.map(esc).join('、')}</b> <span class="ok">✅ 已確認</span>` : `🧩 今年選組：${g.picks.map(esc).join('、')} <span class="wt">⏳ 等管理員確認</span>`;

@@ -914,13 +914,14 @@ async function mySchedRoute(req, env, json) {
     const [me, tok] = await Promise.all([fetch(`${FS}/users/${encodeURIComponent(uid)}`, { headers: { Authorization: 'Bearer ' + idToken } }), saToken(env)]);
     if (!me.ok) return json({ error: 'not signed in' }, 401);
     const u = fobj((await me.json()).fields);
-    if (u.status !== 'approved' || !u.rosterId) return json({ events: [] });
-    const [ro, evAll] = await Promise.all([fsGet(tok, `member_roster/${encodeURIComponent(u.rosterId)}`), memo('events', 30e3, () => fsList(tok, 'events'))]);
-    if (!ro) return json({ events: [] });
-    const roF = fobj(ro.fields), myKey = normName(roF.name), myG = String(roF.idCard || '').toUpperCase()[1] === '2' ? '8' : '7';
+    if (u.status !== 'approved' || (!u.rosterId && !u.realName)) return json({ events: [] });
+    // 沒對應名冊的帳號：用帳號上的真實姓名比對排班表
+    const [ro, evAll] = await Promise.all([u.rosterId ? fsGet(tok, `member_roster/${encodeURIComponent(u.rosterId)}`) : null, memo('events', 30e3, () => fsList(tok, 'events'))]);
+    if (!ro && !u.realName) return json({ events: [] });
+    const roF = ro ? fobj(ro.fields) : { name: u.realName, idCard: u.idCard || '' }, myKey = normName(roF.name), myG = String(roF.idCard || '').toUpperCase()[1] === '2' ? '8' : '7';
     const evs = evAll.filter(e => e.schedPublic || e.askGroups);
     const P = {}; evs.forEach(e => { P[e.id] = Promise.all([memo('rsp:' + e.id, 60e3, () => fsList(tok, `events/${e.id}/responses`)), e.askGroups ? memo('grp:' + e.id, 30e3, () => fsGet(tok, `events/${e.id}/admin/groups`)) : null,
-      e.schedPublic ? memo('draw:' + e.id, 20e3, () => fsGet(tok, `events/${e.id}/admin/draw`)) : null, e.schedPublic ? fsGet(tok, `events/${e.id}/admin/self_${u.rosterId}`) : null]); });
+      e.schedPublic ? memo('draw:' + e.id, 20e3, () => fsGet(tok, `events/${e.id}/admin/draw`)) : null, e.schedPublic && u.rosterId ? fsGet(tok, `events/${e.id}/admin/self_${u.rosterId}`) : null]); });
     const roster = evs.some(e => e.schedPublic) ? (await memo('roster', 300e3, () => fsList(tok, 'member_roster'))).filter(x => !x.left) : [], byName = {};
     roster.forEach(x => { const k = normName(x.name); if (k && !byName[k]) byName[k] = x; });
     const catOf = k => { const c = String((byName[k] || {}).cert || '').toUpperCase().replace(/[-\s]/g, ''); return c.includes('護理') || c.includes('醫師') ? 'N' : c.includes('EMTP') || c.includes('EMT2') ? 'T2' : c.includes('EMT1') ? 'T1' : 'O'; };
