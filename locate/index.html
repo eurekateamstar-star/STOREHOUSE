@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>團員定位｜白沙屯拱天宮醫護團</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root { --primary:#D65A68; --accent:#F08339; --ink:#1f2430; --sub:#6b7280; --line:#e5e7eb; --green:#16a34a; --red:#dc2626; --amber:#d97706; --blue:#2563eb; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC","PingFang TC",sans-serif; color:var(--ink); background:#f6f6f8; }
+  .hidden { display:none !important; }
+  #map { position:fixed; inset:0; z-index:1; }
+  .top { position:fixed; z-index:500; top:calc(env(safe-area-inset-top) + 10px); left:10px; right:10px; display:flex; gap:8px; align-items:center;
+         background:rgba(255,255,255,.95); border-radius:16px; padding:8px 10px; box-shadow:0 4px 18px rgba(0,0,0,.12); }
+  .top .t { flex:1; min-width:0; }
+  .top h1 { margin:0; font-size:16px; font-weight:900; }
+  .top .s { font-size:11.5px; color:var(--sub); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--green); margin-right:4px; vertical-align:middle; }
+  .dot.err { background:var(--red); }
+  .ib { border:0; background:#f3f4f6; border-radius:12px; padding:8px 10px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; color:var(--ink); white-space:nowrap; }
+  .ib.on { background:var(--blue); color:#fff; }
+  .ib.p { background:var(--primary); color:#fff; }
+
+  /* 底部清單 */
+  .sheet { position:fixed; z-index:500; left:0; right:0; bottom:0; background:#fff; border-radius:18px 18px 0 0; box-shadow:0 -6px 24px rgba(0,0,0,.14);
+           max-height:46vh; display:flex; flex-direction:column; padding-bottom:env(safe-area-inset-bottom); transition:max-height .2s; }
+  .sheet.min { max-height:64px; }
+  .sh-h { display:flex; align-items:center; gap:8px; padding:10px 14px 8px; cursor:pointer; }
+  .sh-h .grab { position:absolute; left:50%; top:5px; width:38px; height:4px; margin-left:-19px; border-radius:4px; background:#d1d5db; }
+  .sh-h b { font-size:15px; }
+  .sh-h .cnt { font-size:12px; color:var(--sub); flex:1; }
+  .filters { display:flex; gap:6px; padding:0 14px 8px; overflow-x:auto; }
+  .chip { border:1.5px solid var(--line); background:#fff; border-radius:99px; padding:4px 11px; font:inherit; font-size:12.5px; font-weight:700; white-space:nowrap; cursor:pointer; }
+  .chip.on { border-color:var(--ink); background:var(--ink); color:#fff; }
+  .list { overflow-y:auto; padding:0 8px 10px; }
+  .row { display:flex; align-items:center; gap:10px; padding:9px 8px; border-radius:12px; cursor:pointer; }
+  .row:active, .row.sel { background:#f3f4f6; }
+  .row .e { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:19px; flex:none; }
+  .row .m { flex:1; min-width:0; }
+  .row .n { font-weight:800; font-size:14.5px; }
+  .row .d { font-size:12px; color:var(--sub); }
+  .row .r { text-align:right; font-size:12px; color:var(--sub); white-space:nowrap; }
+  .row .r .ago { font-weight:800; color:var(--green); font-size:13px; }
+  .row.stale .ago { color:var(--amber); }
+  .row.off { opacity:.5; }
+  .row.off .ago { color:var(--sub); }
+
+  /* 地圖標記 */
+  .mk { position:relative; transform:translate(-50%,-100%); display:flex; flex-direction:column; align-items:center; pointer-events:auto; }
+  .mk .b { width:38px; height:38px; border-radius:50%; border:3px solid #fff; display:flex; align-items:center; justify-content:center; font-size:19px; box-shadow:0 3px 10px rgba(0,0,0,.3); }
+  .mk .tip { width:0; height:0; border:7px solid transparent; border-top-color:#fff; margin-top:-2px; }
+  .mk .l { position:absolute; top:100%; margin-top:-2px; white-space:nowrap; background:rgba(255,255,255,.95); border-radius:8px; padding:1px 7px; font-size:12px; font-weight:800; box-shadow:0 1px 5px rgba(0,0,0,.2); }
+  .mk .l small { font-weight:600; color:var(--sub); margin-left:3px; }
+  .mk.stale .b { filter:grayscale(1); opacity:.65; }
+  .mk.stale .l { color:var(--sub); }
+  .k-小組長 { background:#2563eb; } .k-指揮車 { background:#dc2626; } .k-物資車 { background:#d97706; } .k-其他 { background:#6b7280; }
+  .row .e.k-小組長 { background:#dbeafe; } .row .e.k-指揮車 { background:#fee2e2; } .row .e.k-物資車 { background:#fef3c7; } .row .e.k-其他 { background:#f3f4f6; }
+  .me-dot { width:16px; height:16px; border-radius:50%; background:#2563eb; border:3px solid #fff; box-shadow:0 0 0 6px rgba(37,99,235,.25); transform:translate(-50%,-50%); }
+
+  /* 全頁訊息 */
+  .msg { position:fixed; inset:0; z-index:900; display:flex; align-items:center; justify-content:center; padding:24px; background:linear-gradient(160deg,#fff7ed,#fef2f2 60%,#fff); }
+  .msg .c { max-width:380px; width:100%; background:#fff; border-radius:20px; padding:26px 20px; text-align:center; box-shadow:0 10px 36px rgba(214,90,104,.15); }
+  .msg .ic { font-size:44px; }
+  .msg h2 { margin:8px 0 6px; font-size:19px; }
+  .msg p { color:#4b5563; font-size:14.5px; line-height:1.7; margin:0 0 14px; }
+  .btn { display:block; width:100%; border:0; border-radius:14px; padding:13px; font:inherit; font-size:15.5px; font-weight:800; cursor:pointer; background:var(--primary); color:#fff; text-decoration:none; text-align:center; }
+  .btn.g { background:#06c755; } .btn.w { background:#f3f4f6; color:var(--ink); }
+  .btn + .btn { margin-top:8px; }
+
+  /* 管理面板 */
+  .ov { position:fixed; inset:0; z-index:800; background:rgba(0,0,0,.4); display:flex; align-items:flex-end; justify-content:center; }
+  .pn { background:#fff; width:100%; max-width:560px; max-height:92vh; overflow-y:auto; border-radius:20px 20px 0 0; padding:16px 16px calc(20px + env(safe-area-inset-bottom)); }
+  @media (min-width:700px) { .ov { align-items:center; } .pn { border-radius:20px; } }
+  .pn h3 { margin:0 0 4px; font-size:18px; display:flex; align-items:center; gap:8px; }
+  .pn h3 .x { margin-left:auto; }
+  .pn h4 { margin:18px 0 8px; font-size:14.5px; }
+  .pn .hint { font-size:12.5px; color:var(--sub); line-height:1.6; }
+  .it { display:flex; align-items:center; gap:8px; padding:9px 10px; border:1px solid var(--line); border-radius:12px; margin-bottom:6px; }
+  .it .m { flex:1; min-width:0; font-size:14px; }
+  .it .m small { display:block; color:var(--sub); font-size:12px; }
+  .sb { border:0; border-radius:10px; padding:6px 9px; font:inherit; font-size:12.5px; font-weight:700; cursor:pointer; background:#f3f4f6; }
+  .sb.d { background:#fee2e2; color:var(--red); }
+  .fm { display:grid; gap:8px; background:#f9fafb; border-radius:14px; padding:12px; }
+  .fm label { font-size:12.5px; font-weight:700; color:#374151; }
+  .fm input, .fm select { width:100%; padding:10px; border:1.5px solid var(--line); border-radius:10px; font:inherit; font-size:15px; background:#fff; }
+  .qr { display:flex; justify-content:center; padding:12px; background:#fff; border:1px solid var(--line); border-radius:14px; margin:10px 0; }
+  .kv { font-size:13px; background:#f9fafb; border-radius:12px; padding:10px 12px; line-height:1.9; word-break:break-all; }
+  .kv b { display:inline-block; min-width:56px; color:var(--sub); font-weight:700; }
+  .warn { background:#fff7ed; border:1.5px dashed #fdba74; color:#9a3412; border-radius:12px; padding:10px 12px; font-size:13px; line-height:1.6; margin:8px 0; }
+  ol.st { padding-left:20px; margin:6px 0; font-size:13.5px; line-height:1.75; }
+  .toast { position:fixed; z-index:2000; left:50%; bottom:90px; transform:translateX(-50%); background:rgba(17,24,39,.92); color:#fff; padding:9px 16px; border-radius:99px; font-size:14px; opacity:0; transition:opacity .2s; pointer-events:none; }
+  .toast.show { opacity:1; }
+  .leaflet-top { top:calc(env(safe-area-inset-top) + 64px); }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div class="top hidden" id="top">
+  <div class="t"><h1>📍 團員定位</h1><div class="s" id="status">載入中…</div></div>
+  <button class="ib" id="b-fit" title="顯示全部">全部</button>
+  <button class="ib" id="b-me" title="我的位置">🧭 我</button>
+  <button class="ib p hidden" id="b-admin">⚙️ 管理</button>
+</div>
+
+<div class="sheet hidden" id="sheet">
+  <div class="sh-h" id="sh-h"><span class="grab"></span><b>位置清單</b><span class="cnt" id="cnt"></span><span id="sh-arrow">▾</span></div>
+  <div class="filters" id="filters"></div>
+  <div class="list" id="list"></div>
+</div>
+
+<div class="msg" id="msg"><div class="c"><div class="ic">⏳</div><h2>載入中</h2><p>正在確認登入狀態…</p></div></div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+  // 和團員專區同一個 Firebase、同一個網域 → 在團員專區登入過就直接是登入狀態
+  const app = initializeApp({
+    apiKey: "AIzaSyA_5hmnIBCeLszWW8kIjgOZelv-c6-ALfY",
+    authDomain: "linebot-firebase-b1242.firebaseapp.com",
+    projectId: "linebot-firebase-b1242",
+    storageBucket: "linebot-firebase-b1242.firebasestorage.app",
+    messagingSenderId: "1002268658683",
+    appId: "1:1002268658683:web:739adcd7819f8c9393595e"
+  });
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const auth = initializeAuth(app, { persistence: isIOS ? [browserLocalPersistence, inMemoryPersistence] : [indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence] });
+
+  const W = 'https://bst-auth.eurekateamstar.workers.dev';
+  const OT_URL = W + '/owntracks';
+  const MEMBER_LIFF = 'https://liff.line.me/2011820105-x1KU6xLW?go=locate';
+  const POLL = 15e3, STALE = 3 * 60e3;
+  const KINDS = ['小組長', '指揮車', '物資車', '其他'];
+  const EMOJI = { 小組長: '🧑‍⚕️', 指揮車: '🚩', 物資車: '🚚', 其他: '📍' };
+
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+  const toast = (t, ms = 2200) => { const e = $('toast'); e.textContent = t; e.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => e.classList.remove('show'), ms); };
+  const ago = (ms, now) => { const s = Math.max(0, (now - ms) / 1000); if (s < 60) return '剛剛'; if (s < 3600) return Math.floor(s / 60) + ' 分鐘前';
+    const d = new Date(ms); return (s < 86400 ? '' : (d.getMonth() + 1) + '/' + d.getDate() + ' ') + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+  function msg(ic, title, text, btns = '') { $('msg').innerHTML = `<div class="c"><div class="ic">${ic}</div><h2>${title}</h2><p>${text}</p>${btns}</div>`; $('msg').classList.remove('hidden'); }
+
+  // ---------- 登入 ----------
+  const user = await Promise.race([new Promise(r => { const off = onAuthStateChanged(auth, u => { if (u) { off(); r(u); } }); }), new Promise(r => setTimeout(() => r(auth.currentUser), 6000))]);
+  if (!user) {
+    msg('🔐', '請先登入團員專區', '定位地圖要用團員帳號查看。<br>請從 LINE 選單打開「團員專區」，再按「📍 團員定位」。',
+      `<a class="btn g" href="${MEMBER_LIFF}">用 LINE 登入團員專區</a>`);
+    throw new Error('not signed in');
+  }
+
+  // ---------- 地圖 ----------
+  const map = L.map('map', { zoomControl: true, attributionControl: true }).setView([24.5640, 120.7055], 14);   // 預設：白沙屯拱天宮附近
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+  const marks = new Map(), circles = new Map();
+  let items = [], mgr = false, sess = '', now = Date.now(), firstFit = true, filter = '全部', selId = '';
+
+  async function api(path, body) {
+    const r = await fetch(W + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({})); if (!r.ok && !j.error) j.error = '伺服器回應 ' + r.status; j._status = r.status; return j;
+  }
+  async function load() {
+    let j;
+    try { j = await api('/loc', { sess, idToken: await user.getIdToken() }); }
+    catch (e) { setStatus(false, '連線失敗，稍後自動重試'); return; }
+    if (j._status === 403) { msg('🙅', '沒有查看權限', esc(j.error || '') + '<br><br>需要的話請找完整管理員把你加入「可查看的人」。', `<a class="btn w" href="../member/">回團員專區</a>`); stop(); return; }
+    if (j.error) { setStatus(false, j.error); return; }
+    $('msg').classList.add('hidden'); $('top').classList.remove('hidden'); $('sheet').classList.remove('hidden');
+    if (j.sess) sess = j.sess;
+    items = j.items || []; mgr = !!j.mgr; now = j.now || Date.now();
+    $('b-admin').classList.toggle('hidden', !mgr);
+    const on = items.filter(i => i.loc).length;
+    setStatus(true, `即時更新中 · ${on}/${items.length} 台有位置 · ${new Date().toTimeString().slice(0, 5)}`);
+    draw();
+  }
+  function setStatus(ok, t) { $('status').innerHTML = `<span class="dot ${ok ? '' : 'err'}"></span>${esc(t)}`; }
+  let timer = null;
+  const start = () => { if (!timer) timer = setInterval(() => { if (document.visibilityState === 'visible') load(); }, POLL); };
+  const stop = () => { clearInterval(timer); timer = null; };
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') load(); });
+
+  function iconFor(i) {
+    const st = now - i.loc.at > STALE;
+    const tag = st ? `<small>${esc(ago(i.loc.tst, now))}</small>` : '';
+    return L.divIcon({ className: '', iconSize: [0, 0], html: `<div class="mk ${st ? 'stale' : ''}"><div class="b k-${esc(i.kind)}">${EMOJI[i.kind] || '📍'}</div><div class="tip"></div><div class="l">${esc(i.name)}${tag}</div></div>` });
+  }
+  function popup(i) {
+    const l = i.loc, bits = [];
+    bits.push(`<b style="font-size:15px">${EMOJI[i.kind] || ''} ${esc(i.name)}</b>`);
+    bits.push(`${esc(i.kind)}${i.uname ? '・' + esc(i.uname) : ''}`);
+    bits.push(`更新：${esc(ago(l.tst, now))}`);
+    if (l.vel != null && l.vel >= 2) bits.push(`速度：約 ${Math.round(l.vel)} km/h`);
+    if (l.batt != null) bits.push(`手機電量：${l.batt}%${l.batt <= 20 ? ' ⚠️' : ''}`);
+    if (l.acc != null) bits.push(`誤差：約 ${Math.round(l.acc)} 公尺`);
+    bits.push(`<a href="https://www.google.com/maps/dir/?api=1&destination=${l.lat},${l.lon}" target="_blank" rel="noopener">🧭 Google 導航過去</a>`);
+    return bits.join('<br>');
+  }
+  const shown = i => filter === '全部' || i.kind === filter;
+  function draw() {
+    const seen = new Set();
+    for (const i of items) {
+      if (!i.loc || !shown(i)) continue; seen.add(i.id);
+      const ll = [i.loc.lat, i.loc.lon];
+      let m = marks.get(i.id);
+      if (!m) { m = L.marker(ll, { icon: iconFor(i) }).addTo(map).bindPopup('', { offset: [0, -40] }); m.on('click', () => sel(i.id, false)); marks.set(i.id, m); }
+      else { m.setLatLng(ll); m.setIcon(iconFor(i)); }
+      m.setPopupContent(popup(i));
+      let c = circles.get(i.id);
+      if (i.loc.acc && i.loc.acc < 300) { if (!c) { c = L.circle(ll, { radius: i.loc.acc, weight: 1, opacity: .4, fillOpacity: .08 }).addTo(map); circles.set(i.id, c); } else c.setLatLng(ll).setRadius(i.loc.acc); }
+      else if (c) { c.remove(); circles.delete(i.id); }
+    }
+    for (const [id, m] of marks) if (!seen.has(id)) { m.remove(); marks.delete(id); const c = circles.get(id); if (c) { c.remove(); circles.delete(id); } }
+    if (firstFit && seen.size) { firstFit = false; fitAll(); }
+    renderList();
+  }
+  function fitAll() {
+    const pts = items.filter(i => i.loc && shown(i)).map(i => [i.loc.lat, i.loc.lon]);
+    if (meLL) pts.push(meLL);
+    if (pts.length === 1) map.setView(pts[0], 16); else if (pts.length) map.fitBounds(pts, { paddingTopLeft: [40, 90], paddingBottomRight: [40, ($('sheet').offsetHeight || 0) + 30], maxZoom: 17 });
+  }
+  function renderList() {
+    const cnt = k => items.filter(i => k === '全部' || i.kind === k).length;
+    $('filters').innerHTML = ['全部', ...KINDS].filter(k => k === '全部' || cnt(k)).map(k => `<button class="chip ${k === filter ? 'on' : ''}" data-f="${k}">${k === '全部' ? '全部' : EMOJI[k] + ' ' + k} ${cnt(k)}</button>`).join('');
+    $('filters').querySelectorAll('[data-f]').forEach(b => b.onclick = () => { filter = b.dataset.f; draw(); fitAll(); });
+    const L2 = items.filter(shown).sort((a, b) => (!!b.loc - !!a.loc) || (KINDS.indexOf(a.kind) - KINDS.indexOf(b.kind)) || a.name.localeCompare(b.name, 'zh-Hant'));
+    $('cnt').textContent = `${items.filter(i => i.loc && now - i.loc.at <= STALE).length} 台即時・共 ${items.length} 台`;
+    $('list').innerHTML = L2.length ? L2.map(i => {
+      const l = i.loc, st = l && now - l.at > STALE;
+      return `<div class="row ${!l ? 'off' : st ? 'stale' : ''} ${i.id === selId ? 'sel' : ''}" data-id="${esc(i.id)}">
+        <div class="e k-${esc(i.kind)}">${EMOJI[i.kind] || '📍'}</div>
+        <div class="m"><div class="n">${esc(i.name)}</div><div class="d">${esc(i.kind)}${i.uname ? '・' + esc(i.uname) : ''}${l && l.batt != null ? `・🔋${l.batt}%` : ''}${l && l.vel >= 2 ? `・${Math.round(l.vel)} km/h` : ''}</div></div>
+        <div class="r">${l ? `<div class="ago">${esc(ago(l.tst, now))}</div>${st ? '訊號中斷' : '即時'}` : '<div class="ago">尚未連線</div>12 小時內沒有位置'}</div></div>`;
+    }).join('') : `<div class="hint" style="padding:14px;text-align:center;color:#6b7280">${mgr ? '還沒有任何裝置，按右上「⚙️ 管理」新增' : '目前沒有裝置'}</div>`;
+    $('list').querySelectorAll('[data-id]').forEach(r => r.onclick = () => sel(r.dataset.id, true));
+  }
+  function sel(id, fly) {
+    selId = id; const i = items.find(x => x.id === id); renderList();
+    if (!i || !i.loc) { toast('這台目前沒有位置'); return; }
+    if (fly) { map.flyTo([i.loc.lat, i.loc.lon], Math.max(map.getZoom(), 16), { duration: .6 }); const m = marks.get(id); if (m) setTimeout(() => m.openPopup(), 650); }
+  }
+  $('sh-h').onclick = () => { $('sheet').classList.toggle('min'); $('sh-arrow').textContent = $('sheet').classList.contains('min') ? '▴' : '▾'; };
+  $('b-fit').onclick = () => { filter = '全部'; draw(); fitAll(); };
+
+  // 我的位置（只顯示在自己的畫面，不會上傳）
+  let meWatch = null, meMark = null, meLL = null;
+  $('b-me').onclick = () => {
+    if (meWatch !== null) { navigator.geolocation.clearWatch(meWatch); meWatch = null; meMark && meMark.remove(); meMark = null; meLL = null; $('b-me').classList.remove('on'); return; }
+    if (!navigator.geolocation) { toast('這個瀏覽器不能定位'); return; }
+    $('b-me').classList.add('on'); let first = true;
+    meWatch = navigator.geolocation.watchPosition(p => {
+      meLL = [p.coords.latitude, p.coords.longitude];
+      if (!meMark) meMark = L.marker(meLL, { icon: L.divIcon({ className: '', iconSize: [0, 0], html: '<div class="me-dot"></div>' }), zIndexOffset: 1000 }).addTo(map).bindPopup('我的位置（只有你看得到）');
+      else meMark.setLatLng(meLL);
+      if (first) { first = false; map.flyTo(meLL, Math.max(map.getZoom(), 16), { duration: .6 }); }
+    }, e => { toast(e.code === 1 ? '請允許瀏覽器使用位置' : '無法取得位置'); $('b-me').classList.remove('on'); meWatch = null; }, { enableHighAccuracy: true, maximumAge: 10e3 });
+  };
+
+  // ---------- 管理（完整管理員、開發者）----------
+  let members = null;
+  const adm = async (op, extra = {}) => api('/loc-admin', { idToken: await user.getIdToken(), op, ...extra });
+  function overlay(html) { const o = document.createElement('div'); o.className = 'ov'; o.innerHTML = `<div class="pn">${html}</div>`; document.body.appendChild(o);
+    o.onclick = e => { if (e.target === o) o.remove(); }; o.querySelectorAll('[data-close]').forEach(b => b.onclick = () => o.remove()); return o; }
+  async function loadMembers() { if (members) return members; const j = await adm('members'); members = j.members || []; return members; }
+  const memberOpts = (sel = '') => `<option value="">（不綁定）</option>` + (members || []).map(m => `<option value="${esc(m.uid)}" ${m.uid === sel ? 'selected' : ''}>${esc(m.name)}</option>`).join('');
+
+  $('b-admin').onclick = openAdmin;
+  async function openAdmin() {
+    const o = overlay(`<h3>⚙️ 定位管理<button class="sb x" data-close>關閉</button></h3><div class="hint">載入中…</div>`);
+    const [st] = await Promise.all([adm('state'), loadMembers().catch(() => [])]);
+    if (st.error) { o.querySelector('.hint').textContent = st.error; return; }
+    const tk = st.trackers.sort((a, b) => KINDS.indexOf(a.kind) - KINDS.indexOf(b.kind) || a.name.localeCompare(b.name, 'zh-Hant'));
+    o.querySelector('.pn').innerHTML = `
+      <h3>⚙️ 定位管理<button class="sb x" data-close>關閉</button></h3>
+      <div class="hint">小組長、指揮車、物資車的手機各裝一個 OwnTracks App，在這裡新增裝置後掃 QR Code 就會自動設定好。</div>
+      <h4>📱 裝置（${tk.length}）</h4>
+      ${tk.map(t => `<div class="it"><div class="m">${EMOJI[t.kind] || ''} <b>${esc(t.name)}</b>
+          <small>${esc(t.kind)}${t.uname ? '・綁定 ' + esc(t.uname) + '（可看地圖）' : ''}・${t.last ? '最後上傳 ' + esc(ago(t.last, Date.now())) : '還沒收到位置'}</small></div>
+          <button class="sb" data-edit="${esc(t.id)}">編輯</button><button class="sb" data-reset="${esc(t.id)}">重新設定</button><button class="sb d" data-del="${esc(t.id)}">刪除</button></div>`).join('') || '<div class="hint">還沒有裝置</div>'}
+      <h4>➕ 新增裝置</h4>
+      <div class="fm">
+        <div><label>名稱（地圖上顯示）</label><input id="a-name" maxlength="20" placeholder="例如：第一組 王小明、指揮車、物資車 1 號"></div>
+        <div><label>類型</label><select id="a-kind">${KINDS.map(k => `<option>${k}</option>`).join('')}</select></div>
+        <div><label>綁定團員（選填，綁定後這位團員也能看地圖）</label><select id="a-uid">${memberOpts()}</select></div>
+        <button class="btn" id="a-add">新增並產生設定 QR Code</button>
+      </div>
+      <h4>👀 可查看地圖的人（${st.viewers.length}）</h4>
+      <div class="hint" style="margin-bottom:6px">完整管理員、開發者、綁定裝置的團員本來就看得到，不用加在這裡。</div>
+      ${st.viewers.map(v => `<div class="it"><div class="m"><b>${esc(v.name || v.uid.slice(0, 8))}</b></div><button class="sb d" data-unview="${esc(v.uid)}">移除</button></div>`).join('')}
+      <div class="fm" style="grid-template-columns:1fr auto;align-items:end"><div><label>加入查看者（例如指揮組、司機）</label><select id="v-uid">${memberOpts()}</select></div><button class="sb" id="v-add" style="padding:11px 14px;background:var(--ink);color:#fff">加入</button></div>`;
+    o.querySelectorAll('[data-close]').forEach(b => b.onclick = () => o.remove());
+    const again = () => { o.remove(); openAdmin(); load(); };
+    o.querySelector('#a-add').onclick = async () => {
+      const name = o.querySelector('#a-name').value.trim(); if (!name) { toast('請填名稱'); return; }
+      const uid = o.querySelector('#a-uid').value, uname = uid ? (members.find(m => m.uid === uid) || {}).name : '';
+      const r = await adm('add', { name, kind: o.querySelector('#a-kind').value, uid, uname });
+      if (r.error) { toast(r.error); return; }
+      o.remove(); showConfig(r); load();
+    };
+    o.querySelectorAll('[data-reset]').forEach(b => b.onclick = async () => {
+      if (!confirm('重新產生密碼後，舊的設定會失效，這台手機要重新掃 QR Code。確定嗎？')) return;
+      const r = await adm('reset', { id: b.dataset.reset }); if (r.error) { toast(r.error); return; } o.remove(); showConfig(r);
+    });
+    o.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+      const t = tk.find(x => x.id === b.dataset.del); if (!confirm(`刪除「${t.name}」？這台手機之後上傳的位置都會被拒絕。`)) return;
+      const r = await adm('del', { id: t.id }); if (r.error) { toast(r.error); return; } toast('已刪除'); again();
+    });
+    o.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => {
+      const t = tk.find(x => x.id === b.dataset.edit);
+      const e = overlay(`<h3>編輯裝置<button class="sb x" data-close>取消</button></h3><div class="fm">
+        <div><label>名稱</label><input id="e-name" maxlength="20" value="${esc(t.name)}"></div>
+        <div><label>類型</label><select id="e-kind">${KINDS.map(k => `<option ${k === t.kind ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
+        <div><label>綁定團員</label><select id="e-uid">${memberOpts(t.uid)}</select></div>
+        <button class="btn" id="e-save">儲存</button></div>`);
+      e.querySelector('#e-save').onclick = async () => {
+        const uid = e.querySelector('#e-uid').value;
+        const r = await adm('edit', { id: t.id, name: e.querySelector('#e-name').value.trim(), kind: e.querySelector('#e-kind').value, uid, uname: uid ? (members.find(m => m.uid === uid) || {}).name : '' });
+        if (r.error) { toast(r.error); return; } e.remove(); toast('已儲存'); again();
+      };
+    });
+    o.querySelectorAll('[data-unview]').forEach(b => b.onclick = async () => { const r = await adm('viewer', { uid: b.dataset.unview, on: false }); if (r.error) { toast(r.error); return; } again(); });
+    o.querySelector('#v-add').onclick = async () => {
+      const uid = o.querySelector('#v-uid').value; if (!uid) { toast('請選一位團員'); return; }
+      const r = await adm('viewer', { uid, on: true, name: (members.find(m => m.uid === uid) || {}).name || '' }); if (r.error) { toast(r.error); return; } toast('已加入'); again();
+    };
+  }
+
+  // OwnTracks 設定：QR Code（手機相機掃）、直接開啟、下載設定檔、手動輸入
+  function showConfig(r) {
+    const cfg = { _type: 'configuration', mode: 3, url: OT_URL, auth: true, usePassword: true, username: r.id, password: r.pw, deviceId: 'phone', tid: r.tid,
+                  monitoring: 2, locatorInterval: 30, moveModeLocatorInterval: 30, locatorDisplacement: 10, locatorPriority: 3, pubExtendedData: true, extendedData: true, cmd: false };
+    const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(cfg))));
+    const link = 'owntracks:///config?inline=' + encodeURIComponent(b64);
+    const o = overlay(`<h3>📱 設定「${esc(r.name)}」<button class="sb x" data-close>完成</button></h3>
+      <div class="warn">⚠️ 這組密碼只會顯示這一次，關掉後就看不到了。忘記設定的話，按「重新設定」產生新的即可。<br>QR Code 裡有密碼，請不要截圖傳到群組。</div>
+      <ol class="st">
+        <li>在要定位的手機安裝 OwnTracks：<a href="https://apps.apple.com/app/id692424691" target="_blank" rel="noopener">iPhone</a>／<a href="https://play.google.com/store/apps/details?id=org.owntracks.android" target="_blank" rel="noopener">Android</a></li>
+        <li>打開 OwnTracks，位置權限選「<b>永遠允許</b>」（Android 也要關掉這個 App 的電池最佳化）</li>
+        <li>用那支手機的<b>相機</b>掃下面的 QR Code，跳出來時選用 OwnTracks 開啟、按「匯入／Import」。<br><span class="hint">新版 OwnTracks 要先在設定裡打開「允許外部設定」（Remote configuration）才能匯入。</span></li>
+        <li>回到 OwnTracks，右上角的模式切到「<b>移動 Move</b>」。不用時切到「安靜 Quiet」就會停止分享。</li>
+      </ol>
+      <div class="qr" id="qr"></div>
+      <a class="btn g" href="${esc(link)}">在這支手機直接開啟 OwnTracks 設定</a>
+      <button class="btn w" id="dl">下載設定檔（.otrc）</button>
+      <h4>手動設定（掃不到時）</h4>
+      <div class="kv"><b>模式</b> HTTP<br><b>網址</b> ${esc(OT_URL)}<br><b>帳號</b> ${esc(r.id)}<br><b>密碼</b> ${esc(r.pw)}<br><b>裝置ID</b> phone　<b>代號</b> ${esc(r.tid)}</div>`);
+    try { new QRCode(o.querySelector('#qr'), { text: link, width: 240, height: 240, correctLevel: QRCode.CorrectLevel.L }); } catch (e) { o.querySelector('#qr').textContent = 'QR Code 產生失敗，請用下面的按鈕或手動設定'; }
+    o.querySelector('#dl').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' })); a.download = r.name.replace(/[\\/:*?"<>|\s]/g, '_') + '.otrc'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); };
+  }
+
+  await load(); start();
+</script>
+</body>
+</html>

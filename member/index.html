@@ -566,6 +566,7 @@
       <div class="apps">
         <button class="card app" data-open="https://liff.line.me/2011820105-6oXAxIEi"><span class="ic">🚑</span><span class="t">救護紀錄表</span><span class="d">填寫與查看救護紀錄</span></button>
         <button class="card app" data-open="https://liff.line.me/2011820105-ofRs4ehy"><span class="ic">📦</span><span class="t">倉庫管理</span><span class="d">我的 QR、持有物品</span></button>
+        <button class="card app hidden" id="btn-locate"><span class="ic">📍</span><span class="t">團員定位</span><span class="d">即時地圖：小組長、指揮車、物資車</span></button>
       </div>
       <div class="note">資料與「救護紀錄表」「倉庫管理」同步。<br>資料有變動請按「編輯資料」更新。</div>
     </div>
@@ -733,6 +734,7 @@
     return /^[A-Za-z0-9_-]{6,40}$/.test(v || '') ? v : ''; } catch (e) { return ''; } })();
   const GUARDIAN_URL = 'https://liff.line.me/2011820105-k0FCAoxQ';   // 全民醫護證 LIFF
   const pendingDevClaim = (() => { try { const q = new URLSearchParams(location.search); return q.get('dev') === 'claim' || /dev=claim/.test(q.get('liff.state') || ''); } catch (e) { return false; } })();
+  const pendingLocate = (() => { try { const q = new URLSearchParams(location.search); return q.get('go') === 'locate' || /go=locate/.test(q.get('liff.state') || ''); } catch (e) { return false; } })();   // 從定位頁回來登入
   const pendingCard = (() => { try { const q = new URLSearchParams(location.search); return q.get('card') === '1' || /card=1/.test(q.get('liff.state') || ''); } catch (e) { return false; } })();   // 團員專區專用 LIFF（Endpoint: /STOREHOUSE/member/）
   const CERTS = ['EMT-1', 'EMT-2', 'EMT-P', '護理師', '醫師', '無證照'];
   const ROSTER = 'member_roster';            // 團員名冊（舊資料匯入）；文件 ID = SHA-256(身分證|生日)
@@ -944,6 +946,20 @@
     $('confirm-card').querySelector('.t').textContent = user.confirmRequestedBy ? `⚠️ 重要‼️ 管理員 ${user.confirmRequestedBy} 請你重新確認資料` : '⚠️ 重要‼️ 請確認你的團員資料';
     setTimeout(maybeConfirmPopup, 0);
     show('v-member');
+    checkLocate();
+  }
+  // 團員定位：完整管理員、開發者、被加入查看名單或綁定定位裝置的人才顯示按鈕（地圖頁會再檢查一次權限）
+  let locateChecked = false;
+  async function checkLocate() {
+    const go = () => { location.href = '../locate/'; };
+    const btn = $('btn-locate'); btn.onclick = go;
+    const can = user && user.status === 'approved' && (user.role === 'admin' || (DEV_UID && profile && profile.userId === DEV_UID));
+    if (can) btn.classList.remove('hidden');
+    if (pendingLocate && can) { go(); return; }
+    if (can || locateChecked || !auth.currentUser) return; locateChecked = true;
+    try { const idToken = await auth.currentUser.getIdToken();
+      const j = await (await fetch(AUTH_URL + '/loc-can', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken }) })).json();
+      if (j.can) { btn.classList.remove('hidden'); if (pendingLocate) go(); } } catch (e) {}
   }
 
   $('btn-eye').onclick = () => { showId = !showId; render(); };

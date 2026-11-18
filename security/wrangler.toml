@@ -8,3 +8,12 @@ keep_vars = true
 
 [ai]
 binding = "AI"
+
+# 團員定位：即時位置存在 Durable Object（SQLite，免費方案可用），部署時自動建立
+[[durable_objects.bindings]]
+name = "LOC"
+class_name = "LocHub"
+
+[[migrations]]
+tag = "loc-v1"
+new_sqlite_classes = ["LocHub"]

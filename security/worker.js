@@ -6,6 +6,8 @@
 // LINE 圖文選單（/menu、/menu-setup）需要 Secret：LINE_BOT_TOKEN = 官方帳號 Messaging API 的 Channel access token（長期）
 // LINE 訊息自動回覆（/webhook）需要 Secret：LINE_CHANNEL_SECRET = 官方帳號 Messaging API 頻道的 Channel secret（Basic settings 裡）
 
+import { DurableObject } from 'cloudflare:workers';
+
 const LINE_CHANNEL_ID = '2011820105';
 const ALLOWED_ORIGINS = ['https://eurekateamstar-star.github.io'];
 // Cloudflare Pages：正式網址 tsushin-buishatun.pages.dev（bst-app-41d、bst-record 為搬家前舊網址）
@@ -105,6 +107,10 @@ export default {
     if (path === '/usage-trip') return usageTripRoute(req, env, json);
     if (path === '/usage-quota') return usageQuotaRoute(req, env, json);
     if (path === '/wh-sched') return whSchedRoute(req, env, json);
+    if (path === '/owntracks') return otRoute(req, env);
+    if (path === '/loc') return locRoute(req, env, json);
+    if (path === '/loc-can') return locCanRoute(req, env, json);
+    if (path === '/loc-admin') return locAdminRoute(req, env, json);
 
     try {
       const { accessToken } = await req.json();
@@ -1520,4 +1526,146 @@ async function gateSetRoute(req, env, json) {
     }
     return json({ ok: true, open, users: ids.length, fail });
   } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
+}
+
+// ===== 團員定位（OwnTracks → 即時地圖）=====
+// 位置不放 Firestore（每 30 秒一筆會超過免費額度），放在 Durable Object「LocHub」（只有一個實體 main）
+// 小組長／指揮車／物資車的手機裝 OwnTracks（HTTP 模式），POST 到 /owntracks，用 HTTP Basic 帳密（帳號＝裝置 ID）
+// 誰看得到地圖：完整管理員、開發者、名單上的查看者、綁定在某台裝置的團員
+const LOC_TTL = 12 * 3600e3;          // 超過 12 小時沒更新就不顯示
+const LOC_SESS = 10 * 60e3;           // 查看權限暫存 10 分鐘，地圖每 15 秒更新時不用每次查 Firestore
+const OT_FRIENDS = true;              // OwnTracks App 裡也顯示其他裝置（App 的「朋友」）
+const LOC_KINDS = ['小組長', '指揮車', '物資車', '其他'];
+const LOC_TID = { 小組長: 'L', 指揮車: 'C', 物資車: 'S', 其他: 'X' };   // OwnTracks 圖示上的 2 個字（用英數字比較保險）
+const locTid = (kind, id) => LOC_TID[kind] + id.slice(-1).toUpperCase();
+const locHub = env => env.LOC.get(env.LOC.idFromName('main'));
+const numOr = v => (typeof v === 'number' && isFinite(v)) ? v : null;
+async function sha256hex(s) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+function randStr(n, abc = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789') { const r = crypto.getRandomValues(new Uint8Array(n)); return [...r].map(x => abc[x % abc.length]).join(''); }
+const cleanTxt = (s, n) => String(s || '').replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, n);
+
+export class LocHub extends DurableObject {
+  constructor(ctx, env) {
+    super(ctx, env);
+    this.T = new Map(); this.L = new Map(); this.V = new Map();   // 裝置、最新位置、查看者
+    ctx.blockConcurrencyWhile(async () => {
+      for (const [k, v] of await ctx.storage.list()) {
+        if (k.startsWith('t:')) this.T.set(k.slice(2), v); else if (k.startsWith('l:')) this.L.set(k.slice(2), v); else if (k.startsWith('v:')) this.V.set(k.slice(2), v);
+      }
+    });
+  }
+  // OwnTracks 上傳：帳密對了才收；回傳其他裝置的位置給 App 顯示
+  async pub(user, pass, m) {
+    const t = this.T.get(user);
+    if (!t || !pass || t.h !== await sha256hex(pass)) return { auth: false };
+    const now = Date.now();
+    if (m && m._type === 'location' && numOr(m.lat) !== null && numOr(m.lon) !== null && Math.abs(m.lat) <= 90 && Math.abs(m.lon) <= 180) {
+      const tst = numOr(m.tst) ? m.tst * 1000 : now;
+      const l = { lat: m.lat, lon: m.lon, acc: numOr(m.acc), batt: numOr(m.batt), vel: numOr(m.vel), cog: numOr(m.cog), tst: Math.min(tst, now), at: now };
+      const old = this.L.get(user);
+      if (!old || l.tst >= old.tst) { this.L.set(user, l); await this.ctx.storage.put('l:' + user, l); }   // 離線補傳的舊位置不蓋掉新的
+    }
+    const out = [];
+    if (OT_FRIENDS) for (const [id, l] of this.L) {
+      const f = this.T.get(id); if (id === user || !f || now - l.at > LOC_TTL) continue;
+      const topic = 'owntracks/bst/' + id;
+      out.push({ _type: 'card', name: f.name, tid: f.tid, topic }, { _type: 'location', lat: l.lat, lon: l.lon, acc: Math.round(l.acc || 0), tst: Math.floor(l.tst / 1000), tid: f.tid, topic });
+    }
+    return { auth: true, out };
+  }
+  canView(uid) { return !!uid && (this.V.has(uid) || [...this.T.values()].some(t => t.uid === uid)); }
+  list(uid, mgr) {
+    if (!mgr && !this.canView(uid)) return null;
+    const now = Date.now();
+    return [...this.T.entries()].map(([id, t]) => { const l = this.L.get(id); return { id, name: t.name, kind: t.kind, uname: t.uname || '', loc: l && now - l.at <= LOC_TTL ? l : null }; });
+  }
+  // 管理（Worker 已確認是完整管理員）
+  async admin(op, a) {
+    const st = this.ctx.storage;
+    if (op === 'state') return { trackers: [...this.T.entries()].map(([id, t]) => ({ id, name: t.name, kind: t.kind, tid: t.tid, uid: t.uid || '', uname: t.uname || '', at: t.at, last: (this.L.get(id) || {}).at || 0 })),
+                                 viewers: [...this.V.entries()].map(([uid, v]) => ({ uid, name: v.name || '' })) };
+    if (op === 'add' || op === 'edit') {
+      const name = cleanTxt(a.name, 20); if (!name) return { error: '請填名稱' };
+      const kind = LOC_KINDS.includes(a.kind) ? a.kind : '其他';
+      const uid = /^U[0-9a-f]{32}$/.test(a.uid || '') ? a.uid : '';
+      if (op === 'edit') { const t = this.T.get(a.id); if (!t) return { error: '找不到裝置' };
+        Object.assign(t, { name, kind, uid, uname: uid ? cleanTxt(a.uname, 20) : '', tid: locTid(kind, a.id) });
+        await st.put('t:' + a.id, t); return { ok: true }; }
+      let id; do { id = 'bst' + randStr(5, 'abcdefghijkmnpqrstuvwxyz23456789'); } while (this.T.has(id));
+      const pw = randStr(24);
+      const t = { name, kind, uid, uname: uid ? cleanTxt(a.uname, 20) : '', tid: locTid(kind, id), h: await sha256hex(pw), at: Date.now(), by: a.by || '' };
+      this.T.set(id, t); await st.put('t:' + id, t);
+      return { ok: true, id, pw, tid: t.tid, name };
+    }
+    if (op === 'reset') { const t = this.T.get(a.id); if (!t) return { error: '找不到裝置' };
+      const pw = randStr(24); t.h = await sha256hex(pw); await st.put('t:' + a.id, t); return { ok: true, id: a.id, pw, tid: t.tid, name: t.name }; }
+    if (op === 'del') { this.T.delete(a.id); this.L.delete(a.id); await st.delete(['t:' + a.id, 'l:' + a.id]); return { ok: true }; }
+    if (op === 'clear') { this.L.delete(a.id); await st.delete('l:' + a.id); return { ok: true }; }
+    if (op === 'viewer') { if (!/^U[0-9a-f]{32}$/.test(a.uid || '')) return { error: 'bad uid' };
+      if (a.on) { const v = { name: cleanTxt(a.name, 20), at: Date.now() }; this.V.set(a.uid, v); await st.put('v:' + a.uid, v); }
+      else { this.V.delete(a.uid); await st.delete('v:' + a.uid); }
+      return { ok: true }; }
+    return { error: 'bad op' };
+  }
+}
+
+async function otRoute(req, env) {
+  const deny = () => new Response('unauthorized', { status: 401, headers: { 'WWW-Authenticate': 'Basic realm="bst"' } });
+  if (!env.LOC) return new Response('not configured', { status: 501 });
+  const h = req.headers.get('Authorization') || ''; let user = '', pass = '';
+  if (/^Basic /i.test(h)) { try { const s = new TextDecoder().decode(Uint8Array.from(atob(h.slice(6).trim()), c => c.charCodeAt(0))); const i = s.indexOf(':'); if (i > 0) { user = s.slice(0, i); pass = s.slice(i + 1); } } catch (e) {} }
+  if (!/^bst[a-z0-9]{5}$/.test(user)) return deny();
+  let m = null; try { m = await req.json(); } catch (e) {}
+  const r = await locHub(env).pub(user, pass, m);
+  if (!r.auth) return deny();
+  return new Response(JSON.stringify(r.out || []), { headers: { 'Content-Type': 'application/json' } });
+}
+let LOC_KEY = null;
+const locKey = env => LOC_KEY || (LOC_KEY = crypto.subtle.importKey('raw', new TextEncoder().encode('bst-loc|' + env.SERVICE_ACCOUNT), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']));
+async function locSign(body, env) { return b64url(new Uint8Array(await crypto.subtle.sign('HMAC', await locKey(env), new TextEncoder().encode(body)))); }
+async function locSessMake(s, env) { const body = b64url(new TextEncoder().encode(JSON.stringify(s))); return body + '.' + await locSign(body, env); }
+async function locSessRead(tok, env) {
+  try { const [body, sig] = String(tok || '').split('.'); if (!body || !sig || sig !== await locSign(body, env)) return null;
+    const s = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(body.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))));
+    return s.exp > Date.now() ? s : null; } catch (e) { return null; }
+}
+async function locRoute(req, env, json) {
+  try {
+    if (!env.LOC) return json({ error: '定位功能尚未部署' }, 501);
+    const { idToken, sess } = await req.json();
+    let s = await locSessRead(sess, env), fresh = null;
+    if (!s) {
+      if (!idToken) return json({ error: 'login' }, 401);
+      const uid = uidOfToken(idToken), me = await fsUser(idToken, uid);
+      if (!me || me.status !== 'approved') return json({ error: '帳號尚未開通' }, 403);
+      s = { uid, m: await fullAdmin(me, idToken, env), exp: Date.now() + LOC_SESS };
+      fresh = await locSessMake(s, env);
+    }
+    const items = await locHub(env).list(s.uid, s.m);
+    if (!items) return json({ error: '你沒有查看定位的權限，請找管理員開通' }, 403);
+    return json({ ok: true, items, mgr: s.m, sess: fresh, exp: s.exp, now: Date.now() });
+  } catch (e) { return json({ error: e.code ? '請重新登入' : String((e && e.message) || e) }, e.code || 500); }
+}
+// 團員專區用：要不要顯示「定位」按鈕（只回 true/false，不含任何位置）
+async function locCanRoute(req, env, json) {
+  try { const { idToken } = await req.json(); if (!idToken || !env.LOC) return json({ can: false });
+    return json({ can: await locHub(env).canView(uidOfToken(idToken)) }); } catch (e) { return json({ can: false }); }
+}
+async function locAdminRoute(req, env, json) {
+  try {
+    if (!env.LOC) return json({ error: '定位功能尚未部署' }, 501);
+    const a = await req.json();
+    if (!a.idToken) return json({ error: 'missing' }, 400);
+    const uid = uidOfToken(a.idToken), me = await fsUser(a.idToken, uid);
+    if (!(await fullAdmin(me, a.idToken, env))) return json({ error: '只有完整管理員或開發者可以管理定位裝置' }, 403);
+    const hub = locHub(env);
+    if (a.op === 'members') {   // 選人用：只回 ID 和姓名，不含其他個資
+      const tok = await saToken(env), dev = await devUid(tok);
+      const members = (await fsList(tok, 'users')).filter(u => u.status === 'approved' && /^U[0-9a-f]{32}$/.test(u.id) && (u.id !== dev || uid === dev))
+        .map(u => ({ uid: u.id, name: String(u.realName || u.displayName || '').slice(0, 20) })).filter(u => u.name).sort((x, y) => x.name.localeCompare(y.name, 'zh-Hant'));
+      return json({ ok: true, members });
+    }
+    const r = await hub.admin(String(a.op || ''), { ...a, idToken: undefined, by: uid });
+    return json(r, r.error ? 400 : 200);
+  } catch (e) { return json({ error: e.code ? '請重新登入' : String((e && e.message) || e) }, e.code || 500); }
 }
