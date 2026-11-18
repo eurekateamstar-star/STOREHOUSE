@@ -1547,7 +1547,7 @@ const cleanTxt = (s, n) => String(s || '').replace(/[<>\u0000-\u001f]/g, '').tri
 export class LocHub extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
-    this.T = new Map(); this.L = new Map(); this.V = new Map();   // 裝置、最新位置、查看者
+    this.T = new Map(); this.L = new Map(); this.V = new Map(); this.P = new Map();   // 裝置、最新位置、查看者
     ctx.blockConcurrencyWhile(async () => {
       for (const [k, v] of await ctx.storage.list()) {
         if (k.startsWith('t:')) this.T.set(k.slice(2), v); else if (k.startsWith('l:')) this.L.set(k.slice(2), v); else if (k.startsWith('v:')) this.V.set(k.slice(2), v);
@@ -1558,16 +1558,24 @@ export class LocHub extends DurableObject {
   async pub(user, pass, m) {
     const t = this.T.get(user);
     if (!t || !pass || t.h !== await sha256hex(pass)) return { auth: false };
-    const now = Date.now();
-    if (m && m._type === 'location' && numOr(m.lat) !== null && numOr(m.lon) !== null && Math.abs(m.lat) <= 90 && Math.abs(m.lon) <= 180) {
+    const now = Date.now(), duty = t.duty !== false;
+    this.P.set(user, now);   // 最後連線（退勤時也會偶爾連線，只放記憶體）
+    if (m && m._type === 'location' && numOr(m.m) !== null && t.mode !== m.m) { t.mode = m.m; t.seen = now; await this.ctx.storage.put('t:' + user, t); }
+    if (duty && m && m._type === 'location' && numOr(m.lat) !== null && numOr(m.lon) !== null && Math.abs(m.lat) <= 90 && Math.abs(m.lon) <= 180) {
       const tst = numOr(m.tst) ? m.tst * 1000 : now;
       const l = { lat: m.lat, lon: m.lon, acc: numOr(m.acc), batt: numOr(m.batt), vel: numOr(m.vel), cog: numOr(m.cog), tst: Math.min(tst, now), at: now };
       const old = this.L.get(user);
       if (!old || l.tst >= old.tst) { this.L.set(user, l); await this.ctx.storage.put('l:' + user, l); }   // 離線補傳的舊位置不蓋掉新的
     }
     const out = [];
-    if (OT_FRIENDS) for (const [id, l] of this.L) {
-      const f = this.T.get(id); if (id === user || !f || now - l.at > LOC_TTL) continue;
+    // 網站切換值勤／退勤：手機回報的模式不對就下指令改（值勤 Move=2、退勤 Significant=1；退勤也要偶爾傳，才收得到「開始值勤」）
+    const want = duty ? 2 : 1;
+    if (t.mode !== want && (!t.cmdAt || now - t.cmdAt > 60e3 || t.cmdWant !== want)) {
+      out.push({ _type: 'cmd', action: 'setConfiguration', configuration: { _type: 'configuration', monitoring: want } });
+      t.cmdAt = now; t.cmdWant = want; await this.ctx.storage.put('t:' + user, t);
+    }
+    if (OT_FRIENDS && duty) for (const [id, l] of this.L) {
+      const f = this.T.get(id); if (id === user || !f || f.duty === false || now - l.at > LOC_TTL) continue;
       const topic = 'owntracks/bst/' + id;
       out.push({ _type: 'card', name: f.name, tid: f.tid, topic }, { _type: 'location', lat: l.lat, lon: l.lon, acc: Math.round(l.acc || 0), tst: Math.floor(l.tst / 1000), tid: f.tid, topic });
     }
@@ -1577,12 +1585,12 @@ export class LocHub extends DurableObject {
   list(uid, mgr) {
     if (!mgr && !this.canView(uid)) return null;
     const now = Date.now();
-    return [...this.T.entries()].map(([id, t]) => { const l = this.L.get(id); return { id, name: t.name, kind: t.kind, uname: t.uname || '', loc: l && now - l.at <= LOC_TTL ? l : null }; });
+    return [...this.T.entries()].map(([id, t]) => { const l = this.L.get(id); const duty = t.duty !== false; return { id, name: t.name, kind: t.kind, uname: t.uname || '', duty, mode: t.mode ?? null, loc: duty && l && now - l.at <= LOC_TTL ? l : null }; });
   }
   // 管理（Worker 已確認是完整管理員）
   async admin(op, a) {
     const st = this.ctx.storage;
-    if (op === 'state') return { trackers: [...this.T.entries()].map(([id, t]) => ({ id, name: t.name, kind: t.kind, tid: t.tid, uid: t.uid || '', uname: t.uname || '', at: t.at, last: (this.L.get(id) || {}).at || 0 })),
+    if (op === 'state') return { trackers: [...this.T.entries()].map(([id, t]) => ({ id, name: t.name, kind: t.kind, tid: t.tid, uid: t.uid || '', uname: t.uname || '', at: t.at, last: (this.L.get(id) || {}).at || 0, duty: t.duty !== false, mode: t.mode ?? null, ping: this.P.get(id) || 0 })),
                                  viewers: [...this.V.entries()].map(([uid, v]) => ({ uid, name: v.name || '' })) };
     if (op === 'add' || op === 'edit') {
       const name = cleanTxt(a.name, 20); if (!name) return { error: '請填名稱' };
@@ -1600,6 +1608,12 @@ export class LocHub extends DurableObject {
     if (op === 'reset') { const t = this.T.get(a.id); if (!t) return { error: '找不到裝置' };
       const pw = randStr(24); t.h = await sha256hex(pw); await st.put('t:' + a.id, t); return { ok: true, id: a.id, pw, tid: t.tid, name: t.name }; }
     if (op === 'del') { this.T.delete(a.id); this.L.delete(a.id); await st.delete(['t:' + a.id, 'l:' + a.id]); return { ok: true }; }
+    if (op === 'duty') {   // { id 或 all:true, on }：退勤時位置立刻從地圖清掉
+      const ids = a.all ? [...this.T.keys()] : [a.id]; let n = 0;
+      for (const id of ids) { const t = this.T.get(id); if (!t) continue; t.duty = !!a.on; t.cmdAt = 0; await st.put('t:' + id, t); n++;
+        if (!a.on) { this.L.delete(id); await st.delete('l:' + id); } }
+      return n ? { ok: true, n } : { error: '找不到裝置' };
+    }
     if (op === 'clear') { this.L.delete(a.id); await st.delete('l:' + a.id); return { ok: true }; }
     if (op === 'viewer') { if (!/^U[0-9a-f]{32}$/.test(a.uid || '')) return { error: 'bad uid' };
       if (a.on) { const v = { name: cleanTxt(a.name, 20), at: Date.now() }; this.V.set(a.uid, v); await st.put('v:' + a.uid, v); }

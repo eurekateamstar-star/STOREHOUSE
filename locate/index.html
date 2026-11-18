@@ -47,6 +47,9 @@
   .row.stale .ago { color:var(--amber); }
   .row.off { opacity:.5; }
   .row.off .ago { color:var(--sub); }
+  .duty { border:0; border-radius:99px; padding:5px 10px; font:inherit; font-size:12px; font-weight:800; cursor:pointer; margin-left:6px; white-space:nowrap; }
+  .duty.on { background:#dcfce7; color:#15803d; } .duty.off { background:#f3f4f6; color:#6b7280; }
+  .bar2 { display:flex; gap:8px; margin:8px 0 4px; } .bar2 .sb { flex:1; padding:10px; font-size:13.5px; }
 
   /* 地圖標記 */
   .mk { position:relative; transform:translate(-50%,-100%); display:flex; flex-direction:column; align-items:center; pointer-events:auto; }
@@ -80,6 +83,7 @@
   .pn .hint { font-size:12.5px; color:var(--sub); line-height:1.6; }
   .it { display:flex; align-items:center; gap:8px; padding:9px 10px; border:1px solid var(--line); border-radius:12px; margin-bottom:6px; }
   .it .m { flex:1; min-width:0; font-size:14px; }
+  .it.tk { flex-wrap:wrap; } .it.tk .m { flex:1 1 100%; } .it.tk .duty { margin-left:0; margin-right:auto; }
   .it .m small { display:block; color:var(--sub); font-size:12px; }
   .sb { border:0; border-radius:10px; padding:6px 9px; font:inherit; font-size:12.5px; font-weight:700; cursor:pointer; background:#f3f4f6; }
   .sb.d { background:#fee2e2; color:var(--red); }
@@ -200,6 +204,13 @@
     return bits.join('<br>');
   }
   const shown = i => filter === '全部' || i.kind === filter;
+  const MODE = { 2: 'Move 即時', 1: 'Significant 省電', 0: 'Manual 手動', '-1': 'Quiet 停止' };
+  const modeTxt = (i) => i.mode == null ? '' : (i.duty !== false && i.mode !== 2) || (i.duty === false && i.mode === 2) ? '手機切換中…' : 'App：' + (MODE[i.mode] || i.mode);
+  async function setDuty(body) {
+    const r = await adm('duty', body); if (r.error) { toast(r.error); return false; }
+    toast(body.on ? '✅ 已設為值勤，手機下次連線時開始即時分享' : '🌙 已設為退勤，地圖不再顯示，手機下次連線時改成省電');
+    await load(); return true;
+  }
   function draw() {
     const seen = new Set();
     for (const i of items) {
@@ -226,20 +237,23 @@
     const cnt = k => items.filter(i => k === '全部' || i.kind === k).length;
     $('filters').innerHTML = ['全部', ...KINDS].filter(k => k === '全部' || cnt(k)).map(k => `<button class="chip ${k === filter ? 'on' : ''}" data-f="${k}">${k === '全部' ? '全部' : EMOJI[k] + ' ' + k} ${cnt(k)}</button>`).join('');
     $('filters').querySelectorAll('[data-f]').forEach(b => b.onclick = () => { filter = b.dataset.f; draw(); fitAll(); });
-    const L2 = items.filter(shown).sort((a, b) => (!!b.loc - !!a.loc) || (KINDS.indexOf(a.kind) - KINDS.indexOf(b.kind)) || a.name.localeCompare(b.name, 'zh-Hant'));
-    $('cnt').textContent = `${items.filter(i => i.loc && now - i.loc.at <= STALE).length} 台即時・共 ${items.length} 台`;
+    const L2 = items.filter(shown).sort((a, b) => ((a.duty === false) - (b.duty === false)) || (!!b.loc - !!a.loc) || (KINDS.indexOf(a.kind) - KINDS.indexOf(b.kind)) || a.name.localeCompare(b.name, 'zh-Hant'));
+    $('cnt').textContent = `${items.filter(i => i.loc && now - i.loc.at <= STALE).length} 台即時・${items.filter(i => i.duty !== false).length} 台值勤・共 ${items.length} 台`;
     $('list').innerHTML = L2.length ? L2.map(i => {
       const l = i.loc, st = l && now - l.at > STALE;
       return `<div class="row ${!l ? 'off' : st ? 'stale' : ''} ${i.id === selId ? 'sel' : ''}" data-id="${esc(i.id)}">
         <div class="e k-${esc(i.kind)}">${EMOJI[i.kind] || '📍'}</div>
         <div class="m"><div class="n">${esc(i.name)}</div><div class="d">${esc(i.kind)}${i.uname ? '・' + esc(i.uname) : ''}${l && l.batt != null ? `・🔋${l.batt}%` : ''}${l && l.vel >= 2 ? `・${Math.round(l.vel)} km/h` : ''}</div></div>
-        <div class="r">${l ? `<div class="ago">${esc(ago(l.tst, now))}</div>${st ? '訊號中斷' : '即時'}` : '<div class="ago">尚未連線</div>12 小時內沒有位置'}</div></div>`;
+        <div class="r">${i.duty === false ? `<div class="ago" style="color:#6b7280">🌙 退勤</div>不顯示位置` : l ? `<div class="ago">${esc(ago(l.tst, now))}</div>${st ? '訊號中斷' : '即時'}` : '<div class="ago">尚未連線</div>12 小時內沒有位置'}</div>
+        ${mgr ? `<button class="duty ${i.duty === false ? 'off' : 'on'}" data-duty="${esc(i.id)}">${i.duty === false ? '退勤' : '值勤'}</button>` : ''}</div>`;
     }).join('') : `<div class="hint" style="padding:14px;text-align:center;color:#6b7280">${mgr ? '還沒有任何裝置，按右上「⚙️ 管理」新增' : '目前沒有裝置'}</div>`;
     $('list').querySelectorAll('[data-id]').forEach(r => r.onclick = () => sel(r.dataset.id, true));
+    $('list').querySelectorAll('[data-duty]').forEach(b => b.onclick = e => { e.stopPropagation(); const i = items.find(x => x.id === b.dataset.duty);
+      const on = i.duty === false; if (!on && !confirm(`「${i.name}」退勤？地圖會先清掉他的位置。`)) return; setDuty({ id: i.id, on }); });
   }
   function sel(id, fly) {
     selId = id; const i = items.find(x => x.id === id); renderList();
-    if (!i || !i.loc) { toast('這台目前沒有位置'); return; }
+    if (!i || !i.loc) { toast(i && i.duty === false ? '這台目前是退勤' : '這台目前沒有位置'); return; }
     if (fly) { map.flyTo([i.loc.lat, i.loc.lon], Math.max(map.getZoom(), 16), { duration: .6 }); const m = marks.get(id); if (m) setTimeout(() => m.openPopup(), 650); }
   }
   $('sh-h').onclick = () => { $('sheet').classList.toggle('min'); $('sh-arrow').textContent = $('sheet').classList.contains('min') ? '▴' : '▾'; };
@@ -277,8 +291,11 @@
       <h3>⚙️ 定位管理<button class="sb x" data-close>關閉</button></h3>
       <div class="hint">小組長、指揮車、物資車的手機各裝一個 OwnTracks App，在這裡新增裝置後掃 QR Code 就會自動設定好。</div>
       <h4>📱 裝置（${tk.length}）</h4>
-      ${tk.map(t => `<div class="it"><div class="m">${EMOJI[t.kind] || ''} <b>${esc(t.name)}</b>
-          <small>${esc(t.kind)}${t.uname ? '・綁定 ' + esc(t.uname) + '（可看地圖）' : ''}・${t.last ? '最後上傳 ' + esc(ago(t.last, Date.now())) : '還沒收到位置'}</small></div>
+      <div class="bar2"><button class="sb" id="all-on" style="background:#dcfce7;color:#15803d">✅ 全部值勤</button><button class="sb" id="all-off">🌙 全部退勤</button></div>
+      <div class="hint" style="margin-bottom:8px">值勤＝手機每 30 秒回報（Move）；退勤＝地圖不顯示，手機改成省電模式（Significant）。<br>切換要等手機下次連線才生效：值勤→退勤約 30 秒；退勤→值勤可能要等手機移動一段距離（幾分鐘）。</div>
+      ${tk.map(t => `<div class="it tk"><div class="m">${EMOJI[t.kind] || ''} <b>${esc(t.name)}</b>
+          <small>${esc(t.kind)}${t.uname ? '・綁定 ' + esc(t.uname) + '（可看地圖）' : ''}・${t.ping ? '最後連線 ' + esc(ago(t.ping, Date.now())) : t.last ? '最後上傳 ' + esc(ago(t.last, Date.now())) : '還沒收到位置'}${modeTxt(t) ? '・' + esc(modeTxt(t)) : ''}</small></div>
+          <button class="duty ${t.duty === false ? 'off' : 'on'}" data-d="${esc(t.id)}">${t.duty === false ? '🌙 退勤' : '✅ 值勤'}</button>
           <button class="sb" data-edit="${esc(t.id)}">編輯</button><button class="sb" data-reset="${esc(t.id)}">重新設定</button><button class="sb d" data-del="${esc(t.id)}">刪除</button></div>`).join('') || '<div class="hint">還沒有裝置</div>'}
       <h4>➕ 新增裝置</h4>
       <div class="fm">
@@ -293,6 +310,9 @@
       <div class="fm" style="grid-template-columns:1fr auto;align-items:end"><div><label>加入查看者（例如指揮組、司機）</label><select id="v-uid">${memberOpts()}</select></div><button class="sb" id="v-add" style="padding:11px 14px;background:var(--ink);color:#fff">加入</button></div>`;
     o.querySelectorAll('[data-close]').forEach(b => b.onclick = () => o.remove());
     const again = () => { o.remove(); openAdmin(); load(); };
+    o.querySelector('#all-on').onclick = async () => { if (await setDuty({ all: true, on: true })) again(); };
+    o.querySelector('#all-off').onclick = async () => { if (!confirm('全部裝置退勤？地圖會清掉所有位置。')) return; if (await setDuty({ all: true, on: false })) again(); };
+    o.querySelectorAll('[data-d]').forEach(b => b.onclick = async () => { const t = tk.find(x => x.id === b.dataset.d); if (await setDuty({ id: t.id, on: t.duty === false })) again(); });
     o.querySelector('#a-add').onclick = async () => {
       const name = o.querySelector('#a-name').value.trim(); if (!name) { toast('請填名稱'); return; }
       const uid = o.querySelector('#a-uid').value, uname = uid ? (members.find(m => m.uid === uid) || {}).name : '';
@@ -331,7 +351,7 @@
   // OwnTracks 設定：QR Code（手機相機掃）、直接開啟、下載設定檔、手動輸入
   function showConfig(r) {
     const cfg = { _type: 'configuration', mode: 3, url: OT_URL, auth: true, usePassword: true, username: r.id, password: r.pw, deviceId: 'phone', tid: r.tid,
-                  monitoring: 2, locatorInterval: 30, moveModeLocatorInterval: 30, locatorDisplacement: 10, locatorPriority: 3, pubExtendedData: true, extendedData: true, cmd: false };
+                  monitoring: 2, locatorInterval: 30, moveModeLocatorInterval: 30, locatorDisplacement: 10, locatorPriority: 3, pubExtendedData: true, extendedData: true, cmd: true, remoteConfiguration: true };   // cmd＋remoteConfiguration：讓網站能切換值勤／退勤
     const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(cfg))));
     const link = 'owntracks:///config?inline=' + encodeURIComponent(b64);
     const o = overlay(`<h3>📱 設定「${esc(r.name)}」<button class="sb x" data-close>完成</button></h3>
@@ -341,7 +361,7 @@
         <li>打開 OwnTracks，位置權限選「<b>永遠允許</b>」（Android 也要關掉這個 App 的電池最佳化）</li>
         <li><b>第一次要先開一個開關</b>（每支手機做一次就好）：OwnTracks 左上角 <b>i</b> → 藍字 <b>Settings</b> → 滑到最下面點 <b>Remote Control</b> → 打開最上面的「<b>Allow external configuration</b>」，跳出警告按確定（其他開關不要動）。<br><span class="hint">沒開的話掃了會出現「URI or file configuration not allowed」。</span></li>
         <li>用那支手機的<b>相機</b>掃下面的 QR Code，選用 OwnTracks 開啟、按「匯入／Import」。</li>
-        <li>回到 OwnTracks 的 <b>Map</b>，上方模式選「<b>Move</b>」（持續分享）。不用時選「<b>Quiet</b>」就停止。<br><span class="hint">成功的話：i → Status Info 的 Parameters 會變成 https://bst-auth… 開頭。</span></li>
+        <li>回到 OwnTracks 的 <b>Map</b>，上方模式選「<b>Move</b>」。之後值勤／退勤由管理員在網站切換，不用再自己按。<br><span class="hint">成功的話：i → Status Info 的 Parameters 會變成 https://bst-auth… 開頭。</span></li>
       </ol>
       <div class="qr" id="qr"></div>
       <a class="btn g" href="${esc(link)}">在這支手機直接開啟 OwnTracks 設定</a>
