@@ -391,12 +391,10 @@
       </ol>
       <div class="qr" id="qr"></div>
       <a class="btn g" href="${esc(link)}">在這支手機直接開啟 OwnTracks 設定</a>
-      <button class="btn w" id="dl">下載設定檔（.otrc）</button>
       <h4>手動設定（掃不到時）</h4>
       <div class="kv"><b>模式</b> HTTP<br><b>網址</b> ${esc(OT_URL)}<br><b>帳號</b> ${esc(r.id)}<br><b>密碼</b> ${esc(r.pw)}<br><b>裝置ID</b> phone　<b>代號</b> ${esc(r.tid)}</div>`);
     o.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => load()));
     try { new QRCode(o.querySelector('#qr'), { text: link, width: 240, height: 240, correctLevel: QRCode.CorrectLevel.L }); } catch (e) { o.querySelector('#qr').textContent = 'QR Code 產生失敗，請用下面的按鈕或手動設定'; }
-    o.querySelector('#dl').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' })); a.download = r.name.replace(/[\\/:*?"<>|\s]/g, '_') + '.otrc'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); };
   }
 
   await load(); start();
