@@ -100,6 +100,12 @@
   .kv { font-size:13px; background:#f9fafb; border-radius:12px; padding:10px 12px; line-height:1.9; word-break:break-all; }
   .kv b { display:inline-block; min-width:56px; color:var(--sub); font-weight:700; }
   .warn { background:#fff7ed; border:1.5px dashed #fdba74; color:#9a3412; border-radius:12px; padding:10px 12px; font-size:13px; line-height:1.6; margin:8px 0; }
+  .stp { display:flex; gap:10px; margin:12px 0; font-size:14px; line-height:1.7; }
+  .stp > b { flex:none; width:26px; height:26px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:14px; margin-top:1px; }
+  .stp > div { flex:1; min-width:0; }
+  .stp img { display:block; width:100%; max-width:340px; border-radius:12px; border:1px solid var(--line); margin:6px 0 8px; box-shadow:0 2px 8px rgba(0,0,0,.08); }
+  .seg { display:inline-flex; background:#e5e7eb; border-radius:99px; padding:3px; margin:6px 0; font-weight:700; font-size:13px; }
+  .seg span { padding:5px 10px; border-radius:99px; color:#374151; } .seg span.on { background:#fff; box-shadow:0 0 0 2.5px #dc2626; color:#111; }
   ol.st { padding-left:20px; margin:6px 0; font-size:13.5px; line-height:1.75; }
   .toast { position:fixed; z-index:2000; left:50%; bottom:90px; transform:translateX(-50%); background:rgba(17,24,39,.92); color:#fff; padding:9px 16px; border-radius:99px; font-size:14px; opacity:0; transition:opacity .2s; pointer-events:none; }
   .toast.show { opacity:1; }
@@ -382,13 +388,18 @@
     const o = overlay(`<h3>📱 ${self ? '我的定位設定' : '設定「' + esc(r.name) + '」'}<button class="sb x" data-close>完成</button></h3>
       ${self ? `<div class="hint" style="margin-bottom:6px">地圖上會顯示「${esc(r.name)}」和你的 LINE 大頭貼。值勤／退勤由管理員在網站切換。</div>` : ''}
       <div class="warn">⚠️ QR Code 裡有密碼，請不要截圖傳到群組。${self ? '之後再按「📱 我的QR」都會是同一組，換手機重掃即可。' : '之後在管理面板按「📱 QR」可以再叫出來。'}</div>
-      <ol class="st">
-        <li>在要定位的手機安裝 OwnTracks：<a href="https://apps.apple.com/app/id692424691" target="_blank" rel="noopener">iPhone</a>／<a href="https://play.google.com/store/apps/details?id=org.owntracks.android" target="_blank" rel="noopener">Android</a></li>
-        <li>打開 OwnTracks，位置權限選「<b>永遠允許</b>」（Android 也要關掉這個 App 的電池最佳化）</li>
-        <li><b>第一次要先開一個開關</b>（每支手機做一次就好）：OwnTracks 左上角 <b>i</b> → 藍字 <b>Settings</b> → 滑到最下面點 <b>Remote Control</b> → 打開最上面的「<b>Allow external configuration</b>」，跳出警告按確定（其他開關不要動）。<br><span class="hint">沒開的話掃了會出現「URI or file configuration not allowed」。</span></li>
-        <li>用那支手機的<b>相機</b>掃下面的 QR Code，選用 OwnTracks 開啟、按「匯入／Import」。</li>
-        <li>回到 OwnTracks 的 <b>Map</b>，上方模式選「<b>Move</b>」。之後值勤／退勤由管理員在網站切換，不用再自己按。<br><span class="hint">成功的話：i → Status Info 的 Parameters 會變成 https://bst-auth… 開頭。</span></li>
-      </ol>
+      <div class="stp"><b>1</b><div>安裝 OwnTracks（免費）：<a href="https://apps.apple.com/app/id692424691" target="_blank" rel="noopener">iPhone</a>／<a href="https://play.google.com/store/apps/details?id=org.owntracks.android" target="_blank" rel="noopener">Android</a></div></div>
+      <div class="stp"><b>2</b><div>打開 App，詢問位置時選「<b>使用 App 期間允許</b>」<img src="img/s1-perm.jpg" alt="" style="max-width:200px">
+        之後 iPhone 會再問一次，選「<b>改為永遠允許</b>」。沒跳出來的話：iPhone 設定 → OwnTracks → 位置 → <b>永遠</b>。<br><span class="hint">Android：位置選「一律允許」，並關掉 OwnTracks 的電池最佳化。</span></div></div>
+      <div class="stp"><b>3</b><div><b>第一次要開一個開關</b>（每支手機只做一次）<br>左上角 <b>i</b> <img src="img/s2-i.jpg" alt="">
+        點藍字 <b>Settings</b> <img src="img/s2-settings.jpg" alt="">
+        滑到最下面，點 <b>Remote Control</b> <img src="img/s3-remote.jpg" alt="">
+        打開最上面的 <b>Allow external configuration</b>，跳出警告按確定（其他開關不要動） <img src="img/s4-allow.jpg" alt=""></div></div>
+      <div class="stp"><b>4</b><div>用這支手機的<b>相機</b>掃下面的 QR Code，選用 OwnTracks 開啟，按「<b>匯入／Import</b>」。</div></div>
+      <div class="stp"><b>5</b><div>回到 <b>Map</b>，上方模式選 <b>Move</b>：
+        <div class="seg"><span>Quiet</span><span>Manual</span><span>Significant</span><span class="on">Move</span></div>
+        之後值勤／退勤由管理員在網站切換，不用再自己按。<b>不要把 OwnTracks 從背景滑掉。</b></div></div>
+      <div class="stp"><b>✓</b><div>確認成功：<b>i</b> → Status Info，Parameters 變成 <b>https://bst-auth…</b> 開頭 <img src="img/s6-ok.jpg" alt=""></div></div>
       <div class="qr" id="qr"></div>
       <a class="btn g" href="${esc(link)}">在這支手機直接開啟 OwnTracks 設定</a>
       <h4>手動設定（掃不到時）</h4>
