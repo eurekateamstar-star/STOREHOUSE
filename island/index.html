@@ -4,15 +4,15 @@
 <meta charset="utf-8">
 <meta name="theme-color" content="#fde8ef">
 <style>html,body{background:#fde8ef!important}</style>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>白沙屯媽祖進香島｜白沙屯 → 北港</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@700;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
 :root{--pink:#e85a8c;--pink-d:#c43a6e;--pink-l:#fde8ef;--gold:#d2922a;--gold-l:#fdf4e3;--ink:#2a1f1d;--mute:#7a6a64;--line:#eadcd3;--paper:#fffaf6;--card:#fffffff0;--panel:392px}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;overflow:hidden;font-family:"Noto Sans TC",system-ui,sans-serif;color:var(--ink);background:#e9f0ea}
-button{font-family:inherit;color:inherit}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none;touch-action:manipulation;position:fixed;inset:0;width:100%;font-family:"Noto Sans TC",system-ui,sans-serif;color:var(--ink);background:#e9f0ea}
+button{font-family:inherit;color:inherit;touch-action:manipulation}
 #stage{position:fixed;inset:0;right:var(--panel);background:linear-gradient(#f3ecdf 0%,#cfe3e2 40%,#79bcc9 100%)}
 canvas{display:block;touch-action:none}
 #labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
@@ -133,7 +133,7 @@ h4{font-size:11px;color:var(--mute);margin:16px 0 8px;letter-spacing:1px;font-we
 .dots i{width:6px;height:6px;border-radius:3px;background:var(--line)}
 .dots i.on{width:18px;background:var(--pink)}
 #hint{position:fixed;left:16px;bottom:16px;font-size:11px;color:var(--mute);background:#ffffffb0;padding:5px 10px;border-radius:999px;z-index:4;pointer-events:none}
-#sheetBtn{display:none}
+#sheetBtn{display:none}#pClose{display:none;position:absolute;right:14px;top:12px;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:#fff;font-size:18px;z-index:2;cursor:pointer}
 #panel .grab{display:none;width:44px;height:5px;border-radius:3px;background:var(--line);margin:10px auto 0;cursor:pointer}
 @media (max-width:1180px){#hint{display:none}}
 @media (max-width:760px){
@@ -146,7 +146,7 @@ h4{font-size:11px;color:var(--mute);margin:16px 0 8px;letter-spacing:1px;font-we
   #player{left:8px;right:8px;transform:none;width:auto;bottom:max(8px,env(safe-area-inset-bottom));padding:8px 10px 10px}
   #panel{top:auto;height:80vh;width:100%;border-left:none;border-radius:22px 22px 0 0;box-shadow:0 -10px 40px #3a201830;transform:translateY(100%);transition:transform .35s cubic-bezier(.2,.8,.2,1)}
   #panel.open{transform:none}
-  #panel .grab{display:block}#panel .top{padding-top:10px}
+  #panel .grab{display:block;width:64px;height:6px;margin:12px auto 4px}#pClose{display:block}#panel .top{padding-top:10px}
   #sheetBtn{display:flex}
   #detail{left:8px;right:8px;width:auto;top:auto;bottom:138px;max-height:44vh;transform:translateY(calc(100% + 160px))}
   #detail.open{transform:none}
@@ -230,7 +230,7 @@ html{background:#fde8ef}
 <div id="hint">拖曳移動 · 滾輪縮放 · 右鍵旋轉</div>
 <aside id="detail"><div class="hd"><div class="ic" id="dIc"></div><div><div class="kick" id="dKick"></div><h2 id="dTitle"></h2></div><button class="x" id="dX">×</button></div><div class="bd" id="dBody"></div></aside>
 <aside id="panel">
-  <div class="grab" id="grab"></div>
+  <div class="grab" id="grab"></div><button id="pClose" aria-label="收起">✕</button>
   <div class="top">
     <div class="kick">THE PILGRIM INDEX</div>
     <h1>一步一腳印，跟著媽祖走。</h1>
