@@ -648,9 +648,9 @@ const ROUTE=(()=>{const raw=[],marks=[];let last=null;
  pts.forEach(p=>{PL.forEach(q=>{if(!q.bridge&&Math.hypot(p.x-q.x,p.z-q.z)<q.r*.97)p.y=q.top+.02})});
  {const seg=tot/N,riv=(x,z)=>{const c=cellAt(x,z);return !!(c&&c.river)},land=(x,z)=>{const c=cellAt(x,z);return !!(c&&!c.river)};PL.filter(q=>q.bridge).forEach(q=>{let bi=0,bd=1e9;const mk=marks.find(m=>m.p===q.id),cu=mk?Math.round(mk.u*N):-1,w0=mk?Math.max(0,cu-Math.round(4/seg)):0,w1=mk?Math.min(N,cu+Math.round(4/seg)):N;
   for(let i=w0;i<=w1;i++){const p=pts[i];if(!riv(p.x,p.z))continue;const d=Math.hypot(p.x-q.x,p.z-q.z);if(d<bd){bd=d;bi=i}}if(bd>1e8)for(let i=w0;i<=w1;i++){const p=pts[i],d=Math.hypot(p.x-q.x,p.z-q.z);if(d<bd){bd=d;bi=i}}
-  const C=pts[bi],RC=cells.filter(c=>c.river&&Math.hypot(c.x-C.x,c.z-C.z)<2.6);let fx=1,fz=0;if(RC.length>2){let mx=0,mz=0;RC.forEach(c=>{mx+=c.x;mz+=c.z});mx/=RC.length;mz/=RC.length;let a=0,b=0,d=0;RC.forEach(c=>{const X=c.x-mx,Z=c.z-mz;a+=X*X;b+=X*Z;d+=Z*Z});const th=.5*Math.atan2(2*b,a-d);fx=Math.cos(th);fz=Math.sin(th)}
-  const T=pts[Math.min(N,bi+8)].clone().sub(pts[Math.max(0,bi-8)]);let dx=-fz,dz=fx;if(dx*T.x+dz*T.z<0){dx=-dx;dz=-dz}
-  const walk=sg=>{let t=0;while(t<4.5&&!land(C.x+dx*sg*t,C.z+dz*sg*t))t+=.1;return Math.min(t,4.5)+.35};const tb=walk(-1),tf=walk(1),S=new THREE.Vector3(C.x-dx*tb,0,C.z-dz*tb),E=new THREE.Vector3(C.x+dx*tf,0,C.z+dz*tf);
+  const C=pts[bi];let ie=bi,ix=bi;const lim=Math.round(6/seg);while(ie>bi-lim&&ie>1&&!land(pts[ie].x,pts[ie].z))ie--;while(ix<bi+lim&&ix<N-1&&!land(pts[ix].x,pts[ix].z))ix++;
+  let dx=pts[ix].x-pts[ie].x,dz=pts[ix].z-pts[ie].z;const dl=Math.hypot(dx,dz)||1;dx/=dl;dz/=dl;const mx=(pts[ie].x+pts[ix].x)/2,mz=(pts[ie].z+pts[ix].z)/2,half=Math.max(1.2,dl/2+.35);
+  const S=new THREE.Vector3(mx-dx*half,0,mz-dz*half),E=new THREE.Vector3(mx+dx*half,0,mz+dz*half);
   const blocked=(x,z)=>PL.some(o=>!o.bridge&&Math.hypot(x-o.x,z-o.z)<o.r+.15);let ra=1.0,rb=1.0;while(ra>.3&&blocked(S.x-dx*ra,S.z-dz*ra))ra-=.1;while(rb>.3&&blocked(E.x+dx*rb,E.z+dz*rb))rb-=.1;
   const A=new THREE.Vector3(S.x-dx*ra,0,S.z-dz*ra),Bp=new THREE.Vector3(E.x+dx*rb,0,E.z+dz*rb);
   let a0=bi,b1=bi,dd=1e9;for(let i=Math.max(1,bi-Math.round(7/seg));i<bi;i++){const d=Math.hypot(pts[i].x-A.x,pts[i].z-A.z);if(d<dd){dd=d;a0=i}}dd=1e9;for(let i=bi+1;i<Math.min(N-1,bi+Math.round(7/seg));i++){const d=Math.hypot(pts[i].x-Bp.x,pts[i].z-Bp.z);if(d<dd){dd=d;b1=i}}
