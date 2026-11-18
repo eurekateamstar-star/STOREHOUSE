@@ -128,6 +128,7 @@
   .seg { display:inline-flex; background:#e5e7eb; border-radius:99px; padding:3px; margin:6px 0; font-weight:700; font-size:13px; }
   .seg span { padding:5px 10px; border-radius:99px; color:#374151; } .seg span.on { background:#fff; box-shadow:0 0 0 2.5px #dc2626; color:#111; }
   ol.st { padding-left:20px; margin:6px 0; font-size:13.5px; line-height:1.75; }
+  .trkbar { position:fixed; z-index:600; left:50%; transform:translateX(-50%); top:calc(env(safe-area-inset-top) + 74px); background:#fff; border-radius:99px; padding:6px 8px 6px 14px; box-shadow:0 4px 14px rgba(0,0,0,.18); font-size:13px; font-weight:700; white-space:nowrap; display:flex; align-items:center; gap:8px; }
   .toast { position:fixed; z-index:2000; left:50%; bottom:90px; transform:translateX(-50%); background:rgba(17,24,39,.92); color:#fff; padding:9px 16px; border-radius:99px; font-size:14px; opacity:0; transition:opacity .2s; pointer-events:none; }
   .toast.show { opacity:1; }
   .leaflet-top { top:calc(env(safe-area-inset-top) + 64px); }
@@ -152,6 +153,7 @@
 
 <div class="msg" id="msg"><div class="c"><div class="ic">⏳</div><h2>載入中</h2><p>正在確認登入狀態…</p></div></div>
 <div class="toast" id="toast"></div>
+<div class="trkbar hidden" id="trkbar"></div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -214,7 +216,7 @@
     $('b-admin').classList.toggle('hidden', !mgr);
     $('b-qr').classList.toggle('hidden', !j.canSelf);
     if (j.selfNeed && !load.autoQR) { load.autoQR = true; setTimeout(() => myQR(true), 300); }   // 小組長第一次打開：直接給 QR Code
-    const on = items.filter(i => i.loc).length;
+    const on = items.filter(i => i.loc && i.duty !== false).length;
     setStatus(true, `即時更新中 · ${on}/${items.length} 台有位置 · ${new Date().toTimeString().slice(0, 5)}`);
     draw();
   }
@@ -225,20 +227,22 @@
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') load(); });
 
   function iconFor(i) {
-    const st = now - i.loc.at > STALE;
-    const tag = st ? `<small>${esc(ago(i.loc.at, now))}</small>` : '';
+    const off = i.duty === false, st = off || now - i.loc.at > STALE;
+    const tag = off ? `<small>🌙 退勤</small>` : st ? `<small>${esc(ago(i.loc.at, now))}</small>` : '';
     return L.divIcon({ className: '', iconSize: [0, 0], html: `<div class="mk ${st ? 'stale' : ''}"><div class="b k-${esc(i.kind)} ${i.pic ? 'p' : ''}" style="${i.pic ? 'border-color:' + KC[i.kind] : ''}">${face(i)}</div><div class="tip" style="${i.pic ? 'border-top-color:' + KC[i.kind] : ''}"></div><div class="l">${i.team ? `<span class="tm">${esc(i.team)}</span>` : ''}${esc(i.name)}${tag}</div></div>` });
   }
   function popup(i) {
     const l = i.loc, bits = [];
     bits.push(`<b style="font-size:15px">${i.pic ? '' : (EMOJI[i.kind] || '') + ' '}${esc(label(i))}</b>`);
     bits.push(esc(sub(i)));
+    if (i.duty === false) bits.push(`🌙 <b>退勤中</b>，這是退勤前最後位置（${esc(ago(l.tst, now))}）`); else
     bits.push(`最後回報：${esc(ago(l.at, now))}`);
     if (stay(l)) bits.push(`📍 停在這裡約 ${esc(stay(l))}（沒有移動）`);
     if (l.vel != null && l.vel >= 2) bits.push(`速度：約 ${Math.round(l.vel)} km/h`);
     if (l.batt != null) bits.push(`手機電量：${l.batt}%${l.batt <= 20 ? ' ⚠️' : ''}`);
     if (l.acc != null) bits.push(`誤差：約 ${Math.round(l.acc)} 公尺`);
     bits.push(`<a href="https://www.google.com/maps/dir/?api=1&destination=${l.lat},${l.lon}" target="_blank" rel="noopener">🧭 Google 導航過去</a>`);
+    bits.push(`<a href="#" data-trk="${esc(i.id)}">🛤 看今天的軌跡</a>`);
     return bits.join('<br>');
   }
   const stay = l => { const m = Math.floor((l.at - l.tst) / 60e3); return m >= 3 ? (m < 60 ? m + ' 分鐘' : Math.floor(m / 60) + ' 小時' + (m % 60 ? ' ' + m % 60 + ' 分' : '')) : ''; };   // 手機有回報但位置沒變＝停在原地多久
@@ -284,13 +288,13 @@
     $('filters').innerHTML = ['全部', '轎前', '轎後', ...KINDS].filter(k => k === '全部' || cnt(k)).map(k => `<button class="chip ${k === filter ? 'on' : ''}" data-f="${k}">${k === '全部' ? '全部' : (ic[k] || EMOJI[k]) + ' ' + k} ${cnt(k)}</button>`).join('');
     $('filters').querySelectorAll('[data-f]').forEach(b => b.onclick = () => { filter = b.dataset.f; draw(); fitAll(); });
     const L2 = items.filter(shown).sort((a, b) => ((a.duty === false) - (b.duty === false)) || (!!b.loc - !!a.loc) || (LO(a.team) - LO(b.team)) || (KINDS.indexOf(a.kind) - KINDS.indexOf(b.kind)) || a.name.localeCompare(b.name, 'zh-Hant'));
-    $('cnt').textContent = `${items.filter(i => i.loc && now - i.loc.at <= STALE).length} 台即時・${items.filter(i => i.duty !== false).length} 台值勤・共 ${items.length} 台`;
+    $('cnt').textContent = `${items.filter(i => i.duty !== false && i.loc && now - i.loc.at <= STALE).length} 台即時・${items.filter(i => i.duty !== false).length} 台值勤・共 ${items.length} 台`;
     $('list').innerHTML = L2.length ? L2.map(i => {
       const l = i.loc, st = l && now - l.at > STALE;
       return `<div class="row ${!l ? 'off' : st ? 'stale' : ''} ${i.id === selId ? 'sel' : ''}" data-id="${esc(i.id)}">
         <div class="e k-${esc(i.kind)} ${i.pic ? 'p' : ''}" style="--kc:${KC[i.kind]}">${face(i)}</div>
         <div class="m"><div class="n">${esc(label(i))}</div><div class="d">${esc(sub(i))}${l && l.batt != null ? `・🔋${l.batt}%` : ''}${l && l.vel >= 2 ? `・${Math.round(l.vel)} km/h` : ''}</div></div>
-        <div class="r">${i.duty === false ? `<div class="ago" style="color:#6b7280">🌙 退勤</div>不顯示位置` : l ? `<div class="ago">${esc(ago(l.at, now))}</div>${st ? '訊號中斷' : stay(l) ? '停留 ' + esc(stay(l)) : '移動中'}` : '<div class="ago">尚未連線</div>12 小時內沒有位置'}</div>
+        <div class="r">${i.duty === false ? `<div class="ago" style="color:#6b7280">🌙 退勤</div>${l ? '最後 ' + esc(ago(l.tst, now)) : '沒有位置'}` : l ? `<div class="ago">${esc(ago(l.at, now))}</div>${st ? '訊號中斷' : stay(l) ? '停留 ' + esc(stay(l)) : '移動中'}` : '<div class="ago">尚未連線</div>12 小時內沒有位置'}</div>
         ${mgr ? `<button class="duty ${i.duty === false ? 'off' : 'on'}" data-duty="${esc(i.id)}">${i.duty === false ? '退勤' : '值勤'}</button>` : ''}</div>`;
     }).join('') : `<div class="hint" style="padding:14px;text-align:center;color:#6b7280">${mgr ? '還沒有任何裝置，按右上「⚙️ 管理」新增' : '目前沒有裝置'}</div>`;
     $('list').querySelectorAll('[data-id]').forEach(r => r.onclick = () => sel(r.dataset.id, true));
@@ -299,9 +303,26 @@
   }
   function sel(id, fly) {
     selId = id; const i = items.find(x => x.id === id); renderList();
-    if (!i || !i.loc) { toast(i && i.duty === false ? '這台目前是退勤' : '這台目前沒有位置'); return; }
+    if (!i || !i.loc) { toast('這台目前沒有位置'); return; }
     if (fly) { map.flyTo([i.loc.lat, i.loc.lon], Math.max(map.getZoom(), 16), { duration: .6 }); const m = marks.get(id); if (m) setTimeout(() => m.openPopup(), 650); }
   }
+  // ---------- 軌跡（今天，只有值勤中的點）----------
+  let trkLayer = null;
+  const trkOff = () => { if (trkLayer) { trkLayer.remove(); trkLayer = null; } $('trkbar').classList.add('hidden'); };
+  async function showTrack(id) {
+    const i = items.find(x => x.id === id); map.closePopup();
+    let j; try { j = await api('/loc-track', { sess, idToken: await user.getIdToken(), id }); } catch (e) { toast('連線失敗'); return; }
+    if (j.error) { toast(j.error); return; } if (j.sess) sess = j.sess;
+    trkOff();
+    if (!j.pts.length) { toast('今天還沒有軌跡'); return; }
+    const ll = j.pts.map(p => [p[0], p[1]]), c = KC[(i || {}).kind] || '#2563eb';
+    trkLayer = L.layerGroup([L.polyline(ll, { color: '#fff', weight: 8, opacity: .9 }), L.polyline(ll, { color: c, weight: 4.5, opacity: .9 }),
+      L.circleMarker(ll[0], { radius: 7, color: '#fff', weight: 2, fillColor: '#16a34a', fillOpacity: 1 }).bindTooltip('起點 ' + new Date(j.pts[0][2]).toTimeString().slice(0, 5))]).addTo(map);
+    map.fitBounds(L.latLngBounds(ll), { paddingTopLeft: [40, 90], paddingBottomRight: [40, ($('sheet').offsetHeight || 0) + 30], maxZoom: 17 });
+    $('trkbar').innerHTML = `🛤 ${esc(i ? label(i) : '')}・今天 ${new Date(j.pts[0][2]).toTimeString().slice(0, 5)} 起・${j.pts.length} 點 <button class="sb">✕ 關閉</button>`;
+    $('trkbar').querySelector('button').onclick = trkOff; $('trkbar').classList.remove('hidden');
+  }
+  map.on('popupopen', e => { const a = e.popup.getElement().querySelector('[data-trk]'); if (a) a.onclick = ev => { ev.preventDefault(); showTrack(a.dataset.trk); }; });
   $('sh-h').onclick = () => { $('sheet').classList.toggle('min'); $('sh-arrow').textContent = $('sheet').classList.contains('min') ? '▴' : '▾'; };
   $('b-fit').onclick = () => { filter = '全部'; draw(); fitAll(); };
 

@@ -112,6 +112,7 @@ export default {
     if (path === '/loc-can') return locCanRoute(req, env, json);
     if (path === '/loc-admin') return locAdminRoute(req, env, json);
     if (path === '/loc-self') return locSelfRoute(req, env, json);
+    if (path === '/loc-track') return locTrackRoute(req, env, json);
 
     try {
       const { accessToken } = await req.json();
@@ -1535,7 +1536,8 @@ async function gateSetRoute(req, env, json) {
 // 小組長／指揮車／物資車的手機裝 OwnTracks（HTTP 模式），POST 到 /owntracks，用 HTTP Basic 帳密（帳號＝裝置 ID）
 // 誰看得到地圖：完整管理員、開發者、名單上的查看者、綁定在某台裝置的團員
 const LOC_TTL = 12 * 3600e3;          // 超過 12 小時沒更新就不顯示
-const LOC_SESS = 10 * 60e3;           // 查看權限暫存 10 分鐘，地圖每 15 秒更新時不用每次查 Firestore
+const LOC_SESS = 10 * 60e3;
+const TRK_KEEP = 30 * 86400e3;       // 軌跡保留 30 天（只存值勤中的點）           // 查看權限暫存 10 分鐘，地圖每 15 秒更新時不用每次查 Firestore
 const OT_FRIENDS = true;
 const LOC_OPEN = true;                // true＝已開通的團員都能看地圖；false＝只有管理員、名單上的人、綁定裝置的人              // OwnTracks App 裡也顯示其他裝置（App 的「朋友」）
 const LOC_KINDS = ['小組長', '指揮車', '物資車', '其他'];
@@ -1578,6 +1580,10 @@ export class LocHub extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     this.T = new Map(); this.L = new Map(); this.V = new Map(); this.P = new Map(); this.W = new Map();   // W：誰在看地圖   // 裝置、最新位置、查看者
+    this.sql = ctx.storage.sql;   // 軌跡用 SQLite（每點一列）
+    this.sql.exec('CREATE TABLE IF NOT EXISTS trk (id TEXT, tst INTEGER, lat REAL, lon REAL, acc INTEGER)');
+    this.sql.exec('CREATE INDEX IF NOT EXISTS trk_i ON trk(id, tst)');
+    this.pruned = 0;
     ctx.blockConcurrencyWhile(async () => {
       for (const [k, v] of await ctx.storage.list()) {
         if (k.startsWith('w:')) this.W.set(k.slice(2), v); else if (k.startsWith('t:')) this.T.set(k.slice(2), v); else if (k.startsWith('l:')) this.L.set(k.slice(2), v); else if (k.startsWith('v:')) this.V.set(k.slice(2), v);
@@ -1596,6 +1602,8 @@ export class LocHub extends DurableObject {
       const l = { lat: m.lat, lon: m.lon, acc: numOr(m.acc), batt: numOr(m.batt), vel: numOr(m.vel), cog: numOr(m.cog), tst: Math.min(tst, now), at: now };
       const old = this.L.get(user);
       if (!old || l.tst >= old.tst) { this.L.set(user, l); await this.ctx.storage.put('l:' + user, l); }   // 離線補傳的舊位置不蓋掉新的
+      if (!old || l.tst !== old.tst) this.sql.exec('INSERT INTO trk (id, tst, lat, lon, acc) VALUES (?, ?, ?, ?, ?)', user, l.tst, l.lat, l.lon, Math.round(l.acc || 0));   // 補傳的舊點也記進軌跡
+      if (now - this.pruned > 3600e3) { this.pruned = now; this.sql.exec('DELETE FROM trk WHERE tst < ?', now - TRK_KEEP); }
     }
     const out = [];
     // 網站切換值勤／退勤：手機回報的模式不對就下指令改（值勤 Move=2、退勤 Significant=1；退勤也要偶爾傳，才收得到「開始值勤」）
@@ -1625,6 +1633,11 @@ export class LocHub extends DurableObject {
     this.T.set(id, t); await st.put('t:' + id, t);
     return { ok: true, id, pw, tid: t.tid, name, fresh: true };
   }
+  track(id, since) {
+    if (!this.T.has(id)) return null;
+    const rows = this.sql.exec('SELECT tst, lat, lon FROM trk WHERE id = ? AND tst >= ? ORDER BY tst LIMIT 6000', id, since).toArray();
+    return rows.map(r => [r.lat, r.lon, r.tst]);
+  }
   hasSelf(uid) { return [...this.T.values()].some(t => t.uid === uid && t.self); }
   canView(uid) { return !!uid && (this.V.has(uid) || [...this.T.values()].some(t => t.uid === uid)); }
   list(uid, mgr, who) {
@@ -1636,7 +1649,7 @@ export class LocHub extends DurableObject {
       w.n++; w.last = now; w.name = (who && who.n) || w.name || ''; this.W.set(uid, w);
       if (!w.saved || now - w.saved > 300e3) { w.saved = now; this.ctx.storage.put('w:' + uid, w); }
     }
-    return [...this.T.entries()].map(([id, t]) => { const l = this.L.get(id); const duty = t.duty !== false; return { id, name: t.name, kind: t.kind, uname: t.uname || '', pic: t.pic || '', rkey: t.rkey || '', duty, mode: t.mode ?? null, loc: duty && l && now - l.at <= LOC_TTL ? l : null }; });
+    return [...this.T.entries()].map(([id, t]) => { const l = this.L.get(id); const duty = t.duty !== false; return { id, name: t.name, kind: t.kind, uname: t.uname || '', pic: t.pic || '', rkey: t.rkey || '', duty, mode: t.mode ?? null, loc: l && (now - l.at <= LOC_TTL || !duty) ? l : null }; });
   }
   // 管理（Worker 已確認是完整管理員）
   async admin(op, a) {
@@ -1661,11 +1674,11 @@ export class LocHub extends DurableObject {
     if (op === 'reset') { const t = this.T.get(a.id); if (!t) return { error: '找不到裝置' };
       const pw = randStr(24); t.h = await sha256hex(pw); t.pw = pw; await st.put('t:' + a.id, t); return { ok: true, id: a.id, pw, tid: t.tid, name: t.name }; }
     if (op === 'qr') { const t = this.T.get(a.id); if (!t) return { error: '找不到裝置' }; if (!t.pw) return this.admin('reset', a); return { ok: true, id: a.id, pw: t.pw, tid: t.tid, name: t.name }; }
-    if (op === 'del') { this.T.delete(a.id); this.L.delete(a.id); await st.delete(['t:' + a.id, 'l:' + a.id]); return { ok: true }; }
+    if (op === 'del') { this.T.delete(a.id); this.L.delete(a.id); await st.delete(['t:' + a.id, 'l:' + a.id]); this.sql.exec('DELETE FROM trk WHERE id = ?', a.id); return { ok: true }; }
     if (op === 'duty') {   // { id 或 all:true, on }：退勤時位置立刻從地圖清掉
       const ids = a.all ? [...this.T.keys()] : [a.id]; let n = 0;
       for (const id of ids) { const t = this.T.get(id); if (!t) continue; t.duty = !!a.on; t.cmdAt = 0; await st.put('t:' + id, t); n++;
-        if (!a.on) { this.L.delete(id); await st.delete('l:' + id); } }
+}
       return n ? { ok: true, n } : { error: '找不到裝置' };
     }
     if (op === 'clear') { this.L.delete(a.id); await st.delete('l:' + a.id); return { ok: true }; }
@@ -1696,6 +1709,33 @@ async function locSessRead(tok, env) {
   try { const [body, sig] = String(tok || '').split('.'); if (!body || !sig || sig !== await locSign(body, env)) return null;
     const s = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(body.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))));
     return s.exp > Date.now() ? s : null; } catch (e) { return null; }
+}
+async function locSession(idToken, sess, env) {
+  let s = await locSessRead(sess, env), fresh = null;
+  if (!s) {
+    if (!idToken) return { err: 'login' };
+    const uid = uidOfToken(idToken), me = await fsUser(idToken, uid);
+    if (!me || me.status !== 'approved') return { err: '帳號尚未開通' };
+    let ld = false; try { const M = await locMe(idToken, env); ld = !!M && M.rkey in (await locTeams(env)).leads; } catch (e) {}
+    s = { uid, n: String(me.realName || '').slice(0, 20), m: await fullAdmin(me, idToken, env), ld, exp: Date.now() + LOC_SESS };
+    fresh = await locSessMake(s, env);
+  }
+  return { s, fresh };
+}
+// 軌跡：{ sess|idToken, id, since }（預設今天 0 點起，最多 3 天）
+async function locTrackRoute(req, env, json) {
+  try {
+    if (!env.LOC) return json({ error: '定位功能尚未部署' }, 501);
+    const { idToken, sess, id, since } = await req.json();
+    const A = await locSession(idToken, sess, env); if (A.err) return json({ error: A.err }, 401);
+    const hub = locHub(env);
+    if (!A.s.m && !LOC_OPEN && !(await hub.canView(A.s.uid))) return json({ error: '沒有權限' }, 403);
+    const today = Date.parse(new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10) + 'T00:00:00+08:00');
+    const t0 = Math.max(Number(since) || today, Date.now() - 3 * 86400e3);
+    const pts = await hub.track(String(id || ''), t0);
+    if (!pts) return json({ error: '找不到裝置' }, 404);
+    return json({ ok: true, pts, sess: A.fresh });
+  } catch (e) { return json({ error: e.code ? '請重新登入' : String((e && e.message) || e) }, e.code || 500); }
 }
 async function locRoute(req, env, json) {
   try {
