@@ -443,8 +443,10 @@ const ROUTE=(()=>{const raw=[],marks=[];let last=null;
  const U=[];let prev=0;raw.forEach((v,i)=>{const guess=uOf(i);const u=i===0?0:i===raw.length-1?1:near(v,Math.max(prev,guess-.06),Math.min(1,guess+.06));U.push(u);prev=u});
  DAYS.forEach(d=>{d.u0=U[d.i0];d.u1=U[d.i1]});marks.forEach(m=>m.u=U[m.i]);
  pts.forEach(p=>{const c=cellAt(p.x,p.z);p.y=(c?(c.river?.58:c.h):.4)+.08});
- for(let pass=0;pass<3;pass++)for(let i=1;i<N;i++)pts[i].y=(pts[i-1].y+pts[i].y*2+pts[i+1].y)/4;
- pts.forEach(p=>{PL.forEach(q=>{if(!q.bridge&&Math.hypot(p.x-q.x,p.z-q.z)<q.r*.97)p.y=q.top+.02})});
+ pts.forEach(p=>{PL.forEach(q=>{if(!q.bridge&&Math.hypot(p.x-q.x,p.z-q.z)<q.r*.97)p.y=Math.max(p.y,q.top+.02)})});
+ {const seg0=tot/N,Wd=Math.max(2,Math.round(.55/seg0)),raw=pts.map(p=>p.y),env=raw.map((_,i)=>{let m=-9;for(let k=Math.max(0,i-Wd);k<=Math.min(N,i+Wd);k++)m=Math.max(m,raw[k]);return m});
+  let cur=env.slice();for(let pass=0;pass<3;pass++){const nx=cur.slice();for(let i=0;i<=N;i++){let s2=0,c=0;for(let k=Math.max(0,i-Wd);k<=Math.min(N,i+Wd);k++){s2+=cur[k];c++}nx[i]=s2/c}cur=nx}
+  pts.forEach((p,i)=>p.y=Math.max(cur[i],raw[i]))}
  {const seg=tot/N,riv=(x,z)=>{const c=cellAt(x,z);return !!(c&&c.river)},land=(x,z)=>{const c=cellAt(x,z);return !!(c&&!c.river)};PL.filter(q=>q.bridge).forEach(q=>{let bi=0,bd=1e9;const mk=marks.find(m=>m.p===q.id),cu=mk?Math.round(mk.u*N):-1,w0=mk?Math.max(0,cu-Math.round(4/seg)):0,w1=mk?Math.min(N,cu+Math.round(4/seg)):N;
   for(let i=w0;i<=w1;i++){const p=pts[i];if(!riv(p.x,p.z))continue;const d=Math.hypot(p.x-q.x,p.z-q.z);if(d<bd){bd=d;bi=i}}if(bd>1e8)for(let i=w0;i<=w1;i++){const p=pts[i],d=Math.hypot(p.x-q.x,p.z-q.z);if(d<bd){bd=d;bi=i}}
   const C=pts[bi];let ie=bi,ix=bi;const lim=Math.round(6/seg);while(ie>bi-lim&&ie>1&&!land(pts[ie].x,pts[ie].z))ie--;while(ix<bi+lim&&ix<N-1&&!land(pts[ix].x,pts[ix].z))ix++;
