@@ -448,7 +448,7 @@ const ROUTE=(()=>{const raw=[],marks=[];let last=null;
  {const seg=tot/N,riv=(x,z)=>{const c=cellAt(x,z);return !!(c&&c.river)},land=(x,z)=>{const c=cellAt(x,z);return !!(c&&!c.river)};PL.filter(q=>q.bridge).forEach(q=>{let bi=0,bd=1e9;const mk=marks.find(m=>m.p===q.id),cu=mk?Math.round(mk.u*N):-1,w0=mk?Math.max(0,cu-Math.round(4/seg)):0,w1=mk?Math.min(N,cu+Math.round(4/seg)):N;
   for(let i=w0;i<=w1;i++){const p=pts[i];if(!riv(p.x,p.z))continue;const d=Math.hypot(p.x-q.x,p.z-q.z);if(d<bd){bd=d;bi=i}}if(bd>1e8)for(let i=w0;i<=w1;i++){const p=pts[i],d=Math.hypot(p.x-q.x,p.z-q.z);if(d<bd){bd=d;bi=i}}
   const C=pts[bi];let ie=bi,ix=bi;const lim=Math.round(6/seg);while(ie>bi-lim&&ie>1&&!land(pts[ie].x,pts[ie].z))ie--;while(ix<bi+lim&&ix<N-1&&!land(pts[ix].x,pts[ix].z))ix++;
-  let dx=pts[ix].x-pts[ie].x,dz=pts[ix].z-pts[ie].z;const dl=Math.hypot(dx,dz)||1;dx/=dl;dz/=dl;{const th=25*Math.PI/180,r=(sg)=>[dx*Math.cos(th)+sg*dz*Math.sin(th),-sg*dx*Math.sin(th)+dz*Math.cos(th)],A1=r(1),A2=r(-1),pick=Math.abs(A1[0])<Math.abs(A2[0])?A1:A2;dx=pick[0];dz=pick[1]}{const ex={dadu:-10,zhongzhang:-7}[q.id]||0;if(ex){const t=ex*Math.PI/180,nx=dx*Math.cos(t)-dz*Math.sin(t),nz=dx*Math.sin(t)+dz*Math.cos(t);dx=nx;dz=nz}}const mx=(pts[ie].x+pts[ix].x)/2,mz=(pts[ie].z+pts[ix].z)/2,half=Math.max(1.2,dl/2+.35);
+  let dx=pts[ix].x-pts[ie].x,dz=pts[ix].z-pts[ie].z;const dl=Math.hypot(dx,dz)||1;dx/=dl;dz/=dl;const mx=(pts[ie].x+pts[ix].x)/2,mz=(pts[ie].z+pts[ix].z)/2,half=Math.max(1.2,dl/2+.35);
   const S=new THREE.Vector3(mx-dx*half,0,mz-dz*half),E=new THREE.Vector3(mx+dx*half,0,mz+dz*half);
   const blocked=(x,z)=>PL.some(o=>!o.bridge&&Math.hypot(x-o.x,z-o.z)<o.r+.15);let ra=1.0,rb=1.0;while(ra>.3&&blocked(S.x-dx*ra,S.z-dz*ra))ra-=.1;while(rb>.3&&blocked(E.x+dx*rb,E.z+dz*rb))rb-=.1;
   const A=new THREE.Vector3(S.x-dx*ra,0,S.z-dz*ra),Bp=new THREE.Vector3(E.x+dx*rb,0,E.z+dz*rb);
@@ -462,7 +462,7 @@ const ROUTE=(()=>{const raw=[],marks=[];let last=null;
  for(const[sz,RL,gy]of[[-1,R.Ra,R.gA],[1,R.Rb,R.gB]]){if(RL<.05)continue;const dh=BRH-gy,len=Math.hypot(RL,dh),ang=Math.atan2(dh,RL)*sz,zc=sz*(R.L/2+RL/2),yc=(BRH+gy)/2;
   const mk=(w,h,x,col,dy=0)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,len),M(col));m.position.set(x,yc-h/2+dy,zc);m.rotation.x=ang;m.castShadow=m.receiveShadow=true;inn.add(m);return m};
   mk(W,.1,0,0xece6da);mk(W*.92,.012,0,0x9a958d,.006);for(const sx of[-1,1]){mk(.035,.03,sx*W/2,0xd8cdbd,.13);mk(.06,.14,sx*W/2,0xd8cdbd,.04)}
-  const wh=Math.max(.05,dh*.55),wall=new THREE.Mesh(new THREE.BoxGeometry(W*.96,wh,RL*.55),M(0xd8cdbd));wall.position.set(0,gy+wh/2-.02,sz*(R.L/2+RL*.3));wall.castShadow=wall.receiveShadow=true;inn.add(wall)}})}
+  const wh=Math.max(.05,dh*.6),wall=new THREE.Mesh(new THREE.BoxGeometry(W*.96,wh,RL*.28),M(0xd8cdbd));wall.position.set(0,gy+wh/2-.04,sz*(R.L/2+RL*.14));wall.castShadow=wall.receiveShadow=true;inn.add(wall)}})}
 const uGo=DAYS[3].u1,KMF=137.5/(ROUTE.tot*uGo);
 function ptAt(u){const f=Math.max(0,Math.min(1,u))*ROUTE.N,i=Math.min(ROUTE.N-1,Math.floor(f));return ROUTE.pts[i].clone().lerp(ROUTE.pts[i+1],f-i)}
 function tanAt(u){return ptAt(Math.min(1,u+.0008)).sub(ptAt(Math.max(0,u-.0008))).normalize()}
@@ -474,7 +474,7 @@ const tubes=[tube(0,uGo,0xe85a8c),tube(uGo,1,0xd2922a)];
   pos.set([p.x+tz*w,y,p.z-tx*w,p.x-tz*w,y,p.z+tx*w],i*6);if(i<n-1)idx.push(i*2,i*2+1,i*2+2,i*2+1,i*2+3,i*2+2)}
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:0xe6ded0,roughness:1,side:THREE.DoubleSide}));m.receiveShadow=true;scene.add(m)}
 // bridges face the route
-['dadu','xiluo','zhongzhang'].forEach(id=>{const m=ROUTE.marks.find(k=>k.p===id),t=tanAt(m.u),p=PLACES[id];p.mesh.rotation.y=Math.atan2(t.x,t.z);const q=ptAt(m.u);p.mesh.position.set(q.x,.1,q.z);p.x=q.x;p.z=q.z;p.pos.set(q.x,.75,q.z);p.top=.75});
+['dadu','xiluo','zhongzhang'].forEach(id=>{const m=ROUTE.marks.find(k=>k.p===id),t=tanAt(m.u),p=PLACES[id];p.pos.set(p.x,BRH+.1,p.z);p.top=BRH});
 
 // ---- crowds & procession
 const propsG=new THREE.Group(),props=[];scene.add(propsG);
@@ -758,7 +758,7 @@ $('quizBtn').onclick=()=>quiz();$('bHelp').onclick=()=>intro();
 /* ================= LOOP ================= */
 function resize(){const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix()}
 addEventListener('resize',resize);resize();render();overview();Object.assign(cam,goal);cam.dist=goal.dist*1.35;setProg(0);paintDays();intro();requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(()=>{const sp=document.getElementById('splash');sp.classList.add('out');setTimeout(()=>sp.remove(),900)},400)));
-window.__app={PATCH,FSC,tags,ptAt,ROUTE,dbg:()=>[frontOn,leadMoving,FXS.filter(f=>f.mode==='smoke').map(f=>[f.pts.visible,f.c.x,f.c.y])],get bigMode(){return bigMode},goal,uQ,get cer(){return cer},uA,uC,setMe,whoOf,openPlace,openRole,goDay,setProg,quiz,closeModal,play:()=>playBtn.onclick(),get palqY(){return palq.position.y}};
+window.__app={PATCH,FSC,tags,ptAt,ROUTE,PL,scene,dbg:()=>[frontOn,leadMoving,FXS.filter(f=>f.mode==='smoke').map(f=>[f.pts.visible,f.c.x,f.c.y])],get bigMode(){return bigMode},goal,uQ,get cer(){return cer},uA,uC,setMe,whoOf,openPlace,openRole,goDay,setProg,quiz,closeModal,play:()=>playBtn.onclick(),get palqY(){return palq.position.y}};
 let bgWas=false,lodN=0,last=performance.now(),frame=0,wasWalk=false;
 let lastF=0;function loop(now){if(innerWidth<=760&&now-lastF<32){requestAnimationFrame(loop);return}lastF=now;const dt=Math.min(.05,(now-last)/1000);last=now;
  if(playing&&cer)runCer(dt);else if(playing){const u=prog+dt*.0042;const cd=CERS.find(d=>prog<d.a&&u>=d.a);if(cd){cer={t:0,d:cd};setProg(cd.a);me=ME0;following=true;goal.dist=cd.swap?(mob()?13:10):cd.fire?(mob()?15:11):(mob()?20:15);goal.pol=.9}else if(u>=1){setProg(1);stop();openPlace('gongtian',ENTRIES[ENTRIES.length-1])}else setProg(u)}
