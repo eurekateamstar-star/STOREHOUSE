@@ -16,7 +16,8 @@
   .top { position:fixed; z-index:500; top:calc(env(safe-area-inset-top) + 10px); left:10px; right:10px; display:flex; gap:8px; align-items:center;
          background:rgba(255,255,255,.95); border-radius:16px; padding:8px 10px; box-shadow:0 4px 18px rgba(0,0,0,.12); }
   .top .t { flex:1; min-width:0; }
-  .top h1 { margin:0; font-size:16px; font-weight:900; }
+  .top h1 { margin:0; font-size:16px; font-weight:900; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  @media (max-width:430px) { .top { gap:5px; padding:8px; } .ib { padding:8px 8px; font-size:12.5px; } .top h1 { font-size:15px; } }
   .top .s { font-size:11.5px; color:var(--sub); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--green); margin-right:4px; vertical-align:middle; }
   .dot.err { background:var(--red); }
@@ -58,6 +59,10 @@
   .mk .l { position:absolute; top:100%; margin-top:-2px; white-space:nowrap; background:rgba(255,255,255,.95); border-radius:8px; padding:1px 7px; font-size:12px; font-weight:800; box-shadow:0 1px 5px rgba(0,0,0,.2); }
   .mk .l small { font-weight:600; color:var(--sub); margin-left:3px; }
   .mk.stale .b { filter:grayscale(1); opacity:.65; }
+  .av { width:100%; height:100%; border-radius:50%; object-fit:cover; display:block; }
+  .mk .b.p { padding:0; overflow:hidden; border-width:3px; }
+  .row .e.p { padding:0; overflow:hidden; border:2.5px solid #fff; box-shadow:0 0 0 2px var(--kc,#9ca3af); }
+  .it .pic { width:30px; height:30px; border-radius:50%; object-fit:cover; vertical-align:middle; margin-right:4px; }
   .mk.stale .l { color:var(--sub); }
   .k-小組長 { background:#2563eb; } .k-指揮車 { background:#dc2626; } .k-物資車 { background:#d97706; } .k-其他 { background:#6b7280; }
   .row .e.k-小組長 { background:#dbeafe; } .row .e.k-指揮車 { background:#fee2e2; } .row .e.k-物資車 { background:#fef3c7; } .row .e.k-其他 { background:#f3f4f6; }
@@ -104,9 +109,10 @@
 <div id="map"></div>
 
 <div class="top hidden" id="top">
-  <div class="t"><h1>📍 團員定位</h1><div class="s" id="status">載入中…</div></div>
+  <div class="t"><h1>團員定位</h1><div class="s" id="status">載入中…</div></div>
   <button class="ib" id="b-fit" title="顯示全部">全部</button>
-  <button class="ib" id="b-me" title="我的位置">🧭 我</button>
+  <button class="ib" id="b-me" title="我的位置">🧭</button>
+  <button class="ib" id="b-qr" title="我的 OwnTracks 設定 QR Code">📱 我的QR</button>
   <button class="ib p hidden" id="b-admin">⚙️ 管理</button>
 </div>
 
@@ -171,6 +177,7 @@
     let j;
     try { j = await api('/loc', { sess, idToken: await user.getIdToken() }); }
     catch (e) { setStatus(false, '連線失敗，稍後自動重試'); return; }
+    if (j._status === 403 && j.canSelf && !load.triedSelf) { load.triedSelf = true; if (await myQR(true)) return; }
     if (j._status === 403) { msg('🙅', '沒有查看權限', esc(j.error || '') + '<br><br>需要的話請找完整管理員把你加入「可查看的人」。', `<a class="btn w" href="../member/">回團員專區</a>`); stop(); return; }
     if (j.error) { setStatus(false, j.error); return; }
     $('msg').classList.add('hidden'); $('top').classList.remove('hidden'); $('sheet').classList.remove('hidden');
@@ -190,11 +197,11 @@
   function iconFor(i) {
     const st = now - i.loc.at > STALE;
     const tag = st ? `<small>${esc(ago(i.loc.tst, now))}</small>` : '';
-    return L.divIcon({ className: '', iconSize: [0, 0], html: `<div class="mk ${st ? 'stale' : ''}"><div class="b k-${esc(i.kind)}">${EMOJI[i.kind] || '📍'}</div><div class="tip"></div><div class="l">${esc(i.name)}${tag}</div></div>` });
+    return L.divIcon({ className: '', iconSize: [0, 0], html: `<div class="mk ${st ? 'stale' : ''}"><div class="b k-${esc(i.kind)} ${i.pic ? 'p' : ''}" style="${i.pic ? 'border-color:' + KC[i.kind] : ''}">${face(i)}</div><div class="tip" style="${i.pic ? 'border-top-color:' + KC[i.kind] : ''}"></div><div class="l">${esc(label(i))}${tag}</div></div>` });
   }
   function popup(i) {
     const l = i.loc, bits = [];
-    bits.push(`<b style="font-size:15px">${EMOJI[i.kind] || ''} ${esc(i.name)}</b>`);
+    bits.push(`<b style="font-size:15px">${i.pic ? '' : (EMOJI[i.kind] || '') + ' '}${esc(label(i))}</b>`);
     bits.push(`${esc(i.kind)}${i.uname ? '・' + esc(i.uname) : ''}`);
     bits.push(`更新：${esc(ago(l.tst, now))}`);
     if (l.vel != null && l.vel >= 2) bits.push(`速度：約 ${Math.round(l.vel)} km/h`);
@@ -204,6 +211,9 @@
     return bits.join('<br>');
   }
   const shown = i => filter === '全部' || i.kind === filter;
+  const KC = { 小組長: '#2563eb', 指揮車: '#dc2626', 物資車: '#d97706', 其他: '#6b7280' };
+  const face = i => i.pic ? `<img class="av" src="${esc(i.pic)}" referrerpolicy="no-referrer" alt="" onerror="this.replaceWith(document.createTextNode('${EMOJI[i.kind] || '📍'}'))">` : (EMOJI[i.kind] || '📍');
+  const label = i => (i.team ? i.team + ' ' : '') + i.name;
   const MODE = { 2: 'Move 即時', 1: 'Significant 省電', 0: 'Manual 手動', '-1': 'Quiet 停止' };
   const modeTxt = (i) => i.mode == null ? '' : (i.duty !== false && i.mode !== 2) || (i.duty === false && i.mode === 2) ? '手機切換中…' : 'App：' + (MODE[i.mode] || i.mode);
   async function setDuty(body) {
@@ -242,8 +252,8 @@
     $('list').innerHTML = L2.length ? L2.map(i => {
       const l = i.loc, st = l && now - l.at > STALE;
       return `<div class="row ${!l ? 'off' : st ? 'stale' : ''} ${i.id === selId ? 'sel' : ''}" data-id="${esc(i.id)}">
-        <div class="e k-${esc(i.kind)}">${EMOJI[i.kind] || '📍'}</div>
-        <div class="m"><div class="n">${esc(i.name)}</div><div class="d">${esc(i.kind)}${i.uname ? '・' + esc(i.uname) : ''}${l && l.batt != null ? `・🔋${l.batt}%` : ''}${l && l.vel >= 2 ? `・${Math.round(l.vel)} km/h` : ''}</div></div>
+        <div class="e k-${esc(i.kind)} ${i.pic ? 'p' : ''}" style="--kc:${KC[i.kind]}">${face(i)}</div>
+        <div class="m"><div class="n">${esc(label(i))}</div><div class="d">${esc(i.kind)}${i.uname ? '・' + esc(i.uname) : ''}${l && l.batt != null ? `・🔋${l.batt}%` : ''}${l && l.vel >= 2 ? `・${Math.round(l.vel)} km/h` : ''}</div></div>
         <div class="r">${i.duty === false ? `<div class="ago" style="color:#6b7280">🌙 退勤</div>不顯示位置` : l ? `<div class="ago">${esc(ago(l.tst, now))}</div>${st ? '訊號中斷' : '即時'}` : '<div class="ago">尚未連線</div>12 小時內沒有位置'}</div>
         ${mgr ? `<button class="duty ${i.duty === false ? 'off' : 'on'}" data-duty="${esc(i.id)}">${i.duty === false ? '退勤' : '值勤'}</button>` : ''}</div>`;
     }).join('') : `<div class="hint" style="padding:14px;text-align:center;color:#6b7280">${mgr ? '還沒有任何裝置，按右上「⚙️ 管理」新增' : '目前沒有裝置'}</div>`;
@@ -273,6 +283,16 @@
     }, e => { toast(e.code === 1 ? '請允許瀏覽器使用位置' : '無法取得位置'); $('b-me').classList.remove('on'); meWatch = null; }, { enableHighAccuracy: true, maximumAge: 10e3 });
   };
 
+  // ---------- 小組長：自己的 OwnTracks QR Code（點開就產生，同一個人每次都是同一組）----------
+  async function myQR(auto) {
+    let r; try { r = await api('/loc-self', { idToken: await user.getIdToken() }); } catch (e) { if (!auto) toast('連線失敗'); return false; }
+    if (r.error) { if (!auto) toast(r.error, 3500); return false; }
+    $('msg').classList.add('hidden');
+    showConfig({ ...r, name: (r.team ? r.team + ' ' : '') + r.name }, true);
+    return true;
+  }
+  $('b-qr').onclick = () => myQR(false);
+
   // ---------- 管理（完整管理員、開發者）----------
   let members = null;
   const adm = async (op, extra = {}) => api('/loc-admin', { idToken: await user.getIdToken(), op, ...extra });
@@ -293,10 +313,10 @@
       <h4>📱 裝置（${tk.length}）</h4>
       <div class="bar2"><button class="sb" id="all-on" style="background:#dcfce7;color:#15803d">✅ 全部值勤</button><button class="sb" id="all-off">🌙 全部退勤</button></div>
       <div class="hint" style="margin-bottom:8px">值勤＝手機每 30 秒回報（Move）；退勤＝地圖不顯示，手機改成省電模式（Significant）。<br>切換要等手機下次連線才生效：值勤→退勤約 30 秒；退勤→值勤可能要等手機移動一段距離（幾分鐘）。</div>
-      ${tk.map(t => `<div class="it tk"><div class="m">${EMOJI[t.kind] || ''} <b>${esc(t.name)}</b>
+      ${tk.map(t => `<div class="it tk"><div class="m">${t.pic ? `<img class="pic" src="${esc(t.pic)}" referrerpolicy="no-referrer" alt="">` : EMOJI[t.kind] || ''} <b>${esc(t.name)}</b>${t.self ? ' <span class="hint">（組長自己產生）</span>' : ''}
           <small>${esc(t.kind)}${t.uname ? '・綁定 ' + esc(t.uname) + '（可看地圖）' : ''}・${t.ping ? '最後連線 ' + esc(ago(t.ping, Date.now())) : t.last ? '最後上傳 ' + esc(ago(t.last, Date.now())) : '還沒收到位置'}${modeTxt(t) ? '・' + esc(modeTxt(t)) : ''}</small></div>
           <button class="duty ${t.duty === false ? 'off' : 'on'}" data-d="${esc(t.id)}">${t.duty === false ? '🌙 退勤' : '✅ 值勤'}</button>
-          <button class="sb" data-edit="${esc(t.id)}">編輯</button><button class="sb" data-reset="${esc(t.id)}">重新設定</button><button class="sb d" data-del="${esc(t.id)}">刪除</button></div>`).join('') || '<div class="hint">還沒有裝置</div>'}
+          <button class="sb" data-edit="${esc(t.id)}">編輯</button><button class="sb" data-qr="${esc(t.id)}">📱 QR</button><button class="sb d" data-del="${esc(t.id)}">刪除</button></div>`).join('') || '<div class="hint">還沒有裝置</div>'}
       <h4>➕ 新增裝置</h4>
       <div class="fm">
         <div><label>名稱（地圖上顯示）</label><input id="a-name" maxlength="20" placeholder="例如：第一組 王小明、指揮車、物資車 1 號"></div>
@@ -315,14 +335,13 @@
     o.querySelectorAll('[data-d]').forEach(b => b.onclick = async () => { const t = tk.find(x => x.id === b.dataset.d); if (await setDuty({ id: t.id, on: t.duty === false })) again(); });
     o.querySelector('#a-add').onclick = async () => {
       const name = o.querySelector('#a-name').value.trim(); if (!name) { toast('請填名稱'); return; }
-      const uid = o.querySelector('#a-uid').value, uname = uid ? (members.find(m => m.uid === uid) || {}).name : '';
-      const r = await adm('add', { name, kind: o.querySelector('#a-kind').value, uid, uname });
+      const uid = o.querySelector('#a-uid').value, mm = members.find(m => m.uid === uid) || {};
+      const r = await adm('add', { name, kind: o.querySelector('#a-kind').value, uid, uname: mm.name || '', pic: mm.pic || '', rkey: mm.rkey || '' });
       if (r.error) { toast(r.error); return; }
       o.remove(); showConfig(r); load();
     };
-    o.querySelectorAll('[data-reset]').forEach(b => b.onclick = async () => {
-      if (!confirm('重新產生密碼後，舊的設定會失效，這台手機要重新掃 QR Code。確定嗎？')) return;
-      const r = await adm('reset', { id: b.dataset.reset }); if (r.error) { toast(r.error); return; } o.remove(); showConfig(r);
+    o.querySelectorAll('[data-qr]').forEach(b => b.onclick = async () => {
+      const r = await adm('qr', { id: b.dataset.qr }); if (r.error) { toast(r.error); return; } o.remove(); showConfig(r);
     });
     o.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
       const t = tk.find(x => x.id === b.dataset.del); if (!confirm(`刪除「${t.name}」？這台手機之後上傳的位置都會被拒絕。`)) return;
@@ -334,10 +353,13 @@
         <div><label>名稱</label><input id="e-name" maxlength="20" value="${esc(t.name)}"></div>
         <div><label>類型</label><select id="e-kind">${KINDS.map(k => `<option ${k === t.kind ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
         <div><label>綁定團員</label><select id="e-uid">${memberOpts(t.uid)}</select></div>
-        <button class="btn" id="e-save">儲存</button></div>`);
+        <button class="btn" id="e-save">儲存</button></div>
+        <h4>🔑 換新密碼</h4><div class="hint">手機遺失時用：舊設定立刻失效，新手機要重掃 QR Code。</div><button class="btn w" id="e-reset" style="margin-top:8px">換新密碼並顯示 QR Code</button>`);
+      e.querySelector('#e-reset').onclick = async () => { if (!confirm('換新密碼後，原本那支手機就不能再回報了。確定？')) return;
+        const r = await adm('reset', { id: t.id }); if (r.error) { toast(r.error); return; } e.remove(); o.remove(); showConfig(r); };
       e.querySelector('#e-save').onclick = async () => {
-        const uid = e.querySelector('#e-uid').value;
-        const r = await adm('edit', { id: t.id, name: e.querySelector('#e-name').value.trim(), kind: e.querySelector('#e-kind').value, uid, uname: uid ? (members.find(m => m.uid === uid) || {}).name : '' });
+        const uid = e.querySelector('#e-uid').value, mm = members.find(m => m.uid === uid) || {};
+        const r = await adm('edit', { id: t.id, name: e.querySelector('#e-name').value.trim(), kind: e.querySelector('#e-kind').value, uid, uname: mm.name || '', pic: mm.pic || '', rkey: mm.rkey || '' });
         if (r.error) { toast(r.error); return; } e.remove(); toast('已儲存'); again();
       };
     });
@@ -349,13 +371,14 @@
   }
 
   // OwnTracks 設定：QR Code（手機相機掃）、直接開啟、下載設定檔、手動輸入
-  function showConfig(r) {
+  function showConfig(r, self) {
     const cfg = { _type: 'configuration', mode: 3, url: OT_URL, auth: true, usePassword: true, username: r.id, password: r.pw, deviceId: 'phone', tid: r.tid,
                   monitoring: 2, locatorInterval: 30, moveModeLocatorInterval: 30, locatorDisplacement: 10, locatorPriority: 3, pubExtendedData: true, extendedData: true, cmd: true, remoteConfiguration: true };   // cmd＋remoteConfiguration：讓網站能切換值勤／退勤
     const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(cfg))));
     const link = 'owntracks:///config?inline=' + encodeURIComponent(b64);
-    const o = overlay(`<h3>📱 設定「${esc(r.name)}」<button class="sb x" data-close>完成</button></h3>
-      <div class="warn">⚠️ 這組密碼只會顯示這一次，關掉後就看不到了。忘記設定的話，按「重新設定」產生新的即可。<br>QR Code 裡有密碼，請不要截圖傳到群組。</div>
+    const o = overlay(`<h3>📱 ${self ? '我的定位設定' : '設定「' + esc(r.name) + '」'}<button class="sb x" data-close>完成</button></h3>
+      ${self ? `<div class="hint" style="margin-bottom:6px">地圖上會顯示「${esc(r.name)}」和你的 LINE 大頭貼。值勤／退勤由管理員在網站切換。</div>` : ''}
+      <div class="warn">⚠️ QR Code 裡有密碼，請不要截圖傳到群組。${self ? '之後再按「📱 我的QR」都會是同一組，換手機重掃即可。' : '之後在管理面板按「📱 QR」可以再叫出來。'}</div>
       <ol class="st">
         <li>在要定位的手機安裝 OwnTracks：<a href="https://apps.apple.com/app/id692424691" target="_blank" rel="noopener">iPhone</a>／<a href="https://play.google.com/store/apps/details?id=org.owntracks.android" target="_blank" rel="noopener">Android</a></li>
         <li>打開 OwnTracks，位置權限選「<b>永遠允許</b>」（Android 也要關掉這個 App 的電池最佳化）</li>
@@ -368,6 +391,7 @@
       <button class="btn w" id="dl">下載設定檔（.otrc）</button>
       <h4>手動設定（掃不到時）</h4>
       <div class="kv"><b>模式</b> HTTP<br><b>網址</b> ${esc(OT_URL)}<br><b>帳號</b> ${esc(r.id)}<br><b>密碼</b> ${esc(r.pw)}<br><b>裝置ID</b> phone　<b>代號</b> ${esc(r.tid)}</div>`);
+    o.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => load()));
     try { new QRCode(o.querySelector('#qr'), { text: link, width: 240, height: 240, correctLevel: QRCode.CorrectLevel.L }); } catch (e) { o.querySelector('#qr').textContent = 'QR Code 產生失敗，請用下面的按鈕或手動設定'; }
     o.querySelector('#dl').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' })); a.download = r.name.replace(/[\\/:*?"<>|\s]/g, '_') + '.otrc'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); };
   }
