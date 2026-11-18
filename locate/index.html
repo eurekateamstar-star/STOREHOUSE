@@ -242,7 +242,7 @@
     if (l.batt != null) bits.push(`手機電量：${l.batt}%${l.batt <= 20 ? ' ⚠️' : ''}`);
     if (l.acc != null) bits.push(`誤差：約 ${Math.round(l.acc)} 公尺`);
     bits.push(`<a href="https://www.google.com/maps/dir/?api=1&destination=${l.lat},${l.lon}" target="_blank" rel="noopener">🧭 Google 導航過去</a>`);
-    bits.push(`<a href="#" data-trk="${esc(i.id)}">🛤 看今天的軌跡</a>`);
+    bits.push(`<a role="button" data-trk="${esc(i.id)}" style="cursor:pointer;color:#2563eb;text-decoration:underline">🛤 看今天的軌跡</a>`);
     return bits.join('<br>');
   }
   const stay = l => { const m = Math.floor((l.at - l.tst) / 60e3); return m >= 3 ? (m < 60 ? m + ' 分鐘' : Math.floor(m / 60) + ' 小時' + (m % 60 ? ' ' + m % 60 + ' 分' : '')) : ''; };   // 手機有回報但位置沒變＝停在原地多久
@@ -322,7 +322,7 @@
     $('trkbar').innerHTML = `🛤 ${esc(i ? label(i) : '')}・今天 ${new Date(j.pts[0][2]).toTimeString().slice(0, 5)} 起・${j.pts.length} 點 <button class="sb">✕ 關閉</button>`;
     $('trkbar').querySelector('button').onclick = trkOff; $('trkbar').classList.remove('hidden');
   }
-  map.on('popupopen', e => { const a = e.popup.getElement().querySelector('[data-trk]'); if (a) a.onclick = ev => { ev.preventDefault(); showTrack(a.dataset.trk); }; });
+  document.addEventListener('click', ev => { const a = ev.target.closest && ev.target.closest('[data-trk]'); if (!a) return; ev.preventDefault(); ev.stopPropagation(); showTrack(a.dataset.trk); }, true);   // 地圖每 15 秒會重畫泡泡內容，所以用整頁監聽
   $('sh-h').onclick = () => { $('sheet').classList.toggle('min'); $('sh-arrow').textContent = $('sheet').classList.contains('min') ? '▴' : '▾'; };
   $('b-fit').onclick = () => { filter = '全部'; draw(); fitAll(); };
 
