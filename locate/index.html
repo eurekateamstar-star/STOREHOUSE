@@ -101,9 +101,9 @@
   .kv b { display:inline-block; min-width:56px; color:var(--sub); font-weight:700; }
   .warn { background:#fff7ed; border:1.5px dashed #fdba74; color:#9a3412; border-radius:12px; padding:10px 12px; font-size:13px; line-height:1.6; margin:8px 0; }
   .car { margin:10px -4px 6px; }
-  .trk { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
-  .trk::-webkit-scrollbar { display:none; }
-  .sl { flex:0 0 100%; scroll-snap-align:start; padding:0 4px; box-sizing:border-box; }
+  .trk { overflow:hidden; touch-action:pan-y; transition:height .25s; }
+  .rail { display:flex; will-change:transform; }
+  .sl { flex:0 0 100%; align-self:flex-start; padding:0 4px; box-sizing:border-box; }
   .slh { display:flex; align-items:center; gap:8px; font-weight:900; font-size:16px; }
   .slh b { width:26px; height:26px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:13px; flex:none; }
   .slh small { margin-left:auto; color:var(--sub); font-size:12px; font-weight:700; }
@@ -117,7 +117,6 @@
   .g2 figcaption { font-size:12.5px; line-height:1.45; margin-top:2px; }
   .hero { width:200px; height:auto; margin:4px auto 10px; display:block; }
   .dl2 { display:flex; gap:8px; width:100%; } .dl2 .btn { flex:1; margin:0 !important; font-size:15px; padding:12px 8px; }
-  .trk { align-items:flex-start; transition:height .25s; }
   .cnav { display:flex; align-items:center; gap:8px; margin-top:10px; }
   .cnav .sb { padding:9px 12px; } .cnav .sb:disabled { opacity:.35; }
   #cdots { flex:1; display:flex; justify-content:center; gap:5px; flex-wrap:wrap; }
@@ -411,15 +410,7 @@
       ${self ? `<div class="hint" style="margin-bottom:6px">地圖上會顯示「${esc(r.name)}」和你的 LINE 大頭貼。值勤／退勤由管理員在網站切換。</div>` : ''}
       <div class="warn">⚠️ QR Code 裡有密碼，請不要截圖傳到群組。${self ? '之後再按「📱 我的QR」都會是同一組，換手機重掃即可。' : '之後在管理面板按「📱 QR」可以再叫出來。'}</div>
       <div class="car"><div class="trk" id="trk">
-        <div class="sl"><div class="slh"><b>1</b>安裝 OwnTracks<small>1/9</small></div><div class="slt">免費 App，先下載安裝：</div><div class="sli"><svg class="hero" viewBox="0 0 220 170" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-<circle cx="110" cy="88" r="78" fill="#fde8e4"/>
-<rect x="72" y="18" width="76" height="140" rx="14" fill="#1f2430"/><rect x="78" y="30" width="64" height="112" rx="6" fill="#e0f2fe"/>
-<path d="M78 92 L142 70 M78 120 L142 100 M100 30 L112 142" stroke="#bae6fd" stroke-width="5" fill="none"/>
-<circle cx="110" cy="86" r="22" fill="#2563eb" opacity=".18"/><circle cx="110" cy="86" r="9" fill="#2563eb" stroke="#fff" stroke-width="3"/>
-<rect x="100" y="22" width="20" height="3" rx="1.5" fill="#4b5563"/>
-<g transform="translate(150 22)"><circle r="22" fill="#06c755"/><path d="M0 -10 V8 M-8 1 L0 9 L8 1" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>
-<g transform="translate(58 132)"><circle r="18" fill="#D65A68"/><path d="M-7 0 L-2 5 L8 -6" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>
-</svg>
+        <div class="sl"><div class="slh"><b>1</b>安裝 OwnTracks<small>1/9</small></div><div class="slt">免費 App，先下載安裝：</div><div class="sli"><img src="img/p-app.jpg" alt="" style="max-width:320px;border-radius:14px"><div class="hint" style="text-align:center;margin:-2px 0 6px">認明這個藍色圖示（App Store 上會顯示「取得」）</div>
           <div class="dl2"><a class="btn" href="https://apps.apple.com/app/id692424691" target="_blank" rel="noopener" style="background:#111827">iPhone 下載</a><a class="btn" href="https://play.google.com/store/apps/details?id=org.owntracks.android" target="_blank" rel="noopener" style="background:#15803d">Android 下載</a></div>
           <div class="slt" style="text-align:center">裝好後打開，會跳出幾個詢問視窗<br><b>往右滑 →</b> 看每個要按什麼</div></div></div>
         <div class="sl"><div class="slh"><b>2</b>位置權限<small>2/9</small></div><div class="imp">⚠️ 重要：一定不能點錯</div><div class="slt">選「<b>使用 App 期間允許</b>」<br><span class="hint">不要選「允許一次」或「不允許」。之後還會再問一次（第 8 步）。</span></div><div class="sli"><img src="img/p-loc.jpg" alt=""></div></div>
@@ -437,13 +428,24 @@
       <h4>手動設定（掃不到時）</h4>
       <div class="kv"><b>模式</b> HTTP<br><b>網址</b> ${esc(OT_URL)}<br><b>帳號</b> ${esc(r.id)}<br><b>密碼</b> ${esc(r.pw)}<br><b>裝置ID</b> phone　<b>代號</b> ${esc(r.tid)}</div>`);
     o.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => load()));
-    { const trk = o.querySelector('#trk'), n = trk.children.length, dots = o.querySelector('#cdots');
-      dots.innerHTML = '<i></i>'.repeat(n);
-      const cur = () => Math.round(trk.scrollLeft / trk.clientWidth);
-      const upd = () => { const c = cur(); trk.style.height = trk.children[c].offsetHeight + 'px'; [...dots.children].forEach((d, k) => d.classList.toggle('on', k === c)); o.querySelector('#cprev').disabled = c <= 0; o.querySelector('#cnext').disabled = c >= n - 1; };
-      const go = d => trk.scrollTo({ left: (cur() + d) * trk.clientWidth, behavior: 'smooth' });
-      o.querySelector('#cprev').onclick = () => go(-1); o.querySelector('#cnext').onclick = () => go(1);
-      trk.addEventListener('scroll', () => requestAnimationFrame(upd)); trk.querySelectorAll('img').forEach(im => im.addEventListener('load', upd)); upd(); }
+    { const trk = o.querySelector('#trk'), rail = document.createElement('div'); rail.className = 'rail';
+      while (trk.firstChild) rail.appendChild(trk.firstChild); trk.appendChild(rail);
+      const n = rail.children.length, dots = o.querySelector('#cdots'); dots.innerHTML = '<i></i>'.repeat(n);
+      let c = 0;
+      const fit = () => { trk.style.height = rail.children[c].offsetHeight + 'px'; };
+      const set = (i, anim = true) => { c = Math.max(0, Math.min(n - 1, i)); rail.style.transition = anim ? 'transform .3s ease' : 'none'; rail.style.transform = `translateX(${-c * 100}%)`;
+        [...dots.children].forEach((d, k) => d.classList.toggle('on', k === c)); o.querySelector('#cprev').disabled = c <= 0; o.querySelector('#cnext').disabled = c >= n - 1; fit(); };
+      o.querySelector('#cprev').onclick = () => set(c - 1); o.querySelector('#cnext').onclick = () => set(c + 1);
+      // 自己處理滑動：先判斷方向，左右才換頁，上下就讓頁面捲動（不會兩個方向一起動）
+      let x0 = 0, y0 = 0, dx = 0, lock = '';
+      trk.addEventListener('touchstart', e => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; dx = 0; lock = ''; }, { passive: true });
+      trk.addEventListener('touchmove', e => { const t = e.touches[0], mx = t.clientX - x0, my = t.clientY - y0;
+        if (!lock && (Math.abs(mx) > 8 || Math.abs(my) > 8)) lock = Math.abs(mx) > Math.abs(my) ? 'h' : 'v';
+        if (lock !== 'h') return; e.preventDefault(); dx = mx; if ((c === 0 && dx > 0) || (c === n - 1 && dx < 0)) dx /= 3;
+        rail.style.transition = 'none'; rail.style.transform = `translateX(calc(${-c * 100}% + ${dx}px))`; }, { passive: false });
+      trk.addEventListener('touchend', () => { if (lock === 'h') set(Math.abs(dx) > 50 ? c + (dx < 0 ? 1 : -1) : c); lock = ''; });
+      rail.querySelectorAll('img').forEach(im => im.addEventListener('load', fit));
+      set(0, false); }
     try { new QRCode(o.querySelector('#qr'), { text: link, width: 240, height: 240, correctLevel: QRCode.CorrectLevel.L }); } catch (e) { o.querySelector('#qr').textContent = 'QR Code 產生失敗，請用下面的按鈕或手動設定'; }
   }
 
