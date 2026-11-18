@@ -646,7 +646,7 @@ const ROUTE=(()=>{const raw=[],marks=[];let last=null;
  pts.forEach(p=>{const c=cellAt(p.x,p.z);p.y=(c?(c.river?.58:c.h):.4)+.08});
  for(let pass=0;pass<3;pass++)for(let i=1;i<N;i++)pts[i].y=(pts[i-1].y+pts[i].y*2+pts[i+1].y)/4;
  pts.forEach(p=>{PL.forEach(q=>{if(!q.bridge&&Math.hypot(p.x-q.x,p.z-q.z)<q.r*.97)p.y=q.top+.02})});
- {const seg=tot/N,isR=p=>{const c=cellAt(p.x,p.z);return !c||c.river};PL.filter(q=>q.bridge).forEach(q=>{let bi=0,bd=1e9;pts.forEach((p,i)=>{const d=Math.hypot(p.x-q.x,p.z-q.z);if(d<bd){bd=d;bi=i}});
+ {const seg=tot/N,isR=p=>{const c=cellAt(p.x,p.z);return !c||c.river};PL.filter(q=>q.bridge).forEach(q=>{let bi=0,bd=1e9;const mk=marks.find(m=>m.p===q.id),cu=mk?Math.round(mk.u*N):-1,w0=mk?Math.max(0,cu-Math.round(4/seg)):0,w1=mk?Math.min(N,cu+Math.round(4/seg)):N;for(let i=w0;i<=w1;i++){const p=pts[i],d=Math.hypot(p.x-q.x,p.z-q.z);if(d<bd){bd=d;bi=i}}
   let i0=bi,i1=bi;const lim=Math.round(5/seg);while(i0>bi-lim&&i0>1&&isR(pts[i0-1]))i0--;while(i1<bi+lim&&i1<N-1&&isR(pts[i1+1]))i1++;const mg=Math.round(.3/seg);i0-=mg;i1+=mg;
   const minL=Math.round(2.4/seg);if(i1-i0<minL){const c=Math.round((i0+i1)/2);i0=c-minL/2|0;i1=c+minL/2|0}
   const blocked=p=>PL.some(o=>!o.bridge&&Math.hypot(p.x-o.x,p.z-o.z)<o.r+.15);let ra=Math.round(.9/seg),rb=ra;while(ra>3&&blocked(pts[i0-ra]))ra--;while(rb>3&&blocked(pts[i1+rb]))rb--;
