@@ -226,20 +226,22 @@
 
   function iconFor(i) {
     const st = now - i.loc.at > STALE;
-    const tag = st ? `<small>${esc(ago(i.loc.tst, now))}</small>` : '';
+    const tag = st ? `<small>${esc(ago(i.loc.at, now))}</small>` : '';
     return L.divIcon({ className: '', iconSize: [0, 0], html: `<div class="mk ${st ? 'stale' : ''}"><div class="b k-${esc(i.kind)} ${i.pic ? 'p' : ''}" style="${i.pic ? 'border-color:' + KC[i.kind] : ''}">${face(i)}</div><div class="tip" style="${i.pic ? 'border-top-color:' + KC[i.kind] : ''}"></div><div class="l">${i.team ? `<span class="tm">${esc(i.team)}</span>` : ''}${esc(i.name)}${tag}</div></div>` });
   }
   function popup(i) {
     const l = i.loc, bits = [];
     bits.push(`<b style="font-size:15px">${i.pic ? '' : (EMOJI[i.kind] || '') + ' '}${esc(label(i))}</b>`);
     bits.push(esc(sub(i)));
-    bits.push(`更新：${esc(ago(l.tst, now))}`);
+    bits.push(`最後回報：${esc(ago(l.at, now))}`);
+    if (stay(l)) bits.push(`📍 停在這裡約 ${esc(stay(l))}（沒有移動）`);
     if (l.vel != null && l.vel >= 2) bits.push(`速度：約 ${Math.round(l.vel)} km/h`);
     if (l.batt != null) bits.push(`手機電量：${l.batt}%${l.batt <= 20 ? ' ⚠️' : ''}`);
     if (l.acc != null) bits.push(`誤差：約 ${Math.round(l.acc)} 公尺`);
     bits.push(`<a href="https://www.google.com/maps/dir/?api=1&destination=${l.lat},${l.lon}" target="_blank" rel="noopener">🧭 Google 導航過去</a>`);
     return bits.join('<br>');
   }
+  const stay = l => { const m = Math.floor((l.at - l.tst) / 60e3); return m >= 3 ? (m < 60 ? m + ' 分鐘' : Math.floor(m / 60) + ' 小時' + (m % 60 ? ' ' + m % 60 + ' 分' : '')) : ''; };   // 手機有回報但位置沒變＝停在原地多久
   const shown = i => filter === '全部' || i.kind === filter || sideOf(i) === filter;
   const KC = { 小組長: '#2563eb', 指揮車: '#dc2626', 物資車: '#d97706', 其他: '#6b7280' };
   const face = i => i.pic ? `<img class="av" src="${esc(i.pic)}" referrerpolicy="no-referrer" alt="" onerror="this.replaceWith(document.createTextNode('${EMOJI[i.kind] || '📍'}'))">` : (EMOJI[i.kind] || '📍');
@@ -288,7 +290,7 @@
       return `<div class="row ${!l ? 'off' : st ? 'stale' : ''} ${i.id === selId ? 'sel' : ''}" data-id="${esc(i.id)}">
         <div class="e k-${esc(i.kind)} ${i.pic ? 'p' : ''}" style="--kc:${KC[i.kind]}">${face(i)}</div>
         <div class="m"><div class="n">${esc(label(i))}</div><div class="d">${esc(sub(i))}${l && l.batt != null ? `・🔋${l.batt}%` : ''}${l && l.vel >= 2 ? `・${Math.round(l.vel)} km/h` : ''}</div></div>
-        <div class="r">${i.duty === false ? `<div class="ago" style="color:#6b7280">🌙 退勤</div>不顯示位置` : l ? `<div class="ago">${esc(ago(l.tst, now))}</div>${st ? '訊號中斷' : '即時'}` : '<div class="ago">尚未連線</div>12 小時內沒有位置'}</div>
+        <div class="r">${i.duty === false ? `<div class="ago" style="color:#6b7280">🌙 退勤</div>不顯示位置` : l ? `<div class="ago">${esc(ago(l.at, now))}</div>${st ? '訊號中斷' : stay(l) ? '停留 ' + esc(stay(l)) : '移動中'}` : '<div class="ago">尚未連線</div>12 小時內沒有位置'}</div>
         ${mgr ? `<button class="duty ${i.duty === false ? 'off' : 'on'}" data-duty="${esc(i.id)}">${i.duty === false ? '退勤' : '值勤'}</button>` : ''}</div>`;
     }).join('') : `<div class="hint" style="padding:14px;text-align:center;color:#6b7280">${mgr ? '還沒有任何裝置，按右上「⚙️ 管理」新增' : '目前沒有裝置'}</div>`;
     $('list').querySelectorAll('[data-id]').forEach(r => r.onclick = () => sel(r.dataset.id, true));
