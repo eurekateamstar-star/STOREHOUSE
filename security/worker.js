@@ -1535,7 +1535,8 @@ async function gateSetRoute(req, env, json) {
 // 誰看得到地圖：完整管理員、開發者、名單上的查看者、綁定在某台裝置的團員
 const LOC_TTL = 12 * 3600e3;          // 超過 12 小時沒更新就不顯示
 const LOC_SESS = 10 * 60e3;           // 查看權限暫存 10 分鐘，地圖每 15 秒更新時不用每次查 Firestore
-const OT_FRIENDS = true;              // OwnTracks App 裡也顯示其他裝置（App 的「朋友」）
+const OT_FRIENDS = true;
+const LOC_OPEN = true;                // true＝已開通的團員都能看地圖；false＝只有管理員、名單上的人、綁定裝置的人              // OwnTracks App 裡也顯示其他裝置（App 的「朋友」）
 const LOC_KINDS = ['小組長', '指揮車', '物資車', '其他'];
 const LOC_TID = { 小組長: 'L', 指揮車: 'C', 物資車: 'S', 其他: 'X' };   // OwnTracks 圖示上的 2 個字（用英數字比較保險）
 const locTid = (kind, id) => LOC_TID[kind] + id.slice(-1).toUpperCase();
@@ -1574,10 +1575,10 @@ const cleanTxt = (s, n) => String(s || '').replace(/[<>\u0000-\u001f]/g, '').tri
 export class LocHub extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
-    this.T = new Map(); this.L = new Map(); this.V = new Map(); this.P = new Map();   // 裝置、最新位置、查看者
+    this.T = new Map(); this.L = new Map(); this.V = new Map(); this.P = new Map(); this.W = new Map();   // W：誰在看地圖   // 裝置、最新位置、查看者
     ctx.blockConcurrencyWhile(async () => {
       for (const [k, v] of await ctx.storage.list()) {
-        if (k.startsWith('t:')) this.T.set(k.slice(2), v); else if (k.startsWith('l:')) this.L.set(k.slice(2), v); else if (k.startsWith('v:')) this.V.set(k.slice(2), v);
+        if (k.startsWith('w:')) this.W.set(k.slice(2), v); else if (k.startsWith('t:')) this.T.set(k.slice(2), v); else if (k.startsWith('l:')) this.L.set(k.slice(2), v); else if (k.startsWith('v:')) this.V.set(k.slice(2), v);
       }
     });
   }
@@ -1622,17 +1623,26 @@ export class LocHub extends DurableObject {
     this.T.set(id, t); await st.put('t:' + id, t);
     return { ok: true, id, pw, tid: t.tid, name, fresh: true };
   }
+  hasSelf(uid) { return [...this.T.values()].some(t => t.uid === uid && t.self); }
   canView(uid) { return !!uid && (this.V.has(uid) || [...this.T.values()].some(t => t.uid === uid)); }
-  list(uid, mgr) {
-    if (!mgr && !this.canView(uid)) return null;
+  list(uid, mgr, who) {
+    if (!mgr && !LOC_OPEN && !this.canView(uid)) return null;
     const now = Date.now();
+    if (uid) {   // 記錄誰在看（記憶體每次更新，寫入儲存最多 5 分鐘一次）
+      const w = this.W.get(uid) || { n: 0, first: now, day: '' }, day = new Date(now + 8 * 3600e3).toISOString().slice(0, 10);
+      if (w.day !== day) { w.day = day; w.first = now; w.n = 0; }
+      w.n++; w.last = now; w.name = (who && who.n) || w.name || ''; this.W.set(uid, w);
+      if (!w.saved || now - w.saved > 300e3) { w.saved = now; this.ctx.storage.put('w:' + uid, w); }
+    }
     return [...this.T.entries()].map(([id, t]) => { const l = this.L.get(id); const duty = t.duty !== false; return { id, name: t.name, kind: t.kind, uname: t.uname || '', pic: t.pic || '', rkey: t.rkey || '', duty, mode: t.mode ?? null, loc: duty && l && now - l.at <= LOC_TTL ? l : null }; });
   }
   // 管理（Worker 已確認是完整管理員）
   async admin(op, a) {
     const st = this.ctx.storage;
     if (op === 'state') return { trackers: [...this.T.entries()].map(([id, t]) => ({ id, name: t.name, kind: t.kind, tid: t.tid, uid: t.uid || '', uname: t.uname || '', pic: t.pic || '', self: !!t.self, at: t.at, last: (this.L.get(id) || {}).at || 0, duty: t.duty !== false, mode: t.mode ?? null, ping: this.P.get(id) || 0 })),
-                                 viewers: [...this.V.entries()].map(([uid, v]) => ({ uid, name: v.name || '' })) };
+                                 viewers: [...this.V.entries()].map(([uid, v]) => ({ uid, name: v.name || '' })),
+                                 watchers: [...this.W.entries()].filter(([, w]) => Date.now() - w.last < 3 * 86400e3).sort((a, b) => b[1].last - a[1].last)
+                                   .map(([uid, w]) => ({ uid, name: w.name || '', last: w.last, first: w.first, day: w.day, n: w.n })) };
     if (op === 'add' || op === 'edit') {
       const name = cleanTxt(a.name, 20); if (!name) return { error: '請填名稱' };
       const kind = LOC_KINDS.includes(a.kind) ? a.kind : '其他';
@@ -1694,19 +1704,21 @@ async function locRoute(req, env, json) {
       if (!idToken) return json({ error: 'login' }, 401);
       const uid = uidOfToken(idToken), me = await fsUser(idToken, uid);
       if (!me || me.status !== 'approved') return json({ error: '帳號尚未開通' }, 403);
-      s = { uid, m: await fullAdmin(me, idToken, env), exp: Date.now() + LOC_SESS };
+      let ld = false; try { const M = await locMe(idToken, env); ld = !!M && M.rkey in (await locTeams(env)).leads; } catch (e) {}
+      s = { uid, n: String(me.realName || '').slice(0, 20), m: await fullAdmin(me, idToken, env), ld, exp: Date.now() + LOC_SESS };
       fresh = await locSessMake(s, env);
     }
-    const items = await locHub(env).list(s.uid, s.m);
+    const items = await locHub(env).list(s.uid, s.m, { n: s.n });
     if (!items) return json({ error: '你沒有查看定位的權限，請找管理員開通', canSelf: true }, 403);
     try { const T = await locTeams(env); items.forEach(i => { i.team = i.rkey ? (T.today[i.rkey] || '') : ''; delete i.rkey; }); } catch (e) { items.forEach(i => delete i.rkey); }
-    return json({ ok: true, items, mgr: s.m, sess: fresh, exp: s.exp, now: Date.now() });
+    const selfNeed = !!s.ld && !(await locHub(env).hasSelf(s.uid));
+    return json({ ok: true, items, mgr: s.m, canSelf: !!(s.ld || s.m), selfNeed, sess: fresh, exp: s.exp, now: Date.now() });
   } catch (e) { return json({ error: e.code ? '請重新登入' : String((e && e.message) || e) }, e.code || 500); }
 }
 // 團員專區用：要不要顯示「定位」按鈕（只回 true/false，不含任何位置）
 async function locCanRoute(req, env, json) {
   try { const { idToken } = await req.json(); if (!idToken || !env.LOC) return json({ can: false });
-    if (await locHub(env).canView(uidOfToken(idToken))) return json({ can: true });
+    if (LOC_OPEN || await locHub(env).canView(uidOfToken(idToken))) return json({ can: true });
     const me = await locMe(idToken, env); if (!me) return json({ can: false });
     return json({ can: me.rkey in (await locTeams(env)).leads }); } catch (e) { return json({ can: false }); }
 }

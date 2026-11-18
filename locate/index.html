@@ -112,7 +112,7 @@
   <div class="t"><h1>團員定位</h1><div class="s" id="status">載入中…</div></div>
   <button class="ib" id="b-fit" title="顯示全部">全部</button>
   <button class="ib" id="b-me" title="我的位置">🧭</button>
-  <button class="ib" id="b-qr" title="我的 OwnTracks 設定 QR Code">📱 我的QR</button>
+  <button class="ib hidden" id="b-qr" title="我的 OwnTracks 設定 QR Code">📱 我的QR</button>
   <button class="ib p hidden" id="b-admin">⚙️ 管理</button>
 </div>
 
@@ -184,6 +184,8 @@
     if (j.sess) sess = j.sess;
     items = j.items || []; mgr = !!j.mgr; now = j.now || Date.now();
     $('b-admin').classList.toggle('hidden', !mgr);
+    $('b-qr').classList.toggle('hidden', !j.canSelf);
+    if (j.selfNeed && !load.autoQR) { load.autoQR = true; setTimeout(() => myQR(true), 300); }   // 小組長第一次打開：直接給 QR Code
     const on = items.filter(i => i.loc).length;
     setStatus(true, `即時更新中 · ${on}/${items.length} 台有位置 · ${new Date().toTimeString().slice(0, 5)}`);
     draw();
@@ -314,20 +316,20 @@
       <div class="bar2"><button class="sb" id="all-on" style="background:#dcfce7;color:#15803d">✅ 全部值勤</button><button class="sb" id="all-off">🌙 全部退勤</button></div>
       <div class="hint" style="margin-bottom:8px">值勤＝手機每 30 秒回報（Move）；退勤＝地圖不顯示，手機改成省電模式（Significant）。<br>切換要等手機下次連線才生效：值勤→退勤約 30 秒；退勤→值勤可能要等手機移動一段距離（幾分鐘）。</div>
       ${tk.map(t => `<div class="it tk"><div class="m">${t.pic ? `<img class="pic" src="${esc(t.pic)}" referrerpolicy="no-referrer" alt="">` : EMOJI[t.kind] || ''} <b>${esc(t.name)}</b>${t.self ? ' <span class="hint">（組長自己產生）</span>' : ''}
-          <small>${esc(t.kind)}${t.uname ? '・綁定 ' + esc(t.uname) + '（可看地圖）' : ''}・${t.ping ? '最後連線 ' + esc(ago(t.ping, Date.now())) : t.last ? '最後上傳 ' + esc(ago(t.last, Date.now())) : '還沒收到位置'}${modeTxt(t) ? '・' + esc(modeTxt(t)) : ''}</small></div>
+          <small>${esc(t.kind)}${t.uname ? '・綁定 ' + esc(t.uname) : ''}・${t.ping ? '最後連線 ' + esc(ago(t.ping, Date.now())) : t.last ? '最後上傳 ' + esc(ago(t.last, Date.now())) : '還沒收到位置'}${modeTxt(t) ? '・' + esc(modeTxt(t)) : ''}</small></div>
           <button class="duty ${t.duty === false ? 'off' : 'on'}" data-d="${esc(t.id)}">${t.duty === false ? '🌙 退勤' : '✅ 值勤'}</button>
           <button class="sb" data-edit="${esc(t.id)}">編輯</button><button class="sb" data-qr="${esc(t.id)}">📱 QR</button><button class="sb d" data-del="${esc(t.id)}">刪除</button></div>`).join('') || '<div class="hint">還沒有裝置</div>'}
       <h4>➕ 新增裝置</h4>
       <div class="fm">
         <div><label>名稱（地圖上顯示）</label><input id="a-name" maxlength="20" placeholder="例如：第一組 王小明、指揮車、物資車 1 號"></div>
         <div><label>類型</label><select id="a-kind">${KINDS.map(k => `<option>${k}</option>`).join('')}</select></div>
-        <div><label>綁定團員（選填，綁定後這位團員也能看地圖）</label><select id="a-uid">${memberOpts()}</select></div>
+        <div><label>綁定團員（選填，綁定後顯示他的 LINE 大頭貼）</label><select id="a-uid">${memberOpts()}</select></div>
         <button class="btn" id="a-add">新增並產生設定 QR Code</button>
       </div>
-      <h4>👀 可查看地圖的人（${st.viewers.length}）</h4>
-      <div class="hint" style="margin-bottom:6px">完整管理員、開發者、綁定裝置的團員本來就看得到，不用加在這裡。</div>
-      ${st.viewers.map(v => `<div class="it"><div class="m"><b>${esc(v.name || v.uid.slice(0, 8))}</b></div><button class="sb d" data-unview="${esc(v.uid)}">移除</button></div>`).join('')}
-      <div class="fm" style="grid-template-columns:1fr auto;align-items:end"><div><label>加入查看者（例如指揮組、司機）</label><select id="v-uid">${memberOpts()}</select></div><button class="sb" id="v-add" style="padding:11px 14px;background:var(--ink);color:#fff">加入</button></div>`;
+      <h4>👀 誰在看地圖（近 3 天）</h4>
+      <div class="hint" style="margin-bottom:6px">已開通的團員都能看地圖。綠點＝正在看（1 分鐘內有更新）。</div>
+      ${(st.watchers || []).map(w => { const live = Date.now() - w.last < 60e3; return `<div class="it"><div class="m"><b>${live ? '<span class="dot"></span>' : ''}${esc(w.name || '（未知）')}</b>
+        <small>${live ? '正在看' : '最後 ' + esc(ago(w.last, Date.now()))}${w.day === new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10) ? `・今天從 ${new Date(w.first).toTimeString().slice(0, 5)} 開始・更新 ${w.n} 次` : ''}</small></div></div>`; }).join('') || '<div class="hint">還沒有人看過</div>'}`;
     o.querySelectorAll('[data-close]').forEach(b => b.onclick = () => o.remove());
     const again = () => { o.remove(); openAdmin(); load(); };
     o.querySelector('#all-on').onclick = async () => { if (await setDuty({ all: true, on: true })) again(); };
@@ -363,11 +365,7 @@
         if (r.error) { toast(r.error); return; } e.remove(); toast('已儲存'); again();
       };
     });
-    o.querySelectorAll('[data-unview]').forEach(b => b.onclick = async () => { const r = await adm('viewer', { uid: b.dataset.unview, on: false }); if (r.error) { toast(r.error); return; } again(); });
-    o.querySelector('#v-add').onclick = async () => {
-      const uid = o.querySelector('#v-uid').value; if (!uid) { toast('請選一位團員'); return; }
-      const r = await adm('viewer', { uid, on: true, name: (members.find(m => m.uid === uid) || {}).name || '' }); if (r.error) { toast(r.error); return; } toast('已加入'); again();
-    };
+
   }
 
   // OwnTracks 設定：QR Code（手機相機掃）、直接開啟、下載設定檔、手動輸入
