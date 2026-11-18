@@ -84,9 +84,12 @@ const PEOPLE=[
  {id:'touqi',g:'隊伍',name:'頭旗組',tag:'走在最前面，只進不退',bg:'#ffe9d9',shirt:'#d9532b',hat:'cap',hatc:'#2a1f1d',em:'🚩',
   lead:'頭旗是整支隊伍的先鋒。出發前三天的「放頭旗」把頭旗固定在廟前龍柱上，召告四方進香開始；起駕時刻一到，頭旗第一個衝出廟門。',
   facts:['2026 放頭旗：4/9 23:20（子時）','意義：指揮無形兵馬、除煞開路','頭旗、香擔、鑾轎都不可以隨意觸摸'],at:['gongtian']},
- {id:'jiao',g:'隊伍',name:'神轎（粉紅超跑・八人大轎）',tag:'載著三尊媽祖的轎子',bg:'#fde8ef',shirt:'#e85a8c',hat:'crown',em:'🏮',
-  lead:'去程到北港、回程大半路程坐的是四人小轎「粉紅超跑」，轎頂是粉紅色；回宮日在通霄秋茂園換成八人大轎，一路在鞭炮聲中回到拱天宮。',
-  facts:['粉紅超跑：四人小轎，轎頂粉紅色，是白沙屯媽祖的招牌','八人大轎：回宮日在秋茂園換轎後才出現','轎子往哪走、停在哪，全看媽祖的意思','不可觸摸鑾轎，行轎時要讓出空間'],at:['gongtian','qiumao','chaotian']},
+ {id:'pinkcar',g:'神轎',name:'粉紅超跑',tag:'四人小轎，轎頂粉紅色',bg:'#fde8ef',shirt:'#e85a8c',hat:'crown',em:'🏮',
+  lead:'白沙屯媽祖的招牌鑾轎。四人扛的小轎，轎頂是粉紅色，被暱稱「粉紅超跑」。去程到北港、回程大半路程都坐這頂轎。',
+  facts:['四人小轎，據報導約 70 公斤','轎頂粉紅色，是白沙屯媽祖的招牌','轎子往哪走、停在哪，全看媽祖的意思','不可觸摸鑾轎，行轎時要讓出空間'],at:['gongtian','chaotian']},
+ {id:'sedan8',g:'神轎',name:'八人大轎',tag:'回宮日在秋茂園換上',bg:'#fde3e0',shirt:'#c9382e',hat:'crown',em:'🎆',
+  lead:'回宮日在通霄秋茂園舉行換轎儀式，白沙屯媽祖從粉紅超跑改乘八人大轎，一路在鞭炮聲中回到拱天宮。',
+  facts:['回宮日在秋茂園換轎後才出現','八個人扛，前後由交通組開路','換轎後沿路滿地鞭炮，鞭炮海前要落轎等候'],at:['qiumao','gongtian']},
  {id:'jtz',g:'隊伍',name:'拱天宮交通組',tag:'走在頭旗前面開路',bg:'#e9eef8',shirt:'#26347a',hat:'cap',hatc:'#1f2f4f',em:'🦺',
   lead:'走在隊伍最前面、頭旗之前，替鑾轎開路。換成八人大轎後，交通組拿著指揮棒走在鞭炮海的最前緣，藍衣交通組跟在後面與轎子兩側。',
   facts:['深藍帽、螢光反光背心，帽子寫「白沙屯 拱天宮」','走在頭旗前面引導人潮','回宮日帶著鞭炮海往前推進','轎子兩側也有交通組護轎'],at:['gongtian','qiumao']},
@@ -567,7 +570,7 @@ palq.userData.who={role:'jiaoban',name:'粉紅超跑'};flag.userData.who={role:'
 const meRing=new THREE.Mesh(new THREE.RingGeometry(.11,.155,28),new THREE.MeshBasicMaterial({color:0xf47b20,side:THREE.DoubleSide,transparent:true,opacity:.9,depthWrite:false}));meRing.rotation.x=-Math.PI/2;scene.add(meRing);
 VEH.forEach(v=>tagDefs.push({t:v.tag[0],c:v.tag[1],o:v.o,dy:.48}));tagDefs.push({t:'醫護團',c:'med',o:medics[3].m,dy:.45});
 let leadMoving=false;const whiteG=new THREE.Group(),whiteW=charObj(TW,'walk',null,()=>leadMoving),whiteB=charObj(TW,'baton',(o,h)=>{const d=new THREE.Vector3(h[0]-h[6],h[1]-h[7],h[2]-h[8]).normalize(),b=new THREE.Mesh(new THREE.CylinderGeometry(.012,.012,.14,8),new THREE.MeshBasicMaterial({color:0xff4a1a}));b.position.set(h[0]+d.x*.08,h[1]+d.y*.08,h[2]+d.z*.08);b.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d);o.add(b)},()=>leadMoving);
-whiteG.add(whiteW,whiteB);whiteG.scale.setScalar(1.15);whiteG.userData.who={role:'jtz',name:'交通組'};scene.add(whiteG);const followM=[0,1].map(i=>{const c=chibi('medic',0,.6);MEDW[MEDW.length-1].moving=()=>leadMoving;c.userData.who={role:'gtmed',name:'醫護團'};scene.add(c);return c});const blueL=[0,1].map(()=>{const c=charObj(TB,'walk');c.userData.who={role:'jtz',name:'交通組'};scene.add(c);return c});
+whiteG.add(whiteW,whiteB);whiteG.scale.setScalar(1.15);whiteG.userData.who={role:'jtz',name:'交通組'};scene.add(whiteG);const followM=[0,1].map(i=>{const c=chibi('medic',0,.6);MEDW[MEDW.length-1].moving=()=>leadMoving;c.userData.who={role:'gtmed',name:'醫護團'};scene.add(c);return c});const blueL=[0,1].map(()=>{const c=charObj(TB,'walk',null,()=>leadMoving);c.userData.who={role:'jtz',name:'交通組'};scene.add(c);return c});
 [['交通組','',whiteG,.7],['醫護團','med',followM[0],.55],['粉紅超跑','pk big',palq,1.15],['頭旗','',flag,1.12],['香擔','',dan,.5],['醫護團','med',medics[2].m,.45]].forEach(([t,c,o,dy])=>tagDefs.push({t,c,o,dy}));
 const clouds=[];for(let i=0;i<8;i++){const g=new THREE.Group(),m=M(0xffffff,{transparent:true,opacity:.9});for(let k=0;k<4;k++){const s=new THREE.Mesh(new THREE.IcosahedronGeometry(1.2+hash(i,k)*1.2,0),m);s.position.set(k*1.6-2.4,hash(k,i)*.5,hash(i+k,2));g.add(s)}g.position.set(-50+hash(i,1)*90,13+hash(i,5)*5,z0+hash(i,7)*(z1-z0));g.userData.v=.012+hash(i,8)*.02;scene.add(g);clouds.push(g)}
 
@@ -644,7 +647,7 @@ let dtG=.016,tG=0;function updGuard(){const nw=performance.now();dtG=Math.min(.1
  else medics.forEach(k=>{if(k.ret>0){const q=k.m.position.clone();if(walkTo(k,q.setY(q.y),null)||!playing&&0){}if(!k.gm){k.ret=0;k.cur=null}}else k.cur=null})}
 let lastFu=-1;const SIDE={b:.22,f:.2};function updLead(){updFS();const wu=leadU(),cerH=cer&&!cer.d.fire&&!cer.d.swap,hide=cerH||inLane(wu)||wu>=1;leadMoving=playing&&Math.abs(wu-lastWu)>1e-8;lastWu=wu;
  putU(whiteG,wu,0);whiteG.visible=!hide;whiteW.visible=!bigMode;whiteB.visible=!!bigMode;
- const seaM=!!(cer&&(cer.d.fire||cer.d.swap));SIDE.b+=((seaM?1.15:.22)-SIDE.b)*Math.min(1,dtG*1.6);SIDE.f+=((seaM?1.2:.2)-SIDE.f)*Math.min(1,dtG*1.6);blueL.forEach((b,i)=>{const u=wu-(seaM?.15:.4)*UU;putU(b,u,i?SIDE.b:-SIDE.b);b.visible=!(cerH||inLane(u)||u>=1)});followM.forEach((m,i)=>{const u=wu-.85*UU;putU(m,u,i?SIDE.f:-SIDE.f);m.visible=(!!bigMode||!!(cer&&cer.d.swap))&&!(cerH||u>=1)});
+ SIDE.b=.22;SIDE.f=.2;blueL.forEach((b,i)=>{const u=wu-.4*UU;putU(b,u,i?SIDE.b:-SIDE.b);b.visible=!(cerH||inLane(u)||u>=1)});followM.forEach((m,i)=>{const u=wu-.85*UU;putU(m,u,i?SIDE.f:-SIDE.f);m.visible=(!!bigMode||!!(cer&&cer.d.swap))&&!(cerH||u>=1)});
  const fu=frontU(),fMov=playing&&Math.abs(fu-lastFu)>1e-8;lastFu=fu;FIRE.set(bigMode?fu:-1);frontOn=!!bigMode&&fMov&&fu>FC0&&fu<FCE;if(frontOn){FRONT.copy(ptAt(fu));SMK2.copy(ptAt(fu-.7*UU))}fLight.intensity=frontOn?1.2+Math.random()*1.6:0;if(frontOn){fLight.position.copy(FRONT);fLight.position.y+=.35}
  updGuard()}
 function sedan(){const b=prog>=uQ-1e-6;if(b===bigMode)return;bigMode=b;const w=palq.userData.sw;w[0].visible=w[1].visible=!b;w[2].visible=w[3].visible=b;if(parkSedan)parkSedan.visible=!b;debris.visible=b;const t=tags.find(t=>t.o===palq);if(t){t.d.textContent=b?'八人大轎':'粉紅超跑';t.dy=b?1.7:1.15}const t2=tags.find(t=>t.v&&(t.t==='八人大轎'));if(t2)t2.d.textContent=b?'換轎處':'八人大轎等候中';ME0.name=b?'八人大轎':'粉紅超跑'}const uC=DAYS[3].u1,uA=uC-2.55/ROUTE.tot,CERS=[{a:uQ-.25/ROUTE.tot,c:uQ,swap:1},{a:uA,c:uC,push:2.9},{a:1-1.85/ROUTE.tot,c:1,push:1.5,end:1}];PATCH.forEach(P=>CERS.push({a:P.a,fire:1,e:P.e,s:P.s}));
@@ -677,7 +680,7 @@ playBtn.onclick=()=>{if(playing){playing=false;playBtn.textContent='▶';return}
 scrub.oninput=()=>{stop();setProg(scrub.value/2000)};
 
 /* ================= UI ================= */
-const AVI={dama:'pink',luzhu:'pink',shanbian:'pink',jiao:'jiao',touqi:'bearer',jiaoban:'bearer',xiangdan:'bearer',zhunian:'pilm',xiangdeng:'pilm',host:'pilf',medvan:'medvan',supply:'supply',snack:'snack',ctg:'ctg',gtmed:'medm',emt:'emt',traffic:'traffic',jtz:'traffic',live:'pass'};
+const AVI={dama:'dama',luzhu:'luzhu',shanbian:'shanbian',pinkcar:'pink',sedan8:'sedan8',touqi:'bearer',jiaoban:'bearer',xiangdan:'xiangdan',zhunian:'zhunian',xiangdeng:'pilm',host:'pilf',medvan:'medvan',supply:'supply',snack:'snack',ctg:'ctg',gtmed:'medm',emt:'emt',traffic:'traffic',jtz:'traffic',live:'pass'};
 function avatar(p,s=44){if(AVI[p.id])return `<img src="img/h_${AVI[p.id]}.webp" width="${s}" height="${s}" alt="" style="border-radius:50%;flex:none;background:${p.bg};object-fit:cover;object-position:50% 0">`;const hat=p.hat==='crown'?`<path d="M14 14l4 4 6-7 6 7 4-4v8H14z" fill="#f2c14e"/>`:p.hat==='cap'?`<path d="M15 18a9 9 0 0118 0z" fill="${p.hatc}"/><rect x="24" y="16.5" width="12" height="2.6" rx="1.3" fill="${p.hatc}"/>`:`<path d="M15.5 17a8.5 8.5 0 0117 0z" fill="#3a2a24"/>`;
  return `<svg viewBox="0 0 48 48" width="${s}" height="${s}" style="border-radius:50%;flex:none"><rect width="48" height="48" fill="${p.bg}"/><rect x="12" y="29" width="24" height="24" rx="9" fill="${p.shirt}" stroke="#2a1f1d22"/><circle cx="24" cy="21" r="8.5" fill="#f6d2b8"/>${hat}<circle cx="21" cy="22" r="1" fill="#2a1f1d"/><circle cx="27" cy="22" r="1" fill="#2a1f1d"/><text x="38" y="44" font-size="13" text-anchor="middle">${p.em}</text></svg>`}
 const detail=$('detail'),panel=$('panel');
@@ -713,7 +716,7 @@ function render(){
    `<div class="it" style="cursor:default"><time>5/01</time><div class="t">開爐<small>00:35 回宮 12 天後，進香圓滿</small></div><span class="tg k1">儀式</span></div><p class="src">鑾轎實際路線由媽祖決定、每年不同。這裡的停駕與駐駕點依 2026 年媒體報導整理，點與點之間的連線是示意，不是 GPS 軌跡。</p>`;
   listEl.querySelectorAll('.it[data-p]').forEach(n=>n.onclick=()=>openPlace(n.dataset.p,ENTRIES.find(e=>e.p===n.dataset.p&&e.d.d===+n.dataset.d&&Math.abs(e.u-n.dataset.u)<1e-9)));
   listEl.querySelectorAll('.day').forEach(n=>n.onclick=()=>goDay(+n.dataset.d))}
- else if(tab==='people'){listEl.innerHTML=['神尊','隊伍','醫護','沿途','幕後'].map(g=>`<div class="sec">${g}</div>`+PEOPLE.filter(p=>p.g===g).map(p=>`<div class="pc" data-r="${p.id}">${avatar(p)}<div><b>${p.name}</b><small>${p.tag}</small></div></div>`).join('')).join('');
+ else if(tab==='people'){listEl.innerHTML=['神尊','神轎','隊伍','醫護','沿途','幕後'].map(g=>`<div class="sec">${g}</div>`+PEOPLE.filter(p=>p.g===g).map(p=>`<div class="pc" data-r="${p.id}">${avatar(p)}<div><b>${p.name}</b><small>${p.tag}</small></div></div>`).join('')).join('');
   listEl.querySelectorAll('.pc').forEach(n=>n.onclick=()=>openRole(n.dataset.r))}
  else if(tab==='rites'){listEl.innerHTML=`<div class="sec">2026 丙午年 · 重要時辰</div>`+RITES.map((r,i)=>`<div class="rit ${r.ret?'ret':''}" data-i="${i}"><time>${r.t}</time><b>${r.n}</b><p>${r.p}</p></div>`).join('')+
    `<div class="sec">隨香守則</div>${['進香前先向媽祖擲筊請示，並茹素或早齋 3 天','不觸摸鑾轎、香擔、頭旗','隨香期間禁酒、禁賭','不超越鑾轎，行轎時迅速讓出空間','靠右走、垃圾帶走、珍惜結緣品','家有喪事一年內不參加','身體不舒服就停下來，找橘色衣服的醫護團或救護站'].map(t=>`<div class="fact">${t}</div>`).join('')}`;
