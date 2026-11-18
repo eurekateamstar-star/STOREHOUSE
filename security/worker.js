@@ -1633,10 +1633,16 @@ export class LocHub extends DurableObject {
     this.T.set(id, t); await st.put('t:' + id, t);
     return { ok: true, id, pw, tid: t.tid, name, fresh: true };
   }
-  track(id, since) {
+  track(id, since, until = 9e15) {
     if (!this.T.has(id)) return null;
-    const rows = this.sql.exec('SELECT tst, lat, lon FROM trk WHERE id = ? AND tst >= ? ORDER BY tst LIMIT 6000', id, since).toArray();
+    const rows = this.sql.exec('SELECT tst, lat, lon FROM trk WHERE id = ? AND tst >= ? AND tst < ? ORDER BY tst LIMIT 6000', id, since, until).toArray();
     return rows.map(r => [r.lat, r.lon, r.tst]);
+  }
+  trackAll(since, until) {   // 管理員：某段時間所有裝置的軌跡
+    const out = {};
+    for (const r of this.sql.exec('SELECT id, tst, lat, lon FROM trk WHERE tst >= ? AND tst < ? ORDER BY id, tst LIMIT 60000', since, until).toArray()) {
+      if (!this.T.has(r.id)) continue; (out[r.id] = out[r.id] || []).push([r.lat, r.lon, r.tst]); }
+    return out;
   }
   hasSelf(uid) { return [...this.T.values()].some(t => t.uid === uid && t.self); }
   canView(uid) { return !!uid && (this.V.has(uid) || [...this.T.values()].some(t => t.uid === uid)); }
@@ -1726,9 +1732,15 @@ async function locSession(idToken, sess, env) {
 async function locTrackRoute(req, env, json) {
   try {
     if (!env.LOC) return json({ error: '定位功能尚未部署' }, 501);
-    const { idToken, sess, id, since } = await req.json();
+    const { idToken, sess, id, since, all, day } = await req.json();
     const A = await locSession(idToken, sess, env); if (A.err) return json({ error: A.err }, 401);
     const hub = locHub(env);
+    if (all) {   // 管理員後台：某一天所有人的軌跡（30 天內）
+      if (!A.s.m) return json({ error: '只有管理員可以看所有人的軌跡' }, 403);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day || '')) return json({ error: 'bad day' }, 400);
+      const d0 = Date.parse(day + 'T00:00:00+08:00'); if (!(d0 > Date.now() - TRK_KEEP - 86400e3)) return json({ error: '只保留 30 天' }, 400);
+      return json({ ok: true, tracks: await hub.trackAll(d0, d0 + 86400e3), sess: A.fresh });
+    }
     if (!A.s.m && !LOC_OPEN && !(await hub.canView(A.s.uid))) return json({ error: '沒有權限' }, 403);
     const today = Date.parse(new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10) + 'T00:00:00+08:00');
     const t0 = Math.max(Number(since) || today, Date.now() - 3 * 86400e3);

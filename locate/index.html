@@ -129,6 +129,7 @@
   .seg span { padding:5px 10px; border-radius:99px; color:#374151; } .seg span.on { background:#fff; box-shadow:0 0 0 2.5px #dc2626; color:#111; }
   ol.st { padding-left:20px; margin:6px 0; font-size:13.5px; line-height:1.75; }
   .trkbar { position:fixed; z-index:600; left:50%; transform:translateX(-50%); top:calc(env(safe-area-inset-top) + 74px); background:#fff; border-radius:99px; padding:6px 8px 6px 14px; box-shadow:0 4px 14px rgba(0,0,0,.18); font-size:13px; font-weight:700; white-space:nowrap; display:flex; align-items:center; gap:8px; }
+  .trkbar .leg { font-size:11.5px; font-weight:600; white-space:normal; max-width:70vw; line-height:1.5; }
   .toast { position:fixed; z-index:2000; left:50%; bottom:90px; transform:translateX(-50%); background:rgba(17,24,39,.92); color:#fff; padding:9px 16px; border-radius:99px; font-size:14px; opacity:0; transition:opacity .2s; pointer-events:none; }
   .toast.show { opacity:1; }
   .leaflet-top { top:calc(env(safe-area-inset-top) + 64px); }
@@ -322,6 +323,23 @@
     $('trkbar').innerHTML = `🛤 ${esc(i ? label(i) : '')}・今天 ${new Date(j.pts[0][2]).toTimeString().slice(0, 5)} 起・${j.pts.length} 點 <button class="sb">✕ 關閉</button>`;
     $('trkbar').querySelector('button').onclick = trkOff; $('trkbar').classList.remove('hidden');
   }
+  const PAL = ['#2563eb', '#dc2626', '#d97706', '#16a34a', '#7c3aed', '#db2777', '#0891b2', '#65a30d', '#ea580c', '#4f46e5', '#be123c', '#0d9488'];
+  async function showAllTracks(day) {
+    let j; try { j = await api('/loc-track', { sess, idToken: await user.getIdToken(), all: true, day }); } catch (e) { toast('連線失敗'); return; }
+    if (j.error) { toast(j.error); return; } if (j.sess) sess = j.sess;
+    trkOff();
+    const ids = Object.keys(j.tracks || {}); if (!ids.length) { toast(day.slice(5).replace('-', '/') + ' 沒有軌跡'); return; }
+    const g = [], all = [], leg = [];
+    ids.forEach((id, k) => { const ll = j.tracks[id].map(p => [p[0], p[1]]), c = PAL[k % PAL.length], it = items.find(x => x.id === id), nm = it ? label(it) : id;
+      all.push(...ll); leg.push(`<span style="color:${c}">━</span> ${esc(nm)}`);
+      g.push(L.polyline(ll, { color: '#fff', weight: 7, opacity: .85 }), L.polyline(ll, { color: c, weight: 4, opacity: .9 }).bindTooltip(nm, { sticky: true }),
+        L.circleMarker(ll[0], { radius: 5, color: '#fff', weight: 2, fillColor: c, fillOpacity: 1 }).bindTooltip(nm + ' 起點 ' + new Date(j.tracks[id][0][2]).toTimeString().slice(0, 5)),
+        L.circleMarker(ll[ll.length - 1], { radius: 7, color: c, weight: 3, fillColor: '#fff', fillOpacity: 1 }).bindTooltip(nm + ' 最後 ' + new Date(j.tracks[id].at(-1)[2]).toTimeString().slice(0, 5))); });
+    trkLayer = L.layerGroup(g).addTo(map);
+    map.fitBounds(L.latLngBounds(all), { paddingTopLeft: [40, 120], paddingBottomRight: [40, ($('sheet').offsetHeight || 0) + 30], maxZoom: 17 });
+    $('trkbar').innerHTML = `<div>🛤 ${day.slice(5).replace('-', '/')} 所有人軌跡（${ids.length} 台）<div class="leg">${leg.join('　')}</div></div><button class="sb">✕ 關閉</button>`;
+    $('trkbar').querySelector('button').onclick = trkOff; $('trkbar').classList.remove('hidden');
+  }
   document.addEventListener('click', ev => { const a = ev.target.closest && ev.target.closest('[data-trk]'); if (!a) return; ev.preventDefault(); ev.stopPropagation(); showTrack(a.dataset.trk); }, true);   // 地圖每 15 秒會重畫泡泡內容，所以用整頁監聽
   $('sh-h').onclick = () => { $('sheet').classList.toggle('min'); $('sh-arrow').textContent = $('sheet').classList.contains('min') ? '▴' : '▾'; };
   $('b-fit').onclick = () => { filter = '全部'; draw(); fitAll(); };
@@ -381,12 +399,16 @@
         <div><label>綁定團員（選填，綁定後顯示他的 LINE 大頭貼）</label><select id="a-uid">${memberOpts()}</select></div>
         <button class="btn" id="a-add">新增並產生設定 QR Code</button>
       </div>
+      <h4>🛤 所有人的軌跡</h4>
+      <div class="fm" style="grid-template-columns:1fr auto;align-items:end"><div><label>日期（保留 30 天）</label><select id="t-day">${[...Array(30)].map((_, k) => { const d = new Date(Date.now() + 8 * 3600e3 - k * 86400e3).toISOString().slice(0, 10); return `<option value="${d}">${d.slice(5).replace('-', '/')}${k === 0 ? '（今天）' : k === 1 ? '（昨天）' : ''}</option>`; }).join('')}</select></div>
+        <button class="sb" id="t-show" style="padding:11px 14px;background:var(--ink);color:#fff">在地圖上顯示</button></div>
       <h4>👀 誰在看地圖（近 3 天）</h4>
       <div class="hint" style="margin-bottom:6px">已開通的團員都能看地圖。綠點＝正在看（1 分鐘內有更新）。</div>
       ${(st.watchers || []).map(w => { const live = Date.now() - w.last < 60e3; return `<div class="it"><div class="m"><b>${live ? '<span class="dot"></span>' : ''}${esc(w.name || '（未知）')}</b>
         <small>${live ? '正在看' : '最後 ' + esc(ago(w.last, Date.now()))}${w.day === new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10) ? `・今天從 ${new Date(w.first).toTimeString().slice(0, 5)} 開始・更新 ${w.n} 次` : ''}</small></div></div>`; }).join('') || '<div class="hint">還沒有人看過</div>'}`;
     o.querySelectorAll('[data-close]').forEach(b => b.onclick = () => o.remove());
     const again = () => { o.remove(); openAdmin(); load(); };
+    o.querySelector('#t-show').onclick = async () => { const day = o.querySelector('#t-day').value; o.remove(); showAllTracks(day); };
     o.querySelector('#all-on').onclick = async () => { if (await setDuty({ all: true, on: true })) again(); };
     o.querySelector('#all-off').onclick = async () => { if (!confirm('全部裝置退勤？地圖會清掉所有位置。')) return; if (await setDuty({ all: true, on: false })) again(); };
     o.querySelectorAll('[data-d]').forEach(b => b.onclick = async () => { const t = tk.find(x => x.id === b.dataset.d); if (await setDuty({ id: t.id, on: t.duty === false })) again(); });
