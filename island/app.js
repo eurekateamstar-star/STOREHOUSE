@@ -117,6 +117,12 @@ const PEOPLE=[
  {id:'gtmed',g:'醫護',name:'白沙屯拱天宮醫護團',tag:'穿橘色衣服、跟著走完全程的人',bg:'#ffe8d6',shirt:'#f47b20',hat:'cap',hatc:'#1f2f4f',em:'🩹',
   lead:'一群有醫療背景的信徒自己組起來的志工團。醫師、護理師、藥師、治療師、救護員和關懷志工從全台各地集合，穿著橘色衣服跟著媽祖徒步，沿路幫香燈腳處理水泡、抽筋、中暑和各種突發狀況。',
   facts:['拱天宮唯一官方認證、掛匾的醫護團隊','橘衣橘褲、黑色長袖、深藍 EMS 帽、藍色毛巾、腰間紅色急救包','進北港時走在轎子前面先進場，排成兩側人牆迎轎','隨隊有橘色的醫護團專車與醫療物資車','2008 年成軍，起因是發起人在進香路上遇到急救事件','2017 年報導：成員約 80 人，來自全台各地','不對外募款、不接受企業贊助、沒有商業行為','AED、急救包等器材都是成員自掏腰包添購','駐駕點與人潮熱點常能看到橘色的醫護站'],at:['gongtian','qingshui','dacun','huwei','chaotian','daan']},
+ {id:'medvan',g:'醫護',name:'醫護團專車',tag:'跟在轎前轎後的橘色專車',bg:'#fff0e2',shirt:'#f47b20',hat:'cap',hatc:'#f47b20',em:'🚐',
+  lead:'白沙屯拱天宮醫護團的橘色專車，在隊伍外圍跟著鑾轎移動，遇到需要的人可以就近送醫或接送。',
+  facts:['橘色車身，在隊伍外圍跟著走','轎前、轎後都有醫護團的車','需要時把傷患接上車或送醫'],at:['gongtian','chaotian']},
+ {id:'supply',g:'醫護',name:'醫療物資車',tag:'藥品、冰水、繃帶都在這',bg:'#fff0e2',shirt:'#f47b20',hat:'cap',hatc:'#f47b20',em:'📦',
+  lead:'載著醫護團一路要用的藥品、敷料、冰塊和飲水，跟在隊伍後段，讓前線的醫護團隨時補給。',
+  facts:['跟在隊伍後面一點','補給醫護團的藥品與敷料','也在外圍，不擋到香燈腳'],at:['gongtian','chaotian']},
  {id:'emt',g:'醫護',name:'隨駕醫療與救護站',tag:'24 小時待命的後援',bg:'#e6f4ef',shirt:'#ffffff',hat:'cap',hatc:'#2f9a7a',em:'🚑',
   lead:'醫院派出的隨行醫療團、救護車，加上沿途縣市的救護資源。童綜合醫院自 2013 年起每年 24 小時隨行；2026 年導入「智慧行動醫療隨扈系統」，GPS App 可以一鍵求救、即時定位。',
   facts:['童綜合醫院的救護車全程隨行','2026：七人座電動車當行動指揮車，搭配電動三輪車出勤','2026：沿途熱點與白沙屯醫療團共同部署救護站','最常見的狀況：水泡、肌肉痠痛、抽筋、中暑'],at:['chaotian','dadu','xiluo']},
@@ -442,7 +448,7 @@ const ROUTE=(()=>{const raw=[],marks=[];let last=null;
  {const seg=tot/N,riv=(x,z)=>{const c=cellAt(x,z);return !!(c&&c.river)},land=(x,z)=>{const c=cellAt(x,z);return !!(c&&!c.river)};PL.filter(q=>q.bridge).forEach(q=>{let bi=0,bd=1e9;const mk=marks.find(m=>m.p===q.id),cu=mk?Math.round(mk.u*N):-1,w0=mk?Math.max(0,cu-Math.round(4/seg)):0,w1=mk?Math.min(N,cu+Math.round(4/seg)):N;
   for(let i=w0;i<=w1;i++){const p=pts[i];if(!riv(p.x,p.z))continue;const d=Math.hypot(p.x-q.x,p.z-q.z);if(d<bd){bd=d;bi=i}}if(bd>1e8)for(let i=w0;i<=w1;i++){const p=pts[i],d=Math.hypot(p.x-q.x,p.z-q.z);if(d<bd){bd=d;bi=i}}
   const C=pts[bi];let ie=bi,ix=bi;const lim=Math.round(6/seg);while(ie>bi-lim&&ie>1&&!land(pts[ie].x,pts[ie].z))ie--;while(ix<bi+lim&&ix<N-1&&!land(pts[ix].x,pts[ix].z))ix++;
-  let dx=pts[ix].x-pts[ie].x,dz=pts[ix].z-pts[ie].z;const dl=Math.hypot(dx,dz)||1;dx/=dl;dz/=dl;{const th=25*Math.PI/180,r=(sg)=>[dx*Math.cos(th)+sg*dz*Math.sin(th),-sg*dx*Math.sin(th)+dz*Math.cos(th)],A1=r(1),A2=r(-1),pick=Math.abs(A1[0])<Math.abs(A2[0])?A1:A2;dx=pick[0];dz=pick[1]}{const ex={dadu:-10,zhongzhang:-10}[q.id]||0;if(ex){const t=ex*Math.PI/180,nx=dx*Math.cos(t)-dz*Math.sin(t),nz=dx*Math.sin(t)+dz*Math.cos(t);dx=nx;dz=nz}}const mx=(pts[ie].x+pts[ix].x)/2,mz=(pts[ie].z+pts[ix].z)/2,half=Math.max(1.2,dl/2+.35);
+  let dx=pts[ix].x-pts[ie].x,dz=pts[ix].z-pts[ie].z;const dl=Math.hypot(dx,dz)||1;dx/=dl;dz/=dl;{const th=25*Math.PI/180,r=(sg)=>[dx*Math.cos(th)+sg*dz*Math.sin(th),-sg*dx*Math.sin(th)+dz*Math.cos(th)],A1=r(1),A2=r(-1),pick=Math.abs(A1[0])<Math.abs(A2[0])?A1:A2;dx=pick[0];dz=pick[1]}{const ex={dadu:-10,zhongzhang:-7}[q.id]||0;if(ex){const t=ex*Math.PI/180,nx=dx*Math.cos(t)-dz*Math.sin(t),nz=dx*Math.sin(t)+dz*Math.cos(t);dx=nx;dz=nz}}const mx=(pts[ie].x+pts[ix].x)/2,mz=(pts[ie].z+pts[ix].z)/2,half=Math.max(1.2,dl/2+.35);
   const S=new THREE.Vector3(mx-dx*half,0,mz-dz*half),E=new THREE.Vector3(mx+dx*half,0,mz+dz*half);
   const blocked=(x,z)=>PL.some(o=>!o.bridge&&Math.hypot(x-o.x,z-o.z)<o.r+.15);let ra=1.0,rb=1.0;while(ra>.3&&blocked(S.x-dx*ra,S.z-dz*ra))ra-=.1;while(rb>.3&&blocked(E.x+dx*rb,E.z+dz*rb))rb-=.1;
   const A=new THREE.Vector3(S.x-dx*ra,0,S.z-dz*ra),Bp=new THREE.Vector3(E.x+dx*rb,0,E.z+dz*rb);
@@ -546,8 +552,8 @@ function vehGLB(k,txt,fg,bg){const D=VEH3[k],buf=b=>Uint8Array.from(atob(b),c=>c
  const t=new THREE.TextureLoader().load(D.tex);t.flipY=false;t.anisotropy=4;const S=.66,g=new THREE.Group(),m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({map:t,roughness:.6,metalness:.05,emissive:0x333333,emissiveMap:t}));m.scale.setScalar(S);g.add(m);
  if(txt)for(const sx of[-1,1]){const pl=sideText(txt,fg,bg,.36,.06);pl.position.set(sx*(D.w*S/2+.004),D.h*S*.36,-.03);pl.rotation.y=sx>0?Math.PI/2:-Math.PI/2;g.add(pl);g.userData.plates=(g.userData.plates||[]).concat([[pl,txt,fg,bg]])}
  return sh(g)}
-const VEH=[{o:vehGLB('med'),lag:2.6,side:-.43,who:{role:'gtmed',name:'醫護團專車'},tag:['醫護團 專車','med']},
- {o:vehGLB('sup'),lag:8.5,side:.43,who:{role:'gtmed',name:'醫護團物資車'},tag:['醫護團 物資車','med']},
+const VEH=[{o:vehGLB('med'),lag:2.6,side:-.43,who:{role:'medvan',name:'醫護團專車'},tag:['醫護團 專車','med']},
+ {o:vehGLB('sup'),lag:8.5,side:.43,who:{role:'supply',name:'醫護團物資車'},tag:['醫護團 物資車','med']},
  {o:vehGLB('amb'),lag:5,side:-.43,who:{role:'emt',name:'童綜合救護車'},tag:['童綜合 救護車','emt']}];
 VEH.forEach(v=>{v.o.userData.who=v.who;scene.add(v.o)});
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>VEH.forEach(v=>(v.o.userData.plates||[]).forEach(([p,txt,fg,bg])=>{const n=sideText(txt,fg,bg);p.material.map=n.material.map;p.material.needsUpdate=true})));
@@ -669,8 +675,8 @@ playBtn.onclick=()=>{if(playing){playing=false;playBtn.textContent='▶';return}
 scrub.oninput=()=>{stop();setProg(scrub.value/2000)};
 
 /* ================= UI ================= */
-const AVI={dama:'pink',luzhu:'pink',shanbian:'pink',jiao:'pink',touqi:'bearer',jiaoban:'bearer',xiangdan:'bearer',zhunian:'pass',xiangdeng:'pass',host:'pass',snack:'snack',ctg:'ctg',gtmed:'medm',emt:'emt',traffic:'traffic',jtz:'traffic',live:'pass'};
-function avatar(p,s=44){if(AVI[p.id])return `<img src="img/h_${AVI[p.id]}.webp" width="${s}" height="${s}" alt="" style="border-radius:50%;flex:none;background:${p.bg};object-fit:cover">`;const hat=p.hat==='crown'?`<path d="M14 14l4 4 6-7 6 7 4-4v8H14z" fill="#f2c14e"/>`:p.hat==='cap'?`<path d="M15 18a9 9 0 0118 0z" fill="${p.hatc}"/><rect x="24" y="16.5" width="12" height="2.6" rx="1.3" fill="${p.hatc}"/>`:`<path d="M15.5 17a8.5 8.5 0 0117 0z" fill="#3a2a24"/>`;
+const AVI={dama:'pink',luzhu:'pink',shanbian:'pink',jiao:'jiao',touqi:'bearer',jiaoban:'bearer',xiangdan:'bearer',zhunian:'pilm',xiangdeng:'pilm',host:'pilf',medvan:'medvan',supply:'supply',snack:'snack',ctg:'ctg',gtmed:'medm',emt:'emt',traffic:'traffic',jtz:'traffic',live:'pass'};
+function avatar(p,s=44){if(AVI[p.id])return `<img src="img/h_${AVI[p.id]}.webp" width="${s}" height="${s}" alt="" style="border-radius:50%;flex:none;background:${p.bg};object-fit:cover;object-position:50% 0">`;const hat=p.hat==='crown'?`<path d="M14 14l4 4 6-7 6 7 4-4v8H14z" fill="#f2c14e"/>`:p.hat==='cap'?`<path d="M15 18a9 9 0 0118 0z" fill="${p.hatc}"/><rect x="24" y="16.5" width="12" height="2.6" rx="1.3" fill="${p.hatc}"/>`:`<path d="M15.5 17a8.5 8.5 0 0117 0z" fill="#3a2a24"/>`;
  return `<svg viewBox="0 0 48 48" width="${s}" height="${s}" style="border-radius:50%;flex:none"><rect width="48" height="48" fill="${p.bg}"/><rect x="12" y="29" width="24" height="24" rx="9" fill="${p.shirt}" stroke="#2a1f1d22"/><circle cx="24" cy="21" r="8.5" fill="#f6d2b8"/>${hat}<circle cx="21" cy="22" r="1" fill="#2a1f1d"/><circle cx="27" cy="22" r="1" fill="#2a1f1d"/><text x="38" y="44" font-size="13" text-anchor="middle">${p.em}</text></svg>`}
 const detail=$('detail'),panel=$('panel');
 function showDetail(ic,kick,title,html){$('dIc').innerHTML=ic;$('dKick').textContent=kick;$('dTitle').textContent=title;$('dBody').innerHTML=html;$('dBody').scrollTop=0;detail.classList.add('open');if(mob())panel.classList.remove('open')}
