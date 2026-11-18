@@ -100,6 +100,20 @@
   .kv { font-size:13px; background:#f9fafb; border-radius:12px; padding:10px 12px; line-height:1.9; word-break:break-all; }
   .kv b { display:inline-block; min-width:56px; color:var(--sub); font-weight:700; }
   .warn { background:#fff7ed; border:1.5px dashed #fdba74; color:#9a3412; border-radius:12px; padding:10px 12px; font-size:13px; line-height:1.6; margin:8px 0; }
+  .car { margin:10px -4px 6px; }
+  .trk { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+  .trk::-webkit-scrollbar { display:none; }
+  .sl { flex:0 0 100%; scroll-snap-align:start; padding:0 4px; box-sizing:border-box; }
+  .slh { display:flex; align-items:center; gap:8px; font-weight:900; font-size:16px; }
+  .slh b { width:26px; height:26px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:13px; flex:none; }
+  .slh small { margin-left:auto; color:var(--sub); font-size:12px; font-weight:700; }
+  .slt { font-size:14px; line-height:1.7; margin:6px 0 8px; min-height:48px; }
+  .sli { display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .sli img { max-width:100%; max-height:46vh; object-fit:contain; border-radius:14px; border:1px solid var(--line); box-shadow:0 2px 8px rgba(0,0,0,.08); }
+  .cnav { display:flex; align-items:center; gap:8px; margin-top:10px; }
+  .cnav .sb { padding:9px 12px; } .cnav .sb:disabled { opacity:.35; }
+  #cdots { flex:1; display:flex; justify-content:center; gap:5px; flex-wrap:wrap; }
+  #cdots i { width:7px; height:7px; border-radius:50%; background:#d1d5db; } #cdots i.on { background:var(--primary); width:16px; border-radius:4px; }
   .stp { display:flex; gap:10px; margin:12px 0; font-size:14px; line-height:1.7; }
   .stp > b { flex:none; width:26px; height:26px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:14px; margin-top:1px; }
   .stp > div { flex:1; min-width:0; }
@@ -388,23 +402,33 @@
     const o = overlay(`<h3>📱 ${self ? '我的定位設定' : '設定「' + esc(r.name) + '」'}<button class="sb x" data-close>完成</button></h3>
       ${self ? `<div class="hint" style="margin-bottom:6px">地圖上會顯示「${esc(r.name)}」和你的 LINE 大頭貼。值勤／退勤由管理員在網站切換。</div>` : ''}
       <div class="warn">⚠️ QR Code 裡有密碼，請不要截圖傳到群組。${self ? '之後再按「📱 我的QR」都會是同一組，換手機重掃即可。' : '之後在管理面板按「📱 QR」可以再叫出來。'}</div>
-      <div class="stp"><b>1</b><div>安裝 OwnTracks（免費）：<a href="https://apps.apple.com/app/id692424691" target="_blank" rel="noopener">iPhone</a>／<a href="https://play.google.com/store/apps/details?id=org.owntracks.android" target="_blank" rel="noopener">Android</a></div></div>
-      <div class="stp"><b>2</b><div>打開 App，詢問位置時選「<b>使用 App 期間允許</b>」<img src="img/s1-perm.jpg" alt="" style="max-width:200px">
-        之後 iPhone 會再問一次，選「<b>改為永遠允許</b>」。沒跳出來的話：iPhone 設定 → OwnTracks → 位置 → <b>永遠</b>。<br><span class="hint">Android：位置選「一律允許」，並關掉 OwnTracks 的電池最佳化。</span></div></div>
-      <div class="stp"><b>3</b><div><b>第一次要開一個開關</b>（每支手機只做一次）<br>左上角 <b>i</b> <img src="img/s2-i.jpg" alt="">
-        點藍字 <b>Settings</b> <img src="img/s2-settings.jpg" alt="">
-        滑到最下面，點 <b>Remote Control</b> <img src="img/s3-remote.jpg" alt="">
-        打開最上面的 <b>Allow external configuration</b>，跳出警告按確定（其他開關不要動） <img src="img/s4-allow.jpg" alt=""></div></div>
-      <div class="stp"><b>4</b><div>用這支手機的<b>相機</b>掃下面的 QR Code，選用 OwnTracks 開啟，按「<b>匯入／Import</b>」。</div></div>
-      <div class="stp"><b>5</b><div>回到 <b>Map</b>，上方模式選 <b>Move</b>：
-        <div class="seg"><span>Quiet</span><span>Manual</span><span>Significant</span><span class="on">Move</span></div>
-        之後值勤／退勤由管理員在網站切換，不用再自己按。<b>不要把 OwnTracks 從背景滑掉。</b></div></div>
-      <div class="stp"><b>✓</b><div>確認成功：<b>i</b> → Status Info，Parameters 變成 <b>https://bst-auth…</b> 開頭 <img src="img/s6-ok.jpg" alt=""></div></div>
+      <div class="car"><div class="trk" id="trk">
+        <div class="sl"><div class="slh"><b>1</b>安裝 OwnTracks<small>1/13</small></div><div class="slt">免費 App：<a href="https://apps.apple.com/app/id692424691" target="_blank" rel="noopener">iPhone</a>／<a href="https://play.google.com/store/apps/details?id=org.owntracks.android" target="_blank" rel="noopener">Android</a><br>裝好後打開，接下來會跳出幾個詢問視窗，<b>往右滑</b>看每一個要按什麼。<br><span class="hint">跳出來的順序可能不太一樣，照內容選就好。</span></div><div class="sli"></div></div>
+        <div class="sl"><div class="slh"><b>2</b>位置權限<small>2/13</small></div><div class="slt">選「<b>使用 App 期間允許</b>」<br><span class="hint">之後 iPhone 會再問一次，選「改為永遠允許」</span></div><div class="sli"><img src="img/p-loc.jpg" alt="" loading="lazy"></div></div>
+        <div class="sl"><div class="slh"><b>3</b>動作與健身<small>3/13</small></div><div class="slt">按「<b>允許</b>」（讓 App 知道你在走路還是坐車，比較省電）</div><div class="sli"><img src="img/p-motion.jpg" alt="" loading="lazy"></div></div>
+        <div class="sl"><div class="slh"><b>4</b>通知<small>4/13</small></div><div class="slt">按「<b>允許</b>」</div><div class="sli"><img src="img/p-notif.jpg" alt="" loading="lazy"></div></div>
+        <div class="sl"><div class="slh"><b>5</b>Map Interaction<small>5/13</small></div><div class="slt">按「<b>Yes</b>」（App 裡的地圖可以滑動）</div><div class="sli"><img src="img/p-mapi.jpg" alt="" loading="lazy"></div></div>
+        <div class="sl"><div class="slh"><b>6</b>地址查詢<small>6/13</small></div><div class="slt">按「<b>No</b>」（用不到）</div><div class="sli"><img src="img/p-geo.jpg" alt="" loading="lazy"></div></div>
+        <div class="sl"><div class="slh"><b>7</b>打開外部設定 1/3<small>7/13</small></div><div class="slt">左上角 <b>i</b> → 點藍字 <b>Settings</b></div><div class="sli"><img src="img/s2-i.jpg" alt="" loading="lazy"><img src="img/s2-settings.jpg" alt="" loading="lazy"></div></div>
+        <div class="sl"><div class="slh"><b>8</b>打開外部設定 2/3<small>8/13</small></div><div class="slt">滑到最下面點 <b>Remote Control</b> → 打開最上面的 <b>Allow external configuration</b></div><div class="sli"><img src="img/s3-remote.jpg" alt="" loading="lazy"><img src="img/s4-allow.jpg" alt="" loading="lazy"></div></div>
+        <div class="sl"><div class="slh"><b>9</b>打開外部設定 3/3<small>9/13</small></div><div class="slt">跳出警告，按「<b>Continue</b>」<br><span class="hint">每支手機只要做一次</span></div><div class="sli"><img src="img/p-allow-ok.jpg" alt="" loading="lazy"></div></div>
+        <div class="sl"><div class="slh"><b>10</b>匯入設定<small>10/13</small></div><div class="slt">用<b>另一支手機</b>顯示的 QR Code 掃（相機），或在這支手機按下面綠色按鈕。<br>跳出設定內容，按「<b>Continue</b>」</div><div class="sli"><img src="img/p-import.jpg" alt="" loading="lazy"></div></div>
+        <div class="sl"><div class="slh"><b>11</b>匯入成功<small>11/13</small></div><div class="slt">按「<b>Continue</b>」，上方模式會自動變成 <b>Move</b></div><div class="sli"><img src="img/p-done.jpg" alt="" loading="lazy"></div></div>
+        <div class="sl"><div class="slh"><b>12</b>最後一個提示<small>12/13</small></div><div class="slt">這是 App 內建的說明，按「<b>Continue</b>」就好，不用理它</div><div class="sli"><img src="img/p-setup.jpg" alt="" loading="lazy"></div></div>
+        <div class="sl"><div class="slh"><b>13</b>完成 ✓<small>13/13</small></div><div class="slt"><b>i</b> → Status Info 的 Parameters 是 <b>https://bst-auth…</b> 開頭就成功了。<br>位置權限記得改成<b>永遠</b>（iPhone 設定 → OwnTracks → 位置）。<b>不要把 OwnTracks 從背景滑掉。</b></div><div class="sli"><img src="img/s6-ok.jpg" alt="" loading="lazy"></div></div>
+      </div><div class="cnav"><button class="sb" id="cprev">‹ 上一步</button><span id="cdots"></span><button class="sb" id="cnext">下一步 ›</button></div></div>
       <div class="qr" id="qr"></div>
       <a class="btn g" href="${esc(link)}">在這支手機直接開啟 OwnTracks 設定</a>
       <h4>手動設定（掃不到時）</h4>
       <div class="kv"><b>模式</b> HTTP<br><b>網址</b> ${esc(OT_URL)}<br><b>帳號</b> ${esc(r.id)}<br><b>密碼</b> ${esc(r.pw)}<br><b>裝置ID</b> phone　<b>代號</b> ${esc(r.tid)}</div>`);
     o.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => load()));
+    { const trk = o.querySelector('#trk'), n = trk.children.length, dots = o.querySelector('#cdots');
+      dots.innerHTML = '<i></i>'.repeat(n);
+      const cur = () => Math.round(trk.scrollLeft / trk.clientWidth);
+      const upd = () => { const c = cur(); [...dots.children].forEach((d, k) => d.classList.toggle('on', k === c)); o.querySelector('#cprev').disabled = c <= 0; o.querySelector('#cnext').disabled = c >= n - 1; };
+      const go = d => trk.scrollTo({ left: (cur() + d) * trk.clientWidth, behavior: 'smooth' });
+      o.querySelector('#cprev').onclick = () => go(-1); o.querySelector('#cnext').onclick = () => go(1);
+      trk.addEventListener('scroll', () => requestAnimationFrame(upd)); upd(); }
     try { new QRCode(o.querySelector('#qr'), { text: link, width: 240, height: 240, correctLevel: QRCode.CorrectLevel.L }); } catch (e) { o.querySelector('#qr').textContent = 'QR Code 產生失敗，請用下面的按鈕或手動設定'; }
   }
 
