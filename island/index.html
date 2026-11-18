@@ -646,13 +646,18 @@ const ROUTE=(()=>{const raw=[],marks=[];let last=null;
  pts.forEach(p=>{const c=cellAt(p.x,p.z);p.y=(c?(c.river?.58:c.h):.4)+.08});
  for(let pass=0;pass<3;pass++)for(let i=1;i<N;i++)pts[i].y=(pts[i-1].y+pts[i].y*2+pts[i+1].y)/4;
  pts.forEach(p=>{PL.forEach(q=>{if(!q.bridge&&Math.hypot(p.x-q.x,p.z-q.z)<q.r*.97)p.y=q.top+.02})});
- {const seg=tot/N,isR=p=>{const c=cellAt(p.x,p.z);return !c||c.river};PL.filter(q=>q.bridge).forEach(q=>{let bi=0,bd=1e9;const mk=marks.find(m=>m.p===q.id),cu=mk?Math.round(mk.u*N):-1,w0=mk?Math.max(0,cu-Math.round(4/seg)):0,w1=mk?Math.min(N,cu+Math.round(4/seg)):N;for(let i=w0;i<=w1;i++){const p=pts[i],d=Math.hypot(p.x-q.x,p.z-q.z);if(d<bd){bd=d;bi=i}}
-  let i0=bi,i1=bi;const lim=Math.round(5/seg);while(i0>bi-lim&&i0>1&&isR(pts[i0-1]))i0--;while(i1<bi+lim&&i1<N-1&&isR(pts[i1+1]))i1++;const mg=Math.round(.3/seg);i0-=mg;i1+=mg;
-  const minL=Math.round(2.4/seg);if(i1-i0<minL){const c=Math.round((i0+i1)/2);i0=c-minL/2|0;i1=c+minL/2|0}
-  const blocked=p=>PL.some(o=>!o.bridge&&Math.hypot(p.x-o.x,p.z-o.z)<o.r+.15);let ra=Math.round(.9/seg),rb=ra;while(ra>3&&blocked(pts[i0-ra]))ra--;while(rb>3&&blocked(pts[i1+rb]))rb--;
-  const a0=i0-ra,a1=i1+rb,S=pts[a0].clone(),E=pts[a1].clone(),gA=pts[a0].y,gB=pts[a1].y,DK=BRH+.02;
-  for(let k=a0;k<=a1;k++){const t=(k-a0)/(a1-a0),p=pts[k];p.x=S.x+(E.x-S.x)*t;p.z=S.z+(E.z-S.z)*t;p.y=k<i0?gA+(DK-gA)*(k-a0)/Math.max(1,ra):k>i1?DK+(gB-DK)*(k-i1)/Math.max(1,rb):DK}
-  const P0=pts[i0],P1=pts[i1];q.br={cx:(P0.x+P1.x)/2,cz:(P0.z+P1.z)/2,ang:Math.atan2(P1.x-P0.x,P1.z-P0.z),L:Math.hypot(P1.x-P0.x,P1.z-P0.z),Ra:Math.hypot(P0.x-S.x,P0.z-S.z),Rb:Math.hypot(E.x-P1.x,E.z-P1.z),gA:gA-.08,gB:gB-.08,ua:a0/N,ub:a1/N}})}
+ {const seg=tot/N,riv=(x,z)=>{const c=cellAt(x,z);return !!(c&&c.river)},land=(x,z)=>{const c=cellAt(x,z);return !!(c&&!c.river)};PL.filter(q=>q.bridge).forEach(q=>{let bi=0,bd=1e9;const mk=marks.find(m=>m.p===q.id),cu=mk?Math.round(mk.u*N):-1,w0=mk?Math.max(0,cu-Math.round(4/seg)):0,w1=mk?Math.min(N,cu+Math.round(4/seg)):N;
+  for(let i=w0;i<=w1;i++){const p=pts[i];if(!riv(p.x,p.z))continue;const d=Math.hypot(p.x-q.x,p.z-q.z);if(d<bd){bd=d;bi=i}}if(bd>1e8)for(let i=w0;i<=w1;i++){const p=pts[i],d=Math.hypot(p.x-q.x,p.z-q.z);if(d<bd){bd=d;bi=i}}
+  const C=pts[bi],RC=cells.filter(c=>c.river&&Math.hypot(c.x-C.x,c.z-C.z)<2.6);let fx=1,fz=0;if(RC.length>2){let mx=0,mz=0;RC.forEach(c=>{mx+=c.x;mz+=c.z});mx/=RC.length;mz/=RC.length;let a=0,b=0,d=0;RC.forEach(c=>{const X=c.x-mx,Z=c.z-mz;a+=X*X;b+=X*Z;d+=Z*Z});const th=.5*Math.atan2(2*b,a-d);fx=Math.cos(th);fz=Math.sin(th)}
+  const T=pts[Math.min(N,bi+8)].clone().sub(pts[Math.max(0,bi-8)]);let dx=-fz,dz=fx;if(dx*T.x+dz*T.z<0){dx=-dx;dz=-dz}
+  const walk=sg=>{let t=0;while(t<4.5&&!land(C.x+dx*sg*t,C.z+dz*sg*t))t+=.1;return Math.min(t,4.5)+.35};const tb=walk(-1),tf=walk(1),S=new THREE.Vector3(C.x-dx*tb,0,C.z-dz*tb),E=new THREE.Vector3(C.x+dx*tf,0,C.z+dz*tf);
+  const blocked=(x,z)=>PL.some(o=>!o.bridge&&Math.hypot(x-o.x,z-o.z)<o.r+.15);let ra=1.0,rb=1.0;while(ra>.3&&blocked(S.x-dx*ra,S.z-dz*ra))ra-=.1;while(rb>.3&&blocked(E.x+dx*rb,E.z+dz*rb))rb-=.1;
+  const A=new THREE.Vector3(S.x-dx*ra,0,S.z-dz*ra),Bp=new THREE.Vector3(E.x+dx*rb,0,E.z+dz*rb);
+  let a0=bi,b1=bi,dd=1e9;for(let i=Math.max(1,bi-Math.round(7/seg));i<bi;i++){const d=Math.hypot(pts[i].x-A.x,pts[i].z-A.z);if(d<dd){dd=d;a0=i}}dd=1e9;for(let i=bi+1;i<Math.min(N-1,bi+Math.round(7/seg));i++){const d=Math.hypot(pts[i].x-Bp.x,pts[i].z-Bp.z);if(d<dd){dd=d;b1=i}}
+  const pre=Math.max(1,Math.round(.6/seg)),i0=Math.max(1,a0-pre),i1=Math.min(N-1,b1+pre),P0=pts[i0].clone(),P1=pts[i1].clone(),gyA=(cellAt(A.x,A.z)||{h:P0.y-.08}).h+.08,gyB=(cellAt(Bp.x,Bp.z)||{h:P1.y-.08}).h+.08,DK=BRH+.02;
+  const V=[[P0,P0.y],[A,gyA],[S,DK],[E,DK],[Bp,gyB],[P1,P1.y]],Ls=[0];for(let k=1;k<V.length;k++)Ls.push(Ls[k-1]+Math.hypot(V[k][0].x-V[k-1][0].x,V[k][0].z-V[k-1][0].z));const TL=Ls[Ls.length-1];
+  for(let k=i0;k<=i1;k++){const L=(k-i0)/(i1-i0)*TL;let m=1;while(m<V.length-1&&Ls[m]<L)m++;const f=(L-Ls[m-1])/Math.max(1e-6,Ls[m]-Ls[m-1]),a=V[m-1],b=V[m],p=pts[k];p.x=a[0].x+(b[0].x-a[0].x)*f;p.z=a[0].z+(b[0].z-a[0].z)*f;p.y=a[1]+(b[1]-a[1])*f}
+  q.br={cx:(S.x+E.x)/2,cz:(S.z+E.z)/2,ang:Math.atan2(dx,dz),L:Math.hypot(E.x-S.x,E.z-S.z),Ra:ra,Rb:rb,gA:gyA-.08,gB:gyB-.08,ua:i0/N,ub:i1/N}})}
  return{pts,N,marks,tot,curve:new THREE.CatmullRomCurve3(pts)}})();
 {PL.filter(q=>q.bridge).forEach(q=>{const R=q.br,W=1.0;q.mesh.remove(q.inner);const inn=q.model==='bridgeRed'?MODELS.bridgeRed(R.L):MODELS.bridge(undefined,undefined,R.L);sh(inn);q.mesh.add(inn);q.inner=inn;q.mesh.position.set(R.cx,0,R.cz);inn.rotation.y=R.ang;q.x=R.cx;q.z=R.cz;q.top=BRH;
  for(const[sz,RL,gy]of[[-1,R.Ra,R.gA],[1,R.Rb,R.gB]]){if(RL<.05)continue;const dh=BRH-gy,len=Math.hypot(RL,dh),ang=Math.atan2(dh,RL)*sz,zc=sz*(R.L/2+RL/2),yc=(BRH+gy)/2;
