@@ -1626,7 +1626,7 @@ export class LocHub extends DurableObject {
     if (id) { const t = this.T.get(id), pic = picOk(a.pic), rkey = cleanTxt(a.rkey, 20);
       if ((pic && t.pic !== pic) || (rkey && t.rkey !== rkey) || !t.pw) { if (pic) t.pic = pic; if (rkey) t.rkey = rkey;
         if (!t.pw) { t.pw = randStr(24); t.h = await sha256hex(t.pw); } await st.put('t:' + id, t); }
-      return { ok: true, id, pw: t.pw, tid: t.tid, name: t.name, fresh: false }; }
+      await this.onDuty(id); return { ok: true, id, pw: t.pw, tid: t.tid, name: t.name, fresh: false }; }
     const name = cleanTxt(a.name, 20) || '小組長';
     do { id = 'bst' + randStr(5, 'abcdefghijkmnpqrstuvwxyz23456789'); } while (this.T.has(id));
     const pw = randStr(24), t = { name, kind: '小組長', uid, uname: name, pic: picOk(a.pic), rkey: cleanTxt(a.rkey, 20), self: true, tid: locTid('小組長', id), h: await sha256hex(pw), pw, at: Date.now(), by: uid };
@@ -1644,11 +1644,14 @@ export class LocHub extends DurableObject {
       if (!this.T.has(r.id)) continue; (out[r.id] = out[r.id] || []).push([r.lat, r.lon, r.tst]); }
     return out;
   }
+  // 叫出設定 QR＝要開始用這支手機 → 自動設成值勤（匯入後直接是 Move，不會被切回省電）
+  async onDuty(id) { const t = this.T.get(id); if (t && t.duty === false) { t.duty = true; t.cmdAt = 0; await this.ctx.storage.put('t:' + id, t); } }
   // 綁定給這個人的裝置（車子、組長自己的…）
   bound(uid) { return [...this.T.entries()].filter(([, t]) => t.uid === uid).map(([id, t]) => ({ id, name: t.name, kind: t.kind, self: !!t.self, used: this.L.has(id) || this.P.has(id) })); }
   async boundCfg(uid, id) {
     const t = this.T.get(id); if (!t || t.uid !== uid) return { error: '這台不是綁定給你的' };
     if (!t.pw) { t.pw = randStr(24); t.h = await sha256hex(t.pw); await this.ctx.storage.put('t:' + id, t); }
+    await this.onDuty(id);
     return { ok: true, id, pw: t.pw, tid: t.tid, name: t.name, kind: t.kind };
   }
   hasSelf(uid) { return [...this.T.values()].some(t => t.uid === uid && t.self); }
@@ -1685,8 +1688,8 @@ export class LocHub extends DurableObject {
       return { ok: true, id, pw, tid: t.tid, name };
     }
     if (op === 'reset') { const t = this.T.get(a.id); if (!t) return { error: '找不到裝置' };
-      const pw = randStr(24); t.h = await sha256hex(pw); t.pw = pw; await st.put('t:' + a.id, t); return { ok: true, id: a.id, pw, tid: t.tid, name: t.name }; }
-    if (op === 'qr') { const t = this.T.get(a.id); if (!t) return { error: '找不到裝置' }; if (!t.pw) return this.admin('reset', a); return { ok: true, id: a.id, pw: t.pw, tid: t.tid, name: t.name }; }
+      const pw = randStr(24); t.h = await sha256hex(pw); t.pw = pw; await st.put('t:' + a.id, t); await this.onDuty(a.id); return { ok: true, id: a.id, pw, tid: t.tid, name: t.name }; }
+    if (op === 'qr') { const t = this.T.get(a.id); if (!t) return { error: '找不到裝置' }; if (!t.pw) return this.admin('reset', a); await this.onDuty(a.id); return { ok: true, id: a.id, pw: t.pw, tid: t.tid, name: t.name }; }
     if (op === 'del') { this.T.delete(a.id); this.L.delete(a.id); await st.delete(['t:' + a.id, 'l:' + a.id]); this.sql.exec('DELETE FROM trk WHERE id = ?', a.id); return { ok: true }; }
     if (op === 'duty') {   // { id 或 all:true, on }：退勤時位置立刻從地圖清掉
       const ids = a.all ? [...this.T.keys()] : [a.id]; let n = 0;
