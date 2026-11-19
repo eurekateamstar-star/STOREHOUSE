@@ -124,6 +124,7 @@
   .dl2 { display:flex; gap:8px; width:100%; } .dl2 .btn { flex:1; margin:0 !important; font-size:15px; padding:12px 8px; }
   .see { background:#f3f4f6; border-radius:10px; padding:8px 10px; font-size:14px; margin:4px 0 6px; }
   .tap { font-size:16px; margin:2px 0; }
+  .vid { margin-top:12px; text-align:center; } .vid video { width:100%; max-width:300px; max-height:62vh; border-radius:14px; background:#000; margin:6px auto; display:block; }
   .cheat { background:#fffbeb; border:1.5px solid #fcd34d; border-radius:14px; padding:12px 12px 6px; margin-top:12px; }
   .cht { font-weight:900; font-size:15px; } .cheat ol { margin:6px 0; padding-left:20px; font-size:13.5px; line-height:1.75; }
   .cnav { display:flex; align-items:center; gap:8px; margin-top:10px; }
@@ -491,8 +492,11 @@
       <div class="quick"><div class="hint" style="margin-bottom:8px">已經裝好 OwnTracks、設定過的手機：按這個就切換完成</div>
         <a class="btn g big" href="${esc(link)}">📲 用這支手機定位</a>
         <div class="hint" style="margin-top:8px">跳出設定內容按右邊紅字「<b>Continue</b>」→ 上方模式選 <b>Move</b> 就好。</div></div>
-      <button class="btn w" id="guide-t" style="margin-top:12px">📖 第一次使用？看安裝手冊</button>
+      <button class="btn w" id="guide-t" style="margin-top:12px">📖 第一次使用？看安裝影片＋手冊</button>
       <div id="guide" class="hidden">
+      <div class="vid"><div class="cht">🎬 跟著影片做（45 秒）</div>
+        <video src="img/guide.mp4" poster="img/guide.jpg" controls playsinline preload="none"></video>
+        <div class="hint">影片中間會切回 LINE 按綠色按鈕，你也照做就好。</div></div>
       <div class="cheat"><div class="cht">📋 小抄：手機跳出什麼 → 按什麼 <span class="hint">（建議先截圖這張）</span></div>
         <ol><li>使用你的位置嗎？→ <b>使用 App 期間允許</b></li><li>動作與健身、通知 → <b>允許</b></li><li>Map Interaction → <b>Yes</b>　Reverse Geocoding → <b>No</b></li>
         <li><b>i</b> → <b>Settings</b> → 最下面 <b>Remote Control</b> → 打開 <b>Allow external configuration</b> → <b>Continue</b></li>
@@ -517,7 +521,7 @@
     o.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => load()));
     let guideInit = false;
     o.querySelector('#guide-t').onclick = () => { const g = o.querySelector('#guide'), open = g.classList.toggle('hidden') === false;
-      o.querySelector('#guide-t').textContent = open ? '📖 收起安裝手冊' : '📖 第一次使用？看安裝手冊';
+      o.querySelector('#guide-t').textContent = open ? '📖 收起安裝手冊' : '📖 第一次使用？看安裝影片＋手冊';
       if (open && !guideInit) { guideInit = true;
     { const trk = o.querySelector('#trk'), rail = document.createElement('div'); rail.className = 'rail';
       while (trk.firstChild) rail.appendChild(trk.firstChild); trk.appendChild(rail);
