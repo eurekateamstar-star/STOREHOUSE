@@ -1644,6 +1644,13 @@ export class LocHub extends DurableObject {
       if (!this.T.has(r.id)) continue; (out[r.id] = out[r.id] || []).push([r.lat, r.lon, r.tst]); }
     return out;
   }
+  // 綁定給這個人的裝置（車子、組長自己的…）
+  bound(uid) { return [...this.T.entries()].filter(([, t]) => t.uid === uid).map(([id, t]) => ({ id, name: t.name, kind: t.kind, self: !!t.self, used: this.L.has(id) || this.P.has(id) })); }
+  async boundCfg(uid, id) {
+    const t = this.T.get(id); if (!t || t.uid !== uid) return { error: '這台不是綁定給你的' };
+    if (!t.pw) { t.pw = randStr(24); t.h = await sha256hex(t.pw); await this.ctx.storage.put('t:' + id, t); }
+    return { ok: true, id, pw: t.pw, tid: t.tid, name: t.name, kind: t.kind };
+  }
   hasSelf(uid) { return [...this.T.values()].some(t => t.uid === uid && t.self); }
   canView(uid) { return !!uid && (this.V.has(uid) || [...this.T.values()].some(t => t.uid === uid)); }
   list(uid, mgr, who) {
@@ -1765,8 +1772,9 @@ async function locRoute(req, env, json) {
     const items = await locHub(env).list(s.uid, s.m, { n: s.n });
     if (!items) return json({ error: '你沒有查看定位的權限，請找管理員開通', canSelf: true }, 403);
     try { const T = await locTeams(env); items.forEach(i => { i.team = i.rkey ? (T.today[i.rkey] || '') : ''; delete i.rkey; }); } catch (e) { items.forEach(i => delete i.rkey); }
-    const selfNeed = !!s.ld && !(await locHub(env).hasSelf(s.uid));
-    return json({ ok: true, items, mgr: s.m, canSelf: !!(s.ld || s.m), selfNeed, sess: fresh, exp: s.exp, now: Date.now() });
+    const bd = await locHub(env).bound(s.uid);
+    const selfNeed = (!!s.ld && !(await locHub(env).hasSelf(s.uid))) || bd.some(b => !b.used);   // 組長還沒產生、或綁定的裝置還沒連線過 → 自動跳設定
+    return json({ ok: true, items, mgr: s.m, canSelf: !!(s.ld || s.m || bd.length), selfNeed, sess: fresh, exp: s.exp, now: Date.now() });
   } catch (e) { return json({ error: e.code ? '請重新登入' : String((e && e.message) || e) }, e.code || 500); }
 }
 // 團員專區用：要不要顯示「定位」按鈕（只回 true/false，不含任何位置）
@@ -1780,12 +1788,18 @@ async function locCanRoute(req, env, json) {
 async function locSelfRoute(req, env, json) {
   try {
     if (!env.LOC) return json({ error: '定位功能尚未部署' }, 501);
-    const { idToken } = await req.json(); if (!idToken) return json({ error: 'login' }, 401);
+    const body = await req.json(), { idToken } = body; if (!idToken) return json({ error: 'login' }, 401);
     const me = await locMe(idToken, env); if (!me) return json({ error: '帳號尚未開通' }, 403);
-    const T = await locTeams(env), lead = me.rkey in T.leads;
-    if (!lead && !(await fullAdmin(await fsUser(idToken, me.uid), idToken, env))) return json({ error: '排班表上的小組長才能自己產生，其他人請找管理員新增' }, 403);
-    const r = await locHub(env).selfGet(me.uid, { name: me.name, pic: me.pic, rkey: me.rkey });
-    return json({ ...r, team: T.today[me.rkey] || T.leads[me.rkey] || '' });
+    const T = await locTeams(env), lead = me.rkey in T.leads, hub = locHub(env), team = T.today[me.rkey] || T.leads[me.rkey] || '';
+    const { id } = body;
+    if (id) { const r = await hub.boundCfg(me.uid, String(id)); return json(r.error ? r : { ...r, team: r.kind === '小組長' ? team : '' }, r.error ? 403 : 200); }
+    const canMake = lead || await fullAdmin(await fsUser(idToken, me.uid), idToken, env);
+    if (canMake) await hub.selfGet(me.uid, { name: me.name, pic: me.pic, rkey: me.rkey });   // 組長／管理員：確保有自己的一台
+    const mine = await hub.bound(me.uid);
+    if (!mine.length) return json({ error: '你還沒有綁定的定位裝置，請找管理員綁定' }, 403);
+    if (mine.length > 1) return json({ ok: true, choose: mine, team });
+    const r = await hub.boundCfg(me.uid, mine[0].id);
+    return json({ ...r, team: r.kind === '小組長' ? team : '' });
   } catch (e) { return json({ error: e.code ? '請重新登入' : String((e && e.message) || e) }, e.code || 500); }
 }
 async function locAdminRoute(req, env, json) {

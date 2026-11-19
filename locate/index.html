@@ -253,7 +253,7 @@
   const shown = i => filter === '全部' || i.kind === filter || sideOf(i) === filter;
   const KC = { 小組長: '#2563eb', 指揮車: '#dc2626', 物資車: '#d97706', 其他: '#6b7280' };
   const VAN = k => k === '指揮車' || k === '物資車';
-  const face = i => !i.pic && VAN(i.kind) ? `<img class="av van" src="img/van.webp" alt="">` : i.pic ? `<img class="av" src="${esc(i.pic)}" referrerpolicy="no-referrer" alt="" onerror="this.replaceWith(document.createTextNode('${EMOJI[i.kind] || '📍'}'))">` : (EMOJI[i.kind] || '📍');
+  const face = i => VAN(i.kind) ? `<img class="av van" src="img/van.webp" alt="">` : i.pic ? `<img class="av" src="${esc(i.pic)}" referrerpolicy="no-referrer" alt="" onerror="this.replaceWith(document.createTextNode('${EMOJI[i.kind] || '📍'}'))">` : (EMOJI[i.kind] || '📍');
   const label = i => (i.team ? i.team + ' ' : '') + i.name;
   const LO = l => { const m = /^轎(前|後)(\d+)/.exec(l || ''); return !m ? 999 : m[1] === '前' ? 100 - +m[2] : 200 + +m[2]; };   // 轎前（大到小）→ 轎後（小到大）
   const sideOf = i => /^轎前/.test(i.team || '') ? '轎前' : /^轎後/.test(i.team || '') ? '轎後' : '';
@@ -363,10 +363,16 @@
   };
 
   // ---------- 小組長：自己的 OwnTracks QR Code（點開就產生，同一個人每次都是同一組）----------
-  async function myQR(auto) {
-    let r; try { r = await api('/loc-self', { idToken: await user.getIdToken() }); } catch (e) { if (!auto) toast('連線失敗'); return false; }
+  async function myQR(auto, id) {
+    let r; try { r = await api('/loc-self', { idToken: await user.getIdToken(), id }); } catch (e) { if (!auto) toast('連線失敗'); return false; }
     if (r.error) { if (!auto) toast(r.error, 3500); return false; }
     $('msg').classList.add('hidden');
+    if (r.choose) {   // 綁了好幾台：先選要設定哪一支手機
+      const o = overlay(`<h3>📱 要設定哪一台？<button class="sb x" data-close>取消</button></h3><div class="hint" style="margin-bottom:10px">每一台要用不同的手機。拿著要定位的那支手機，選它對應的名稱：</div>
+        ${r.choose.map(b => `<button class="it" data-pick="${esc(b.id)}" style="width:100%;background:#fff;font:inherit;text-align:left;cursor:pointer">${VAN(b.kind) ? '<img class="pic" src="img/van.webp" alt="" style="object-fit:contain;background:#fff7ed">' : EMOJI[b.kind] || ''}<div class="m"><b>${esc(b.self && r.team ? r.team + ' ' : '')}${esc(b.name)}</b><small>${esc(b.kind)}${b.self ? '・你自己' : ''}・${b.used ? '已連線過' : '還沒設定'}</small></div><span style="font-size:20px">›</span></button>`).join('')}`);
+      o.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => { o.remove(); myQR(false, b.dataset.pick); });
+      return true;
+    }
     showConfig({ ...r, name: (r.team ? r.team + ' ' : '') + r.name }, true);
     return true;
   }
@@ -392,7 +398,7 @@
       <h4>📱 裝置（${tk.length}）</h4>
       <div class="bar2"><button class="sb" id="all-on" style="background:#dcfce7;color:#15803d">✅ 全部值勤</button><button class="sb" id="all-off">🌙 全部退勤</button></div>
       <div class="hint" style="margin-bottom:8px">值勤＝手機每 30 秒回報（Move）；退勤＝地圖留最後位置（灰色），手機改省電（Significant），不再記錄。<br>切換要等手機下次連線才生效：值勤→退勤約 30 秒；退勤→值勤要等本人打開 OwnTracks。</div>
-      ${tk.map(t => `<div class="it tk"><div class="m">${t.pic ? `<img class="pic" src="${esc(t.pic)}" referrerpolicy="no-referrer" alt="">` : VAN(t.kind) ? `<img class="pic" src="img/van.webp" alt="" style="object-fit:contain;background:#fff7ed">` : EMOJI[t.kind] || ''} <b>${esc(t.name)}</b>${t.self ? ' <span class="hint">（組長自己產生）</span>' : ''}
+      ${tk.map(t => `<div class="it tk"><div class="m">${t.pic && !VAN(t.kind) ? `<img class="pic" src="${esc(t.pic)}" referrerpolicy="no-referrer" alt="">` : VAN(t.kind) ? `<img class="pic" src="img/van.webp" alt="" style="object-fit:contain;background:#fff7ed">` : EMOJI[t.kind] || ''} <b>${esc(t.name)}</b>${t.self ? ' <span class="hint">（組長自己產生）</span>' : ''}
           <small>${esc(t.kind)}${t.uname ? '・綁定 ' + esc(t.uname) : ''}・${t.ping ? '最後連線 ' + esc(ago(t.ping, Date.now())) : t.last ? '最後上傳 ' + esc(ago(t.last, Date.now())) : '還沒收到位置'}${modeTxt(t) ? '・' + esc(modeTxt(t)) : ''}</small></div>
           <button class="duty ${t.duty === false ? 'off' : 'on'}" data-d="${esc(t.id)}">${t.duty === false ? '🌙 退勤' : '✅ 值勤'}</button>
           <button class="sb" data-edit="${esc(t.id)}">編輯</button><button class="sb" data-qr="${esc(t.id)}">📱 QR</button><button class="sb d" data-del="${esc(t.id)}">刪除</button></div>`).join('') || '<div class="hint">還沒有裝置</div>'}
@@ -456,7 +462,7 @@
     const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(cfg))));
     const link = 'owntracks:///config?inline=' + encodeURIComponent(b64);
     const o = overlay(`<h3>📱 ${self ? '我的定位設定' : '設定「' + esc(r.name) + '」'}<button class="sb x" data-close>完成</button></h3>
-      ${self ? `<div class="hint" style="margin-bottom:6px">地圖上會顯示「${esc(r.name)}」和你的 LINE 大頭貼。值勤／退勤由管理員在網站切換。</div>` : ''}
+      ${self ? `<div class="hint" style="margin-bottom:6px">地圖上會顯示「${esc(r.name)}」${VAN(r.kind) ? '（橘色專車圖示）。請用<b>放在這台車上的手機</b>設定' : '和你的 LINE 大頭貼'}。值勤／退勤由管理員在網站切換。</div>` : ''}
       <div class="warn">⚠️ QR Code 裡有密碼，請不要截圖傳到群組。${self ? '之後再按「📱 我的QR」都會是同一組，換手機重掃即可。' : '之後在管理面板按「📱 QR」可以再叫出來。'}</div>
       <div class="car"><div class="trk" id="trk">
         <div class="sl"><div class="slh"><b>1</b>安裝 OwnTracks<small>1/9</small></div><div class="slt">免費 App，先下載安裝：</div><div class="sli"><img src="img/p-app.jpg" alt="" style="max-width:320px;border-radius:14px"><div class="hint" style="text-align:center;margin:-2px 0 6px">認明這個藍色圖示（App Store 上會顯示「取得」）</div>
