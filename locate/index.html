@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>團員定位｜白沙屯拱天宮醫護團</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -10,6 +10,7 @@
 <style>
   :root { --primary:#D65A68; --accent:#F08339; --ink:#1f2430; --sub:#6b7280; --line:#e5e7eb; --green:#16a34a; --red:#dc2626; --amber:#d97706; --blue:#2563eb; }
   * { box-sizing:border-box; }
+  html, body, button, a, .top, .sheet, .ov, .pn { touch-action:manipulation; }   /* 禁止連點兩下放大（iPhone 會把整頁放大，上方工具列和清單跑出畫面） */
   html, body { margin:0; height:100%; overflow:hidden; overscroll-behavior:none; max-width:100vw; font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC","PingFang TC",sans-serif; color:var(--ink); background:#f6f6f8; }
   .hidden { display:none !important; }
   #map { position:fixed; left:0; right:0; top:0; height:100vh; height:100dvh; z-index:1; }
@@ -497,6 +498,8 @@
     try { new QRCode(o.querySelector('#qr'), { text: link, width: 240, height: 240, correctLevel: QRCode.CorrectLevel.L }); } catch (e) { o.querySelector('#qr').textContent = 'QR Code 產生失敗，請用下面的按鈕或手動設定'; }
   }
 
+  // iPhone：擋掉整頁縮放手勢（地圖本身的縮放不受影響）
+  document.addEventListener('gesturestart', e => { if (!e.target.closest('#map')) e.preventDefault(); }, { passive: false });
   await load(); start();
 </script>
 </body>
