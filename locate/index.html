@@ -498,10 +498,14 @@
       ${self ? `<div class="hint" style="margin-bottom:6px">地圖上會顯示「${esc(r.name)}」${VAN(r.kind) ? '（橘色專車圖示）。請用<b>放在這台車上的手機</b>設定' : '和你的 LINE 大頭貼'}。值勤／退勤由管理員在網站切換。</div>` : ''}
       <div class="warn">⚠️ QR Code 裡有密碼，請不要截圖傳到群組。${self ? '之後再按「📱 我的QR」都會是同一組，換手機重掃即可。' : '之後在管理面板按「📱 QR」可以再叫出來。'}</div>
 
+${r.used === false ? `      <button class="first" id="guide-t"><span class="fp"><img src="img/guide.jpg" alt=""><i>▶</i></span><span class="ft"><b>第一次使用？</b><span>先看安裝影片（55 秒）</span><small>還沒裝 OwnTracks 的人按這裡</small></span></button>
       <div class="quick"><div class="hint" style="margin-bottom:8px">已經裝好 OwnTracks、設定過的手機：按這個就切換完成</div>
         <a class="btn g big" href="${esc(link)}">📲 用這支手機定位</a>
         <div class="hint" style="margin-top:8px">跳出設定內容按右邊紅字「<b>Continue</b>」→ 上方模式選 <b>Move</b> 就好。</div></div>
-      <button class="first" id="guide-t"><span class="fp"><img src="img/guide.jpg" alt=""><i>▶</i></span><span class="ft"><b>第一次使用？</b><span>先看安裝影片（55 秒）</span><small>還沒裝 OwnTracks 的人按這裡</small></span></button>
+` : `      <div class="quick"><div class="hint" style="margin-bottom:8px">已經裝好 OwnTracks、設定過的手機：按這個就切換完成</div>
+        <a class="btn g big" href="${esc(link)}">📲 用這支手機定位</a>
+        <div class="hint" style="margin-top:8px">跳出設定內容按右邊紅字「<b>Continue</b>」→ 上方模式選 <b>Move</b> 就好。</div></div>
+      <button class="first" id="guide-t"><span class="fp"><img src="img/guide.jpg" alt=""><i>▶</i></span><span class="ft"><b>第一次使用？</b><span>先看安裝影片（55 秒）</span><small>還沒裝 OwnTracks 的人按這裡</small></span></button>`}
       <div id="guide" class="hidden">
       <div class="vid"><div class="cht">🎬 跟著影片做（55 秒）</div>
         <video src="img/guide.mp4" poster="img/guide.jpg" controls playsinline preload="none"></video>
@@ -526,9 +530,10 @@
       <div class="kv"><b>模式</b> HTTP<br><b>網址</b> ${esc(OT_URL)}<br><b>帳號</b> ${esc(r.id)}<br><b>密碼</b> ${esc(r.pw)}<br><b>裝置ID</b> phone　<b>代號</b> ${esc(r.tid)}</div></details>`);
     o.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => load()));
     let guideInit = false;
+    let auto1 = false;
     o.querySelector('#guide-t').onclick = () => { const g = o.querySelector('#guide'), open = g.classList.toggle('hidden') === false;
       o.querySelector('#guide-t').classList.toggle('open', open); o.querySelector('#guide-t .ft').innerHTML = open ? '<b>收起安裝影片</b><small>影片和圖文步驟在下面 ↓</small>' : '<b>第一次使用？</b><span>先看安裝影片（55 秒）</span><small>還沒裝 OwnTracks 的人按這裡</small>';
-      if (open) { const v = o.querySelector('#guide video'); setTimeout(() => { v.scrollIntoView({ behavior: 'smooth', block: 'center' }); try { v.play(); } catch (e) {} }, 150); }
+      if (open && !auto1) { const v = o.querySelector('#guide video'); setTimeout(() => { v.scrollIntoView({ behavior: 'smooth', block: 'center' }); try { v.play(); } catch (e) {} }, 150); }
       if (open && !guideInit) { guideInit = true;
     { const trk = o.querySelector('#trk'), rail = document.createElement('div'); rail.className = 'rail';
       while (trk.firstChild) rail.appendChild(trk.firstChild); trk.appendChild(rail);
@@ -549,6 +554,10 @@
       rail.querySelectorAll('img').forEach(im => im.addEventListener('load', fit));
       set(0, false); }
       } };
+    if (r.used === false) { auto1 = true; o.querySelector('#guide-t').click(); auto1 = false;   // 還沒連線過＝應該還沒裝：直接展開安裝影片
+      o.querySelector('#guide-t .ft').innerHTML = '<b>📥 這台還沒設定過</b><small>先照影片裝好 OwnTracks，再按最下面的綠色按鈕</small>';
+      const q = o.querySelector('.quick'); o.querySelector('#guide').after(q); q.style.marginTop = '16px';
+      q.querySelector('.hint').innerHTML = '<b>看完影片、裝好 App、打開開關之後</b>，按這個匯入設定：'; }
     try { new QRCode(o.querySelector('#qr'), { text: link, width: 240, height: 240, correctLevel: QRCode.CorrectLevel.L }); } catch (e) { o.querySelector('#qr').textContent = 'QR Code 產生失敗，請用下面的按鈕或手動設定'; }
   }
 
