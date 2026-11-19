@@ -233,24 +233,24 @@ const hexGeo=new THREE.CylinderGeometry(R*.965,R*.965,1,6);hexGeo.translate(0,.5
  const coast=(x,z)=>{for(const[dx,dz]of[[W,0],[-W,0],[W/2,H],[-W/2,H],[W/2,-H],[-W/2,-H]]){const k=Math.round((x+dx)*2)+','+Math.round((z+dz)*2);if(!FK.has(k)&&!cellAt(x+dx,z+dz))return true}return false};
  F.forEach(([x,z],i)=>{const e=twElev(toLon(x),toLat(z)),h=elevH(e),rv=onRiv(x,z)&&e<900,cs=!rv&&e<40&&coast(x,z),hh=rv?.16:cs?.22:h;d.position.set(x,0,z);d.scale.set(1,hh,1);d.updateMatrix();fm.setMatrixAt(i,d.matrix);
   const ty=rv?'river':cs?'sand':e>520?'mtn':e>75?'hill':(hash(x*3,z*3)<.12?'urban':'plain'),a=PAL[ty];cc.setHex(a[Math.floor(hash(x,z)*a.length)]);if(ty==='mtn'&&e>1300)cc.lerp(c3.setHex(0xb9c2ae),Math.min(.75,.4+(e-1300)/5000));
-  if(!rv)cc.lerp(c3.setHex(0xdfe4d8),.38);fm.setColorAt(i,cc)});fm.receiveShadow=true;scene.add(fm)}
+  if(!rv)cc.lerp(c3.setHex(0xdfe4d8),.14);fm.setColorAt(i,cc)});fm.receiveShadow=true;scene.add(fm)}
 const hexMesh=new THREE.InstancedMesh(hexGeo,M(0xffffff),cells.length);const dm=new THREE.Object3D(),col=new THREE.Color(),c2=new THREE.Color();
 cells.forEach((c,i)=>{dm.position.set(c.x,0,c.z);dm.rotation.set(0,0,0);dm.scale.set(1,c.h,1);dm.updateMatrix();hexMesh.setMatrixAt(i,dm.matrix);
  const a=PAL[c.type];col.setHex(a[Math.floor(hash(c.x,c.z)*a.length)]);
  if(c.type!=='river'&&c.type!=='sand'){if(TINT[c.county])col.lerp(c2.setHex(TINT[c.county]),c.type==='urban'?.05:.13);else col.lerp(c2.setHex(0xcdd3c2),.5)}
  if(c.type==='mtn'&&c.e>1300)col.lerp(c2.setHex(0xb9c2ae),.5);
- if(c.de<5&&c.type!=='river')col.lerp(c2.setHex(0xdfe4d8),(1-c.de/5)*.38);hexMesh.setColorAt(i,col)});
+ if(c.de<10&&c.type!=='river')col.lerp(c2.setHex(0xdfe4d8),(1-Math.max(0,c.de)/10)*.14);hexMesh.setColorAt(i,col)});
 hexMesh.castShadow=hexMesh.receiveShadow=true;scene.add(hexMesh);
 
 // ---- borders (county / town) on hex edges
 {const cp=[],tp=[];cells.forEach(c=>{NB(c.r).forEach(([dr,dc],k)=>{if(k%2===0&&dr===0)return;const n=cmap.get(key(c.r+dr,c.c+dc));if(!n||n.ti===c.ti)return;if(dr<0||(dr===0&&dc<0))return;
-  if(c.river||n.river)return;const mx=(c.x+n.x)/2,mz=(c.z+n.z)/2,dx=n.x-c.x,dz=n.z-c.z,l=Math.hypot(dx,dz),px=-dz/l*R/2,pz=dx/l*R/2,y=Math.max(c.h,n.h)+.04;
+  if(c.river||n.river)return;const fa=Math.min(c.de,n.de);if(fa<7&&hash(c.x+n.x,c.z+n.z)>fa/7)return;const mx=(c.x+n.x)/2,mz=(c.z+n.z)/2,dx=n.x-c.x,dz=n.z-c.z,l=Math.hypot(dx,dz),px=-dz/l*R/2,pz=dx/l*R/2,y=Math.max(c.h,n.h)+.04;
   (c.county!==n.county?cp:tp).push(mx-px,y,mz-pz,mx+px,y,mz+pz)})});
  const mk=(a,o)=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(a,3));scene.add(new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:o})))};
  mk(cp,.95);mk(tp,.28)}
 
 // ---- trees / houses
-{const L=[];cells.forEach(c=>{const t=c.type,n=t==='mtn'?2:t==='hill'?(hash(c.x,c.z*3)<.8?1:0):t==='plain'?(hash(c.x*5,c.z)<.17?1:0):t==='urban'?(hash(c.x*5,c.z)<.25?1:0):0;
+{const L=[];cells.forEach(c=>{if(c.de<10&&hash(c.z*1.3,c.x*7.1)>c.de/10)return;const t=c.type,n=t==='mtn'?2:t==='hill'?(hash(c.x,c.z*3)<.8?1:0):t==='plain'?(hash(c.x*5,c.z)<.17?1:0):t==='urban'?(hash(c.x*5,c.z)<.25?1:0):0;
   for(let k=0;k<n;k++){const a=hash(c.x+k,c.z)*6.28,r=.12+hash(c.z,c.x+k)*.42;if(nearPlace(c.x+Math.cos(a)*r,c.z+Math.sin(a)*r))continue;L.push({x:c.x+Math.cos(a)*r,y:c.h,z:c.z+Math.sin(a)*r,s:(t==='plain'||t==='urban'?.6:.75)+hash(k,c.x)*.6,cone:t==='mtn'&&hash(c.x,k+c.z)<.45,k:hash(c.z+k,c.x)})}});
  const bg=new THREE.IcosahedronGeometry(.27,0);bg.translate(0,.5,0);const cg=new THREE.ConeGeometry(.24,.7,6);cg.translate(0,.5,0);const tg=new THREE.CylinderGeometry(.04,.06,.3,5);tg.translate(0,.15,0);
  const nb=L.filter(o=>!o.cone).length,B1=new THREE.InstancedMesh(bg,M(0xffffff),nb),C1=new THREE.InstancedMesh(cg,M(0xffffff),L.length-nb),T1=new THREE.InstancedMesh(tg,M(0x8a6a4a),L.length);let ib=0,ic=0;
