@@ -367,7 +367,7 @@ function beigangDeco(g,p,W){const Y=.18;
  const arc=(a,b,n,sag)=>{for(let i=0;i<n;i++){const t=i/(n-1),m=redBall(.085);m.position.set(a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t-Math.sin(Math.PI*t)*sag,a[2]+(b[2]-a[2])*t);g.add(m)}};
  arc([-1.55,Y+1.05,1.25],[-.25,Y+1.25,-.45],9,.28);arc([1.55,Y+1.05,1.25],[.25,Y+1.25,-.45],9,.28);arc([-1.6,Y+1.0,.35],[1.6,Y+1.0,.45],11,.22);
  for(const[x,z]of[[-1.55,1.25],[1.55,1.25],[-1.6,.35],[1.6,.45]])g.add(C(.015,.022,1.05,0xc9382e,x,Y,z,6));
- {const A=[C(.03,.035,.9,0xc9382e,-.58,Y,1.7,6),C(.03,.035,.9,0xc9382e,.58,Y,1.7,6),B(1.3,.18,.02,0xd9382e,0,Y+.72,1.7),B(1.3,.03,.022,0xf2c14e,0,Y+.7,1.7),B(1.3,.03,.022,0xf2c14e,0,Y+.9,1.7)];for(let i=0;i<7;i++){const l=redBall(.045);l.position.set(-.48+i*.16,Y+.64,1.7);A.push(l)}A.forEach(m=>{m.material=m.material.clone();m.material.transparent=true;m.userData.arch=1;g.add(m);ARCH.push(m)})}g.add(B(1.0,.006,1.95,0xe9d9c6,0,Y,.82));
+ {const A=[C(.03,.035,.9,0xc9382e,-.58,Y,1.7,6),C(.03,.035,.9,0xc9382e,.58,Y,1.7,6),B(1.3,.18,.02,0xd9382e,0,Y+.72,1.7),B(1.3,.03,.022,0xf2c14e,0,Y+.7,1.7),B(1.3,.03,.022,0xf2c14e,0,Y+.9,1.7)];for(let i=0;i<7;i++){const l=redBall(.045);l.position.set(-.48+i*.16,Y+.64,1.7);A.push(l)}A.forEach(m=>{m.material=m.material.clone();m.material.transparent=true;m.userData.arch=1;g.add(m);ARCH.push(m)})}g.add(B(1.0,.014,1.95,0xe9d9c6,0,Y+.004,.82));
  g.add(B(.3,.14,.44,0xf2b01a,1.5,Y,1.5),B(.2,.12,.2,0xf2b01a,1.5,Y+.14,1.45));const boom=B(.05,1.9,.05,0xf2b01a,0,0,0);boom.position.set(1.14,Y+1.05,1.5);boom.rotation.z=.42;g.add(boom);g.add(B(.035,1.25,.035,0xd9382e,.76,Y+.6,1.5),B(.012,.2,.012,0x333333,.76,Y+1.8,1.5));
  for(const[x,z]of[[-1.55,-.2],[1.5,.95]]){g.add(C(.012,.012,.42,0xdddddd,x,Y,z,5));const u=new THREE.Mesh(new THREE.ConeGeometry(.32,.14,10),M(0xe0283c));u.position.set(x,Y+.48,z);g.add(u);const u2=new THREE.Mesh(new THREE.ConeGeometry(.17,.08,10),M(0xffffff));u2.position.set(x,Y+.53,z);g.add(u2)}
  g.add(C(.13,.13,.15,0xc9382e,-1.1,Y+.1,1.45,12),C(.135,.135,.02,0xf6efe6,-1.1,Y+.25,1.45,12),B(.2,.1,.2,0x8a6a4a,-1.1,Y,1.45));
@@ -492,7 +492,7 @@ function tube(a,b,color){const i0=Math.round(a*ROUTE.N),i1=Math.round(b*ROUTE.N)
  const mk=r=>{const g=new THREE.TubeGeometry(c,seg,r,5,false);const ghost=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color,transparent:true,opacity:.3}));const solid=new THREE.Mesh(g.clone(),new THREE.MeshBasicMaterial({color}));scene.add(ghost,solid);return{ghost,solid}};
  return{a,b,seg,thin:mk(.06),fat:mk(.2)}}
 const tubes=[tube(0,uGo,0xe85a8c),tube(uGo,1,0xd2922a)];
-{const P=ROUTE.pts,n=P.length,pos=new Float32Array(n*6),idx=[],w=.58;for(let i=0;i<n;i++){const a=P[Math.max(0,i-1)],b=P[Math.min(n-1,i+1)];let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;const p=P[i],y=p.y-.045;
+{const P=ROUTE.pts,n=P.length,pos=new Float32Array(n*6),idx=[],w=.58;for(let i=0;i<n;i++){const a=P[Math.max(0,i-1)],b=P[Math.min(n-1,i+1)];let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;const p=P[i],y=p.y-(PL.some(q=>!q.bridge&&Math.hypot(p.x-q.x,p.z-q.z)<q.r+.1)?.25:.045);
   pos.set([p.x+tz*w,y,p.z-tx*w,p.x-tz*w,y,p.z+tx*w],i*6);if(i<n-1)idx.push(i*2,i*2+1,i*2+2,i*2+1,i*2+3,i*2+2)}
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:0xe6ded0,roughness:1,side:THREE.DoubleSide}));m.receiveShadow=true;scene.add(m)}
 // bridges face the route
