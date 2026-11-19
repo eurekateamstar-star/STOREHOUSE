@@ -122,6 +122,10 @@
   .g2 figcaption { font-size:12.5px; line-height:1.45; margin-top:2px; }
   .hero { width:200px; height:auto; margin:4px auto 10px; display:block; }
   .dl2 { display:flex; gap:8px; width:100%; } .dl2 .btn { flex:1; margin:0 !important; font-size:15px; padding:12px 8px; }
+  .see { background:#f3f4f6; border-radius:10px; padding:8px 10px; font-size:14px; margin:4px 0 6px; }
+  .tap { font-size:16px; margin:2px 0; }
+  .cheat { background:#fffbeb; border:1.5px solid #fcd34d; border-radius:14px; padding:12px 12px 6px; margin-top:12px; }
+  .cht { font-weight:900; font-size:15px; } .cheat ol { margin:6px 0; padding-left:20px; font-size:13.5px; line-height:1.75; }
   .cnav { display:flex; align-items:center; gap:8px; margin-top:10px; }
   .cnav .sb { padding:9px 12px; } .cnav .sb:disabled { opacity:.35; }
   #cdots { flex:1; display:flex; justify-content:center; gap:5px; flex-wrap:wrap; }
@@ -487,20 +491,23 @@
       <div class="quick"><div class="hint" style="margin-bottom:8px">已經裝好 OwnTracks、設定過的手機：按這個就切換完成</div>
         <a class="btn g big" href="${esc(link)}">📲 用這支手機定位</a>
         <div class="hint" style="margin-top:8px">跳出設定內容按右邊紅字「<b>Continue</b>」→ 上方模式選 <b>Move</b> 就好。</div></div>
-      <button class="btn w" id="guide-t" style="margin-top:12px">📖 第一次使用？安裝使用手冊（9 步）</button>
+      <button class="btn w" id="guide-t" style="margin-top:12px">📖 第一次使用？看安裝手冊</button>
       <div id="guide" class="hidden">
+      <div class="cheat"><div class="cht">📋 小抄：手機跳出什麼 → 按什麼 <span class="hint">（建議先截圖這張）</span></div>
+        <ol><li>使用你的位置嗎？→ <b>使用 App 期間允許</b></li><li>動作與健身、通知 → <b>允許</b></li><li>Map Interaction → <b>Yes</b>　Reverse Geocoding → <b>No</b></li>
+        <li><b>i</b> → <b>Settings</b> → 最下面 <b>Remote Control</b> → 打開 <b>Allow external configuration</b> → <b>Continue</b></li>
+        <li>回這個網頁按<b>綠色按鈕</b> → App 裡按 <b>Continue</b>（共 3 次）</li><li>未使用 App 時也可使用位置嗎？→ <b>保留只在使用期間</b></li><li>上方選 <b>Move</b>，值勤時不要滑掉 App</li></ol></div>
+      <div class="hint" style="margin:10px 0 0">看不懂哪一步？往下有每一步的圖：</div>
       <div class="car"><div class="trk" id="trk">
-        <div class="sl"><div class="slh"><b>1</b>安裝 OwnTracks<small>1/9</small></div><div class="slt">免費 App，先下載安裝：</div><div class="sli"><img src="img/p-app.jpg" alt="" style="max-width:320px;border-radius:14px"><div class="hint" style="text-align:center;margin:-2px 0 6px">認明這個藍色圖示（App Store 上會顯示「取得」）</div>
-          <div class="dl2"><a class="btn" href="https://apps.apple.com/app/id692424691" target="_blank" rel="noopener" style="background:#111827">iPhone 下載</a><a class="btn" href="https://play.google.com/store/apps/details?id=org.owntracks.android" target="_blank" rel="noopener" style="background:#15803d">Android 下載</a></div>
-          <div class="slt" style="text-align:center">裝好後打開，會跳出幾個詢問視窗<br><b>往右滑 →</b> 看每個要按什麼</div></div></div>
-        <div class="sl"><div class="slh"><b>2</b>位置權限<small>2/9</small></div><div class="imp">⚠️ 重要：一定不能點錯</div><div class="slt">選「<b>使用 App 期間允許</b>」<br><span class="hint">不要選「允許一次」或「不允許」。之後還會再問一次（第 8 步）。</span></div><div class="sli"><img src="img/p-loc.jpg" alt=""></div></div>
-        <div class="sl"><div class="slh"><b>3</b>其他詢問視窗<small>3/9</small></div><div class="easy">👌 選哪個都可以，照下面選就好</div><div class="slt"><span class="hint">跳出來的順序可能不一樣</span></div><div class="sli"><div class="g2"><figure><img src="img/p-motion.jpg" alt=""><figcaption>✅ 動作與健身 → <b>允許</b></figcaption></figure><figure><img src="img/p-notif.jpg" alt=""><figcaption>✅ 通知 → <b>允許</b></figcaption></figure><figure><img src="img/p-mapi.jpg" alt=""><figcaption>✅ Map Interaction → <b>Yes</b></figcaption></figure><figure><img src="img/p-geo.jpg" alt=""><figcaption>✅ 地址查詢 → <b>No</b></figcaption></figure></div></div></div>
-        <div class="sl"><div class="slh"><b>4</b>打開外部設定<small>4/9</small></div><div class="imp">⚠️ 重要：一定不能點錯</div><div class="slt">每支手機只要做一次，照順序點：</div><div class="sli"><div class="g2"><figure><img src="img/s2-i.jpg" alt=""><figcaption>① 左上角 <b>i</b></figcaption></figure><figure><img src="img/s2-settings.jpg" alt=""><figcaption>② 藍字 <b>Settings</b></figcaption></figure><figure><img src="img/s3-remote.jpg" alt=""><figcaption>③ 最下面 <b>Remote Control</b></figcaption></figure><figure><img src="img/s4-allow.jpg" alt=""><figcaption>④ 打開 <b>Allow external configuration</b></figcaption></figure></div><span class="hint">只開這一個，其他開關不要動。</span></div></div>
-        <div class="sl"><div class="slh"><b>5</b>確認打開<small>5/9</small></div><div class="imp">⚠️ 重要：一定不能點錯</div><div class="slt">跳出警告，按右邊紅字「<b>Continue</b>」<br><span class="hint">按 Cancel 的話要回上一步重開</span></div><div class="sli"><img src="img/p-allow-ok.jpg" alt=""></div></div>
-        <div class="sl"><div class="slh"><b>6</b>匯入設定<small>6/9</small></div><div class="imp">⚠️ 重要：一定不能點錯</div><div class="slt"><b>① 先按這個綠色按鈕</b>（在要定位的這支手機上按）</div><div class="sli"><a class="btn g" href="${esc(link)}" style="width:100%;max-width:340px">📲 按這裡匯入設定</a><div class="slt" style="width:100%;margin-top:10px"><b>② 跳出設定內容，按右邊紅字「Continue」</b></div><img src="img/p-import.jpg" alt=""></div></div>
-        <div class="sl"><div class="slh"><b>7</b>匯入成功<small>7/9</small></div><div class="easy">👌 選哪個都可以，照下面選就好</div><div class="slt">接下來兩個視窗都按「<b>Continue</b>」。上方模式會自動變成 <b>Move</b>。</div><div class="sli"><div class="g2"><figure><img src="img/p-done.jpg" alt=""><figcaption>✅ 匯入成功 → <b>Continue</b></figcaption></figure><figure><img src="img/p-setup.jpg" alt=""><figcaption>✅ 內建提示 → <b>Continue</b></figcaption></figure></div></div></div>
-        <div class="sl"><div class="slh"><b>8</b>背景位置<small>8/9</small></div><div class="imp">⚠️ 重要：一定不能點錯</div><div class="slt">之後回到 App 時會跳出這個，按「<b>保留只在使用期間</b>」<br><span class="hint">值勤時讓 OwnTracks 開在背景就會持續回報；<b>把 App 往上滑掉＝停止分享位置</b>。</span></div><div class="sli"><img src="img/p-always.jpg" alt=""></div></div>
-        <div class="sl"><div class="slh"><b>9</b>完成 ✓<small>9/9</small></div><div class="slt"><b>i</b> → Status Info 的 Parameters 是 <b>https://bst-auth…</b> 開頭就成功了。<br>值勤時<b>不要把 OwnTracks 從背景滑掉</b>（滑掉就停止分享，重新打開 App 就恢復）。</div><div class="sli"><img src="img/s6-ok.jpg" alt=""></div></div>
+        <div class="sl"><div class="slh"><b>1</b>下載 App<small>1/9</small></div><div class="slt">先到 App Store／Google Play 下載 <b>OwnTracks</b>（免費）。</div><div class="sli"><img src="img/p-app.jpg" alt="" style="max-width:320px;border-radius:14px"><div class="dl2" style="margin-top:8px"><a class="btn" href="https://apps.apple.com/app/id692424691" target="_blank" rel="noopener" style="background:#111827">iPhone 下載</a><a class="btn" href="https://play.google.com/store/apps/details?id=org.owntracks.android" target="_blank" rel="noopener" style="background:#15803d">Android 下載</a></div><div class="slt" style="text-align:center;margin-top:10px">裝好後<b>打開 App</b>，接著會一直跳出問題<br>照下一頁回答 →</div></div></div>
+        <div class="sl"><div class="slh"><b>2</b>第一個問題：位置<small>2/9</small></div><div class="imp">⚠️ 這步一定要按對</div><div class="slt"><div class="see">手機跳出：<b>要允許「OwnTracks」使用你的位置嗎？</b></div><div class="tap">👉 按「<b>使用 App 期間允許</b>」</div></div><div class="sli"><img src="img/p-loc.jpg" alt=""></div></div>
+        <div class="sl"><div class="slh"><b>3</b>接著 4 個問題<small>3/9</small></div><div class="easy">👌 照著按就好</div><div class="slt"><span class="hint">順序可能不一樣，看標題對照：</span></div><div class="sli"><div class="g2"><figure><img src="img/p-motion.jpg" alt=""><figcaption>「動作與健身」<br>👉 <b>允許</b></figcaption></figure><figure><img src="img/p-notif.jpg" alt=""><figcaption>「傳送通知」<br>👉 <b>允許</b></figcaption></figure><figure><img src="img/p-mapi.jpg" alt=""><figcaption>「Map Interaction」<br>👉 <b>Yes</b></figcaption></figure><figure><img src="img/p-geo.jpg" alt=""><figcaption>「Reverse Geocoding」<br>👉 <b>No</b></figcaption></figure></div></div></div>
+        <div class="sl"><div class="slh"><b>4</b>打開一個開關（只做一次）<small>4/9</small></div><div class="imp">⚠️ 這步一定要按對</div><div class="slt">讓 App 可以接收我們的設定。照順序點：</div><div class="sli"><div class="g2"><figure><img src="img/s2-i.jpg" alt=""><figcaption>① 左上角 <b>i</b></figcaption></figure><figure><img src="img/s2-settings.jpg" alt=""><figcaption>② 藍字 <b>Settings</b></figcaption></figure><figure><img src="img/s3-remote.jpg" alt=""><figcaption>③ 滑到最下面<br>點 <b>Remote Control</b></figcaption></figure><figure><img src="img/s4-allow.jpg" alt=""><figcaption>④ 打開第一個開關<br><b>Allow external configuration</b></figcaption></figure></div></div></div>
+        <div class="sl"><div class="slh"><b>5</b>開關的警告<small>5/9</small></div><div class="imp">⚠️ 這步一定要按對</div><div class="slt"><div class="see">手機跳出：<b>Allow external configuration?</b></div><div class="tap">👉 按「<b>Continue（右邊紅字）</b>」</div></div><div class="sli"><img src="img/p-allow-ok.jpg" alt=""></div></div>
+        <div class="sl"><div class="slh"><b>6</b>回到這個網頁，匯入設定<small>6/9</small></div><div class="imp">⚠️ 這步一定要按對</div><div class="slt"><b>① 切回 LINE 這個網頁</b>，按下面綠色按鈕：</div><div class="sli"><a class="btn g" href="${esc(link)}" style="width:100%;max-width:340px">📲 用這支手機定位</a><div class="slt" style="width:100%;margin-top:10px"><b>② 會自動跳回 App</b>，手機跳出「Process Configuration」<br>👉 按「<b>Continue（右邊紅字）</b>」</div><img src="img/p-import.jpg" alt=""></div></div>
+        <div class="sl"><div class="slh"><b>7</b>再 2 個視窗<small>7/9</small></div><div class="easy">👌 照著按就好</div><div class="slt">都按「<b>Continue</b>」</div><div class="sli"><div class="g2"><figure><img src="img/p-done.jpg" alt=""><figcaption>「openURL」<br>👉 <b>Continue</b></figcaption></figure><figure><img src="img/p-setup.jpg" alt=""><figcaption>「Setup」<br>👉 <b>Continue</b></figcaption></figure></div></div></div>
+        <div class="sl"><div class="slh"><b>8</b>最後一個問題：背景位置<small>8/9</small></div><div class="imp">⚠️ 這步一定要按對</div><div class="slt"><div class="see">手機跳出：<b>在你未使用 App 時也可使用你的位置嗎？</b></div><div class="tap">👉 按「<b>保留只在使用期間</b>」</div></div><div class="sli"><img src="img/p-always.jpg" alt=""></div></div>
+        <div class="sl"><div class="slh"><b>9</b>完成 🎉<small>9/9</small></div><div class="slt">上方模式是 <b>Move</b> 就好了。<div class="seg"><span>Quiet</span><span>Manual</span><span>Significant</span><span class="on">Move</span></div><br>⚠️ 值勤時<b>不要把 OwnTracks 往上滑掉</b>（滑掉＝停止分享，重新打開就恢復）。</div><div class="sli"></div></div>
       </div><div class="cnav"><button class="sb" id="cprev">‹ 上一步</button><span id="cdots"></span><button class="sb" id="cnext">下一步 ›</button></div></div>
       </div>
       <h4>👥 幫別的手機設定（例如團員、車上的手機）</h4><div class="hint">用<b>那支手機的相機</b>掃這個 QR Code：</div>
@@ -510,7 +517,7 @@
     o.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => load()));
     let guideInit = false;
     o.querySelector('#guide-t').onclick = () => { const g = o.querySelector('#guide'), open = g.classList.toggle('hidden') === false;
-      o.querySelector('#guide-t').textContent = open ? '📖 收起安裝使用手冊' : '📖 第一次使用？安裝使用手冊（9 步）';
+      o.querySelector('#guide-t').textContent = open ? '📖 收起安裝手冊' : '📖 第一次使用？看安裝手冊';
       if (open && !guideInit) { guideInit = true;
     { const trk = o.querySelector('#trk'), rail = document.createElement('div'); rail.className = 'rail';
       while (trk.firstChild) rail.appendChild(trk.firstChild); trk.appendChild(rail);
