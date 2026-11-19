@@ -771,7 +771,7 @@ $('quizBtn').onclick=()=>quiz();$('bHelp').onclick=()=>intro();
 
 /* ================= LOOP ================= */
 function resize(){const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix()}
-addEventListener('resize',resize);resize();render();overview();Object.assign(cam,goal);cam.dist=goal.dist*1.35;setProg(0);paintDays();intro();requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(()=>{const sp=document.getElementById('splash');sp.classList.add('out');setTimeout(()=>sp.remove(),900)},400)));
+addEventListener('resize',resize);resize();render();overview();Object.assign(cam,goal);cam.dist=goal.dist*1.35;setProg(0);paintDays();intro();requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(()=>{const sp=document.getElementById('splash');sp.classList.add('out');setTimeout(()=>sp.remove(),900)},Math.max(400,3600-performance.now()))));
 window.__app={pickAt:(x,y)=>pick(x,y),palq,camera,PATCH,FSC,tags,ptAt,ROUTE,PL,scene,dbg:()=>[frontOn,leadMoving,FXS.filter(f=>f.mode==='smoke').map(f=>[f.pts.visible,f.c.x,f.c.y])],get bigMode(){return bigMode},goal,uQ,get cer(){return cer},uA,uC,setMe,whoOf,openPlace,openRole,goDay,setProg,quiz,closeModal,play:()=>playBtn.onclick(),get palqY(){return palq.position.y}};
 let bgWas=false,lodN=0,last=performance.now(),frame=0,wasWalk=false;
 let lastF=0;function loop(now){if(innerWidth<=760&&now-lastF<32){requestAnimationFrame(loop);return}lastF=now;const dt=Math.min(.05,(now-last)/1000);last=now;
