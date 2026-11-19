@@ -751,13 +751,12 @@ function render(){
   <div class="sec">去程 vs 回程 · 2025</div><div class="bar"><label>去程</label><div style="width:${136.2/200*58}%"></div><span>136.2 km</span></div><div class="bar g"><label>回程</label><div style="width:58%"></div><span>199.8 km</span></div><p class="src" style="margin-top:4px">去急回緩：2025 年去程約 35 小時就走到北港。</p>
   <div class="sec">冷知識</div>
   <div class="fact"><b>1863 年</b>（同治 2 年）拱天宮建廟，建廟前就有人組團走去北港。</div>
+  <div class="fact"><b>2008 年</b>成軍 白沙屯拱天宮醫護團，不募款、不收贊助，器材自費添購。</div>
   <div class="fact"><b>2010 年</b>文化部指定為國家重要民俗。</div>
   <div class="fact">粉紅超跑據報導重約 <b>70 公斤</b>；大甲媽祖的八人大轎約 200 公斤。</div>
   <div class="fact">2024 年進火時，疏文每張寫 180 人、共 <b>1,000 張</b>，光焚化就要 80 分鐘。</div>
   <div class="fact">2025 年首次駐駕南投縣，在松柏嶺受天宮創下駐駕<b>海拔最高</b>紀錄。</div>
   <div class="fact">2026 年抵達北港當天，縣府推估人潮超過 <b>百萬人次</b>。</div>
-  <div class="fact"><b>白沙屯拱天宮醫護團</b> 2008 年成軍，不募款、不收贊助，器材自費添購。</div>
-  <div class="fact">2026 年 GPS App 加上<b>一鍵求救</b>，救護團隊可即時定位。</div>
   <div class="fact">2026 年回程約 <b>12 萬人</b>跟著鑾轎走回苗栗；台鐵加開 <b>38</b> 列次。</div>
   <p class="src">資料整理自中央社、NOWnews、TVBS、聯合新聞網、遠見、公視、康健等 2024–2026 年報導；醫護團資料由醫護團提供，並參考 2017 年自由時報報導，以及你提供的 2025 路線截圖。實際資訊以白沙屯拱天宮公告為準。</p>`}}
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));render();listEl.scrollTop=0});
