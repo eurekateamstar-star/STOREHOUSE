@@ -583,14 +583,14 @@ const cam={tx:0,tz:0,dist:200,az:-.22,pol:.82},goal={...cam};let following=false
 function overview(){Object.assign(goal,{tx:X(mob()?120.5:120.52),tz:Z(mob()?23.95:23.9),dist:mob()?320:250,az:-.1,pol:mob()?.42:.52});following=false;setBtn()}
 function flyTo(p,d){const dd=d||(p.bridge?13:6.2*p.r+2.2)*(mob()?1.45:1);Object.assign(goal,{tx:p.x-(mob()?0:dd*.1),tz:p.z+(mob()?dd*.27:dd*.03),dist:dd,pol:1.0})}
 function applyCam(){const sp=Math.sin(cam.pol),cp=Math.cos(cam.pol);camera.position.set(cam.tx+cam.dist*sp*Math.sin(cam.az),cam.dist*cp,cam.tz+cam.dist*sp*Math.cos(cam.az));camera.lookAt(cam.tx,0,cam.tz)}
-const el=renderer.domElement,ptrs=new Map();let lastPinch=0,moved=0;
-el.addEventListener('pointerdown',e=>{el.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});moved=0});
+const el=renderer.domElement,ptrs=new Map();let lastPinch=0,lastAng=0,lastMy=0,moved=0;
+el.addEventListener('pointerdown',e=>{try{el.setPointerCapture(e.pointerId)}catch(_){}ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});moved=0});
 el.addEventListener('pointermove',e=>{const p=ptrs.get(e.pointerId);if(!p)return;const dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;
  if(ptrs.size===1){moved+=Math.abs(dx)+Math.abs(dy);if(moved<5)return;following=false;setBtn();
   if(e.buttons===2||e.shiftKey){goal.az-=dx*.005;goal.pol=Math.min(1.25,Math.max(.3,goal.pol-dy*.004))}
   else{const k=goal.dist*.00135,c=Math.cos(goal.az),s=Math.sin(goal.az),f=1/Math.max(.45,Math.cos(goal.pol));goal.tx-=(dx*c+dy*s*f)*k;goal.tz-=(-dx*s+dy*c*f)*k;
    goal.tx=Math.max(x0-10,Math.min(x1+10,goal.tx));goal.tz=Math.max(z0-10,Math.min(z1+10,goal.tz));cam.tx=goal.tx;cam.tz=goal.tz}}
- else if(ptrs.size===2){moved=99;const[a,b]=[...ptrs.values()],d=Math.hypot(a.x-b.x,a.y-b.y);if(lastPinch)goal.dist=Math.min(380,Math.max(4,goal.dist*lastPinch/d));lastPinch=d}});
+ else if(ptrs.size===2){moved=99;following&&(following=false,setBtn());const[a,b]=[...ptrs.values()],d=Math.hypot(a.x-b.x,a.y-b.y),ang=Math.atan2(b.y-a.y,b.x-a.x),my=(a.y+b.y)/2;if(lastPinch){goal.dist=Math.min(380,Math.max(4,goal.dist*lastPinch/d));let da=ang-lastAng;if(da>Math.PI)da-=2*Math.PI;if(da<-Math.PI)da+=2*Math.PI;goal.az-=da;goal.pol=Math.min(1.25,Math.max(.3,goal.pol-(my-lastMy)*.0025))}lastPinch=d;lastAng=ang;lastMy=my}});
 const up=e=>{const had=ptrs.has(e.pointerId);ptrs.delete(e.pointerId);if(ptrs.size<2)lastPinch=0;if(had&&e.type==='pointerup'&&moved<6)pick(e.clientX,e.clientY)};
 el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);el.addEventListener('contextmenu',e=>e.preventDefault());
 el.addEventListener('wheel',e=>{e.preventDefault();goal.dist=Math.min(380,Math.max(4,goal.dist*(1+e.deltaY*.0012)))},{passive:false});
