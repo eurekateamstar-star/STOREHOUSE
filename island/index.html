@@ -2,8 +2,8 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="theme-color" content="#fde8ef">
-<style>html,body{background:#fde8ef!important}</style>
+<meta name="theme-color" content="#f6efe4">
+<style>html,body{background:#f6efe4!important}</style>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>白沙屯媽祖進香島｜白沙屯 → 北港</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -153,67 +153,28 @@ h4{font-size:11px;color:var(--mute);margin:16px 0 8px;letter-spacing:1px;font-we
 }
 </style>
 <style>
-html{background:#fde8ef}
-#splash{position:fixed;inset:0;z-index:999;overflow:hidden;background:linear-gradient(180deg,#fff4ec 0%,#fde6ec 46%,#f8cfdc 100%);transition:opacity 1s ease,visibility 1s;font-family:"Noto Serif TC","Songti TC",serif}
+html{background:#f6efe4}
+#splash{position:fixed;inset:0;z-index:999;overflow:hidden;background:#f6efe4;background-image:radial-gradient(#e6d8c4 1px,transparent 1px);background-size:18px 18px;transition:opacity .9s ease,visibility .9s;font-family:"Noto Serif TC","Songti TC",serif}
 #splash.out{opacity:0;visibility:hidden}
-#splash .sp-sun{position:absolute;left:50%;top:36%;width:min(46vw,340px);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,#ffe3b8 0%,#ffd0b0 45%,#ffc8c800 70%);animation:glow 4s ease-in-out infinite alternate}
-@keyframes glow{to{transform:translate(-50%,-50%) scale(1.08);opacity:.85}}
-#splash svg.sp-hills{position:absolute;left:0;bottom:0;width:200%;height:46%;animation:pan 26s linear infinite}
-#splash svg.sp-hills.sp-b{height:34%;animation-duration:16s;opacity:.95}
-@keyframes pan{to{transform:translateX(-50%)}}
-#splash .sp-lant{position:absolute;top:0;left:0;right:0;height:120px;display:flex;justify-content:space-around;pointer-events:none}
-#splash .sp-lant:before{content:"";position:absolute;left:-5%;right:-5%;top:22px;height:60px;border-top:1.5px solid #b77a5a66;border-radius:0 0 50% 50%/0 0 100% 100%}
-#splash .sp-lant i{position:relative;top:34px;width:20px;height:26px;border-radius:45%;background:radial-gradient(circle at 50% 40%,#ff7a5c,#d8322e);box-shadow:0 0 14px #ff6b4a88;transform-origin:50% -12px;animation:sway 2.6s ease-in-out infinite alternate}
-#splash .sp-lant i:nth-child(2n){top:46px;animation-delay:-1.3s}#splash .sp-lant i:nth-child(3n){top:40px;animation-delay:-.6s}
-#splash .sp-lant i:before{content:"";position:absolute;left:8px;top:-12px;width:1.5px;height:12px;background:#b77a5a}
-#splash .sp-lant i:after{content:"";position:absolute;left:6px;bottom:-6px;width:8px;height:6px;background:#f2c14e;border-radius:0 0 3px 3px}
-@keyframes sway{from{transform:rotate(-6deg)}to{transform:rotate(6deg)}}
-#splash .sp-ttl{position:absolute;left:0;right:0;top:20%;text-align:center}
-#splash h1{margin:0;font-size:clamp(46px,9vw,84px);font-weight:900;letter-spacing:.18em;color:#d9467c;text-shadow:0 2px 0 #fff8,0 10px 30px #e85a8c33}
-#splash h1 span{display:inline-block;opacity:0;transform:translateY(18px);filter:blur(6px);animation:rise .9s cubic-bezier(.2,.8,.2,1) forwards}
-#splash h1 span:nth-child(2){animation-delay:.18s}#splash h1 span:nth-child(3){animation-delay:.36s}
-@keyframes rise{to{opacity:1;transform:none;filter:none}}
-#splash .sp-en{margin-top:10px;font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.5em;color:#a3786a;opacity:0;animation:fade 1s .7s forwards}
-#splash .sp-seal{display:inline-block;margin-top:14px;padding:4px 10px;border:1.5px solid #d8322e;color:#d8322e;font:700 12px/1.2 "Noto Sans TC",sans-serif;letter-spacing:.2em;border-radius:3px;transform:rotate(-3deg);opacity:0;animation:fade .8s 1s forwards}
-@keyframes fade{to{opacity:1}}
-#splash .sp-proc{position:absolute;left:0;bottom:12%;width:100%;height:150px}
-#splash .sp-proc .sp-row{position:absolute;bottom:0;left:50%;display:flex;align-items:flex-end;gap:0;transform:translateX(-50%) scale(var(--sc,1));transform-origin:50% 100%;animation:rin 1.4s cubic-bezier(.2,.8,.2,1) both}
-@keyframes rin{from{opacity:0;margin-left:-60px}}
-@media(max-width:1300px){#splash .sp-proc .sp-row{--sc:.82}}@media(max-width:600px){#splash .sp-proc .sp-row{--sc:.46}#splash .sp-x{display:none}}
-@keyframes walk{to{left:105%}}
-#splash .sp-p{width:14px;height:30px;position:relative;animation:bob .42s ease-in-out infinite alternate}
-#splash .sp-p:before{content:"";position:absolute;left:1px;top:2px;width:12px;height:12px;border-radius:50%;background:#f3cfae}
-#splash .sp-p:after{content:"";position:absolute;left:-1px;top:0;width:16px;height:7px;border-radius:8px 8px 2px 2px;background:var(--c,#ff6a1f)}
-#splash .sp-p b{position:absolute;left:1px;top:14px;width:12px;height:16px;border-radius:4px 4px 2px 2px;background:var(--b,#ff7b2a)}
-#splash .sp-p:nth-child(2n){animation-delay:.21s}
-#splash .sp-flag{width:6px;height:60px;position:relative;align-self:flex-end;margin-right:-4px}
-#splash .sp-flag:before{content:"";position:absolute;left:2px;top:0;width:2px;height:60px;background:#8a4a2c}
-#splash .sp-flag:after{content:"";position:absolute;left:4px;top:4px;width:18px;height:26px;background:#f7c21a;border:2px solid #d8322e;animation:wave 1s ease-in-out infinite alternate;transform-origin:0 50%}
-@keyframes wave{to{transform:skewY(8deg) scaleX(.9)}}
-#splash .sp-q{width:64px;height:66px;position:relative;animation:bob .34s ease-in-out infinite alternate}
-#splash .sp-q i{position:absolute;left:12px;top:22px;width:40px;height:30px;background:linear-gradient(#e0443a,#b9302a);border-radius:3px;box-shadow:inset 0 0 0 3px #f2c14e}
-#splash .sp-q s{position:absolute;left:4px;top:2px;width:56px;height:22px;background:linear-gradient(#ff8fbd,#ff5fa2);clip-path:polygon(50% 0,100% 100%,0 100%)}
-#splash .sp-q u{position:absolute;left:-14px;top:46px;width:92px;height:4px;background:#7a3f25;border-radius:2px}
-#splash .sp-q em{position:absolute;left:-30px;top:-34px;width:124px;height:110px;border-radius:50%;background:radial-gradient(circle,#ffd6e766,#ffd6e700 65%);animation:glow 1.6s ease-in-out infinite alternate}
-@keyframes bob{to{transform:translateY(-4px)}}
-#splash .sp-c{display:block;margin:0 -16px;filter:drop-shadow(0 4px 3px #a0506030);animation:step .5s ease-in-out infinite alternate;transform-origin:50% 100%}
-#splash .sp-c:nth-child(2n){animation-delay:.25s}
-@keyframes step{from{transform:translateY(0) rotate(-3deg)}to{transform:translateY(-5px) rotate(3deg)}}
-#splash .sp-jiao{position:relative;display:block;margin:0 -6px}
-#splash .sp-jiao:before{content:"";position:absolute;left:-40%;right:-40%;top:-30%;bottom:-10%;border-radius:50%;background:radial-gradient(circle,#ffe0ec,#ffe0ec00 65%);animation:glow 1.8s ease-in-out infinite alternate}
-#splash .sp-pk{position:relative;display:block;filter:drop-shadow(0 6px 4px #a0506040);animation:bob .36s ease-in-out infinite alternate}
-#splash .sp-van{display:block;margin-right:22px;filter:drop-shadow(0 5px 3px #80404030);animation:bob .6s ease-in-out infinite alternate}
-
-#splash .sp-petal{position:absolute;top:-20px;width:9px;height:9px;border-radius:9px 0;background:#ff9cc0;opacity:.85;animation:fall linear infinite}
-@keyframes fall{to{transform:translate(var(--dx),110vh) rotate(540deg)}}
-#splash .sp-bar{position:absolute;left:50%;bottom:7%;transform:translateX(-50%);width:min(240px,60vw);text-align:center;font:600 12px/1 "Noto Sans TC",sans-serif;letter-spacing:.3em;color:#9b7467}
-#splash .sp-bar div{margin-top:10px;height:3px;border-radius:3px;background:#f3c8d6;overflow:hidden}
-#splash .sp-bar div i{display:block;height:100%;width:40%;border-radius:3px;background:linear-gradient(90deg,#ff9cc0,#e85a8c);animation:load 1.4s ease-in-out infinite}
-@keyframes load{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
+#splash .g-ttl{position:absolute;top:6%;left:0;right:0;text-align:center}
+#splash .g-ttl h1{display:inline-block;margin:0;font-size:clamp(38px,8vw,72px);font-weight:900;color:#3a2620;position:relative;z-index:0;letter-spacing:.06em}
+#splash .g-ttl h1:after{content:"";position:absolute;left:-6%;right:-6%;bottom:8%;height:30%;background:#ffb3cc;z-index:-1;transform:scaleX(0);transform-origin:left;animation:ghl .7s .4s forwards}
+#splash .g-ttl p{margin:8px 0 0;font:600 11px ui-monospace,Menlo,monospace;letter-spacing:.45em;color:#a3786a;opacity:0;animation:gfade .8s .9s forwards}
+@keyframes ghl{to{transform:scaleX(1)}}@keyframes gfade{to{opacity:1}}
+#splash .g-board{position:absolute;left:50%;top:55%;width:min(92vw,760px);height:min(62vh,460px);transform:translate(-50%,-50%)}
+#splash .g-pol{position:absolute;width:min(27vw,170px);background:#fff;padding:7px 7px 28px;box-shadow:0 8px 18px #6a4a3030;opacity:0;animation:gdrop .6s cubic-bezier(.3,1.4,.5,1) forwards}
+#splash .g-pol img{width:100%;aspect-ratio:1;object-fit:contain;background:var(--bg);display:block}
+#splash .g-pol span{position:absolute;left:0;right:0;bottom:6px;text-align:center;font:700 12px "Noto Sans TC",sans-serif;color:#3a2620}
+#splash .g-pol:before{content:"";position:absolute;left:50%;top:-10px;width:52px;height:17px;transform:translateX(-50%) rotate(-4deg);background:#f7c2d5cc}
+@keyframes gdrop{from{opacity:0;transform:translateY(-40px) rotate(var(--r)) scale(1.1)}to{opacity:1;transform:rotate(var(--r))}}
+#splash .g-bar{position:absolute;left:50%;bottom:6%;transform:translateX(-50%);width:min(240px,60vw);text-align:center;font:600 12px/1 "Noto Sans TC",sans-serif;letter-spacing:.3em;color:#9b7467}
+#splash .g-bar div{margin-top:10px;height:3px;border-radius:3px;background:#ead8c8;overflow:hidden}
+#splash .g-bar div i{display:block;height:100%;width:40%;border-radius:3px;background:linear-gradient(90deg,#ff9cc0,#e85a8c);animation:gload 1.4s ease-in-out infinite}
+@keyframes gload{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
 </style>
 </head>
 <body>
-<div id="splash"><div class="sp-sun"></div><div class="sp-lant"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><svg class="sp-hills" viewBox="0 0 2000 300" preserveAspectRatio="none"><path d="M0 170 C150 120 300 150 450 125 S750 100 1000 150 S1300 115 1450 130 S1750 100 2000 150 V300 H0Z" fill="#f4bccd"/><path d="M0 230 C200 200 350 215 500 205 S800 185 1000 225 S1350 200 1500 210 S1800 190 2000 225 V300 H0Z" fill="#eda5bb"/></svg><svg class="sp-hills sp-b" viewBox="0 0 2000 300" preserveAspectRatio="none"><path d="M0 200 C250 170 420 210 640 190 S1000 230 1000 230 S1250 170 1500 205 S1800 220 2000 200 V300 H0Z" fill="#e48aa6"/><rect y="262" width="2000" height="38" fill="#d8738f"/></svg><div class="sp-ttl"><h1><span>進</span><span>香</span><span>島</span></h1><div class="sp-en">BAISHATUN → BEIGANG · 2026</div><div class="sp-seal">白沙屯 ‧ 北港 ‧ 八天七夜</div></div><div class="sp-proc"><div class="sp-row"><img class="sp-van" src="img/medvan.webp" style="height:100px" alt=""><img class="sp-c" src="img/traffic.webp" style="height:96px" alt=""><img class="sp-c sp-x" src="img/traffic.webp" style="height:96px" alt=""><img class="sp-c" src="img/bearer.webp" style="height:98px" alt=""><img class="sp-c" src="img/medm.webp" style="height:96px" alt=""><img class="sp-c sp-x" src="img/medf.webp" style="height:96px" alt=""><span class="sp-jiao"><img class="sp-pk" src="img/pink.webp" style="height:140px" alt=""></span><img class="sp-c" src="img/medm.webp" style="height:96px" alt=""><img class="sp-c" src="img/medf.webp" style="height:96px" alt=""><img class="sp-c sp-x" src="img/emt.webp" style="height:96px" alt=""><img class="sp-c" src="img/pilm.webp" style="height:94px" alt=""><img class="sp-c sp-x" src="img/pilf.webp" style="height:94px" alt=""><img class="sp-c sp-x" src="img/pass.webp" style="height:92px" alt=""><span class="sp-jiao sp-x"><img class="sp-pk" src="img/sedan8.webp" style="height:110px" alt=""></span></div></div><i class="sp-petal" style="left:8%;--dx:60px;animation-duration:9s;animation-delay:-1s"></i><i class="sp-petal" style="left:22%;--dx:-40px;animation-duration:11s;animation-delay:-4s"></i><i class="sp-petal" style="left:35%;--dx:80px;animation-duration:8s;animation-delay:-2s"></i><i class="sp-petal" style="left:51%;--dx:-30px;animation-duration:10s;animation-delay:-6s"></i><i class="sp-petal" style="left:64%;--dx:50px;animation-duration:12s;animation-delay:-3s"></i><i class="sp-petal" style="left:78%;--dx:-70px;animation-duration:9s;animation-delay:-7s"></i><i class="sp-petal" style="left:90%;--dx:40px;animation-duration:11s;animation-delay:-5s"></i><i class="sp-petal" style="left:44%;--dx:20px;animation-duration:13s;animation-delay:-8s"></i><div class="sp-bar">媽祖起駕中<div><i></i></div></div></div>
+<div id="splash"><div class="g-ttl"><h1>進香島手帳</h1><p>BAISHATUN → BEIGANG · 2026</p></div><div class="g-board"><div class="g-pol" style="left:8%;top:6%;--r:-6deg;--bg:#fff3c4;animation-delay:0.30s"><img src="img/bearer.webp" alt=""><span>大轎班</span></div><div class="g-pol" style="left:36%;top:3%;--r:5deg;--bg:#e3e9f7;animation-delay:0.52s"><img src="img/traffic.webp" alt=""><span>交通組</span></div><div class="g-pol" style="left:64%;top:8%;--r:-3deg;--bg:#ffe0ec;animation-delay:0.74s"><img src="img/pink.webp" alt=""><span>粉紅超跑</span></div><div class="g-pol" style="left:12%;top:52%;--r:7deg;--bg:#ffe6d2;animation-delay:0.96s"><img src="img/medm.webp" alt=""><span>醫護團</span></div><div class="g-pol" style="left:40%;top:48%;--r:-5deg;--bg:#ffe3df;animation-delay:1.18s"><img src="img/sedan8.webp" alt=""><span>八人大轎</span></div><div class="g-pol" style="left:68%;top:53%;--r:4deg;--bg:#f2e8ff;animation-delay:1.40s"><img src="img/pilf.webp" alt=""><span>香燈腳</span></div></div><div class="g-bar">媽祖起駕中<div><i></i></div></div></div>
 <div id="stage"><div id="labels"></div></div>
 <div id="brand"><div class="big">進香島<small>BAISHATUN → BEIGANG</small></div><div class="sub">白沙屯 → 北港<span>2026 丙午年 · 8 天 7 夜</span></div></div>
 <div id="tools">
