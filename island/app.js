@@ -709,7 +709,8 @@ function openRole(id,opt={}){const q=PEOPLE.find(x=>x.id===id);if(!opt.me)stop()
   <h4>你該知道</h4>${q.facts.map(f=>`<div class="row"><i>●</i><span>${f}</span></div>`).join('')}
   <h4>在哪裡遇見</h4><div class="chips">${q.at.map(a=>`<button class="chip p" data-pl="${a}" style="padding:4px 10px">${PLACES[a].ic} ${PLACES[a].name}</button>`).join('')}</div>
   <h4>切換跟著誰走</h4><div class="chips">${WHO.map(([k,t])=>`<button class="chip g" data-who="${k}" style="padding:4px 10px">${t}</button>`).join('')}</div>`);
- $('dBody').querySelectorAll('[data-pl]').forEach(b=>b.onclick=()=>openPlace(b.dataset.pl));$('dBody').querySelectorAll('[data-who]').forEach(b=>b.onclick=()=>setMe(whoOf(b.dataset.who)))}
+ $('dBody').querySelectorAll('[data-pl]').forEach(b=>b.onclick=()=>openPlace(b.dataset.pl));$('dBody').querySelectorAll('[data-who]').forEach(b=>b.onclick=()=>setMe(whoOf(b.dataset.who)));
+ if(!opt.me&&(q.g==='神尊'||q.g==='神轎')){me=ME0;following=true;setBtn();goal.dist=mob()?7:4.5;goal.pol=.9}}
 
 const listEl=$('list');let tab='route';
 $('meta').textContent=`8 天 · ${Object.keys(PLACES).length} 座島 · ${PEOPLE.length} 種人物 · 依 2026 年實際行程整理`;
@@ -777,7 +778,7 @@ let lastF=0;function loop(now){if(innerWidth<=760&&now-lastF<32){requestAnimatio
  if(playing&&cer)runCer(dt);else if(playing){const u=prog+dt*.0042;const cd=CERS.find(d=>prog<d.a&&u>=d.a);if(cd){cer={t:0,d:cd};setProg(cd.a);me=ME0;following=true;goal.dist=cd.swap?(mob()?13:10):cd.fire?(mob()?15:11):(mob()?20:15);goal.pol=.9}else if(u>=1){setProg(1);stop();openPlace('gongtian',ENTRIES[ENTRIES.length-1])}else setProg(u)}
  {const mv=playing&&!(cer&&(cer.d.swap||cer.d.fire||(palq.visible===false)));if(mv){walkT+=dt*11;WALK.forEach(w=>{const a=Math.sin(walkT+w.ph)*w.amp;w.limbs[0].rotation.x=a;w.limbs[1].rotation.x=-a;w.limbs[2].rotation.x=-a*.8;w.limbs[3].rotation.x=a*.8})}else if(wasWalk)WALK.forEach(w=>w.limbs.forEach(l=>l.rotation.x=0));wasWalk=mv;updLead();MEDW.forEach(w=>{let f;const mm=w.moving?w.moving():undefined;if(mm!==undefined){if(mm)w.t=(w.t||0)+dt*11;f=mm?1+Math.floor((((w.t/6.2832+w.ph)%1)+1)%1*6):0}else f=mv?medFrame(w.ph):0;w.subs.forEach((o,n)=>o.visible=n===f)});if(playing&&cer&&!cer.d.swap)cheer(now)}
  const mp=mePos();meRing.position.set(mp.x,mp.y+.015,mp.z);meRing.scale.setScalar(me===ME0?.001:1+Math.sin(now*.006)*.08);{const bg=playing&&me===ME0&&((!cer&&prog>uA-7.5*UU&&prog<uA)||(cer&&cer.d.a===uA));if(bg){const p=PLACES.chaotian,d=mob()?12:9.5;goal.tx=p.x;goal.tz=p.z+(mob()?.75:.8)*p.s;goal.dist=d;goal.pol=.92;goal.az=.2;if(!bgWas)archFade(true);bgWas=true}else if(bgWas){bgWas=false;archFade(false);goal.az=-.1;goal.pol=.98}}
- if(following&&!bgWas){const fm=(cer&&cer.d.fire&&me===ME0)?mp.clone().lerp(ptAt(leadU()),.5):mp;goal.tx=fm.x;goal.tz=fm.z+(mob()&&detail.classList.contains('open')?goal.dist*.24:0)}
+ if(following&&!bgWas){const fm=(cer&&cer.d.fire&&me===ME0)?mp.clone().lerp(ptAt(leadU()),.5):mp;const dO=detail.classList.contains('open'),sh2=!mob()&&dO?goal.dist*.22:0;goal.tx=fm.x-Math.cos(goal.az)*sh2;goal.tz=fm.z+Math.sin(goal.az)*sh2+(mob()&&dO?goal.dist*.24:0)}
  if(lodN++%8===0)stat.lod(cam.tx,cam.tz,cam.dist<(mob()?18:30)?cam.dist*(mob()?.55:1.1)+(mob()?1.5:3):0);
  propsG.visible=cam.dist<70;if(propsG.visible&&(frame++%6===0)){const lim=cam.dist*2.2+8;props.forEach(g=>g.visible=Math.abs(g.position.x-cam.tx)+Math.abs(g.position.z-cam.tz)<lim)}
  const k=1-Math.pow(.003,dt);for(const p of['tx','tz','dist','az','pol'])cam[p]+=(goal[p]-cam[p])*k;applyCam();
