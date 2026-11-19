@@ -749,7 +749,7 @@ $('sheetBtn').onclick=()=>panel.classList.toggle('open');$('grab').onclick=()=>p
 {let y0=null;const top=panel.querySelector('.top');[top,$('grab')].forEach(el=>{el.addEventListener('touchstart',e=>{y0=e.touches[0].clientY},{passive:true});el.addEventListener('touchmove',e=>{if(y0!=null&&e.touches[0].clientY-y0>50){panel.classList.remove('open');y0=null}},{passive:true})});
  stage.addEventListener('pointerdown',()=>{if(mob()&&panel.classList.contains('open'))panel.classList.remove('open')})}
 /* stop LINE/iOS pull-to-close & double-tap zoom */
-document.addEventListener('touchmove',e=>{if(e.touches.length>1){e.preventDefault();return}let el=e.target;while(el&&el!==document.body){const cs=getComputedStyle(el);if(/(auto|scroll)/.test(cs.overflowY)&&el.scrollHeight>el.clientHeight)return;el=el.parentElement}e.preventDefault()},{passive:false});
+document.addEventListener('touchmove',e=>{if(e.touches.length>1){e.preventDefault();return}if(e.target.closest&&e.target.closest('input,textarea,select'))return;let el=e.target;while(el&&el!==document.body){const cs=getComputedStyle(el);if(/(auto|scroll)/.test(cs.overflowY)&&el.scrollHeight>el.clientHeight)return;el=el.parentElement}e.preventDefault()},{passive:false});
 ['gesturestart','gesturechange','dblclick'].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
 $('bAll').onclick=()=>{closeDetail();stop();me=ME0;overview()};
 const bF=$('bFollow');function setBtn(){bF.classList.toggle('on',following)}
