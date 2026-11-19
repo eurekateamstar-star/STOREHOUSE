@@ -198,7 +198,15 @@ const sea=new THREE.Mesh(new THREE.PlaneGeometry(900,900),new THREE.MeshBasicMat
 
 // ---- hex grid
 const R=.8,W=Math.sqrt(3)*R,H=1.5*R,x0=X(120.08),z0=Z(24.70),x1=X(120.865),z1=Z(23.455);
-const SPN=[[121.75,24.95],[121.35,24.5],[121.1,24.0],[120.95,23.5],[120.85,23.0],[120.8,22.4]],fogH=(px,py)=>{let m=1e9;for(let i=0;i<SPN.length-1;i++){const[ax,ay]=SPN[i],[bx,by]=SPN[i+1],dx=bx-ax,dy=by-ay,t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy)));m=Math.min(m,Math.hypot(ax+t*dx-px,ay+t*dy-py))}const f=Math.max(0,1-m/.38);return .22+2.2*Math.pow(f,1.4)},FOGX=[],FOGK=new Set(),edgeD=(x,z)=>Math.min(x1-x-(3+8*noise(z*.06,1.7)+2*noise(z*.2,4.1)),z-z0-(3+7*noise(x*.07,2.3)+2*noise(x*.22,5.2)),z1-z-(3+6*noise(x*.07,3.9)+2*noise(x*.21,6.6)));const cells=[],cmap=new Map();const key=(r,c)=>r*10000+c;
+const TWR=[[.14,[[121.85,24.85,300],[121.55,24.6,1900],[121.23,24.38,3880],[121.1,24.2,3100],[120.95,24.0,1800],[120.85,23.85,800]]],
+ [.17,[[121.82,24.55,700],[121.45,24.35,3400],[121.33,24.1,3700],[121.2,23.75,3500],[121.05,23.45,3800],[120.95,23.0,3000],[120.85,22.6,2000],[120.8,22.2,900],[120.85,21.95,200]]],
+ [.1,[[120.98,23.75,2200],[120.96,23.47,3950],[120.85,23.15,2500],[120.72,22.95,1200]]],
+ [.1,[[120.85,23.9,1500],[120.8,23.55,2600],[120.7,23.25,1800],[120.6,22.95,700]]],
+ [.06,[[121.6,23.95,500],[121.5,23.5,1600],[121.35,23.15,1300],[121.15,22.78,600]]],
+ [.12,[[121.2,24.8,700],[121.0,24.58,2200],[120.9,24.35,1500]]],
+ [.05,[[121.47,25.2,600],[121.55,25.17,1100],[121.62,25.15,800]]],[.09,[[121.33,25.07,250],[121.38,25.05,250]]],[.07,[[121.75,25.08,500],[121.85,25.0,700]]]];
+const twElev=(lon,lat)=>{let e=0;for(const[w,P]of TWR)for(let i=0;i<P.length-1;i++){const[ax,ay,ah]=P[i],[bx,by,bh]=P[i+1],dx=bx-ax,dy=by-ay,t=Math.max(0,Math.min(1,((lon-ax)*dx+(lat-ay)*dy)/(dx*dx+dy*dy))),d=Math.hypot(ax+t*dx-lon,(ay+t*dy-lat)*1.1),pk=ah+(bh-ah)*t;e=Math.max(e,pk*Math.exp(-1.6*(d/w)*(d/w)))}const x=X(lon),z=Z(lat);return Math.max(0,e*(.78+.44*noise(x*.09,z*.09))+(e>300?(noise(x*.35,z*.35)-.5)*260:0))},
+ elevH=e=>.3+Math.pow(e/1000,.8)*3.3,fogH=(lon,lat)=>elevH(twElev(lon,lat)),FOGX=[],FOGK=new Set(),edgeD=(x,z)=>Math.min(x1-x-(3+8*noise(z*.06,1.7)+2*noise(z*.2,4.1)),z-z0-(3+7*noise(x*.07,2.3)+2*noise(x*.22,5.2)),z1-z-(3+6*noise(x*.07,3.9)+2*noise(x*.21,6.6)));const cells=[],cmap=new Map();const key=(r,c)=>r*10000+c;
 for(let r=0,z=z0;z<=z1;z+=H,r++)for(let c=0,x=x0+(r%2?W/2:0);x<=x1;x+=W,c++){
  const lat=toLat(z),lon=toLon(x),ti=townAt(lon,lat);if(ti<0)continue;
  const de=edgeD(x,z);if(de<0){FOGK.add(key(r,c));FOGX.push([x,z,fogH(lon,lat)]);continue}
@@ -223,8 +231,8 @@ const hexGeo=new THREE.CylinderGeometry(R*.965,R*.965,1,6);hexGeo.translate(0,.5
  const RV=[[[25.17,121.41],[25.05,121.5],[24.95,121.55],[24.8,121.45]],[[24.72,121.83],[24.68,121.6],[24.6,121.5]],[[23.06,120.1],[23.1,120.35],[23.2,120.55]],[[22.5,120.42],[22.7,120.48],[22.95,120.62]],[[23.95,121.6],[23.8,121.45],[23.6,121.4]],[[24.86,120.92],[24.8,121.05],[24.72,121.2]]];
  const onRiv=(x,z)=>RV.some(p=>{for(let k=0;k<p.length-1;k++){const ax=X(p[k][1]),az=Z(p[k][0]),bx=X(p[k+1][1]),bz=Z(p[k+1][0]),dx=bx-ax,dz=bz-az,t=Math.max(0,Math.min(1,((x-ax)*dx+(z-az)*dz)/(dx*dx+dz*dz)));if(Math.hypot(ax+t*dx-x,az+t*dz-z)<.75)return true}return false});
  const coast=(x,z)=>{for(const[dx,dz]of[[W,0],[-W,0],[W/2,H],[-W/2,H],[W/2,-H],[-W/2,-H]]){const k=Math.round((x+dx)*2)+','+Math.round((z+dz)*2);if(!FK.has(k)&&!cellAt(x+dx,z+dz))return true}return false};
- F.forEach(([x,z,h],i)=>{const rv=onRiv(x,z),cs=!rv&&h<.5&&coast(x,z),hh=rv?.16:cs?.22:h+noise(x*.15,z*.15)*.25*(h>.5?1:.3);d.position.set(x,0,z);d.scale.set(1,hh,1);d.updateMatrix();fm.setMatrixAt(i,d.matrix);
-  const ty=rv?'river':cs?'sand':h>1.9?'mtn':h>.9?'hill':(hash(x*3,z*3)<.12?'urban':'plain'),a=PAL[ty];cc.setHex(a[Math.floor(hash(x,z)*a.length)]);if(ty==='mtn'&&h>2.25)cc.lerp(c3.setHex(0xb9c2ae),.5);
+ F.forEach(([x,z],i)=>{const e=twElev(toLon(x),toLat(z)),h=elevH(e),rv=onRiv(x,z)&&e<900,cs=!rv&&e<40&&coast(x,z),hh=rv?.16:cs?.22:h;d.position.set(x,0,z);d.scale.set(1,hh,1);d.updateMatrix();fm.setMatrixAt(i,d.matrix);
+  const ty=rv?'river':cs?'sand':e>520?'mtn':e>75?'hill':(hash(x*3,z*3)<.12?'urban':'plain'),a=PAL[ty];cc.setHex(a[Math.floor(hash(x,z)*a.length)]);if(ty==='mtn'&&e>1300)cc.lerp(c3.setHex(0xb9c2ae),Math.min(.75,.4+(e-1300)/5000));
   if(!rv)cc.lerp(c3.setHex(0xdfe4d8),.38);fm.setColorAt(i,cc)});fm.receiveShadow=true;scene.add(fm)}
 const hexMesh=new THREE.InstancedMesh(hexGeo,M(0xffffff),cells.length);const dm=new THREE.Object3D(),col=new THREE.Color(),c2=new THREE.Color();
 cells.forEach((c,i)=>{dm.position.set(c.x,0,c.z);dm.rotation.set(0,0,0);dm.scale.set(1,c.h,1);dm.updateMatrix();hexMesh.setMatrixAt(i,dm.matrix);
