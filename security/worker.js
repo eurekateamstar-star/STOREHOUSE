@@ -1550,7 +1550,16 @@ function randStr(n, abc = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456
 const picOk = u => { try { const x = new URL(String(u || '')); return x.protocol === 'https:' && /(^|\.)line-scdn\.net$/.test(x.hostname) ? x.href.slice(0, 300) : ''; } catch (e) { return ''; } };
 // 排班表：今天每個人在哪一組（地圖名字前面加組別）、誰是小組長（每組第一個人）
 async function locTeams(env) {
-  return memo('locTeams', 60e3, async () => {
+  return memo('locTeams', 300e3, async () => {
+    // workers.dev 不能用 Cache API → 存在唯一的 LocHub 記憶體裡，所有伺服器共用，10 分鐘才重讀一次 Firestore
+    let hub = null; try { if (env.LOC) { hub = locHub(env); const c = await hub.teamsGet(); if (c) return c; } } catch (e) {}
+    const out = await locTeamsLoad(env);
+    try { if (hub) await hub.teamsSet(out); } catch (e) {}
+    return out;
+  });
+}
+async function locTeamsLoad(env) {
+  return (async () => {
     const tok = await saToken(env), today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
     const evs = (await memo('events', 30e3, () => fsList(tok, 'events'))).filter(e => e.schedPublic).sort((a, b) => (b.schedPublicAt || 0) - (a.schedPublicAt || 0));
     const out = { today: {}, leads: {} }, best = {};   // today：今天有排班用今天，沒有就用最接近的排班日（之後最近的一天，都過了就用最後一天）
@@ -1562,7 +1571,7 @@ async function locTeams(env) {
         m.forEach(k => { if (!(k in best) || sc < best[k]) { best[k] = sc; out.today[k] = t.l || ''; } }); }));
       if (Object.keys(D).length) break; }
     return out;
-  });
+  })();
 }
 // 自己的資料：姓名（名冊）、大頭貼、名冊 key
 async function locMe(idToken, env) {
@@ -1583,10 +1592,11 @@ export class LocHub extends DurableObject {
     this.sql = ctx.storage.sql;   // 軌跡用 SQLite（每點一列）
     this.sql.exec('CREATE TABLE IF NOT EXISTS trk (id TEXT, tst INTEGER, lat REAL, lon REAL, acc INTEGER)');
     this.sql.exec('CREATE INDEX IF NOT EXISTS trk_i ON trk(id, tst)');
+    this.sql.exec('CREATE INDEX IF NOT EXISTS trk_t ON trk(tst)');
     this.pruned = 0;
     ctx.blockConcurrencyWhile(async () => {
       for (const [k, v] of await ctx.storage.list()) {
-        if (k.startsWith('w:')) this.W.set(k.slice(2), v); else if (k.startsWith('t:')) this.T.set(k.slice(2), v); else if (k.startsWith('l:')) this.L.set(k.slice(2), v); else if (k.startsWith('v:')) this.V.set(k.slice(2), v);
+        if (k === 'pruned') this.pruned = v; else if (k.startsWith('w:')) this.W.set(k.slice(2), v); else if (k.startsWith('t:')) this.T.set(k.slice(2), v); else if (k.startsWith('l:')) this.L.set(k.slice(2), v); else if (k.startsWith('v:')) this.V.set(k.slice(2), v);
       }
     });
   }
@@ -1603,7 +1613,7 @@ export class LocHub extends DurableObject {
       const old = this.L.get(user);
       if (!old || l.tst >= old.tst) { this.L.set(user, l); await this.ctx.storage.put('l:' + user, l); }   // 離線補傳的舊位置不蓋掉新的
       if (!old || l.tst !== old.tst) this.sql.exec('INSERT INTO trk (id, tst, lat, lon, acc) VALUES (?, ?, ?, ?, ?)', user, l.tst, l.lat, l.lon, Math.round(l.acc || 0));   // 補傳的舊點也記進軌跡
-      if (now - this.pruned > 3600e3) { this.pruned = now; this.sql.exec('DELETE FROM trk WHERE tst < ?', now - TRK_KEEP); }
+      if (now - this.pruned > 6 * 3600e3) { this.pruned = now; this.ctx.storage.put('pruned', now); this.sql.exec('DELETE FROM trk WHERE tst < ?', now - TRK_KEEP); }
     }
     const out = [];
     // 網站切換值勤／退勤：手機回報的模式不對就下指令改（值勤 Move=2、退勤 Significant=1；退勤也要偶爾傳，才收得到「開始值勤」）
@@ -1644,6 +1654,8 @@ export class LocHub extends DurableObject {
       if (!this.T.has(r.id)) continue; (out[r.id] = out[r.id] || []).push([r.lat, r.lon, r.tst]); }
     return out;
   }
+  teamsGet() { return this.TM && Date.now() - this.TM.at < 600e3 ? this.TM.v : null; }   // 排班組別快取（只放記憶體，不寫儲存）
+  teamsSet(v) { this.TM = { v, at: Date.now() }; }
   used(id) { const t = this.T.get(id); return this.L.has(id) || this.P.has(id) || !!(t && t.mode != null); }   // 這台有沒有連線過（＝已經裝好 OwnTracks）
   // 叫出設定 QR＝要開始用這支手機 → 自動設成值勤（匯入後直接是 Move，不會被切回省電）
   async onDuty(id) { const t = this.T.get(id); if (t && t.duty === false) { t.duty = true; t.cmdAt = 0; await this.ctx.storage.put('t:' + id, t); } }
