@@ -1200,7 +1200,7 @@
     wh_borrower: '選借用單位', wh_borrower_scan: '借用掃描', attend_submit: '送出出席調查', attend_uniform: '看團服尺寸', join_submit: '送出入團申請', guardian_save: '全民醫護證儲存', guardian_invite: '全民醫護證邀請', share_go: '分享給親友',
     menu_about: '選單：認識醫護團', menu_edu: '選單：衛教須知', menu_journey: '選單：醫護足跡', menu_guardian: '選單：全民醫護證', menu_tab_member: '選單：切到團員專區', menu_tab_public: '選單：切到一般資訊', line_follow: '加好友', line_unfollow: '封鎖／刪除好友' };
   const usLabel = k => US_F[k] || (k.startsWith('adm_ctab_') ? '紀錄後台分頁：' + k.slice(9) : k);
-  let usDays = 30, usData = null, usBusy = false, usErr = '';
+  let usDays = 7, usData = null, usBusy = false, usErr = '';
   async function loadUsage() {
     usBusy = true; usErr = '';
     try { const idToken = await auth.currentUser.getIdToken();
@@ -1338,7 +1338,7 @@
   async function usPost(path, body) { const idToken = await auth.currentUser.getIdToken();
     const r = await fetch(AUTH_URL + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, ...body }) });
     const j = await r.json(); if (!r.ok || j.error) throw new Error(j.error || r.status); return j; }
-  async function loadMeter() { usM.busy = true; usM.err = ''; try { usM.data = await usPost('/usage-meter', { days: 31 }); } catch (e) { usM.err = String(e.message || e); } usM.busy = false; if (curTab === 'usage') renderUsage(); }
+  async function loadMeter() { usM.busy = true; usM.err = ''; try { usM.data = await usPost('/usage-meter', { days: 8 }); } catch (e) { usM.err = String(e.message || e); } usM.busy = false; if (curTab === 'usage') renderUsage(); }
   async function loadCF() { usCF.busy = true; usCF.err = ''; try { usCF.data = await usPost('/usage-cf', {}); } catch (e) { usCF.err = String(e.message || e); } usCF.busy = false; if (curTab === 'usage') renderUsage(); }
   const usNeed = () => { if (!usM.data && !usM.busy && !usM.err) loadMeter(); if (!usCF.data && !usCF.busy && !usCF.err) loadCF(); if (!usQ.data && !usQ.busy && !usQ.err) loadQuota(); };
   const cfOk = k => usCF.data && usCF.data[k] && usCF.data[k].ok;
@@ -1513,14 +1513,14 @@
     return { p: w ? w[1] : 0, k: w ? w[0] : '', nu };
   }
   function usCal() {
-    const t0 = twToday(), base = new Date(t0 + 'T12:00:00'), start = new Date(base.getTime() - (base.getDay() + 28) * 864e5);
-    const cells = Array.from({ length: 35 }, (_, i) => new Date(start.getTime() + i * 864e5).toISOString().slice(0, 10)), cur = usDay || t0;
+    const t0 = twToday(), base = new Date(t0 + 'T12:00:00'), start = new Date(base.getTime() - 6 * 864e5);   // 最近 7 天
+    const cells = Array.from({ length: 7 }, (_, i) => new Date(start.getTime() + i * 864e5).toISOString().slice(0, 10)), cur = usDay || t0;
     const cell = d => {
       if (d > t0) return `<div class="uc-c uc-f"><b>${+d.slice(8)}</b></div>`;
       const x = usDayPct(d), p = Math.min(1, x.p), bg = p >= 1 ? '#dc2626' : p >= .85 ? '#f97316' : p >= .6 ? '#fbbf24' : `rgba(208,80,95,${(.08 + p * .55).toFixed(2)})`;
       return `<button class="uc-c${d === cur ? ' on' : ''}${x.p >= 1 ? ' boom' : ''}" data-uday="${d === t0 ? '' : d}" style="background:${bg};color:${p >= .6 ? '#fff' : '#1f2937'}" title="${d}　${x.k ? x.k + ' ' + Math.round(x.p * 100) + '%' : ''}　${x.nu} 人">
         <b>${+d.slice(8) === 1 || d === cells[0] ? +d.slice(5, 7) + '/' : ''}${+d.slice(8)}</b><small>${x.p ? Math.round(x.p * 100) + '%' : ''}</small>${x.nu ? `<i>${x.nu}人</i>` : ''}</button>`; };
-    return `<div class="uc-w">${'日一二三四五六'.split('').map(x => `<span>${x}</span>`).join('')}</div><div class="uc">${cells.map(cell).join('')}</div>
+    return `<div class="uc-w">${cells.map(d => `<span>${d === t0 ? '今天' : '日一二三四五六'[new Date(d + 'T12:00:00').getDay()]}</span>`).join('')}</div><div class="uc">${cells.map(cell).join('')}</div>
       <div class="uc-lg"><span><i style="background:rgba(208,80,95,.2)"></i>正常</span><span><i style="background:#fbbf24"></i>60%</span><span><i style="background:#f97316"></i>85%</span><span><i style="background:#dc2626"></i>爆量</span><span style="margin-left:auto">% ＝當天最吃緊的額度</span></div>`;
   }
   function usDayBody() {
