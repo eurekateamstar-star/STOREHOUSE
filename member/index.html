@@ -428,7 +428,7 @@
   .gate-note{display:none;padding:16px 18px;margin:14px 0;background:#fff7ed;border:1.5px solid #fdba74}.gate-note b{display:block;font-size:17px;margin-bottom:4px}.gate-note div{font-size:13.5px;color:#7c2d12;line-height:1.7}
   body.gate-off .gate-note{display:block}body.gate-off #attend-cards,body.gate-off #lot-cards,body.gate-off #my-sched,body.gate-off #v-member .col-r{display:none!important}
   #btn-gate.on{background:#dcfce7;color:#166534;border-color:#86efac}#btn-gate.off{background:#fee2e2;color:#991b1b;border-color:#fca5a5}
-  .us-card{padding:16px}.us-seg{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.us-seg button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;font:inherit;font-size:13px;font-weight:800;color:var(--sub)}.us-seg button.on{background:var(--primary);color:#fff;border-color:var(--primary)}
+  .us-card{padding:16px}.us-days{display:flex;gap:5px;align-items:stretch;margin:6px 0 10px;overflow-x:auto}.us-days button{flex:1;min-width:42px;border:0;background:#f3f4f6;border-radius:12px;padding:6px 2px;font:inherit;font-size:12px;font-weight:800;color:#374151;line-height:1.25;cursor:pointer}.us-days button small{display:block;font-size:10px;font-weight:600;opacity:.75}.us-days button.on{background:#d0505f;color:#fff}.us-days select{flex:none;width:44px;border:0;background:#f3f4f6;border-radius:12px;font:inherit;text-align:center}.us-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}.us-tile{text-align:left;border:1.5px solid #eef0f3;background:#fff;border-radius:16px;padding:10px 11px;font:inherit;cursor:pointer;min-height:84px;box-shadow:0 1px 3px rgba(0,0,0,.04)}.us-tile span{display:block;font-size:12px;color:#6b7280;font-weight:700}.us-tile b{display:block;font-size:20px;font-weight:900;margin:3px 0 1px;color:#111827;line-height:1.2;word-break:break-all}.us-tile small{display:block;font-size:11px;color:#9ca3af;line-height:1.35}.us-tile.bad{border-color:#fecaca;background:#fef2f2}.us-back{display:flex;align-items:center;gap:10px;margin-bottom:6px}.us-back button{border:0;background:#f3f4f6;border-radius:99px;padding:7px 12px;font:inherit;font-weight:900;cursor:pointer}.us-back b{font-size:16px;flex:1}.us-back span{font-size:12px;color:#9ca3af;font-weight:800}.us-seg{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.us-seg button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;font:inherit;font-size:13px;font-weight:800;color:var(--sub)}.us-seg button.on{background:var(--primary);color:#fff;border-color:var(--primary)}
   .us-tip{font-size:12px;color:var(--sub);background:#f8fafc;border-radius:10px;padding:8px 10px;margin-bottom:12px;line-height:1.6}.us-empty{padding:18px;text-align:center;color:var(--sub);font-size:13px}
   .us-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.us-kpi div{background:#fff7f5;border-radius:14px;padding:10px 6px;text-align:center}.us-kpi b{display:block;font-size:24px;color:var(--primary)}.us-kpi span{font-size:11.5px;color:var(--sub);font-weight:700}
   @media(max-width:520px){.us-kpi{grid-template-columns:repeat(2,1fr)}}
@@ -1278,11 +1278,14 @@
             <span><b>${r.rec}</b> 件</span><span>${r.out}／${r.in}</span><span>${ud ? Object.keys(ud).length : '—'}</span></div>`; }).join('')}
         <div class="us-tr us-tot"><span><b>合計</b></span><span>${T.days.reduce((a, r) => a + r.sched, 0)} 人次</span><span>${T.days.reduce((a, r) => a + r.att, 0)}</span><span>${T.days.reduce((a, r) => a + r.full, 0)}/${T.days.reduce((a, r) => a + r.teams, 0)}</span><span>${T.days.reduce((a, r) => a + r.rec, 0)} 件</span><span>${T.days.reduce((a, r) => a + r.out, 0)}／${T.days.reduce((a, r) => a + r.in, 0)}</span><span></span></div></div>
         <div class="us-sub">出發前一天：救護紀錄 ${T.before.rec} 件・出庫 ${T.before.out}　｜　「使用人數」要在近 ${usDays} 天內才看得到</div>` : '<div class="us-empty">這個活動還沒有排班日期</div>') : ''}`;
-    return `<div class="us-h">從哪裡進來 <small>（數字＝打開次數）</small></div>${srcT}
-      <div class="us-h">LINE 通知發出後有多少人點開</div>${notT}
-      <div class="us-h">衛教小卡</div>${eduT}
-      <div class="us-h">載入速度 <small>（綠＝3 秒內、黃＝3～8 秒、紅＝更久）</small></div>${spT}
-      <div class="us-h">進香每日總表 <small>（按了才讀，會讀一些資料庫）</small></div>${tripT}`;
+    const srcTot = {}; Object.values(src).forEach(o => Object.entries(o).forEach(([k, v]) => srcTot[k] = (srcTot[k] || 0) + v));
+    const sp0 = (() => { const c = US_B.map(([b]) => F[`t_ready_${b}`] || 0), tt = c.reduce((a, b) => a + b, 0); return tt ? Math.round((c[0] + c[1] + c[2]) / tt * 100) : null; })();
+    return { srcTot, sp0, eduN: E.visit || 0,
+      src: `<div class="us-h">從哪裡進來 <small>（數字＝打開次數）</small></div>${srcT}`,
+      notif: `<div class="us-h">LINE 通知發出後有多少人點開</div>${notT}`,
+      edu: `<div class="us-h">衛教小卡</div>${eduT}`,
+      speed: `<div class="us-h">載入速度 <small>（綠＝3 秒內、黃＝3～8 秒、紅＝更久）</small></div>${spT}`,
+      trip: `<div class="us-h">進香每日總表 <small>（按了才讀，會讀一些資料庫）</small></div>${tripT}` };
   }
   async function loadTrip() {
     usTrip.busy = true; usTrip.err = ''; renderUsage();
@@ -1423,71 +1426,114 @@
       <div class="us-tbl"><div class="us-tr us-th" style="grid-template-columns:1.4fr .8fr .8fr 1fr"><span>名稱</span><span>類型</span><span>狀態</span><span>最後回報</span></div>
       ${(L.trackers || []).sort((a, b) => b.last - a.last).map(t => `<div class="us-tr" style="grid-template-columns:1.4fr .8fr .8fr 1fr"><span><b>${esc(t.name)}</b></span><span>${esc(t.kind)}</span><span style="color:${t.duty ? 'var(--green)' : 'var(--sub)'}">${t.duty ? '值勤' : '退勤'}</span><span>${ago(t.last)}</span></div>`).join('') || '<div class="us-empty">還沒有裝置</div>'}</div>`;
   }
-  function renderUsage() {
-    const el = $('tab-usage');
-    const vtabs = `<div class="us-seg" style="flex-wrap:wrap">${US_VIEWS.map(([k, n]) => `<button class="${usView === k ? 'on' : ''}" data-usv="${k}">${n}</button>`).join('')}</div>`;
-    if (usView !== 'people') {
-      const body = usView === 'alert' ? usAlertHtml() : usView === 'fb' ? usFbHtml() : usView === 'cf' ? usCfHtml() : usLocHtml();
-      el.innerHTML = `<div class="card us-card">${vtabs}${usView === 'loc' ? '' : dayPick()}${body}</div>`; bindUs(); return;
-    }
-    if (!usData && !usBusy && !usErr) { loadUsage(); }
-    const seg = vtabs + `<div class="us-seg">${[7, 30, 90].map(n => `<button class="${usDays === n ? 'on' : ''}" data-usd="${n}">近 ${n} 天</button>`).join('')}<button data-usr="1">↻ 重新整理</button></div>`;
-    if (!usData) { el.innerHTML = `<div class="card us-card">${seg}<div class="us-empty">${usErr ? '❌ ' + esc(usErr) : '讀取中…'}</div></div>`; bindUs(); return; }
-    const { days, daily, last, users } = usData, sum = (o, k) => Object.values(o || {}).reduce((a, b) => a + (+b || 0), 0);
-    if (usPDay && !days.includes(usPDay)) usPDay = '';
-    const D = days.filter(d => !usPDay || d === usPDay).map(d => ({ d, o: daily[d] || {} })).reverse(), Dall = days.map(d => ({ d, o: daily[d] || {} })).reverse();
-    const pdl = d => `${+d.slice(4, 6)}/${+d.slice(6)}`;
-    const pPick = `<div style="display:flex;align-items:center;gap:8px;margin:2px 0 10px"><span style="font-weight:800">📅 看哪一天</span><select id="us-pday" style="padding:7px 10px;border-radius:10px;border:1.5px solid var(--line);font:inherit">
-      <option value="">近 ${usDays} 天全部</option>${days.map((d, i) => `<option value="${d}" ${usPDay === d ? 'selected' : ''}>${i ? pdl(d) : '今天 ' + pdl(d)}</option>`).join('')}</select></div>`;
-    const today = daily[days[0]] || {}, uToday = Object.keys(today.u || {}).length, oToday = sum(today.p);
+  // ===== 使用分析：磁磚首頁＋點進細節 =====
+  let usTile = '';   // ''＝首頁，其他＝細節頁
+  function usPeople(dayKey, range) {   // dayKey：YYYYMMDD；range＝用整段期間（每個人）
+    const { days, daily, last, users } = usData, sum = o => Object.values(o || {}).reduce((a, b) => a + (+b || 0), 0);
+    const D = days.filter(d => range || d === dayKey).map(d => ({ d, o: daily[d] || {} })).reverse(), Dall = days.map(d => ({ d, o: daily[d] || {} })).reverse();
     const P = {}, Q = {}, F = {}, H = {}, U = {}, LU = new Set();
     D.forEach(({ o }) => { Object.keys(o.lu || {}).forEach(k => LU.add(k)); Object.entries(o.p || {}).forEach(([k, v]) => P[k] = (P[k] || 0) + v); Object.entries(o.q || {}).forEach(([k, v]) => Q[k] = (Q[k] || 0) + v);
       Object.entries(o.f || {}).forEach(([k, v]) => F[k] = (F[k] || 0) + v); Object.entries(o.h || {}).forEach(([k, v]) => H[k] = (H[k] || 0) + v);
       Object.entries(o.u || {}).forEach(([id, x]) => { const u = U[id] || (U[id] = { days: 0, v: 0, a: 0, f: {} }); u.days++; u.v += x.v || 0; u.a += x.a || 0;
         Object.entries(x).forEach(([k, v]) => { if (k !== 'v' && k !== 'a' && !k.startsWith('pg_')) u.f[k] = (u.f[k] || 0) + v; }); }); });
-    const actDays = D.filter(x => x.o.u), avgU = actDays.length ? Math.round(actDays.reduce((a, x) => a + Object.keys(x.o.u).length, 0) / actDays.length) : 0;
-    const maxU = Math.max(1, ...Dall.map(x => Object.keys(x.o.u || {}).length)), maxO = Math.max(1, ...Dall.map(x => sum(x.o.p)));
+    const maxU = Math.max(1, ...Dall.map(x => Object.keys(x.o.u || {}).length));
     const bars = Dall.map(({ d, o }) => { const nu = Object.keys(o.u || {}).length, no = sum(o.p), dd = +d.slice(6);
-      return `<div class="us-b" data-pday="${d}" style="cursor:pointer;${usPDay && usPDay !== d ? 'opacity:.35' : ''}" title="${d.slice(4, 6)}/${d.slice(6)}　${nu} 人・開 ${no} 次"><b style="height:${nu / maxU * 100}%"></b><span>${Dall.length <= 10 || dd % 5 === 1 ? dd : ''}</span></div>`; }).join('');
+      return `<div class="us-b" data-pday="${d}" style="cursor:pointer;${d !== dayKey ? 'opacity:.4' : ''}" title="${+d.slice(4, 6)}/${dd}　${nu} 人・開 ${no} 次"><b style="height:${nu / maxU * 100}%"></b><span>${Dall.length <= 10 || dd % 5 === 1 ? dd : ''}</span></div>`; }).join('');
     const rank = (o, lab, max = 30) => { const L = Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, max), m = Math.max(1, ...L.map(x => x[1]));
-      return L.length ? L.map(([k, v]) => `<div class="us-r"><span>${esc(lab(k))}</span><div><i style="width:${v / m * 100}%"></i></div><b>${v}</b></div>`).join('') : '<div class="us-empty">還沒有資料</div>'; };
+      return L.length ? L.map(([k, v]) => `<div class="us-r"><span>${esc(lab(k))}</span><div><i style="width:${v / m * 100}%"></i></div><b>${v}</b></div>`).join('') : '<div class="us-empty">這天沒有資料</div>'; };
     const hrs = Array.from({ length: 24 }, (_, i) => H['h' + String(i).padStart(2, '0')] || 0), mh = Math.max(1, ...hrs);
     const nameOf = id => (last.n || {})[id] || (users.find(u => u.id === id) || {}).name || '（未知）';
     const now = Date.now(), ago = t => { if (!t) return '從沒用過'; const m = (now - t) / 60e3; return m < 60 ? Math.max(1, Math.round(m)) + ' 分鐘前' : m < 1440 ? Math.round(m / 60) + ' 小時前' : Math.round(m / 1440) + ' 天前'; };
     const T = last.t || {};
-    const people = users.map(u => ({ id: u.id, name: u.name || nameOf(u.id), t: T[u.id] || 0, ...(U[u.id] || { days: 0, v: 0, a: 0, f: {} }) }))
-      .sort((a, b) => b.t - a.t || a.name.localeCompare(b.name, 'zh-Hant'));
+    const people = users.map(u => ({ id: u.id, name: u.name || nameOf(u.id), t: T[u.id] || 0, ...(U[u.id] || { days: 0, v: 0, a: 0, f: {} }) })).sort((a, b) => b.t - a.t || a.name.localeCompare(b.name, 'zh-Hant'));
     const idle = people.filter(p => !p.t || now - p.t > 14 * 864e5);
     const top = f => Object.entries(f).filter(([k]) => !META(k)).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${usLabel(k)} ${v}`).join('、');
-    el.innerHTML = `<div class="card us-card">${seg}
-      <div class="us-tip">🔒 只有開發者看得到・你自己的使用不算在內・每個人離開頁面時才會送出，所以會晚幾分鐘</div>
-      ${pPick}<div class="us-h">使用人數${usPDay ? ` <small>（只看 ${pdl(usPDay)}，下面的排行和每個人也都是這一天）</small>` : ''}</div>
-      <div class="us-kpi">${usPDay ? `<div><b>${Object.keys((daily[usPDay] || {}).u || {}).length}</b><span>${pdl(usPDay)} 使用人數</span></div><div><b>${sum((daily[usPDay] || {}).p)}</b><span>${pdl(usPDay)} 打開次數</span></div>`
-          : `<div><b>${uToday}</b><span>今天使用人數</span></div><div><b>${oToday}</b><span>今天打開次數</span></div>
-        <div><b>${Object.keys(U).length}</b><span>近 ${usDays} 天用過的人</span></div><div><b>${avgU}</b><span>平均每天人數</span></div>`}</div>
-      <div class="us-h">每天使用人數 <small>（點長條＝只看那一天，再點一次回到全部）</small></div><div class="us-bars">${bars}</div>
-      <div class="us-h">LINE 官方帳號選單 <small>（${LU.size} 個 LINE 帳號點過，含還不是團員的民眾）</small></div>
-      <div class="us-line">${[['menu_about', '認識醫護團'], ['menu_edu', '衛教須知'], ['menu_journey', '醫護足跡'], ['menu_guardian', '全民醫護證']].map(([k, n]) => `<div><b>${F[k] || 0}</b><span>${n}</span></div>`).join('')}</div>
-      <div class="us-line2"><span>切到團員專區 <b>${F.menu_tab_member || 0}</b></span><span>切到一般資訊 <b>${F.menu_tab_public || 0}</b></span><span>➕ 加好友 <b style="color:var(--green)">${F.line_follow || 0}</b></span><span>🚫 封鎖 <b style="color:var(--red)">${F.line_unfollow || 0}</b></span></div>
-      <div class="us-h">各頁面打開次數 <small>（括號＝當天第一次開的人次）</small></div>${rank(P, k => `${US_PAGE[k] || k}（${Q[k] || 0}）`)}
-      <div class="us-h">功能使用排行</div>${rank(Object.fromEntries(Object.entries(F).filter(([k]) => !META(k))), usLabel, 40)}
-      <div class="us-h">一天中哪個時段最多人用</div><div class="us-hr">${hrs.map((v, i) => `<div title="${i} 點：${v} 次"><i style="height:${v / mh * 100}%"></i><span>${i % 3 ? '' : i}</span></div>`).join('')}</div>
-      ${usExtra(F, usData)}
-      <div class="us-h">超過 14 天沒打開（${idle.length} 人）</div><div class="us-idle">${idle.length ? idle.map(p => `<span>${esc(p.name)}<small>${ago(p.t)}</small></span>`).join('') : '<div class="us-empty">大家最近都有用 👍</div>'}</div>
-      <div class="us-h">每個人（${people.length} 位系統會員）</div>
-      <div class="us-tbl"><div class="us-tr us-th"><span>姓名</span><span>最後使用</span><span>天數</span><span>開啟</span><span>常用功能</span></div>
-        ${people.map(p => `<div class="us-tr"><span><b>${esc(p.name)}</b></span><span>${ago(p.t)}</span><span>${p.days}</span><span>${p.v}</span><span class="us-tf">${esc(top(p.f)) || '—'}</span></div>`).join('')}</div>
-    </div>`;
+    const FF = Object.fromEntries(Object.entries(F).filter(([k]) => !META(k))), menu = ['menu_about', 'menu_edu', 'menu_journey', 'menu_guardian'].reduce((a, k) => a + (F[k] || 0), 0);
+    const X = usExtra(F, usData), topK1 = o => (Object.entries(o).sort((a, b) => b[1] - a[1])[0] || [])[0];
+    const pk = Math.max(...hrs), ph = hrs.indexOf(pk);
+    return { nu: Object.keys(U).length, no: sum(P), menu, LU: LU.size, topPage: topK1(P), topFeat: topK1(FF), idle: idle.length, people: people.length, X, peak: pk ? ph : -1,
+      kpi: `<div class="us-kpi"><div><b>${Object.keys(U).length}</b><span>使用人數</span></div><div><b>${sum(P)}</b><span>打開次數</span></div></div>`,
+      bars: `<div class="us-h">每天使用人數 <small>（點長條＝換到那一天）</small></div><div class="us-bars">${bars}</div>`,
+      hours: `<div class="us-h">哪個時段最多人用</div><div class="us-hr">${hrs.map((v, i) => `<div title="${i} 點：${v} 次"><i style="height:${v / mh * 100}%"></i><span>${i % 3 ? '' : i}</span></div>`).join('')}</div>`,
+      line: `<div class="us-h">LINE 官方帳號選單 <small>（${LU.size} 個 LINE 帳號點過，含還不是團員的民眾）</small></div>
+        <div class="us-line">${[['menu_about', '認識醫護團'], ['menu_edu', '衛教須知'], ['menu_journey', '醫護足跡'], ['menu_guardian', '全民醫護證']].map(([k, n]) => `<div><b>${F[k] || 0}</b><span>${n}</span></div>`).join('')}</div>
+        <div class="us-line2"><span>切到團員專區 <b>${F.menu_tab_member || 0}</b></span><span>切到一般資訊 <b>${F.menu_tab_public || 0}</b></span><span>➕ 加好友 <b style="color:var(--green)">${F.line_follow || 0}</b></span><span>🚫 封鎖 <b style="color:var(--red)">${F.line_unfollow || 0}</b></span></div>`,
+      pages: `<div class="us-h">各頁面打開次數 <small>（括號＝當天第一次開的人次）</small></div>${rank(P, k => `${US_PAGE[k] || k}（${Q[k] || 0}）`)}`,
+      feat: `<div class="us-h">功能使用排行</div>${rank(FF, usLabel, 40)}`,
+      ppl: `<div class="us-h">超過 14 天沒打開（${idle.length} 人）</div><div class="us-idle">${idle.length ? idle.map(p => `<span>${esc(p.name)}<small>${ago(p.t)}</small></span>`).join('') : '<div class="us-empty">大家最近都有用 👍</div>'}</div>
+        <div class="us-h">每個人（${people.length} 位系統會員・近 ${usDays} 天）</div>
+        <div class="us-tbl"><div class="us-tr us-th"><span>姓名</span><span>最後使用</span><span>天數</span><span>開啟</span><span>常用功能</span></div>
+        ${people.map(p => `<div class="us-tr"><span><b>${esc(p.name)}</b></span><span>${ago(p.t)}</span><span>${p.days}</span><span>${p.v}</span><span class="us-tf">${esc(top(p.f)) || '—'}</span></div>`).join('')}</div>` };
+  }
+  const US_TILES = [['quota', '⚠️ 額度總覽'], ['fb', '🔥 Firebase 讀取'], ['cf', '☁️ Cloudflare'], ['loc', '📍 定位'], ['use', '👥 使用人數'], ['line', '💬 LINE 選單'],
+    ['src', '🚪 從哪裡進來'], ['page', '📄 頁面・功能'], ['edu', '📘 衛教'], ['speed', '⚡ 載入速度'], ['trip', '🏮 進香總表'], ['ppl', '🙋 每個人']];
+  function usTileVals() {
+    const v = {}, day = usDay || twToday(), pc = (u, l) => Math.round(u / l * 100);
+    const M = usM.data, now = Date.now(), utc = usDay || new Date(now).toISOString().slice(0, 10), pt = usDay || new Date(now).toLocaleDateString('sv-SE', { timeZone: 'America/Los_Angeles' });
+    const U = M ? aggM(M.m, dayUTC)[utc] || {} : {}, P = M ? aggM(M.m, dayPT)[pt] || {} : {}, Q = usQ.data;
+    const cf = (k, f) => cfOk(k) ? (usCF.data[k].ok[utc] || {})[f] : null;
+    const fbR = Q ? Math.round((Q.reads.byDay || {})[usDay || Q.today] || 0) : null, fbW = Q ? Math.round((Q.writes.byDay || {})[usDay || Q.today] || 0) : null;
+    const wr = cf('workers', 'requests') ?? tot(U.r), dq = cf('doReq', 'requests') ?? tot(U.d), drr = cf('doRows', 'rowsRead') ?? tot(U.dr), dww = cf('doRows', 'rowsWritten') ?? tot(U.dw);
+    const list = [fbR != null && ['Firebase 讀取', pc(fbR, 5e4)], fbW != null && ['Firebase 寫入', pc(fbW, 2e4)], M && ['Worker 請求', pc(wr, 1e5)], M && ['DO 請求', pc(dq, 1e5)], M && ['DO 讀取列', pc(drr, 5e6)], M && ['DO 寫入列', pc(dww, 1e5)]].filter(Boolean);
+    const worst = list.sort((a, b) => b[1] - a[1])[0];
+    const col = p => p >= 85 ? 'var(--red)' : p >= 60 ? 'var(--amber)' : 'var(--green)';
+    v.quota = worst ? { b: worst[1] + '%', c: col(worst[1]), s: `最高：${worst[0]}`, bad: worst[1] >= 85 } : { b: '…', s: '讀取中' };
+    v.fb = fbR == null ? { b: '…', s: '讀取中' } : { b: pc(fbR, 5e4) + '%', c: col(pc(fbR, 5e4)), s: `${fmtN(fbR)} / 5 萬`, bad: pc(fbR, 5e4) >= 85 };
+    const cfw = Math.max(pc(wr, 1e5), pc(dq, 1e5), pc(drr, 5e6), pc(dww, 1e5));
+    v.cf = !M ? { b: '…', s: '讀取中' } : { b: cfw + '%', c: col(cfw), s: `請求 ${fmtN(wr)}・DO 寫 ${pc(dww, 1e5)}%`, bad: cfw >= 85 };
+    v.loc = !M ? { b: '…', s: '讀取中' } : { b: `${(M.loc || {}).duty || 0} 台值勤`, s: `${(M.loc || {}).watchToday || 0} 人今天看地圖` };
+    if (usData) { const p = usPeople(day.replace(/-/g, '')), X = p.X, ts = (Object.entries(X.srcTot).sort((a, b) => b[1] - a[1])[0] || []);
+      v.use = { b: `${p.nu} 人`, s: `打開 ${p.no} 次` }; v.line = { b: `${p.menu} 次`, s: `${p.LU} 個 LINE 帳號` };
+      v.src = { b: ts[0] ? (US_SRC[ts[0]] || ts[0]) : '—', s: ts[1] ? `${ts[1]} 次` : '這天沒資料' };
+      v.page = { b: p.topPage ? (US_PAGE[p.topPage] || p.topPage) : '—', s: p.topFeat ? usLabel(p.topFeat) : '這天沒資料' };
+      v.edu = { b: `${X.eduN} 次`, s: '上線到現在累計' }; v.speed = X.sp0 == null ? { b: '—', s: '還沒有資料' } : { b: X.sp0 + '%', c: col(100 - X.sp0), s: '3 秒內看到會員卡' };
+      const pr = usPeople('', true); v.ppl = { b: `${pr.people} 位`, s: `${pr.idle} 人超過 14 天沒開`, c: pr.idle ? 'var(--amber)' : '' };
+    } else ['use', 'line', 'src', 'page', 'edu', 'speed', 'ppl'].forEach(k => v[k] = { b: '…', s: usErr ? '讀取失敗' : '讀取中' });
+    v.trip = { b: '按了才讀', s: '進香每天總表' };
+    return v;
+  }
+  function usDayStrip() {
+    const d0 = twToday(), ds = Array.from({ length: 7 }, (_, i) => new Date(Date.now() + 8 * 3600e3 - (6 - i) * 864e5).toISOString().slice(0, 10)), W = '日一二三四五六', cur = usDay || d0;
+    const more = Array.from({ length: 30 }, (_, i) => new Date(Date.now() + 8 * 3600e3 - i * 864e5).toISOString().slice(0, 10));
+    return `<div class="us-days">${ds.map(d => `<button data-uday="${d === d0 ? '' : d}" class="${d === cur ? 'on' : ''}">${d === d0 ? '今天' : W[new Date(d + 'T12:00:00').getDay()]}<small>${+d.slice(5, 7)}/${+d.slice(8)}</small></button>`).join('')}
+      <select id="us-day" title="更早的日期"><option value="">📅</option>${more.map(d => `<option value="${d === d0 ? '' : d}" ${usDay && d === usDay && !ds.includes(d) ? 'selected' : ''}>${+d.slice(5, 7)}/${+d.slice(8)}</option>`).join('')}</select></div>`;
+  }
+  function renderUsage() {
+    const el = $('tab-usage');
+    usNeed(); if (!usData && !usBusy && !usErr) loadUsage();
+    const dl = usDay ? `${+usDay.slice(5, 7)}/${+usDay.slice(8)}` : '今天';
+    if (!usTile) {
+      const V = usTileVals();
+      el.innerHTML = `<div class="card us-card"><div class="us-h" style="margin-top:0">📊 使用分析 <button class="us-mini" data-usr="1">↻</button></div>${usDayStrip()}
+        <div class="us-sub" style="margin:-2px 0 8px">${dl}的狀況・點任何一格看細節・紅色＝接近或超過免費上限</div>
+        <div class="us-tiles">${US_TILES.map(([k, n]) => { const x = V[k] || {}; return `<button class="us-tile${x.bad ? ' bad' : ''}" data-ust="${k}"><span>${n}</span><b style="${x.c ? 'color:' + x.c : ''}">${esc(x.b || '—')}</b><small>${esc(x.s || '')}</small></button>`; }).join('')}</div>
+        <div class="us-sub" style="margin-top:8px">🔒 只有開發者看得到・你自己的使用不算在使用人數裡</div></div>`;
+      bindUs(); return;
+    }
+    const name = (US_TILES.find(t => t[0] === usTile) || [])[1] || '';
+    let body = '';
+    const needP = ['use', 'line', 'src', 'page', 'edu', 'speed', 'trip', 'ppl'].includes(usTile);
+    if (needP && !usData) body = `<div class="us-empty">${usErr ? '❌ ' + esc(usErr) : '讀取中…'}</div>`;
+    else if (usTile === 'quota') body = usAlertHtml();
+    else if (usTile === 'fb') body = usFbHtml();
+    else if (usTile === 'cf') body = usCfHtml();
+    else if (usTile === 'loc') body = usLocHtml();
+    else if (usTile === 'ppl') { const p = usPeople('', true); body = `<div class="us-seg">${[7, 30, 90].map(n => `<button class="${usDays === n ? 'on' : ''}" data-usd="${n}">近 ${n} 天</button>`).join('')}</div>${p.ppl}`; }
+    else { const p = usPeople((usDay || twToday()).replace(/-/g, ''));
+      body = usTile === 'use' ? p.kpi + p.bars + p.hours : usTile === 'line' ? p.line : usTile === 'src' ? p.X.src + p.X.notif : usTile === 'page' ? p.pages + p.feat
+        : usTile === 'edu' ? p.X.edu : usTile === 'speed' ? p.X.speed : p.X.trip; }
+    const noDay = ['loc', 'ppl', 'trip', 'edu'].includes(usTile);
+    el.innerHTML = `<div class="card us-card"><div class="us-back"><button data-ust="">‹ 返回</button><b>${name}</b><span>${noDay ? '' : dl}</span></div>${noDay ? '' : usDayStrip()}${body}</div>`;
     bindUs();
   }
   function bindUs() {
-    document.querySelectorAll('#tab-usage [data-usv]').forEach(b => b.onclick = () => { usView = b.dataset.usv; renderUsage(); });
-    const pd = $('us-pday'); if (pd) pd.onchange = () => { usPDay = pd.value; renderUsage(); };
-    document.querySelectorAll('#tab-usage [data-pday]').forEach(b => b.onclick = () => { usPDay = usPDay === b.dataset.pday ? '' : b.dataset.pday; renderUsage(); });
-    const dp = $('us-day'); if (dp) dp.onchange = () => { usDay = dp.value; if (usDay && usM.data && !Object.keys(usM.data.m || {}).some(h => dayUTC(h) <= usDay)) {} renderUsage(); };
+    document.querySelectorAll('#tab-usage [data-ust]').forEach(b => b.onclick = () => { usTile = b.dataset.ust; renderUsage(); window.scrollTo({ top: $('tab-usage').offsetTop - 80 }); });
+    document.querySelectorAll('#tab-usage [data-uday]').forEach(b => b.onclick = () => { usDay = b.dataset.uday; renderUsage(); });
+    document.querySelectorAll('#tab-usage [data-pday]').forEach(b => b.onclick = () => { const d = b.dataset.pday, x = `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}`; usDay = x === twToday() ? '' : x; renderUsage(); });
+    const dp = $('us-day'); if (dp) dp.onchange = () => { usDay = dp.value; renderUsage(); };
     const cr = $('us-cf-re'); if (cr) cr.onclick = () => { if (!usCF.busy) { loadCF(); loadMeter(); } };
     document.querySelectorAll('#tab-usage [data-usd]').forEach(b => b.onclick = () => { usDays = +b.dataset.usd; usData = null; renderUsage(); });
-    document.querySelectorAll('#tab-usage [data-usr]').forEach(b => b.onclick = () => { usData = null; renderUsage(); });
+    document.querySelectorAll('#tab-usage [data-usr]').forEach(b => b.onclick = () => { usData = null; usM.data = null; usM.err = ''; usCF.data = null; usCF.err = ''; usQ.data = null; usQ.err = ''; renderUsage(); });
     const ts = $('us-trip-sel'); if (ts) ts.onchange = () => { usTrip.eid = ts.value; usTrip.data = null; renderUsage(); };
     const qr = $('us-q-re'); if (qr) qr.onclick = () => { if (!usQ.busy) { loadQuota(); loadMeter(); } };
     const tg = $('us-trip-go'); if (tg) tg.onclick = () => { if (!usTrip.busy) loadTrip(); };
