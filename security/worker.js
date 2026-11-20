@@ -1366,13 +1366,16 @@ async function usageRoute(req, env, json) {
     const b = JSON.parse(await req.text() || '{}');
     const pg = String(b.p || ''); if (!USAGE_PAGES.includes(pg)) return json({ ok: false }, 400);
     const v = Math.min(5, Math.max(0, b.v | 0)), q = b.q ? 1 : 0;
-    const f = Object.entries(b.f && typeof b.f === 'object' ? b.f : {}).filter(([k, n]) => /^[a-z][a-z0-9_]{0,39}$/.test(k) && n > 0).slice(0, 40).map(([k, n]) => [k, Math.min(50, n | 0)]);
+    const f = Object.entries(b.f && typeof b.f === 'object' ? b.f : {}).filter(([k, n]) => /^[a-z][a-z0-9_]{0,39}$/.test(k) && n > 0).slice(0, 40).map(([k, n]) => [k, Math.min(k.startsWith('rd_') ? 50000 : 50, n | 0)]);   // rd_＝瀏覽器讀了幾筆資料庫
     if (!v && !f.length) return json({ ok: true });
     const tok = await saToken(env);
     let uid = '', name = '';
     if (typeof b.t === 'string' && b.t.split('.').length === 3) {
       try { const id = uidOfToken(b.t); const u = await fsUser(b.t, id); if (u && u.status === 'approved') { uid = id; name = u.realName || ''; } } catch (e) {}
-      if (uid && uid === await devUid(tok)) return json({ ok: true, skip: 'dev' });   // 開發者自己不算
+      if (uid && uid === await devUid(tok)) {   // 開發者自己的使用不算，但讀了多少資料庫要算（才找得到誰讀最多）
+        const rf = f.filter(([k]) => k.startsWith('rd_')); if (!rf.length) return json({ ok: true, skip: 'dev' });
+        const r = await writeUsage(tok, { pg, v: 0, q: 0, f: rf, uid, name }); return json({ ok: r.ok });
+      }
     }
     const r = await writeUsage(tok, { pg, v, q, f, uid, name });
     return json({ ok: r.ok });
@@ -1381,7 +1384,7 @@ async function usageRoute(req, env, json) {
 // 寫一筆使用紀錄：pg 頁面、v 開啟次數、q 當天第一次、f [[功能, 次數]]、uid／name（可省略＝匿名）、lu＝LINE 使用者（只算人數）
 async function writeUsage(tok, { pg, v = 0, q = 0, f = [], uid = '', name = '', lu = '' }) {
   const now = Date.now(), tw = new Date(now + 8 * 3600e3), day = tw.toISOString().slice(0, 10).replace(/-/g, ''), hh = 'h' + String(tw.getUTCHours()).padStart(2, '0');
-  const acts = f.reduce((a, [, n]) => a + n, 0);
+  const acts = f.reduce((a, [k, n]) => a + (k.startsWith('rd_') ? 0 : n), 0);   // 讀取筆數不算「操作次數」
   const inc = (path, n) => ({ fieldPath: path, increment: { integerValue: String(n) } });
   const T = [];
   if (v) T.push(inc(fq('p', pg), v)); if (v || pg === 'line') T.push(inc(fq('h', hh), v || acts)); if (q) T.push(inc(fq('q', pg), 1));
@@ -1497,8 +1500,8 @@ async function devOnly(req, env) {
 async function usageMeterRoute(req, env, json) {
   try {
     const { days } = await devOnly(req, env); if (!env.LOC) return json({ error: '定位（LocHub）尚未部署' }, 501);
-    meterFlush(env, { waitUntil: p => p }, true);
     const hub = env.LOC.get(env.LOC.idFromName('main'));
+    { const b = MTR.b; MTR.b = {}; MTR.at = Date.now(); if (Object.keys(b).length) await hub.meterAdd(b); }   // 這台伺服器手上還沒存的先存
     const d = Math.min(Math.max(+days || 8, 1), 35), from = hourKey(Date.now() - d * 864e5);
     const [m, st] = await Promise.all([hub.meterGet(from), hub.admin('state', {})]);
     const now = Date.now();

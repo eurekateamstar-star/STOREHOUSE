@@ -1241,9 +1241,10 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
-    import { initializeFirestore, persistentLocalCache, collection, addDoc, getDocs, doc, getDoc, setDoc, deleteDoc, updateDoc, query, orderBy, limit, serverTimestamp, onSnapshot, deleteField } 
+    import { initializeFirestore, persistentLocalCache, collection, addDoc, getDocs as __fsGDs, doc, getDoc as __fsGD, setDoc, deleteDoc, updateDoc, query, orderBy, limit, serverTimestamp, onSnapshot as __fsOS, deleteField } 
     from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  const { getDocs, getDoc, onSnapshot } = (window.bstUsage && bstUsage.fsWrap) ? bstUsage.fsWrap({ getDocs: __fsGDs, getDoc: __fsGD, onSnapshot: __fsOS }) : { getDocs: __fsGDs, getDoc: __fsGD, onSnapshot: __fsOS };   // 算瀏覽器讀了幾筆資料庫（使用分析）
 
     const firebaseConfig = {
       apiKey: "AIzaSyA_5hmnIBCeLszWW8kIjgOZelv-c6-ALfY",

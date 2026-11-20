@@ -212,7 +212,8 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getFirestore, doc, getDoc, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getFirestore, doc, getDoc as __fsGD, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  const { getDoc } = (window.bstUsage && bstUsage.fsWrap) ? bstUsage.fsWrap({ getDoc: __fsGD }) : { getDoc: __fsGD };   // 算瀏覽器讀了幾筆資料庫（使用分析）
   const app = initializeApp({
     apiKey: "AIzaSyA_5hmnIBCeLszWW8kIjgOZelv-c6-ALfY", authDomain: "linebot-firebase-b1242.firebaseapp.com", projectId: "linebot-firebase-b1242",
     storageBucket: "linebot-firebase-b1242.firebasestorage.app", messagingSenderId: "1002268658683", appId: "1:1002268658683:web:739adcd7819f8c9393595e"

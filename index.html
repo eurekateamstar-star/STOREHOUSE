@@ -1351,8 +1351,9 @@
 <script type="module">
     // ⭐️ 已經不需要 Firebase Storage，直接使用 Firestore 即可
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { initializeFirestore, getFirestore, collection, getDocs, addDoc as _addDoc, doc, updateDoc as _updateDoc, getDoc, setDoc, deleteDoc as _deleteDoc, runTransaction, onSnapshot, query, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { initializeFirestore, getFirestore, collection, getDocs as __fsGDs, addDoc as _addDoc, doc, updateDoc as _updateDoc, getDoc as __fsGD, setDoc, deleteDoc as _deleteDoc, runTransaction, onSnapshot as __fsOS, query, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  const { getDocs, getDoc, onSnapshot } = (window.bstUsage && bstUsage.fsWrap) ? bstUsage.fsWrap({ getDocs: __fsGDs, getDoc: __fsGD, onSnapshot: __fsOS }) : { getDocs: __fsGDs, getDoc: __fsGD, onSnapshot: __fsOS };   // 算瀏覽器讀了幾筆資料庫（使用分析）
 
     // 與「白沙屯救護紀錄表」共用同一個 Firebase 專案（同一份 users，綁定一次即可）
     const firebaseConfig = {

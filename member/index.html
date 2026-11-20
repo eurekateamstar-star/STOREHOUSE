@@ -673,9 +673,10 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { initializeFirestore, getFirestore, collection, getDocs, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, limit, where, serverTimestamp, writeBatch, deleteField, getDocsFromServer }
+  import { initializeFirestore, getFirestore, collection, getDocs as __fsGDs, doc, getDoc as __fsGD, setDoc, updateDoc, deleteDoc, onSnapshot as __fsOS, query, limit, where, serverTimestamp, writeBatch, deleteField, getDocsFromServer as __fsGDS }
     from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  const { getDocs, getDoc, onSnapshot, getDocsFromServer } = (window.bstUsage && bstUsage.fsWrap) ? bstUsage.fsWrap({ getDocs: __fsGDs, getDoc: __fsGD, onSnapshot: __fsOS, getDocsFromServer: __fsGDS }) : { getDocs: __fsGDs, getDoc: __fsGD, onSnapshot: __fsOS, getDocsFromServer: __fsGDS };   // 算瀏覽器讀了幾筆資料庫（使用分析）
 
   // 與「救護紀錄表」「倉庫管理」共用同一個 Firebase 專案
   const app = initializeApp({
@@ -1208,7 +1209,7 @@
     catch (e) { usErr = String(e.message || e); }
     usBusy = false; if (curTab === 'usage') renderUsage();
   }
-  const META = k => /^(src_|t_|sent_|line_|menu_)/.test(k);
+  const META = k => /^(src_|t_|sent_|line_|menu_|rd_)/.test(k);
   const US_SRC = { card: '衛教小卡 QR', menu: 'LINE 選單', share: '親友分享', n_sched: '排班通知', n_meal: '用餐通知', n_remind: '催登記通知', n_other: '其他通知', direct: '直接開／掃 QR' };
   const US_T = { ready: '打開到看到會員卡', schedc: '看到排班（手機裡的）', sched: '拿到最新排班' };
   const US_B = [['b1', '<1秒'], ['b2', '1–2'], ['b3', '2–3'], ['b5', '3–5'], ['b8', '5–8'], ['b12', '8–12'], ['bx', '>12秒']];
@@ -1293,7 +1294,25 @@
   }
 
   // ===== 使用分析：分頁（額度總覽／使用情況／定位／Firebase／Cloudflare）=====
-  let usView = 'alert';
+  let usView = 'alert', usDay = '';   // usDay：空白＝今天，或 YYYY-MM-DD
+  const twToday = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+  const dayPick = () => { const opts = Array.from({ length: 30 }, (_, i) => new Date(Date.now() + 8 * 3600e3 - i * 864e5).toISOString().slice(0, 10));
+    return `<div style="display:flex;align-items:center;gap:8px;margin:2px 0 10px"><span style="font-weight:800">📅 看哪一天</span><select id="us-day" style="padding:7px 10px;border-radius:10px;border:1.5px solid var(--line);font:inherit">
+      ${opts.map((d, i) => `<option value="${i ? d : ''}" ${(usDay || '') === (i ? d : '') ? 'selected' : ''}>${i ? d.slice(5).replace('-', '/') : '今天'}</option>`).join('')}</select></div>`; };
+  const RDP = { me: '團員專區', wa: '倉庫管理', re: '救護紀錄表', at: '出席調查表單' };
+  const RDC = { users: '帳號資料', member_roster: '名冊', events: '出席調查', events_responses: '出席回覆', events_admin: '排班／抽籤', warehouse_items: '倉庫物品', warehouse_boxes: '倉庫箱子', warehouse_logs: '進出紀錄',
+    records: '救護紀錄', roster_applications: '新人申請', settings: '設定', meta: '系統設定', usage_daily: '使用統計', usage_meta: '使用統計' };
+  const rdL = k => { const m = k.match(/^rd_([a-z]{2})_(.+)$/); return m ? `${RDP[m[1]] || m[1]}・${RDC[m[2]] || m[2]}` : k; };
+  function usBrowserReads() {
+    if (!usData) { if (!usBusy && !usErr) loadUsage(); return '<div class="us-h">瀏覽器讀取：誰讀的</div><div class="us-empty">讀取中…</div>'; }
+    const d = usDay || twToday(), o = usData.daily[d.replace(/-/g, '')] || {}, F = Object.fromEntries(Object.entries(o.f || {}).filter(([k]) => k.startsWith('rd_')));
+    const P = {}; Object.entries(o.u || {}).forEach(([id, x]) => { const n = Object.entries(x).filter(([k]) => k.startsWith('rd_')).reduce((a, [, v]) => a + v, 0); if (n) P[id] = n; });
+    const nm = id => ((usData.last || {}).n || {})[id] || ((usData.users || []).find(u => u.id === id) || {}).name || '（未知）';
+    const anon = tot(F) - tot(P);
+    return `<div class="us-h">瀏覽器讀取：誰讀的 <small>（${d === twToday() ? '今天' : d.slice(5).replace('-', '/')}・台灣日期・離開頁面時才送出，會晚幾分鐘）</small></div>
+      ${tot(F) ? `<div class="us-sub" style="margin-bottom:6px">共 <b>${fmtN(tot(F))}</b> 筆${anon > 0 ? `・沒登入／還沒拿到身分 ${fmtN(anon)}` : ''}</div>` : '<div class="us-empty">這天還沒有資料（這個功能今天才開始記）</div>'}
+      ${tot(F) ? rankBox('依頁面・資料', F, rdL, 15) + rankBox('依人', P, nm, 20) : ''}`;
+  }
   const US_VIEWS = [['alert', '⚠️ 額度總覽'], ['people', '👥 使用情況'], ['loc', '📍 定位'], ['fb', '🔥 Firebase'], ['cf', '☁️ Cloudflare']];
   const RT = { '/': 'LINE 登入', '/loc': '定位地圖更新', '/owntracks': '手機回報位置', '/loc-track': '看軌跡', '/loc-can': '團員專區檢查定位按鈕', '/loc-self': '組長產生定位 QR', '/loc-admin': '定位管理',
     '/mysched': '我的排班', '/viewsched': '唯讀排班', '/myplan': '我的一天', '/mygroup': '我的組別', '/groups': '組別看板', '/groupset': '設定組別', '/lead': '小組長檢查', '/lot': '抽籤', '/usage': '使用統計回報',
@@ -1316,7 +1335,7 @@
   async function usPost(path, body) { const idToken = await auth.currentUser.getIdToken();
     const r = await fetch(AUTH_URL + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, ...body }) });
     const j = await r.json(); if (!r.ok || j.error) throw new Error(j.error || r.status); return j; }
-  async function loadMeter() { usM.busy = true; usM.err = ''; try { usM.data = await usPost('/usage-meter', { days: 8 }); } catch (e) { usM.err = String(e.message || e); } usM.busy = false; if (curTab === 'usage') renderUsage(); }
+  async function loadMeter() { usM.busy = true; usM.err = ''; try { usM.data = await usPost('/usage-meter', { days: 31 }); } catch (e) { usM.err = String(e.message || e); } usM.busy = false; if (curTab === 'usage') renderUsage(); }
   async function loadCF() { usCF.busy = true; usCF.err = ''; try { usCF.data = await usPost('/usage-cf', {}); } catch (e) { usCF.err = String(e.message || e); } usCF.busy = false; if (curTab === 'usage') renderUsage(); }
   const usNeed = () => { if (!usM.data && !usM.busy && !usM.err) loadMeter(); if (!usCF.data && !usCF.busy && !usCF.err) loadCF(); if (!usQ.data && !usQ.busy && !usQ.err) loadQuota(); };
   const cfOk = k => usCF.data && usCF.data[k] && usCF.data[k].ok;
@@ -1331,9 +1350,9 @@
       <div class="us-sub" style="margin-top:4px">主要來源：${esc(why)}</div><div class="us-sub">${esc(src)}${note ? '・' + esc(note) : ''}</div></div>`; }
   function usAlertHtml() {
     usNeed();
-    const M = usM.data, now = Date.now(), utc = new Date(now).toISOString().slice(0, 10), pt = new Date(now).toLocaleDateString('sv-SE', { timeZone: 'America/Los_Angeles' });
+    const M = usM.data, now = Date.now(), utc = usDay || new Date(now).toISOString().slice(0, 10), pt = usDay || new Date(now).toLocaleDateString('sv-SE', { timeZone: 'America/Los_Angeles' });
     const U = M ? aggM(M.m, dayUTC)[utc] || {} : {}, P = M ? aggM(M.m, dayPT)[pt] || {} : {};
-    const Q = usQ.data, fbR = Q ? Math.round((Q.reads.byDay || {})[Q.today] || 0) : null, fbW = Q ? Math.round((Q.writes.byDay || {})[Q.today] || 0) : null;
+    const Q = usQ.data, fbR = Q ? Math.round((Q.reads.byDay || {})[usDay || Q.today] || 0) : null, fbW = Q ? Math.round((Q.writes.byDay || {})[usDay || Q.today] || 0) : null;
     const cf = (k, f) => cfOk(k) ? (usCF.data[k].ok[utc] || {})[f] : null;
     const srv = tot(P.f), browser = fbR != null ? Math.max(0, fbR - srv) : null;
     const fbWhy = fbR == null ? '讀取中…' : `瀏覽器直接讀 ≈${fmtN(browser)}・伺服器 ${fmtN(srv)}（${topK(P.f, rtL, 2)}）`;
@@ -1356,17 +1375,17 @@
     usNeed();
     const M = usM.data, A = M ? aggM(M.m, dayPT) : {}, Q = usQ.data;
     const days = [...new Set([...Object.keys(A), ...(Q ? Object.keys(Q.reads.byDay || {}) : [])])].sort().reverse().slice(0, 8);
-    const pt = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Los_Angeles' }), T = A[pt] || {};
+    const pt = usDay || new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Los_Angeles' }), T = A[pt] || {}, DL = usDay ? usDay.slice(5).replace('-', '/') : '今天';
     const tbl = `<div class="us-h">每天讀取：誰讀的 <small>（日期是美西時間，跟 Firebase 額度同一天）</small></div>
       <div class="us-tbl"><div class="us-tr us-th" style="grid-template-columns:.8fr .9fr .9fr .9fr 2fr"><span>日期</span><span>總讀取</span><span>伺服器</span><span>瀏覽器≈</span><span>伺服器讀最多</span></div>
       ${days.map(d => { const o = A[d] || {}, all = Q ? Math.round((Q.reads.byDay || {})[d] || 0) : 0, sv = tot(o.f), over = all > 50000;
         return `<div class="us-tr" style="grid-template-columns:.8fr .9fr .9fr .9fr 2fr"><span>${d.slice(5).replace('-', '/')}</span><span style="${over ? 'color:var(--red);font-weight:900' : ''}">${fmtN(all)}${over ? ' ⚠' : ''}</span><span>${o.f ? fmtN(sv) : '—'}</span><span>${o.f && all ? fmtN(Math.max(0, all - sv)) : '—'}</span><span class="us-tf">${esc(topK(o.f, rtL, 2))}</span></div>`; }).join('')}</div>
       <div class="us-sub">「瀏覽器≈」＝總讀取減掉伺服器讀的，是大家手機上的頁面直接讀資料庫（團員專區、倉庫、出席調查…）。</div>`;
-    return usQuotaHtml() + tbl + rankBox('今天伺服器讀取（依功能）', T.f, rtL) + rankBox('今天伺服器寫入（依功能）', T.fw, rtL);
+    return usQuotaHtml() + tbl + usBrowserReads() + rankBox(DL + '伺服器讀取（依功能）', T.f, rtL) + rankBox(DL + '伺服器寫入（依功能）', T.fw, rtL);
   }
   function usCfHtml() {
     usNeed();
-    const M = usM.data, A = M ? aggM(M.m, dayUTC) : {}, C = usCF.data, utc = new Date().toISOString().slice(0, 10), T = A[utc] || {};
+    const M = usM.data, A = M ? aggM(M.m, dayUTC) : {}, C = usCF.data, utc = usDay || new Date().toISOString().slice(0, 10), T = A[utc] || {}, DL = usDay ? usDay.slice(5).replace('-', '/') : '今天';
     let setup = '';
     if (usCF.err) setup = `<div class="us-empty">❌ ${esc(usCF.err)}</div>`;
     else if (C && C.needSetup) setup = `<div class="us-role"><b>想看 Cloudflare 官方數字：要設定一次</b>（沒設也可以，下面會用伺服器自己記的數字）
@@ -1384,7 +1403,7 @@
       <div class="us-tbl"><div class="us-tr us-th" style="grid-template-columns:.7fr 1fr 1fr 1.1fr 1fr"><span>日期</span><span>Worker 請求</span><span>DO 請求</span><span>DO 讀取列</span><span>DO 寫入列</span></div>
       ${days.map(d => { const o = A[d] || {}; return `<div class="us-tr" style="grid-template-columns:.7fr 1fr 1fr 1.1fr 1fr"><span>${d.slice(5).replace('-', '/')}${d === utc ? ' 今天' : ''}</span>${cell(v('workers', d, 'requests'), tot(o.r), 1e5)}${cell(v('doReq', d, 'requests'), tot(o.d), 1e5)}${cell(v('doRows', d, 'rowsRead'), tot(o.dr), 5e6)}${cell(v('doRows', d, 'rowsWritten'), tot(o.dw), 1e5)}</div>`; }).join('')}</div>
       ${errs.length ? `<div class="us-sub" style="color:var(--red)">官方數字有些查不到：${esc(errs.join('；'))}</div>` : ''}`;
-    return setup + tbl + rankBox('今天 Worker 請求（依功能）', T.r, rtL) + rankBox('今天呼叫定位資料庫（DO，依動作）', T.d, dmL) + rankBox('今天 DO 讀取列數（依動作）', T.dr, drL) + rankBox('今天 DO 寫入列數（依動作）', T.dw, drL);
+    return setup + tbl + rankBox(DL + ' Worker 請求（依功能）', T.r, rtL) + rankBox(DL + '呼叫定位資料庫（DO，依動作）', T.d, dmL) + rankBox(DL + ' DO 讀取列數（依動作）', T.dr, drL) + rankBox(DL + ' DO 寫入列數（依動作）', T.dw, drL);
   }
   function usLocHtml() {
     usNeed();
@@ -1409,7 +1428,7 @@
     const vtabs = `<div class="us-seg" style="flex-wrap:wrap">${US_VIEWS.map(([k, n]) => `<button class="${usView === k ? 'on' : ''}" data-usv="${k}">${n}</button>`).join('')}</div>`;
     if (usView !== 'people') {
       const body = usView === 'alert' ? usAlertHtml() : usView === 'fb' ? usFbHtml() : usView === 'cf' ? usCfHtml() : usLocHtml();
-      el.innerHTML = `<div class="card us-card">${vtabs}<div class="us-tip">🔒 只有開發者看得到</div>${body}</div>`; bindUs(); return;
+      el.innerHTML = `<div class="card us-card">${vtabs}${usView === 'loc' ? '' : dayPick()}${body}</div>`; bindUs(); return;
     }
     if (!usData && !usBusy && !usErr) { loadUsage(); }
     const seg = vtabs + `<div class="us-seg">${[7, 30, 90].map(n => `<button class="${usDays === n ? 'on' : ''}" data-usd="${n}">近 ${n} 天</button>`).join('')}<button data-usr="1">↻ 重新整理</button></div>`;
@@ -1458,6 +1477,7 @@
   }
   function bindUs() {
     document.querySelectorAll('#tab-usage [data-usv]').forEach(b => b.onclick = () => { usView = b.dataset.usv; renderUsage(); });
+    const dp = $('us-day'); if (dp) dp.onchange = () => { usDay = dp.value; if (usDay && usM.data && !Object.keys(usM.data.m || {}).some(h => dayUTC(h) <= usDay)) {} renderUsage(); };
     const cr = $('us-cf-re'); if (cr) cr.onclick = () => { if (!usCF.busy) { loadCF(); loadMeter(); } };
     document.querySelectorAll('#tab-usage [data-usd]').forEach(b => b.onclick = () => { usDays = +b.dataset.usd; usData = null; renderUsage(); });
     document.querySelectorAll('#tab-usage [data-usr]').forEach(b => b.onclick = () => { usData = null; renderUsage(); });

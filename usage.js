@@ -19,6 +19,26 @@
   };
   window.bstUsage = {
     track(f) { if (!/^[a-z][a-z0-9_]{0,39}$/.test(f)) return; buf.f[f] = Math.min(50, (buf.f[f] || 0) + 1); refresh(); },
+    // 記數量（目前用在：瀏覽器讀了幾筆資料庫，rd_集合名）
+    add(f, n) { if (!/^[a-z][a-z0-9_]{0,39}$/.test(f) || !(n > 0)) return; buf.f[f] = Math.min(50000, (buf.f[f] || 0) + n); refresh(); },
+    // 包住 Firestore 的讀取函式，算這個頁面讀了幾筆、讀哪個集合（從快取拿的不算，跟 Firebase 計費一樣）
+    fsWrap(F) {
+      const key = r => { try { const p = r.path || (r._query && r._query.path && r._query.path.canonicalString()) || (r._path && r._path.canonicalString()) || '';
+        const seg = String(p).split('/').filter(Boolean), c = seg.filter((_, i) => i % 2 === 0).join('_');
+        return 'rd_' + PAGE.slice(0, 2) + '_' + (c.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 33) || 'other'); } catch (e) { return 'rd_' + PAGE.slice(0, 2) + '_other'; } };
+      const cnt = (r, n) => { if (n > 0) window.bstUsage.add(key(r), n); };
+      const isQ = s => s && typeof s.size === 'number';
+      const out = {};
+      if (F.getDoc) out.getDoc = (r, ...a) => F.getDoc(r, ...a).then(s => { if (!(s.metadata && s.metadata.fromCache)) cnt(r, 1); return s; });
+      for (const k of ['getDocs', 'getDocsFromServer']) if (F[k]) out[k] = (r, ...a) => F[k](r, ...a).then(s => { if (!(s.metadata && s.metadata.fromCache)) cnt(r, Math.max(1, s.size)); return s; });
+      if (F.onSnapshot) out.onSnapshot = (r, ...a) => { let first = true;
+        const i = a.findIndex(x => typeof x === 'function' || (x && typeof x.next === 'function'));
+        if (i < 0) return F.onSnapshot(r, ...a);
+        const orig = a[i], nx = typeof orig === 'function' ? orig : orig.next.bind(orig);
+        const w = s => { try { if (!(s.metadata && s.metadata.fromCache)) { cnt(r, isQ(s) ? (first ? Math.max(1, s.size) : s.docChanges().length) : 1); first = false; } } catch (e) {} return nx(s); };
+        a[i] = typeof orig === 'function' ? w : { ...orig, next: w }; return F.onSnapshot(r, ...a); };
+      return out;
+    },
     token(fn) { getTok = fn; refresh(); },
     flush,
     // 記載入時間（毫秒）：分成 <1、1-2、2-3、3-5、5-8、8-12、>12 秒，同一個項目一頁只記一次
