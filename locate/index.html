@@ -265,6 +265,22 @@
     const tag = off ? `<small>🌙 退勤</small>` : st ? `<small>${esc(ago(i.loc.at, now))}</small>` : '';
     return L.divIcon({ className: '', iconSize: [0, 0], html: `<div class="mk ${st ? 'stale' : ''}"><div class="b k-${esc(i.kind)} ${i.pic || VAN(i.kind) ? 'p' : ''}" style="${i.pic || VAN(i.kind) ? 'border-color:' + KC[i.kind] : ''}">${face(i)}</div><div class="tip" style="${i.pic || VAN(i.kind) ? 'border-top-color:' + KC[i.kind] : ''}"></div><div class="l">${i.team ? `<span class="tm">${esc(i.team)}</span>` : ''}${esc(i.name)}${tag}</div></div>` });
   }
+  // 距離：我（這支手機）到對方，直線距離＋步行估計（路線約比直線多 30%，每分鐘走 75 公尺）
+  let myPos = null, myAsk = 0;
+  const hav = (a, b, c, d) => { const R = 6371e3, r = x => x * Math.PI / 180, x = Math.sin(r(c - a) / 2) ** 2 + Math.cos(r(a)) * Math.cos(r(c)) * Math.sin(r(d - b) / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); };
+  function distTxt(lat, lon) {
+    const me = meLL || myPos; if (!me) return '📏 <a role="button" data-mypos style="cursor:pointer;color:#2563eb;text-decoration:underline">算算離我多遠</a>';
+    const m = hav(me[0], me[1], lat, lon), walk = Math.max(1, Math.round(m * 1.3 / 75));
+    const dt = m < 1000 ? Math.round(m / 10) * 10 + ' 公尺' : (m / 1000).toFixed(m < 10e3 ? 1 : 0) + ' 公里';
+    return `📏 離你約 <b>${dt}</b><br>🚶 走路約 <b>${walk < 60 ? walk + ' 分鐘' : Math.floor(walk / 60) + ' 小時 ' + walk % 60 + ' 分'}</b><br><span style="color:#9ca3af;font-size:11.5px">直線估算，實際依路線</span>`;
+  }
+  function fillDist() { document.querySelectorAll('.leaflet-popup .dist').forEach(e => { const [a, b] = e.dataset.ll.split(',').map(Number); e.innerHTML = distTxt(a, b); }); }
+  function askPos(force) {
+    if (!navigator.geolocation || (!force && Date.now() - myAsk < 60e3)) return; myAsk = Date.now();
+    navigator.geolocation.getCurrentPosition(p => { myPos = [p.coords.latitude, p.coords.longitude]; fillDist(); }, e => { if (force) toast(e.code === 1 ? '請允許瀏覽器使用位置，才能算距離' : '無法取得你的位置'); }, { enableHighAccuracy: true, maximumAge: 60e3, timeout: 15e3 });
+  }
+  map.on('popupopen', () => { if (!meLL) askPos(false); fillDist(); });
+  document.addEventListener('click', ev => { if (ev.target.closest && ev.target.closest('[data-mypos]')) { ev.preventDefault(); askPos(true); } }, true);
   function popup(i) {
     const l = i.loc, bits = [];
     bits.push(`<b style="font-size:15px">${i.pic ? '' : (EMOJI[i.kind] || '') + ' '}${esc(label(i))}</b>`);
@@ -275,7 +291,8 @@
     if (l.vel != null && l.vel >= 2) bits.push(`速度：約 ${Math.round(l.vel)} km/h`);
     if (l.batt != null) bits.push(`手機電量：${l.batt}%${l.batt <= 20 ? ' ⚠️' : ''}`);
     if (l.acc != null) bits.push(`誤差：約 ${Math.round(l.acc)} 公尺`);
-    bits.push(`<a href="https://www.google.com/maps/dir/?api=1&destination=${l.lat},${l.lon}" target="_blank" rel="noopener">🧭 Google 導航過去</a>`);
+    bits.push(`<div class="dist" data-ll="${l.lat},${l.lon}">${distTxt(l.lat, l.lon)}</div>`);
+    bits.push(`<a href="https://www.google.com/maps/dir/?api=1&destination=${l.lat},${l.lon}&travelmode=walking" target="_blank" rel="noopener">🚶 Google 走路導航</a>`);
     bits.push(`<a role="button" data-trk="${esc(i.id)}" style="cursor:pointer;color:#2563eb;text-decoration:underline">🛤 看今天的軌跡</a>`);
     return bits.join('<br>');
   }
