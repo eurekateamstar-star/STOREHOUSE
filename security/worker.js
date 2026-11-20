@@ -1536,7 +1536,7 @@ async function gateSetRoute(req, env, json) {
 // 小組長／指揮車／物資車的手機裝 OwnTracks（HTTP 模式），POST 到 /owntracks，用 HTTP Basic 帳密（帳號＝裝置 ID）
 // 誰看得到地圖：完整管理員、開發者、名單上的查看者、綁定在某台裝置的團員
 const LOC_TTL = 12 * 3600e3;          // 超過 12 小時沒更新就不顯示
-const LOC_SESS = 10 * 60e3;
+const LOC_SESS = 60 * 60e3;   // 查看權限暫存 60 分鐘（每人每小時才查一次 Firestore）
 const TRK_KEEP = 30 * 86400e3;       // 軌跡保留 30 天（只存值勤中的點）           // 查看權限暫存 10 分鐘，地圖每 15 秒更新時不用每次查 Firestore
 const OT_FRIENDS = true;
 const LOC_OPEN = true;                // true＝已開通的團員都能看地圖；false＝只有管理員、名單上的人、綁定裝置的人              // OwnTracks App 裡也顯示其他裝置（App 的「朋友」）
@@ -1667,6 +1667,8 @@ export class LocHub extends DurableObject {
     await this.onDuty(id);
     return { ok: true, id, pw: t.pw, tid: t.tid, name: t.name, kind: t.kind, used: this.used(id) };
   }
+  // 地圖更新一次只呼叫一次 DO（list＋綁定裝置＋有沒有自己的裝置）
+  view(uid, mgr, who) { const items = this.list(uid, mgr, who); return items ? { items, bd: this.bound(uid), self: this.hasSelf(uid) } : null; }
   hasSelf(uid) { return [...this.T.values()].some(t => t.uid === uid && t.self); }
   canView(uid) { return !!uid && (this.V.has(uid) || [...this.T.values()].some(t => t.uid === uid)); }
   list(uid, mgr, who) {
@@ -1785,11 +1787,11 @@ async function locRoute(req, env, json) {
       s = { uid, n: String(me.realName || '').slice(0, 20), m: await fullAdmin(me, idToken, env), ld, exp: Date.now() + LOC_SESS };
       fresh = await locSessMake(s, env);
     }
-    const items = await locHub(env).list(s.uid, s.m, { n: s.n });
+    const V = await locHub(env).view(s.uid, s.m, { n: s.n }), items = V && V.items;
     if (!items) return json({ error: '你沒有查看定位的權限，請找管理員開通', canSelf: true }, 403);
     try { const T = await locTeams(env); items.forEach(i => { i.team = i.rkey ? (T.today[i.rkey] || '') : ''; delete i.rkey; }); } catch (e) { items.forEach(i => delete i.rkey); }
-    const bd = await locHub(env).bound(s.uid);
-    const selfNeed = (!!s.ld && !(await locHub(env).hasSelf(s.uid))) || bd.some(b => !b.used);   // 組長還沒產生、或綁定的裝置還沒連線過 → 自動跳設定
+    const bd = V.bd;
+    const selfNeed = (!!s.ld && !V.self) || bd.some(b => !b.used);   // 組長還沒產生、或綁定的裝置還沒連線過 → 自動跳設定
     return json({ ok: true, items, mgr: s.m, canSelf: !!(s.ld || s.m || bd.length), selfNeed, sess: fresh, exp: s.exp, now: Date.now() });
   } catch (e) { return json({ error: e.code ? '請重新登入' : String((e && e.message) || e) }, e.code || 500); }
 }

@@ -199,7 +199,7 @@
   const W = 'https://bst-auth.eurekateamstar.workers.dev';
   const OT_URL = W + '/owntracks';
   const MEMBER_LIFF = 'https://liff.line.me/2011820105-x1KU6xLW?go=locate';
-  const POLL = 15e3, STALE = 3 * 60e3;
+  const POLL = 20e3, STALE = 3 * 60e3, IDLE = 10 * 60e3;   // 10 分鐘沒碰畫面就暫停更新（40 人同時看也不會超過免費額度）
   const KINDS = ['小組長', '指揮車', '物資車', '其他'];
   const EMOJI = { 小組長: '🙋', 指揮車: '🚩', 物資車: '🚚', 其他: '📍' };
 
@@ -247,9 +247,15 @@
   }
   function setStatus(ok, t) { $('status').innerHTML = `<span class="dot ${ok ? '' : 'err'}"></span>${esc(t)}`; }
   let timer = null;
-  const start = () => { if (!timer) timer = setInterval(() => { if (document.visibilityState === 'visible') load(); }, POLL); };
+  let lastAct = Date.now(), idle = false;
+  const wake = () => { lastAct = Date.now(); if (idle) { idle = false; load(); } };
+  ['pointerdown', 'touchstart', 'wheel', 'keydown'].forEach(ev => document.addEventListener(ev, wake, { passive: true }));
+  const start = () => { if (!timer) timer = setInterval(() => {
+    if (document.visibilityState !== 'visible') return;
+    if (Date.now() - lastAct > IDLE) { if (!idle) { idle = true; setStatus(false, '已暫停更新（10 分鐘沒操作）· 點一下地圖繼續'); } return; }
+    load(); }, POLL); };
   const stop = () => { clearInterval(timer); timer = null; };
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') load(); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { lastAct = Date.now(); idle = false; load(); } });
 
   function iconFor(i) {
     const off = i.duty === false, st = off || now - i.loc.at > STALE;
