@@ -443,6 +443,7 @@
           <small>${esc(t.kind)}${t.uname ? '・綁定 ' + esc(t.uname) : ''}・${t.ping ? '最後連線 ' + esc(ago(t.ping, Date.now())) : t.last ? '最後上傳 ' + esc(ago(t.last, Date.now())) : '還沒收到位置'}${modeTxt(t) ? '・' + esc(modeTxt(t)) : ''}</small></div>
           <button class="duty ${t.duty === false ? 'off' : 'on'}" data-d="${esc(t.id)}">${t.duty === false ? '🌙 退勤' : '✅ 值勤'}</button>
           <button class="sb" data-edit="${esc(t.id)}">編輯</button><button class="sb" data-qr="${esc(t.id)}">📱 QR</button><button class="sb d" data-del="${esc(t.id)}">刪除</button></div>`).join('') || '<div class="hint">還沒有裝置</div>'}
+      ${(st.rejects || []).length ? `<div class="warn" style="margin-top:10px">⚠️ <b>被拒絕的手機（24 小時內）</b><br>${st.rejects.map(r => `${esc(r.name || r.id)}（${esc(r.id)}）：${esc(r.why)}・${esc(ago(r.at, Date.now()))}`).join('<br>')}<br><span class="hint">請那支手機的人到定位頁按「📱QR」→ 綠色按鈕重新匯入。</span></div>` : ''}
       <h4>➕ 新增裝置</h4>
       <div class="fm">
         <div><label>名稱（地圖上顯示）</label><input id="a-name" maxlength="20" placeholder="例如：第一組 王小明、指揮車、物資車 1 號"></div>

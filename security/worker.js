@@ -1717,7 +1717,9 @@ export class LocHub extends DurableObject {
   // OwnTracks 上傳：帳密對了才收；回傳其他裝置的位置給 App 顯示
   async pub(user, pass, m) {
     const t = this.T.get(user);
-    if (!t || !pass || t.h !== await sha256hex(pass)) return { auth: false };
+    if (!t || !pass || t.h !== await sha256hex(pass)) {   // 記下被拒絕的手機（只放記憶體），管理面板看得到原因
+      (this.R || (this.R = new Map())).set(user, { why: !t ? '找不到這台（已刪除）' : '密碼不對（換過密碼）', at: Date.now(), name: t ? t.name : '' });
+      return { auth: false }; }
     const now = Date.now(), duty = t.duty !== false; this.mt('loc', '手機上傳', 1);
     if (now - this.mtAt > 300e3) this.meterAdd({}).catch(() => {});
     this.P.set(user, now);   // 最後連線（退勤時也會偶爾連線，只放記憶體）
@@ -1802,6 +1804,7 @@ export class LocHub extends DurableObject {
   async admin(op, a) {
     const st = this.ctx.storage;
     if (op === 'state') return { trackers: [...this.T.entries()].map(([id, t]) => ({ id, name: t.name, kind: t.kind, tid: t.tid, uid: t.uid || '', uname: t.uname || '', pic: t.pic || '', self: !!t.self, at: t.at, last: (this.L.get(id) || {}).at || 0, duty: t.duty !== false, mode: t.mode ?? null, ping: this.P.get(id) || 0 })),
+                                 rejects: [...(this.R || new Map()).entries()].filter(([, r]) => Date.now() - r.at < 86400e3).map(([id, r]) => ({ id, ...r })),
                                  viewers: [...this.V.entries()].map(([uid, v]) => ({ uid, name: v.name || '' })),
                                  watchers: [...this.W.entries()].filter(([, w]) => Date.now() - w.last < 3 * 86400e3).sort((a, b) => b[1].last - a[1].last)
                                    .map(([uid, w]) => ({ uid, name: w.name || '', last: w.last, first: w.first, day: w.day, n: w.n })) };
