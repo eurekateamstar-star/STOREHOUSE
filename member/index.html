@@ -1451,7 +1451,20 @@
     const FF = Object.fromEntries(Object.entries(F).filter(([k]) => !META(k))), menu = ['menu_about', 'menu_edu', 'menu_journey', 'menu_guardian'].reduce((a, k) => a + (F[k] || 0), 0);
     const X = usExtra(F, usData), topK1 = o => (Object.entries(o).sort((a, b) => b[1] - a[1])[0] || [])[0];
     const pk = Math.max(...hrs), ph = hrs.indexOf(pk);
-    return { nu: Object.keys(U).length, no: sum(P), menu, LU: LU.size, topPage: topK1(P), topFeat: topK1(FF), idle: idle.length, people: people.length, X, peak: pk ? ph : -1,
+    // 誰比較慢：每個人各項載入的次數、超過 3 秒的次數、最常落在哪一格
+    const SLOW = ['b5', 'b8', 'b12', 'bx'];
+    const slowRows = people.map(p => { const r = { name: p.name, t: p.t };
+      Object.keys(US_T).forEach(m => { const c = US_B.map(([b]) => p.f[`t_${m}_${b}`] || 0), n = c.reduce((a, b) => a + b, 0);
+        let k = 0, acc = 0; for (; k < c.length; k++) { acc += c[k]; if (acc >= n / 2) break; }
+        r[m] = { n, slow: SLOW.reduce((a, b) => a + (p.f[`t_${m}_${b}`] || 0), 0), med: n ? US_B[Math.min(k, 6)][1] : '' }; });
+      r.n = Object.keys(US_T).reduce((a, m) => a + r[m].n, 0); r.slow = Object.keys(US_T).reduce((a, m) => a + r[m].slow, 0); return r; })
+      .filter(r => r.n).sort((a, b) => b.slow / b.n - a.slow / a.n || b.slow - a.slow);
+    const cellS = x => !x.n ? '<span style="color:#d1d5db">—</span>' : `<span style="${x.slow ? 'color:var(--red);font-weight:900' : ''}">${x.med}${/秒/.test(x.med) ? '' : ' 秒'}${x.slow ? `<small style="display:block;font-size:10px">${x.slow}/${x.n} 次慢</small>` : `<small style="display:block;font-size:10px;color:#9ca3af">${x.n} 次</small>`}</span>`;
+    const slowT = `<div class="us-h">誰比較慢 <small>（每格＝一半的次數在幾秒內；紅＝有超過 3 秒的）</small></div>
+      <div class="us-tbl"><div class="us-tr us-th" style="grid-template-columns:1.1fr 1fr 1fr 1fr"><span>姓名</span><span>會員卡</span><span>手機排班</span><span>最新排班</span></div>
+      ${slowRows.map(r => `<div class="us-tr" style="grid-template-columns:1.1fr 1fr 1fr 1fr"><span><b>${esc(r.name)}</b></span>${cellS(r.ready)}${cellS(r.schedc)}${cellS(r.sched)}</div>`).join('') || '<div class="us-empty">這段期間沒有資料</div>'}</div>
+      <div class="us-sub">一直很慢的人，通常是手機網路不好或手機比較舊；所有人都慢才是系統的問題。</div>`;
+    return { slowT, nu: Object.keys(U).length, no: sum(P), menu, LU: LU.size, topPage: topK1(P), topFeat: topK1(FF), idle: idle.length, people: people.length, X, peak: pk ? ph : -1,
       kpi: `<div class="us-kpi"><div><b>${Object.keys(U).length}</b><span>使用人數</span></div><div><b>${sum(P)}</b><span>打開次數</span></div></div>`,
       bars: `<div class="us-h">每天使用人數 <small>（點長條＝換到那一天）</small></div><div class="us-bars">${bars}</div>`,
       hours: `<div class="us-h">哪個時段最多人用</div><div class="us-hr">${hrs.map((v, i) => `<div title="${i} 點：${v} 次"><i style="height:${v / mh * 100}%"></i><span>${i % 3 ? '' : i}</span></div>`).join('')}</div>`,
@@ -1539,7 +1552,7 @@
       : usSec === 'use' ? (P ? P.kpi + P.hours : ppl) : usSec === 'line' ? (P ? P.line : ppl) : usSec === 'page' ? (P ? P.pages + P.feat : ppl)
       : usSec === 'src' ? (X ? X.src + X.notif : ppl) : usSec === 'loc' ? usLocHtml() : usSec === 'cf' ? usCfHtml()
       : usSec === 'ppl' ? (usData ? `<div class="us-seg">${[7, 30, 90].map(n => `<button class="${usDays === n ? 'on' : ''}" data-usd="${n}">近 ${n} 天</button>`).join('')}</div>` + usPeople('', true).ppl : ppl)
-      : usSec === 'edu' ? (X ? X.edu + X.speed : ppl) : (X ? X.trip : ppl);
+      : usSec === 'edu' ? (X ? X.edu + X.speed + (usData ? `<div class="us-seg" style="margin-top:10px">${[7, 30, 90].map(n => `<button class="${usDays === n ? 'on' : ''}" data-usd="${n}">近 ${n} 天</button>`).join('')}</div>` + usPeople('', true).slowT : '') : ppl) : (X ? X.trip : ppl);
     const name = secs.find(x => x[0] === usSec);
     return `<div class="uc-day"><b>${lab}</b>${x.p >= .85 ? `<span style="color:var(--red)">⚠ ${esc(x.k)} ${Math.round(x.p * 100)}%</span>` : '<span style="color:var(--green)">✓ 額度正常</span>'}</div>
       <div class="card us-side"><nav>${secs.map(([k, e, n]) => `<button class="${k === usSec ? 'on' : ''}" data-usec="${k}"><b>${e}</b>${n}</button>`).join('')}</nav>
