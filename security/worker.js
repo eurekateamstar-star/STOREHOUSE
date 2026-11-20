@@ -1542,7 +1542,7 @@ async function usageQuotaRoute(req, env, json) {
     const uid = uidOfToken(idToken); const me = await fsUser(idToken, uid); const tok = await saToken(env);
     if (!me || uid !== await devUid(tok)) return json({ error: '只有開發者可以看' }, 403);
     const sa = JSON.parse(env.SERVICE_ACCOUNT), mt = await monitorToken(env);
-    const end = new Date(), start = new Date(Date.now() - 8 * 864e5);
+    const end = new Date(), start = new Date(Date.now() - 36 * 864e5);
     const one = async m => {
       const q = new URLSearchParams({ filter: `metric.type="firestore.googleapis.com/document/${m}"`, 'interval.startTime': start.toISOString(), 'interval.endTime': end.toISOString(),
         'aggregation.alignmentPeriod': '3600s', 'aggregation.perSeriesAligner': 'ALIGN_SUM', 'aggregation.crossSeriesReducer': 'REDUCE_SUM' });
