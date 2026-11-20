@@ -1627,7 +1627,7 @@ const LOC_TTL = 12 * 3600e3;          // 超過 12 小時沒更新就不顯示
 const LOC_SESS = 60 * 60e3;   // 查看權限暫存 60 分鐘（每人每小時才查一次 Firestore）
 const TRK_KEEP = 30 * 86400e3;       // 軌跡保留 30 天（只存值勤中的點）           // 查看權限暫存 10 分鐘，地圖每 15 秒更新時不用每次查 Firestore
 const OT_FRIENDS = true;
-const LOC_OPEN = true;                // true＝已開通的團員都能看地圖；false＝只有管理員、名單上的人、綁定裝置的人              // OwnTracks App 裡也顯示其他裝置（App 的「朋友」）
+const LOC_OPEN = false;                // false＝只有管理員、今天有排班的人、後台加入的人、綁定裝置的人看得到地圖              // OwnTracks App 裡也顯示其他裝置（App 的「朋友」）
 const LOC_KINDS = ['小組長', '指揮車', '物資車', '其他'];
 const LOC_TID = { 小組長: 'L', 指揮車: 'C', 物資車: 'S', 其他: 'X' };   // OwnTracks 圖示上的 2 個字（用英數字比較保險）
 const locTid = (kind, id) => LOC_TID[kind] + id.slice(-1).toUpperCase();
@@ -1651,16 +1651,22 @@ async function locTeamsLoad(env) {
   return (async () => {
     const tok = await saToken(env), today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
     const evs = (await memo('events', 30e3, () => fsList(tok, 'events'))).filter(e => e.schedPublic).sort((a, b) => (b.schedPublicAt || 0) - (a.schedPublicAt || 0));
-    const out = { today: {}, leads: {} }, best = {};   // today：今天有排班用今天，沒有就用最接近的排班日（之後最近的一天，都過了就用最後一天）
+    const out = { today: {}, leads: {}, on: {}, leadNow: {} }, best = {};   // on：今天有排班；leadNow：今天是小組長   // today：今天有排班用今天，沒有就用最接近的排班日（之後最近的一天，都過了就用最後一天）
     const score = d => d === today ? 0 : d > today ? 1 + (Date.parse(d) - Date.parse(today)) / 864e5 : 1e6 + (Date.parse(today) - Date.parse(d)) / 864e5;
     for (const e of evs) { const dr = await memo('draw:' + e.id, 20e3, () => fsGet(tok, `events/${e.id}/admin/draw`)); if (!dr) continue;
       const D = (fobj(dr.fields).sched || {}).days || {};
       Object.keys(D).sort().forEach(d => (D[d] || []).forEach(t => { const m = (t.m || []).filter(Boolean), sc = score(d);
         if (m[0] && (!out.leads[m[0]] || d <= today)) out.leads[m[0]] = t.l || '';
+        if (d === today) { m.forEach(k => { out.on[k] = t.l || ''; }); if (m[0]) out.leadNow[m[0]] = t.l || ''; }
         m.forEach(k => { if (!(k in best) || sc < best[k]) { best[k] = sc; out.today[k] = t.l || ''; } }); }));
       if (Object.keys(D).length) break; }
     return out;
   })();
+}
+// 今天的角色：sc＝今天有排班（可看地圖）、ld＝今天是小組長（可自己產生 QR）
+async function locRole(idToken, env) {
+  try { const M = await locMe(idToken, env); if (!M) return { ld: false, sc: false }; const T = await locTeams(env);
+    return { ld: M.rkey in (T.leadNow || {}), sc: M.rkey in (T.on || {}), me: M }; } catch (e) { return { ld: false, sc: false }; }
 }
 // 自己的資料：姓名（名冊）、大頭貼、名冊 key
 async function locMe(idToken, env) {
@@ -1790,7 +1796,7 @@ export class LocHub extends DurableObject {
   hasSelf(uid) { return [...this.T.values()].some(t => t.uid === uid && t.self); }
   canView(uid) { return !!uid && (this.V.has(uid) || [...this.T.values()].some(t => t.uid === uid)); }
   list(uid, mgr, who) {
-    if (!mgr && !LOC_OPEN && !this.canView(uid)) return null;
+    if (!mgr && !(who && who.sc) && !LOC_OPEN && !this.canView(uid)) return null;
     const now = Date.now();
     if (uid) {   // 記錄誰在看（記憶體每次更新，寫入儲存最多 5 分鐘一次）
       const w = this.W.get(uid) || { n: 0, first: now, day: '' }, day = new Date(now + 8 * 3600e3).toISOString().slice(0, 10);
@@ -1858,7 +1864,7 @@ async function locSessMake(s, env) { const body = b64url(new TextEncoder().encod
 async function locSessRead(tok, env) {
   try { const [body, sig] = String(tok || '').split('.'); if (!body || !sig || sig !== await locSign(body, env)) return null;
     const s = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(body.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))));
-    return s.exp > Date.now() ? s : null; } catch (e) { return null; }
+    return s.exp > Date.now() && s.v === 2 ? s : null; } catch (e) { return null; }   // v2：多了今天有沒有排班
 }
 async function locSession(idToken, sess, env) {
   let s = await locSessRead(sess, env), fresh = null;
@@ -1866,8 +1872,8 @@ async function locSession(idToken, sess, env) {
     if (!idToken) return { err: 'login' };
     const uid = uidOfToken(idToken), me = await fsUser(idToken, uid);
     if (!me || me.status !== 'approved') return { err: '帳號尚未開通' };
-    let ld = false; try { const M = await locMe(idToken, env); ld = !!M && M.rkey in (await locTeams(env)).leads; } catch (e) {}
-    s = { uid, n: String(me.realName || '').slice(0, 20), m: await fullAdmin(me, idToken, env), ld, exp: Date.now() + LOC_SESS };
+    const R = await locRole(idToken, env), ld = R.ld, sc = R.sc;
+    s = { uid, n: String(me.realName || '').slice(0, 20), m: await fullAdmin(me, idToken, env), ld, sc, v: 2, exp: Date.now() + LOC_SESS };
     fresh = await locSessMake(s, env);
   }
   return { s, fresh };
@@ -1885,7 +1891,7 @@ async function locTrackRoute(req, env, json) {
       const d0 = Date.parse(day + 'T00:00:00+08:00'); if (!(d0 > Date.now() - TRK_KEEP - 86400e3)) return json({ error: '只保留 30 天' }, 400);
       return json({ ok: true, tracks: await hub.trackAll(d0, d0 + 86400e3), sess: A.fresh });
     }
-    if (!A.s.m && !LOC_OPEN && !(await hub.canView(A.s.uid))) return json({ error: '沒有權限' }, 403);
+    if (!A.s.m && !A.s.sc && !LOC_OPEN && !(await hub.canView(A.s.uid))) return json({ error: '沒有權限' }, 403);
     const today = Date.parse(new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10) + 'T00:00:00+08:00');
     const t0 = Math.max(Number(since) || today, Date.now() - 3 * 86400e3);
     const pts = await hub.track(String(id || ''), t0);
@@ -1902,12 +1908,12 @@ async function locRoute(req, env, json) {
       if (!idToken) return json({ error: 'login' }, 401);
       const uid = uidOfToken(idToken), me = await fsUser(idToken, uid);
       if (!me || me.status !== 'approved') return json({ error: '帳號尚未開通' }, 403);
-      let ld = false; try { const M = await locMe(idToken, env); ld = !!M && M.rkey in (await locTeams(env)).leads; } catch (e) {}
-      s = { uid, n: String(me.realName || '').slice(0, 20), m: await fullAdmin(me, idToken, env), ld, exp: Date.now() + LOC_SESS };
+      const R = await locRole(idToken, env), ld = R.ld, sc = R.sc;
+      s = { uid, n: String(me.realName || '').slice(0, 20), m: await fullAdmin(me, idToken, env), ld, sc, v: 2, exp: Date.now() + LOC_SESS };
       fresh = await locSessMake(s, env);
     }
-    const V = await locHub(env).view(s.uid, s.m, { n: s.n }), items = V && V.items;
-    if (!items) return json({ error: '你沒有查看定位的權限，請找管理員開通', canSelf: true }, 403);
+    const V = await locHub(env).view(s.uid, s.m, { n: s.n, sc: s.sc }), items = V && V.items;
+    if (!items) return json({ error: '今天有排班的人才能看定位地圖。需要的話請找管理員加入「可以看地圖的人」', canSelf: true }, 403);
     try { const T = await locTeams(env); items.forEach(i => { i.team = i.rkey ? (T.today[i.rkey] || '') : ''; delete i.rkey; }); } catch (e) { items.forEach(i => delete i.rkey); }
     const bd = V.bd;
     const selfNeed = (!!s.ld && !V.self) || bd.some(b => !b.used);   // 組長還沒產生、或綁定的裝置還沒連線過 → 自動跳設定
@@ -1918,22 +1924,21 @@ async function locRoute(req, env, json) {
 async function locCanRoute(req, env, json) {
   try { const { idToken } = await req.json(); if (!idToken || !env.LOC) return json({ can: false });
     if (LOC_OPEN || await locHub(env).canView(uidOfToken(idToken))) return json({ can: true });
-    const me = await locMe(idToken, env); if (!me) return json({ can: false });
-    return json({ can: me.rkey in (await locTeams(env)).leads }); } catch (e) { return json({ can: false }); }
+    const R = await locRole(idToken, env); return json({ can: R.sc || R.ld }); } catch (e) { return json({ can: false }); }
 }
-// 小組長自己產生 OwnTracks 設定（排班表上當過小組長的人；完整管理員也可以）
+// 小組長自己產生 OwnTracks 設定（今天排班是小組長的人；完整管理員也可以；綁定裝置的人拿綁定那台）
 async function locSelfRoute(req, env, json) {
   try {
     if (!env.LOC) return json({ error: '定位功能尚未部署' }, 501);
     const body = await req.json(), { idToken } = body; if (!idToken) return json({ error: 'login' }, 401);
     const me = await locMe(idToken, env); if (!me) return json({ error: '帳號尚未開通' }, 403);
-    const T = await locTeams(env), lead = me.rkey in T.leads, hub = locHub(env), team = T.today[me.rkey] || T.leads[me.rkey] || '';
+    const T = await locTeams(env), lead = me.rkey in (T.leadNow || {}), hub = locHub(env), team = T.today[me.rkey] || T.leads[me.rkey] || '';
     const { id } = body;
     if (id) { const r = await hub.boundCfg(me.uid, String(id)); return json(r.error ? r : { ...r, team: r.kind === '小組長' ? team : '' }, r.error ? 403 : 200); }
     const canMake = lead || await fullAdmin(await fsUser(idToken, me.uid), idToken, env);
     if (canMake) await hub.selfGet(me.uid, { name: me.name, pic: me.pic, rkey: me.rkey });   // 組長／管理員：確保有自己的一台
     const mine = await hub.bound(me.uid);
-    if (!mine.length) return json({ error: '你還沒有綁定的定位裝置，請找管理員綁定' }, 403);
+    if (!mine.length) return json({ error: '今天排班是小組長才能產生 QR Code，其他人請找管理員綁定裝置' }, 403);
     if (mine.length > 1) return json({ ok: true, choose: mine, team });
     const r = await hub.boundCfg(me.uid, mine[0].id);
     return json({ ...r, team: r.kind === '小組長' ? team : '' });

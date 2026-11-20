@@ -466,18 +466,28 @@
       <div class="fm">
         <div><label>名稱（地圖上顯示）</label><input id="a-name" maxlength="20" placeholder="例如：第一組 王小明、指揮車、物資車 1 號"></div>
         <div><label>類型</label><select id="a-kind">${KINDS.map(k => `<option>${k}</option>`).join('')}</select></div>
-        <div><label>綁定團員（選填，綁定後顯示他的 LINE 大頭貼）</label><select id="a-uid">${memberOpts()}</select></div>
+        <div><label>綁定團員（選填：他能拿這台的 QR Code、也能看地圖）</label><select id="a-uid">${memberOpts()}</select></div>
         <button class="btn" id="a-add">新增並產生設定 QR Code</button>
       </div>
       <h4>🛤 所有人的軌跡</h4>
       <div class="fm" style="grid-template-columns:1fr auto;align-items:end"><div><label>日期（保留 30 天）</label><select id="t-day">${[...Array(30)].map((_, k) => { const d = new Date(Date.now() + 8 * 3600e3 - k * 86400e3).toISOString().slice(0, 10); return `<option value="${d}">${d.slice(5).replace('-', '/')}${k === 0 ? '（今天）' : k === 1 ? '（昨天）' : ''}</option>`; }).join('')}</select></div>
         <button class="sb" id="t-show" style="padding:11px 14px;background:var(--ink);color:#fff">在地圖上顯示</button></div>
+      <h4>🔑 誰可以用定位</h4>
+      <div class="hint" style="margin-bottom:8px">
+        ・<b>看地圖</b>：管理員、<b>今天有排班</b>的人、綁定裝置的人，再加上下面名單<br>
+        ・<b>自己產生 QR Code</b>：<b>今天排班是小組長</b>的人；其他人要在上面「裝置」綁定給他，他就能拿到那台的 QR Code</div>
+      <div class="hint" style="font-weight:800;color:var(--ink);margin:4px 0 6px">可以看地圖的人（沒排班也能看，例如指揮組、司機）</div>
+      ${st.viewers.map(v => `<div class="it"><div class="m"><b>${esc(v.name || v.uid.slice(0, 8))}</b></div><button class="sb d" data-unview="${esc(v.uid)}">移除</button></div>`).join('') || '<div class="hint" style="margin-bottom:6px">（還沒有）</div>'}
+      <div class="fm" style="grid-template-columns:1fr auto;align-items:end"><div><label>加入一位團員</label><select id="v-uid">${memberOpts().replace('（不綁定）', '（選一位團員）')}</select></div><button class="sb" id="v-add" style="padding:11px 14px;background:var(--ink);color:#fff">加入</button></div>
       <h4>👀 誰在看地圖（近 3 天）</h4>
-      <div class="hint" style="margin-bottom:6px">已開通的團員都能看地圖。綠點＝正在看（1 分鐘內有更新）。</div>
+      <div class="hint" style="margin-bottom:6px">綠點＝正在看（1 分鐘內有更新）。</div>
       ${(st.watchers || []).map(w => { const live = Date.now() - w.last < 60e3; return `<div class="it"><div class="m"><b>${live ? '<span class="dot"></span>' : ''}${esc(w.name || '（未知）')}</b>
         <small>${live ? '正在看' : '最後 ' + esc(ago(w.last, Date.now()))}${w.day === new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10) ? `・今天從 ${new Date(w.first).toTimeString().slice(0, 5)} 開始・更新 ${w.n} 次` : ''}</small></div></div>`; }).join('') || '<div class="hint">還沒有人看過</div>'}`;
     o.querySelectorAll('[data-close]').forEach(b => b.onclick = () => o.remove());
     const again = () => { o.remove(); openAdmin(); load(); };
+    o.querySelectorAll('[data-unview]').forEach(b => b.onclick = async () => { const r = await adm('viewer', { uid: b.dataset.unview, on: false }); if (r.error) { toast(r.error); return; } toast('已移除'); again(); });
+    o.querySelector('#v-add').onclick = async () => { const uid = o.querySelector('#v-uid').value; if (!uid) { toast('請選一位團員'); return; }
+      const r = await adm('viewer', { uid, on: true, name: (members.find(m => m.uid === uid) || {}).name || '' }); if (r.error) { toast(r.error); return; } toast('已加入'); again(); };
     o.querySelector('#t-show').onclick = async () => { const day = o.querySelector('#t-day').value; o.remove(); showAllTracks(day); };
     o.querySelector('#all-on').onclick = async () => { if (await setDuty({ all: true, on: true })) again(); };
     o.querySelector('#all-off').onclick = async () => { if (!(await ask('🌙 全部退勤', '所有裝置都退勤？<br>地圖留下最後位置（灰色），手機改成省電，不再記錄軌跡。', '全部退勤', false))) return; if (await setDuty({ all: true, on: false })) again(); };
