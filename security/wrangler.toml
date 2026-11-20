@@ -3,6 +3,7 @@
 name = "bst-auth"
 main = "worker.js"
 compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_als"]   # 用量統計：記錄每個請求是哪個功能
 workers_dev = true
 keep_vars = true
 

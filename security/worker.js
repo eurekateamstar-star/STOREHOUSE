@@ -7,6 +7,38 @@
 // LINE 訊息自動回覆（/webhook）需要 Secret：LINE_CHANNEL_SECRET = 官方帳號 Messaging API 頻道的 Channel secret（Basic settings 裡）
 
 import { DurableObject } from 'cloudflare:workers';
+import { AsyncLocalStorage } from 'node:async_hooks';
+
+// ===== 用量計數（開發者「使用分析」看哪個功能用最多）=====
+// 每台伺服器先記在記憶體，約 1 分鐘合併一次送到 LocHub 存起來（每小時一格，UTC）
+// r＝Worker 請求（依路徑）、f＝Firestore 讀取文件數、fw／fd＝寫入／刪除、d＝呼叫 DO 次數（依方法）
+const RCTX = new AsyncLocalStorage();
+const MTR = { at: Date.now(), b: {} };
+const hourKey = (t = Date.now()) => new Date(t).toISOString().slice(0, 13).replace(/[-T]/g, '');
+function mAdd(cat, key, n = 1) { const h = hourKey(), b = MTR.b[h] || (MTR.b[h] = {}), c = b[cat] || (b[cat] = {}); c[key] = (c[key] || 0) + n; }
+const routeKey = p => /^\/(j|c|gc)\//.test(p) ? p.replace(/^\/(j|c|gc)\/.*/, '/$1/*') : p.slice(0, 40);
+function meterFlush(env, ctx, force) {
+  if (!env.LOC || !ctx || (!force && Date.now() - MTR.at < 60e3) || !Object.keys(MTR.b).length) return;
+  const b = MTR.b; MTR.b = {}; MTR.at = Date.now();
+  ctx.waitUntil(env.LOC.get(env.LOC.idFromName('main')).meterAdd(b).catch(() => {}));
+}
+{ const _fetch = globalThis.fetch.bind(globalThis);
+  globalThis.fetch = async (input, init) => {
+    const res = await _fetch(input, init);
+    try { const url = typeof input === 'string' ? input : input.url;
+      if (url.includes('firestore.googleapis.com')) {
+        const route = RCTX.getStore() || '(背景)', method = ((init && init.method) || 'GET').toUpperCase();
+        const cnt = f => res.clone().json().then(j => mAdd('f', route, Math.max(1, f(j)))).catch(() => mAdd('f', route, 1));
+        if (/:runQuery$/.test(url)) cnt(j => (Array.isArray(j) ? j : []).filter(x => x.document).length);
+        else if (/:batchGet$/.test(url)) cnt(j => (Array.isArray(j) ? j : []).filter(x => x.found).length);
+        else if (/:commit$/.test(url)) { let n = 1; try { n = (JSON.parse(init.body).writes || []).length || 1; } catch (e) {} mAdd('fw', route, n); }
+        else if (method === 'GET') { if (/[?&]pageSize=/.test(url)) cnt(j => (j.documents || []).length); else mAdd('f', route, 1); }
+        else if (method === 'DELETE') mAdd('fd', route, 1);
+        else mAdd('fw', route, 1);
+      } } catch (e) {}
+    return res;
+  };
+}
 
 const LINE_CHANNEL_ID = '2011820105';
 const ALLOWED_ORIGINS = ['https://eurekateamstar-star.github.io'];
@@ -16,8 +48,15 @@ const originOk = o => ALLOWED_ORIGINS.includes(o) || PAGES_RE.test(o);
 const PROJECT_ID = 'linebot-firebase-b1242';
 const AI_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 
-export default {
+const WORKER = {
   async fetch(req, env, ctx) {
+    const rk = routeKey(new URL(req.url).pathname); mAdd('r', rk);
+    try { return await RCTX.run(rk, () => handleReq(req, env, ctx)); }
+    finally { meterFlush(env, ctx); }
+  },
+};
+export default WORKER;
+async function handleReq(req, env, ctx) {
     const origin = req.headers.get('Origin') || '';
     const cors = {
       'Access-Control-Allow-Origin': originOk(origin) ? origin : ALLOWED_ORIGINS[0],
@@ -106,6 +145,8 @@ export default {
     if (path === '/usage-stats') return usageStatsRoute(req, env, json);
     if (path === '/usage-trip') return usageTripRoute(req, env, json);
     if (path === '/usage-quota') return usageQuotaRoute(req, env, json);
+    if (path === '/usage-meter') return usageMeterRoute(req, env, json);
+    if (path === '/usage-cf') return usageCfRoute(req, env, json);
     if (path === '/wh-sched') return whSchedRoute(req, env, json);
     if (path === '/owntracks') return otRoute(req, env);
     if (path === '/loc') return locRoute(req, env, json);
@@ -140,8 +181,7 @@ export default {
     } catch (e) {
       return json({ error: String((e && e.message) || e) }, 500);
     }
-  },
-};
+}
 
 // ===== AI 智慧貼上：把一串文字拆成團員名冊欄位 =====
 const FIELDS = {
@@ -1447,6 +1487,51 @@ async function monitorToken(env) {
   monTok = { t: j.access_token, exp: Date.now() + (j.expires_in || 3600) * 1000 }; return monTok.t;
 }
 const laDay = ms => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms));
+// 開發者：伺服器自己記的用量（每小時一格）＋定位狀態
+async function devOnly(req, env) {
+  const body = await req.json(); const { idToken } = body; if (!idToken) throw Object.assign(new Error('missing'), { code: 400 });
+  const uid = uidOfToken(idToken), me = await fsUser(idToken, uid), tok = await saToken(env);
+  if (!me || uid !== await devUid(tok)) throw Object.assign(new Error('只有開發者可以看'), { code: 403 });
+  return body;
+}
+async function usageMeterRoute(req, env, json) {
+  try {
+    const { days } = await devOnly(req, env); if (!env.LOC) return json({ error: '定位（LocHub）尚未部署' }, 501);
+    meterFlush(env, { waitUntil: p => p }, true);
+    const hub = env.LOC.get(env.LOC.idFromName('main'));
+    const d = Math.min(Math.max(+days || 8, 1), 35), from = hourKey(Date.now() - d * 864e5);
+    const [m, st] = await Promise.all([hub.meterGet(from), hub.admin('state', {})]);
+    const now = Date.now();
+    const loc = { devices: st.trackers.length, duty: st.trackers.filter(t => t.duty).length,
+      live: st.trackers.filter(t => now - Math.max(t.last || 0, t.ping || 0) < 5 * 60e3).length,
+      watchToday: st.watchers.filter(w => w.day === new Date(now + 8 * 3600e3).toISOString().slice(0, 10)).length,
+      watchers: st.watchers.slice(0, 60).map(w => ({ name: w.name, last: w.last, n: w.n, day: w.day })),
+      trackers: st.trackers.map(t => ({ name: t.name, kind: t.kind, duty: t.duty, last: Math.max(t.last || 0, t.ping || 0) })) };
+    return json({ ok: true, m, loc, now });
+  } catch (e) { return json({ error: String((e && e.message) || e) }, e.code || 500); }
+}
+// 開發者：Cloudflare 官方每日用量（GraphQL Analytics；要設 Secret CF_API_TOKEN 和變數 CF_ACCOUNT_ID）
+async function usageCfRoute(req, env, json) {
+  try {
+    await devOnly(req, env);
+    if (!env.CF_API_TOKEN || !env.CF_ACCOUNT_ID) return json({ ok: true, needSetup: true });
+    const end = new Date().toISOString().slice(0, 10), start = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
+    const gql = async (ds, fields) => {
+      const query = `query($a:String!,$s:Date!,$e:Date!){viewer{accounts(filter:{accountTag:$a}){x:${ds}(limit:2000,filter:{date_geq:$s,date_leq:$e}){${fields} dimensions{date}}}}}`;
+      const r = await fetch('https://api.cloudflare.com/client/v4/graphql', { method: 'POST', headers: { Authorization: 'Bearer ' + env.CF_API_TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify({ query, variables: { a: env.CF_ACCOUNT_ID, s: start, e: end } }) });
+      const j = await r.json().catch(() => ({}));
+      if (j.errors && j.errors.length) throw new Error(j.errors[0].message);
+      const rows = (((j.data || {}).viewer || {}).accounts || [])[0]; if (!rows) throw new Error('查不到帳號（CF_ACCOUNT_ID 對嗎？權杖有 Account Analytics 讀取權限嗎？）');
+      const out = {}; for (const x of rows.x || []) { const d = x.dimensions.date, o = out[d] || (out[d] = {}); for (const [k, v] of Object.entries(x.sum || {})) o[k] = (o[k] || 0) + (+v || 0); } return out;
+    };
+    const safe = async (ds, f) => { try { return { ok: await gql(ds, f) }; } catch (e) { return { err: String(e.message || e).slice(0, 200) }; } };
+    const [w, dr, dp] = await Promise.all([
+      safe('workersInvocationsAdaptive', 'sum{requests errors subrequests}'),
+      safe('durableObjectsInvocationsAdaptiveGroups', 'sum{requests}'),
+      safe('durableObjectsPeriodicGroups', 'sum{rowsRead rowsWritten}')]);
+    return json({ ok: true, workers: w, doReq: dr, doRows: dp });
+  } catch (e) { return json({ error: String((e && e.message) || e) }, e.code || 500); }
+}
 async function usageQuotaRoute(req, env, json) {
   try {
     const { idToken } = await req.json();
@@ -1543,7 +1628,8 @@ const LOC_OPEN = true;                // true＝已開通的團員都能看地�
 const LOC_KINDS = ['小組長', '指揮車', '物資車', '其他'];
 const LOC_TID = { 小組長: 'L', 指揮車: 'C', 物資車: 'S', 其他: 'X' };   // OwnTracks 圖示上的 2 個字（用英數字比較保險）
 const locTid = (kind, id) => LOC_TID[kind] + id.slice(-1).toUpperCase();
-const locHub = env => env.LOC.get(env.LOC.idFromName('main'));
+const locHub = env => { const st = env.LOC.get(env.LOC.idFromName('main'));   // 每次呼叫 DO 都記一筆（依方法）
+  return new Proxy(st, { get(t, p) { const v = t[p]; return typeof p === 'string' && typeof v === 'function' ? (...a) => { mAdd('d', p); return v.apply(t, a); } : v; } }); };
 const numOr = v => (typeof v === 'number' && isFinite(v)) ? v : null;
 async function sha256hex(s) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
 function randStr(n, abc = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789') { const r = crypto.getRandomValues(new Uint8Array(n)); return [...r].map(x => abc[x % abc.length]).join(''); }
@@ -1590,37 +1676,65 @@ export class LocHub extends DurableObject {
     super(ctx, env);
     this.T = new Map(); this.L = new Map(); this.V = new Map(); this.P = new Map(); this.W = new Map();   // W：誰在看地圖   // 裝置、最新位置、查看者
     this.sql = ctx.storage.sql;   // 軌跡用 SQLite（每點一列）
-    this.sql.exec('CREATE TABLE IF NOT EXISTS trk (id TEXT, tst INTEGER, lat REAL, lon REAL, acc INTEGER)');
-    this.sql.exec('CREATE INDEX IF NOT EXISTS trk_i ON trk(id, tst)');
-    this.sql.exec('CREATE INDEX IF NOT EXISTS trk_t ON trk(tst)');
+    this.MT = {}; this.mtAt = Date.now(); this.MC = new Map();   // 自己的用量（列讀寫）
+    this.q('CREATE TABLE IF NOT EXISTS trk (id TEXT, tst INTEGER, lat REAL, lon REAL, acc INTEGER)');
+    this.q('CREATE INDEX IF NOT EXISTS trk_i ON trk(id, tst)');
+    this.q('DROP INDEX IF EXISTS trk_t');   // 多一個索引＝每筆軌跡多寫一列，改用 (id, tst) 逐台清
     this.pruned = 0;
-    ctx.blockConcurrencyWhile(async () => {
-      for (const [k, v] of await ctx.storage.list()) {
-        if (k === 'pruned') this.pruned = v; else if (k.startsWith('w:')) this.W.set(k.slice(2), v); else if (k.startsWith('t:')) this.T.set(k.slice(2), v); else if (k.startsWith('l:')) this.L.set(k.slice(2), v); else if (k.startsWith('v:')) this.V.set(k.slice(2), v);
-      }
+    ctx.blockConcurrencyWhile(async () => {   // 只讀需要的前綴（用量紀錄 m: 不在這裡讀）
+      const M = { 't:': this.T, 'l:': this.L, 'v:': this.V, 'w:': this.W };
+      for (const pre of Object.keys(M)) { const L = await ctx.storage.list({ prefix: pre }); this.mt('dr', 'kv 開機', L.size || 0); for (const [k, v] of L) M[pre].set(k.slice(2), v); }
+      this.pruned = (await ctx.storage.get('pruned')) || 0; this.mt('dr', 'kv 開機', 1); this.mt('do', '喚醒', 1);
     });
+  }
+  mt(cat, key, n = 1) { if (!n) return; const h = hourKey(), b = this.MT[h] || (this.MT[h] = {}), c = b[cat] || (b[cat] = {}); c[key] = (c[key] || 0) + n; }
+  q(sql, ...a) { const c = this.sql.exec(sql, ...a), rows = c.toArray(), k = sql.trim().split(/\s+/).slice(0, 1)[0].toUpperCase() + ' 軌跡';
+    this.mt('dr', k, c.rowsRead || 0); this.mt('dw', k, c.rowsWritten || 0); return rows; }
+  kput(k, v) { this.mt('dw', 'kv ' + k.slice(0, 1), 1); return this.ctx.storage.put(k, v); }
+  kdel(k) { this.mt('dw', 'kv 刪除', Array.isArray(k) ? k.length : 1); return this.ctx.storage.delete(k); }
+  // 存用量：Worker 送來的＋自己的，合併進每小時一格（m:YYYYMMDDHH）
+  async meterAdd(b) {
+    const own = this.MT; this.MT = {}; this.mtAt = Date.now();
+    const hs = new Set([...Object.keys(b || {}), ...Object.keys(own)]);
+    for (const h of hs) {
+      let cur = this.MC.get(h); if (!cur) { cur = (await this.ctx.storage.get('m:' + h)) || {}; this.MC.set(h, cur); this.mt('dr', '存用量', 1); }
+      for (const src of [b && b[h], own[h]]) if (src) for (const [cat, o] of Object.entries(src)) { const c = cur[cat] || (cur[cat] = {}); for (const [k, n] of Object.entries(o)) c[k] = (c[k] || 0) + n; }
+      await this.kput('m:' + h, cur);
+    }
+    if (this.MC.size > 4) for (const k of [...this.MC.keys()].sort().slice(0, this.MC.size - 4)) this.MC.delete(k);
+    const day = new Date().toISOString().slice(0, 10);
+    if (this.mPruned !== day) { this.mPruned = day; const old = await this.ctx.storage.list({ prefix: 'm:', end: 'm:' + hourKey(Date.now() - 40 * 864e5) }); if (old.size) await this.ctx.storage.delete([...old.keys()]); }
+    return { ok: true };
+  }
+  async meterGet(fromH) {
+    const out = {}, LS = await this.ctx.storage.list({ prefix: 'm:', start: 'm:' + fromH }); this.mt('dr', '讀用量', LS.size || 0); for (const [k, v] of LS) out[k.slice(2)] = v;
+    for (const [h, o] of Object.entries(this.MT)) { const cur = out[h] || (out[h] = {}); for (const [cat, x] of Object.entries(o)) { const c = cur[cat] || (cur[cat] = {}); for (const [k, n] of Object.entries(x)) c[k] = (c[k] || 0) + n; } }
+    return out;
   }
   // OwnTracks 上傳：帳密對了才收；回傳其他裝置的位置給 App 顯示
   async pub(user, pass, m) {
     const t = this.T.get(user);
     if (!t || !pass || t.h !== await sha256hex(pass)) return { auth: false };
-    const now = Date.now(), duty = t.duty !== false;
+    const now = Date.now(), duty = t.duty !== false; this.mt('loc', '手機上傳', 1);
+    if (now - this.mtAt > 300e3) this.meterAdd({}).catch(() => {});
     this.P.set(user, now);   // 最後連線（退勤時也會偶爾連線，只放記憶體）
-    if (m && m._type === 'location' && numOr(m.m) !== null && t.mode !== m.m) { t.mode = m.m; t.seen = now; await this.ctx.storage.put('t:' + user, t); }
+    if (m && m._type === 'location' && numOr(m.m) !== null && t.mode !== m.m) { t.mode = m.m; t.seen = now; await this.kput('t:' + user, t); }
     if (duty && m && m._type === 'location' && numOr(m.lat) !== null && numOr(m.lon) !== null && Math.abs(m.lat) <= 90 && Math.abs(m.lon) <= 180) {
       const tst = numOr(m.tst) ? m.tst * 1000 : now;
       const l = { lat: m.lat, lon: m.lon, acc: numOr(m.acc), batt: numOr(m.batt), vel: numOr(m.vel), cog: numOr(m.cog), tst: Math.min(tst, now), at: now };
       const old = this.L.get(user);
-      if (!old || l.tst >= old.tst) { this.L.set(user, l); await this.ctx.storage.put('l:' + user, l); }   // 離線補傳的舊位置不蓋掉新的
-      if (!old || l.tst !== old.tst) this.sql.exec('INSERT INTO trk (id, tst, lat, lon, acc) VALUES (?, ?, ?, ?, ?)', user, l.tst, l.lat, l.lon, Math.round(l.acc || 0));   // 補傳的舊點也記進軌跡
-      if (now - this.pruned > 6 * 3600e3) { this.pruned = now; this.ctx.storage.put('pruned', now); this.sql.exec('DELETE FROM trk WHERE tst < ?', now - TRK_KEEP); }
+      if (!old || l.tst >= old.tst) { l.sv = old && now - (old.sv || 0) < 120e3 ? old.sv : now; this.L.set(user, l); if (l.sv === now) await this.kput('l:' + user, l); }   // 最新位置 2 分鐘才寫一次儲存（記憶體一直是最新的）   // 離線補傳的舊位置不蓋掉新的
+      const ls = (this.LS || (this.LS = new Map())).get(user), dm = ls ? Math.hypot((l.lat - ls.lat) * 111320, (l.lon - ls.lon) * 111320 * Math.cos(l.lat * Math.PI / 180)) : 1e9;
+      // 軌跡只在移動超過 15 公尺、或距上一點超過 2 分鐘才存（站著不動不用一直寫，省寫入列數）
+      if ((!old || l.tst !== old.tst) && (!ls || dm > 15 || Math.abs(l.tst - ls.tst) > 120e3)) { this.LS.set(user, { lat: l.lat, lon: l.lon, tst: l.tst }); this.mt('loc', '軌跡點', 1); this.q('INSERT INTO trk (id, tst, lat, lon, acc) VALUES (?, ?, ?, ?, ?)', user, l.tst, l.lat, l.lon, Math.round(l.acc || 0)); }   // 補傳的舊點也記進軌跡
+      if (now - this.pruned > 6 * 3600e3) { this.pruned = now; this.kput('pruned', now); for (const id of this.T.keys()) this.q('DELETE FROM trk WHERE id = ? AND tst < ?', id, now - TRK_KEEP); }
     }
     const out = [];
     // 網站切換值勤／退勤：手機回報的模式不對就下指令改（值勤 Move=2、退勤 Significant=1；退勤也要偶爾傳，才收得到「開始值勤」）
     const want = duty ? 2 : 1;
     if (t.mode !== want && (!t.cmdAt || now - t.cmdAt > 60e3 || t.cmdWant !== want)) {
       out.push({ _type: 'cmd', action: 'setConfiguration', configuration: { _type: 'configuration', monitoring: want } });
-      t.cmdAt = now; t.cmdWant = want; await this.ctx.storage.put('t:' + user, t);
+      t.cmdAt = now; t.cmdWant = want; await this.kput('t:' + user, t);
     }
     if (OT_FRIENDS && duty) for (const [id, l] of this.L) {
       const f = this.T.get(id); if (id === user || !f || f.duty === false || now - l.at > LOC_TTL) continue;
@@ -1635,35 +1749,34 @@ export class LocHub extends DurableObject {
     let id = ([...this.T.entries()].find(([, t]) => t.uid === uid && t.self) || [])[0];
     if (id) { const t = this.T.get(id), pic = picOk(a.pic), rkey = cleanTxt(a.rkey, 20);
       if ((pic && t.pic !== pic) || (rkey && t.rkey !== rkey) || !t.pw) { if (pic) t.pic = pic; if (rkey) t.rkey = rkey;
-        if (!t.pw) { t.pw = randStr(24); t.h = await sha256hex(t.pw); } await st.put('t:' + id, t); }
+        if (!t.pw) { t.pw = randStr(24); t.h = await sha256hex(t.pw); } await this.kput('t:' + id, t); }
       await this.onDuty(id); return { ok: true, id, pw: t.pw, tid: t.tid, name: t.name, fresh: false, used: this.used(id) }; }
     const name = cleanTxt(a.name, 20) || '小組長';
     do { id = 'bst' + randStr(5, 'abcdefghijkmnpqrstuvwxyz23456789'); } while (this.T.has(id));
     const pw = randStr(24), t = { name, kind: '小組長', uid, uname: name, pic: picOk(a.pic), rkey: cleanTxt(a.rkey, 20), self: true, tid: locTid('小組長', id), h: await sha256hex(pw), pw, at: Date.now(), by: uid };
-    this.T.set(id, t); await st.put('t:' + id, t);
+    this.T.set(id, t); await this.kput('t:' + id, t);
     return { ok: true, id, pw, tid: t.tid, name, fresh: true };
   }
   track(id, since, until = 9e15) {
     if (!this.T.has(id)) return null;
-    const rows = this.sql.exec('SELECT tst, lat, lon FROM trk WHERE id = ? AND tst >= ? AND tst < ? ORDER BY tst LIMIT 6000', id, since, until).toArray();
+    const rows = this.q('SELECT tst, lat, lon FROM trk WHERE id = ? AND tst >= ? AND tst < ? ORDER BY tst LIMIT 6000', id, since, until);
     return rows.map(r => [r.lat, r.lon, r.tst]);
   }
   trackAll(since, until) {   // 管理員：某段時間所有裝置的軌跡
     const out = {};
-    for (const r of this.sql.exec('SELECT id, tst, lat, lon FROM trk WHERE tst >= ? AND tst < ? ORDER BY id, tst LIMIT 60000', since, until).toArray()) {
-      if (!this.T.has(r.id)) continue; (out[r.id] = out[r.id] || []).push([r.lat, r.lon, r.tst]); }
+    for (const id of this.T.keys()) { const R = this.q('SELECT tst, lat, lon FROM trk WHERE id = ? AND tst >= ? AND tst < ? ORDER BY tst LIMIT 20000', id, since, until); if (R.length) out[id] = R.map(r => [r.lat, r.lon, r.tst]); }
     return out;
   }
   teamsGet() { return this.TM && Date.now() - this.TM.at < 600e3 ? this.TM.v : null; }   // 排班組別快取（只放記憶體，不寫儲存）
   teamsSet(v) { this.TM = { v, at: Date.now() }; }
   used(id) { const t = this.T.get(id); return this.L.has(id) || this.P.has(id) || !!(t && t.mode != null); }   // 這台有沒有連線過（＝已經裝好 OwnTracks）
   // 叫出設定 QR＝要開始用這支手機 → 自動設成值勤（匯入後直接是 Move，不會被切回省電）
-  async onDuty(id) { const t = this.T.get(id); if (t && t.duty === false) { t.duty = true; t.cmdAt = 0; await this.ctx.storage.put('t:' + id, t); } }
+  async onDuty(id) { const t = this.T.get(id); if (t && t.duty === false) { t.duty = true; t.cmdAt = 0; await this.kput('t:' + id, t); } }
   // 綁定給這個人的裝置（車子、組長自己的…）
   bound(uid) { return [...this.T.entries()].filter(([, t]) => t.uid === uid).map(([id, t]) => ({ id, name: t.name, kind: t.kind, self: !!t.self, used: this.L.has(id) || this.P.has(id) })); }
   async boundCfg(uid, id) {
     const t = this.T.get(id); if (!t || t.uid !== uid) return { error: '這台不是綁定給你的' };
-    if (!t.pw) { t.pw = randStr(24); t.h = await sha256hex(t.pw); await this.ctx.storage.put('t:' + id, t); }
+    if (!t.pw) { t.pw = randStr(24); t.h = await sha256hex(t.pw); await this.kput('t:' + id, t); }
     await this.onDuty(id);
     return { ok: true, id, pw: t.pw, tid: t.tid, name: t.name, kind: t.kind, used: this.used(id) };
   }
@@ -1678,7 +1791,7 @@ export class LocHub extends DurableObject {
       const w = this.W.get(uid) || { n: 0, first: now, day: '' }, day = new Date(now + 8 * 3600e3).toISOString().slice(0, 10);
       if (w.day !== day) { w.day = day; w.first = now; w.n = 0; }
       w.n++; w.last = now; w.name = (who && who.n) || w.name || ''; this.W.set(uid, w);
-      if (!w.saved || now - w.saved > 300e3) { w.saved = now; this.ctx.storage.put('w:' + uid, w); }
+      if (!w.saved || now - w.saved > 300e3) { w.saved = now; this.kput('w:' + uid, w); }
     }
     return [...this.T.entries()].map(([id, t]) => { const l = this.L.get(id); const duty = t.duty !== false; return { id, name: t.name, kind: t.kind, uname: t.uname || '', pic: t.pic || '', rkey: t.rkey || '', duty, mode: t.mode ?? null, loc: l && (now - l.at <= LOC_TTL || !duty) ? l : null }; });
   }
@@ -1695,27 +1808,27 @@ export class LocHub extends DurableObject {
       const uid = /^U[0-9a-f]{32}$/.test(a.uid || '') ? a.uid : '';
       if (op === 'edit') { const t = this.T.get(a.id); if (!t) return { error: '找不到裝置' };
         Object.assign(t, { name, kind, uid, uname: uid ? cleanTxt(a.uname, 20) : '', pic: uid ? picOk(a.pic) : '', rkey: uid ? cleanTxt(a.rkey, 20) : '', tid: locTid(kind, a.id) });
-        await st.put('t:' + a.id, t); return { ok: true }; }
+        await this.kput('t:' + a.id, t); return { ok: true }; }
       let id; do { id = 'bst' + randStr(5, 'abcdefghijkmnpqrstuvwxyz23456789'); } while (this.T.has(id));
       const pw = randStr(24);
       const t = { name, kind, uid, uname: uid ? cleanTxt(a.uname, 20) : '', pic: uid ? picOk(a.pic) : '', rkey: uid ? cleanTxt(a.rkey, 20) : '', tid: locTid(kind, id), h: await sha256hex(pw), pw, at: Date.now(), by: a.by || '' };
-      this.T.set(id, t); await st.put('t:' + id, t);
+      this.T.set(id, t); await this.kput('t:' + id, t);
       return { ok: true, id, pw, tid: t.tid, name };
     }
     if (op === 'reset') { const t = this.T.get(a.id); if (!t) return { error: '找不到裝置' };
-      const pw = randStr(24); t.h = await sha256hex(pw); t.pw = pw; await st.put('t:' + a.id, t); await this.onDuty(a.id); return { ok: true, id: a.id, pw, tid: t.tid, name: t.name }; }
+      const pw = randStr(24); t.h = await sha256hex(pw); t.pw = pw; await this.kput('t:' + a.id, t); await this.onDuty(a.id); return { ok: true, id: a.id, pw, tid: t.tid, name: t.name }; }
     if (op === 'qr') { const t = this.T.get(a.id); if (!t) return { error: '找不到裝置' }; if (!t.pw) return this.admin('reset', a); await this.onDuty(a.id); return { ok: true, id: a.id, pw: t.pw, tid: t.tid, name: t.name, used: this.used(a.id) }; }
-    if (op === 'del') { this.T.delete(a.id); this.L.delete(a.id); await st.delete(['t:' + a.id, 'l:' + a.id]); this.sql.exec('DELETE FROM trk WHERE id = ?', a.id); return { ok: true }; }
+    if (op === 'del') { this.T.delete(a.id); this.L.delete(a.id); await this.kdel(['t:' + a.id, 'l:' + a.id]); this.q('DELETE FROM trk WHERE id = ?', a.id); return { ok: true }; }
     if (op === 'duty') {   // { id 或 all:true, on }：退勤時位置立刻從地圖清掉
       const ids = a.all ? [...this.T.keys()] : [a.id]; let n = 0;
-      for (const id of ids) { const t = this.T.get(id); if (!t) continue; t.duty = !!a.on; t.cmdAt = 0; await st.put('t:' + id, t); n++;
+      for (const id of ids) { const t = this.T.get(id); if (!t) continue; t.duty = !!a.on; t.cmdAt = 0; await this.kput('t:' + id, t); n++;
 }
       return n ? { ok: true, n } : { error: '找不到裝置' };
     }
-    if (op === 'clear') { this.L.delete(a.id); await st.delete('l:' + a.id); return { ok: true }; }
+    if (op === 'clear') { this.L.delete(a.id); await this.kdel('l:' + a.id); return { ok: true }; }
     if (op === 'viewer') { if (!/^U[0-9a-f]{32}$/.test(a.uid || '')) return { error: 'bad uid' };
-      if (a.on) { const v = { name: cleanTxt(a.name, 20), at: Date.now() }; this.V.set(a.uid, v); await st.put('v:' + a.uid, v); }
-      else { this.V.delete(a.uid); await st.delete('v:' + a.uid); }
+      if (a.on) { const v = { name: cleanTxt(a.name, 20), at: Date.now() }; this.V.set(a.uid, v); await this.kput('v:' + a.uid, v); }
+      else { this.V.delete(a.uid); await this.kdel('v:' + a.uid); }
       return { ok: true }; }
     return { error: 'bad op' };
   }
