@@ -231,10 +231,12 @@
   async function load() {
     let j;
     try { j = await api('/loc', { sess, idToken: await user.getIdToken() }); }
-    catch (e) { setStatus(false, '連線失敗，稍後自動重試'); return; }
+    catch (e) { setStatus(false, '連線失敗，稍後自動重試'); if (!$('msg').classList.contains('hidden')) msg('📡', '連線失敗', esc(String(e.message || e)) + '<br><small>稍後會自動再試</small>'); return; }
     if (j._status === 403 && j.canSelf && !load.triedSelf) { load.triedSelf = true; if (await myQR(true)) return; }
     if (j._status === 403) { msg('🙅', '沒有查看權限', esc(j.error || '') + '<br><br>需要的話請找完整管理員把你加入「可查看的人」。', `<a class="btn w" href="../member/">回團員專區</a>`); stop(); return; }
-    if (j.error) { setStatus(false, j.error); return; }
+    if (j.error) { setStatus(false, j.error);
+      if (!$('msg').classList.contains('hidden')) msg('⚠️', '連不上定位伺服器', esc(j.error) + '<br><small>（' + (j._status || '') + '）稍後會自動再試</small>', `<a class="btn w" href="../member/">回團員專區</a>`);
+      return; }
     $('msg').classList.add('hidden'); $('top').classList.remove('hidden'); $('sheet').classList.remove('hidden');
     if (j.sess) sess = j.sess;
     items = j.items || []; mgr = !!j.mgr; now = j.now || Date.now();

@@ -1632,7 +1632,7 @@ const LOC_KINDS = ['小組長', '指揮車', '物資車', '其他'];
 const LOC_TID = { 小組長: 'L', 指揮車: 'C', 物資車: 'S', 其他: 'X' };   // OwnTracks 圖示上的 2 個字（用英數字比較保險）
 const locTid = (kind, id) => LOC_TID[kind] + id.slice(-1).toUpperCase();
 const locHub = env => { const st = env.LOC.get(env.LOC.idFromName('main'));   // 每次呼叫 DO 都記一筆（依方法）
-  return new Proxy(st, { get(t, p) { const v = t[p]; return typeof p === 'string' && typeof v === 'function' ? (...a) => { mAdd('d', p); return v.apply(t, a); } : v; } }); };
+  return new Proxy(st, { get(t, p) { const v = t[p]; return typeof p === 'string' && typeof v === 'function' ? (...a) => { mAdd('d', p); return Reflect.apply(v, t, a); }   // 不能用 v.apply：DO 的 RPC 物件會把 .apply 當成遠端方法 : v; } }); };
 const numOr = v => (typeof v === 'number' && isFinite(v)) ? v : null;
 async function sha256hex(s) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
 function randStr(n, abc = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789') { const r = crypto.getRandomValues(new Uint8Array(n)); return [...r].map(x => abc[x % abc.length]).join(''); }
