@@ -1294,7 +1294,7 @@
   }
 
   // ===== 使用分析：分頁（額度總覽／使用情況／定位／Firebase／Cloudflare）=====
-  let usView = 'alert', usDay = '';   // usDay：空白＝今天，或 YYYY-MM-DD
+  let usView = 'alert', usDay = '', usPDay = '';   // usPDay：使用情況只看某一天（YYYYMMDD）   // usDay：空白＝今天，或 YYYY-MM-DD
   const twToday = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
   const dayPick = () => { const opts = Array.from({ length: 30 }, (_, i) => new Date(Date.now() + 8 * 3600e3 - i * 864e5).toISOString().slice(0, 10));
     return `<div style="display:flex;align-items:center;gap:8px;margin:2px 0 10px"><span style="font-weight:800">📅 看哪一天</span><select id="us-day" style="padding:7px 10px;border-radius:10px;border:1.5px solid var(--line);font:inherit">
@@ -1434,7 +1434,11 @@
     const seg = vtabs + `<div class="us-seg">${[7, 30, 90].map(n => `<button class="${usDays === n ? 'on' : ''}" data-usd="${n}">近 ${n} 天</button>`).join('')}<button data-usr="1">↻ 重新整理</button></div>`;
     if (!usData) { el.innerHTML = `<div class="card us-card">${seg}<div class="us-empty">${usErr ? '❌ ' + esc(usErr) : '讀取中…'}</div></div>`; bindUs(); return; }
     const { days, daily, last, users } = usData, sum = (o, k) => Object.values(o || {}).reduce((a, b) => a + (+b || 0), 0);
-    const D = days.map(d => ({ d, o: daily[d] || {} })).reverse();
+    if (usPDay && !days.includes(usPDay)) usPDay = '';
+    const D = days.filter(d => !usPDay || d === usPDay).map(d => ({ d, o: daily[d] || {} })).reverse(), Dall = days.map(d => ({ d, o: daily[d] || {} })).reverse();
+    const pdl = d => `${+d.slice(4, 6)}/${+d.slice(6)}`;
+    const pPick = `<div style="display:flex;align-items:center;gap:8px;margin:2px 0 10px"><span style="font-weight:800">📅 看哪一天</span><select id="us-pday" style="padding:7px 10px;border-radius:10px;border:1.5px solid var(--line);font:inherit">
+      <option value="">近 ${usDays} 天全部</option>${days.map((d, i) => `<option value="${d}" ${usPDay === d ? 'selected' : ''}>${i ? pdl(d) : '今天 ' + pdl(d)}</option>`).join('')}</select></div>`;
     const today = daily[days[0]] || {}, uToday = Object.keys(today.u || {}).length, oToday = sum(today.p);
     const P = {}, Q = {}, F = {}, H = {}, U = {}, LU = new Set();
     D.forEach(({ o }) => { Object.keys(o.lu || {}).forEach(k => LU.add(k)); Object.entries(o.p || {}).forEach(([k, v]) => P[k] = (P[k] || 0) + v); Object.entries(o.q || {}).forEach(([k, v]) => Q[k] = (Q[k] || 0) + v);
@@ -1442,9 +1446,9 @@
       Object.entries(o.u || {}).forEach(([id, x]) => { const u = U[id] || (U[id] = { days: 0, v: 0, a: 0, f: {} }); u.days++; u.v += x.v || 0; u.a += x.a || 0;
         Object.entries(x).forEach(([k, v]) => { if (k !== 'v' && k !== 'a' && !k.startsWith('pg_')) u.f[k] = (u.f[k] || 0) + v; }); }); });
     const actDays = D.filter(x => x.o.u), avgU = actDays.length ? Math.round(actDays.reduce((a, x) => a + Object.keys(x.o.u).length, 0) / actDays.length) : 0;
-    const maxU = Math.max(1, ...D.map(x => Object.keys(x.o.u || {}).length)), maxO = Math.max(1, ...D.map(x => sum(x.o.p)));
-    const bars = D.map(({ d, o }) => { const nu = Object.keys(o.u || {}).length, no = sum(o.p), dd = +d.slice(6);
-      return `<div class="us-b" title="${d.slice(4, 6)}/${d.slice(6)}　${nu} 人・開 ${no} 次"><b style="height:${nu / maxU * 100}%"></b><span>${D.length <= 10 || dd % 5 === 1 ? dd : ''}</span></div>`; }).join('');
+    const maxU = Math.max(1, ...Dall.map(x => Object.keys(x.o.u || {}).length)), maxO = Math.max(1, ...Dall.map(x => sum(x.o.p)));
+    const bars = Dall.map(({ d, o }) => { const nu = Object.keys(o.u || {}).length, no = sum(o.p), dd = +d.slice(6);
+      return `<div class="us-b" data-pday="${d}" style="cursor:pointer;${usPDay && usPDay !== d ? 'opacity:.35' : ''}" title="${d.slice(4, 6)}/${d.slice(6)}　${nu} 人・開 ${no} 次"><b style="height:${nu / maxU * 100}%"></b><span>${Dall.length <= 10 || dd % 5 === 1 ? dd : ''}</span></div>`; }).join('');
     const rank = (o, lab, max = 30) => { const L = Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, max), m = Math.max(1, ...L.map(x => x[1]));
       return L.length ? L.map(([k, v]) => `<div class="us-r"><span>${esc(lab(k))}</span><div><i style="width:${v / m * 100}%"></i></div><b>${v}</b></div>`).join('') : '<div class="us-empty">還沒有資料</div>'; };
     const hrs = Array.from({ length: 24 }, (_, i) => H['h' + String(i).padStart(2, '0')] || 0), mh = Math.max(1, ...hrs);
@@ -1457,10 +1461,11 @@
     const top = f => Object.entries(f).filter(([k]) => !META(k)).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${usLabel(k)} ${v}`).join('、');
     el.innerHTML = `<div class="card us-card">${seg}
       <div class="us-tip">🔒 只有開發者看得到・你自己的使用不算在內・每個人離開頁面時才會送出，所以會晚幾分鐘</div>
-      <div class="us-h">使用人數</div>
-      <div class="us-kpi"><div><b>${uToday}</b><span>今天使用人數</span></div><div><b>${oToday}</b><span>今天打開次數</span></div>
-        <div><b>${Object.keys(U).length}</b><span>近 ${usDays} 天用過的人</span></div><div><b>${avgU}</b><span>平均每天人數</span></div></div>
-      <div class="us-h">每天使用人數 <small>（手指按住或滑鼠移到長條上看當天打開次數）</small></div><div class="us-bars">${bars}</div>
+      ${pPick}<div class="us-h">使用人數${usPDay ? ` <small>（只看 ${pdl(usPDay)}，下面的排行和每個人也都是這一天）</small>` : ''}</div>
+      <div class="us-kpi">${usPDay ? `<div><b>${Object.keys((daily[usPDay] || {}).u || {}).length}</b><span>${pdl(usPDay)} 使用人數</span></div><div><b>${sum((daily[usPDay] || {}).p)}</b><span>${pdl(usPDay)} 打開次數</span></div>`
+          : `<div><b>${uToday}</b><span>今天使用人數</span></div><div><b>${oToday}</b><span>今天打開次數</span></div>
+        <div><b>${Object.keys(U).length}</b><span>近 ${usDays} 天用過的人</span></div><div><b>${avgU}</b><span>平均每天人數</span></div>`}</div>
+      <div class="us-h">每天使用人數 <small>（點長條＝只看那一天，再點一次回到全部）</small></div><div class="us-bars">${bars}</div>
       <div class="us-h">LINE 官方帳號選單 <small>（${LU.size} 個 LINE 帳號點過，含還不是團員的民眾）</small></div>
       <div class="us-line">${[['menu_about', '認識醫護團'], ['menu_edu', '衛教須知'], ['menu_journey', '醫護足跡'], ['menu_guardian', '全民醫護證']].map(([k, n]) => `<div><b>${F[k] || 0}</b><span>${n}</span></div>`).join('')}</div>
       <div class="us-line2"><span>切到團員專區 <b>${F.menu_tab_member || 0}</b></span><span>切到一般資訊 <b>${F.menu_tab_public || 0}</b></span><span>➕ 加好友 <b style="color:var(--green)">${F.line_follow || 0}</b></span><span>🚫 封鎖 <b style="color:var(--red)">${F.line_unfollow || 0}</b></span></div>
@@ -1477,6 +1482,8 @@
   }
   function bindUs() {
     document.querySelectorAll('#tab-usage [data-usv]').forEach(b => b.onclick = () => { usView = b.dataset.usv; renderUsage(); });
+    const pd = $('us-pday'); if (pd) pd.onchange = () => { usPDay = pd.value; renderUsage(); };
+    document.querySelectorAll('#tab-usage [data-pday]').forEach(b => b.onclick = () => { usPDay = usPDay === b.dataset.pday ? '' : b.dataset.pday; renderUsage(); });
     const dp = $('us-day'); if (dp) dp.onchange = () => { usDay = dp.value; if (usDay && usM.data && !Object.keys(usM.data.m || {}).some(h => dayUTC(h) <= usDay)) {} renderUsage(); };
     const cr = $('us-cf-re'); if (cr) cr.onclick = () => { if (!usCF.busy) { loadCF(); loadMeter(); } };
     document.querySelectorAll('#tab-usage [data-usd]').forEach(b => b.onclick = () => { usDays = +b.dataset.usd; usData = null; renderUsage(); });
