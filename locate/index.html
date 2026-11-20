@@ -50,6 +50,7 @@
   .row.stale .ago { color:var(--amber); }
   .row.off { opacity:.5; }
   .row.off .ago { color:var(--sub); }
+  .row.stale .e, .row.off .e { filter:grayscale(1); opacity:.55; box-shadow:0 0 0 2px #9ca3af; }   /* 斷線、退勤、沒位置：大頭貼變灰 */
   .duty { border:0; border-radius:99px; padding:5px 10px; font:inherit; font-size:12px; font-weight:800; cursor:pointer; margin-left:6px; white-space:nowrap; }
   .duty.on { background:#dcfce7; color:#15803d; } .duty.off { background:#f3f4f6; color:#6b7280; }
   .bar2 { display:flex; gap:8px; margin:8px 0 4px; } .bar2 .sb { flex:1; padding:10px; font-size:13.5px; }
@@ -324,7 +325,7 @@
     const L2 = items.filter(shown).sort((a, b) => ((a.duty === false) - (b.duty === false)) || (!!b.loc - !!a.loc) || (LO(a.team) - LO(b.team)) || (KINDS.indexOf(a.kind) - KINDS.indexOf(b.kind)) || a.name.localeCompare(b.name, 'zh-Hant'));
     $('cnt').textContent = `${items.filter(i => i.duty !== false && i.loc && now - i.loc.at <= STALE).length} 台即時・${items.filter(i => i.duty !== false).length} 台值勤・共 ${items.length} 台`;
     $('list').innerHTML = L2.length ? L2.map(i => {
-      const l = i.loc, st = l && now - l.at > STALE;
+      const l = i.loc, st = l && (i.duty === false || now - l.at > STALE);
       return `<div class="row ${!l ? 'off' : st ? 'stale' : ''} ${i.id === selId ? 'sel' : ''}" data-id="${esc(i.id)}">
         <div class="e k-${esc(i.kind)} ${i.pic || VAN(i.kind) ? 'p' : ''}" style="--kc:${KC[i.kind]}">${face(i)}</div>
         <div class="m"><div class="n">${esc(label(i))}</div><div class="d">${esc(sub(i))}${l && l.batt != null ? `・🔋${l.batt}%` : ''}${l && l.vel >= 2 ? `・${Math.round(l.vel)} km/h` : ''}</div></div>
