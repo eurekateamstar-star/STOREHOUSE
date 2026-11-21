@@ -62,10 +62,10 @@
   .m3 .sp { background-repeat:no-repeat; background-size:1600% 100%; background-position:0% 0; }
   .m3 .sp.m { aspect-ratio:58/120; background-image:url(img/walk_m.webp); } .m3 .sp.f { aspect-ratio:75/120; background-image:url(img/walk_f.webp); }
   .m3.walk .sp { animation:spw 1.17s steps(16, jump-none) infinite !important; }
-  .m3.car .fg.sp { width:auto; height:40px; background-size:1200% 100%; }
-  .m3 .sp.sup { aspect-ratio:134/100; background-image:url(img/drive_sup.webp); } .m3 .sp.cmd { aspect-ratio:137/100; background-image:url(img/drive_cmd.webp); }
-  .m3.car.walk .sp { animation:spd .5s steps(12, jump-none) infinite !important; }
-  @keyframes spd { from { background-position:0% 0 } to { background-position:100% 0 } }
+  .m3.car .fg.sp { width:auto; height:40px; background-size:1300% 100%; }
+  .m3 .sp.sup { aspect-ratio:160/100; background-image:url(img/drive_sup.webp); } .m3 .sp.cmd { aspect-ratio:163/100; background-image:url(img/drive_cmd.webp); }
+  .m3.car.walk .sp { animation:spd .5s steps(12, jump-none) infinite !important; }   /* 第 0 格是停著的車，第 1～12 格是行駛（輪子轉＋速度線） */
+  @keyframes spd { from { background-position:8.3333% 0 } to { background-position:100% 0 } }
   @keyframes spw { from { background-position:0% 0 } to { background-position:100% 0 } }
   .m3 .sh { position:absolute; bottom:-3px; left:50%; width:30px; height:9px; margin-left:-15px; border-radius:50%; background:radial-gradient(rgba(0,0,0,.35),rgba(0,0,0,0) 70%); }
   .m3.car .sh { width:54px; margin-left:-27px; }
