@@ -1837,12 +1837,12 @@ export class LocHub extends DurableObject {
       w.n++; w.last = now; w.name = (who && who.n) || w.name || ''; this.W.set(uid, w);
       if (!w.saved || now - w.saved > 300e3) { w.saved = now; this.kput('w:' + uid, w); }
     }
-    return [...this.T.entries()].map(([id, t]) => { const l = this.L.get(id); const duty = t.duty !== false; return { id, name: t.name, kind: t.kind, uname: t.uname || '', pic: t.pic || '', rkey: t.rkey || '', duty, mode: t.mode ?? null, loc: l && (now - l.at <= LOC_TTL || !duty) ? l : null }; });
+    return [...this.T.entries()].map(([id, t]) => { const l = this.L.get(id); const duty = t.duty !== false; return { id, name: t.name, kind: t.kind, uname: t.uname || '', pic: t.pic || '', fig: t.fig || '', rkey: t.rkey || '', duty, mode: t.mode ?? null, loc: l && (now - l.at <= LOC_TTL || !duty) ? l : null }; });
   }
   // 管理（Worker 已確認是完整管理員）
   async admin(op, a) {
     const st = this.ctx.storage;
-    if (op === 'state') return { trackers: [...this.T.entries()].map(([id, t]) => ({ id, name: t.name, kind: t.kind, tid: t.tid, uid: t.uid || '', uname: t.uname || '', pic: t.pic || '', self: !!t.self, at: t.at, last: (this.L.get(id) || {}).at || 0, duty: t.duty !== false, mode: t.mode ?? null, ping: this.P.get(id) || 0 })),
+    if (op === 'state') return { trackers: [...this.T.entries()].map(([id, t]) => ({ id, name: t.name, kind: t.kind, tid: t.tid, uid: t.uid || '', uname: t.uname || '', fig: t.fig || '', pic: t.pic || '', self: !!t.self, at: t.at, last: (this.L.get(id) || {}).at || 0, duty: t.duty !== false, mode: t.mode ?? null, ping: this.P.get(id) || 0 })),
                                  rejects: [...(this.R || new Map()).entries()].filter(([, r]) => Date.now() - r.at < 86400e3).map(([id, r]) => ({ id, ...r })),
                                  viewers: [...this.V.entries()].map(([uid, v]) => ({ uid, name: v.name || '' })),
                                  watchers: [...this.W.entries()].filter(([, w]) => Date.now() - w.last < 3 * 86400e3).sort((a, b) => b[1].last - a[1].last)
@@ -1852,6 +1852,7 @@ export class LocHub extends DurableObject {
       const kind = LOC_KINDS.includes(a.kind) ? a.kind : '其他';
       const uid = /^U[0-9a-f]{32}$/.test(a.uid || '') ? a.uid : '';
       if (op === 'edit') { const t = this.T.get(a.id); if (!t) return { error: '找不到裝置' };
+        if (['m', 'f', 'emt'].includes(a.fig)) t.fig = a.fig;
         Object.assign(t, { name, kind, uid, uname: uid ? cleanTxt(a.uname, 20) : '', pic: uid ? picOk(a.pic) : '', rkey: uid ? cleanTxt(a.rkey, 20) : '', tid: locTid(kind, a.id) });
         await this.kput('t:' + a.id, t); return { ok: true }; }
       let id; do { id = 'bst' + randStr(5, 'abcdefghijkmnpqrstuvwxyz23456789'); } while (this.T.has(id));

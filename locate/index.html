@@ -56,6 +56,18 @@
   .bar2 { display:flex; gap:8px; margin:8px 0 4px; } .bar2 .sb { flex:1; padding:10px; font-size:13.5px; }
 
   /* 地圖標記 */
+  .m3 { position:relative; transform:translate(-50%,-100%); display:flex; flex-direction:column; align-items:center; pointer-events:auto; cursor:pointer; }
+  .m3 .fg { display:block; filter:drop-shadow(0 3px 3px rgba(0,0,0,.35)); position:relative; z-index:1; }
+  .m3.ppl .fg { height:64px; } .m3.car .fg { width:74px; }
+  .m3 .sh { position:absolute; bottom:-4px; left:50%; width:44px; height:12px; margin-left:-22px; border-radius:50%; background:radial-gradient(rgba(0,0,0,.35),rgba(0,0,0,0) 70%); }
+  .m3.car .sh { width:70px; margin-left:-35px; }
+  .m3 .hd { position:absolute; z-index:2; top:-22px; left:50%; margin-left:-13px; width:26px; height:26px; border-radius:50%; border:2.5px solid #2563eb; object-fit:cover; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,.3); }
+  .m3 .l { position:absolute; top:100%; margin-top:3px; white-space:nowrap; background:rgba(255,255,255,.95); border-radius:8px; padding:1px 7px; font-size:12px; font-weight:800; box-shadow:0 1px 5px rgba(0,0,0,.2); }
+  .m3 .l .tm { background:#c2414f; color:#fff; border-radius:5px; padding:0 4px; margin-right:4px; font-size:11px; }
+  .m3 .l small { font-weight:600; color:var(--sub); margin-left:3px; }
+  .m3.stale .fg, .m3.stale .hd { filter:grayscale(1); opacity:.6; } .m3.stale .l { color:var(--sub); }
+  .m3.walk .fg { animation:bob .6s ease-in-out infinite alternate; } .m3.car.walk .fg { animation:bob .35s ease-in-out infinite alternate; }
+  @keyframes bob { from { transform:translateY(0) } to { transform:translateY(-3px) } }
   .mk { position:relative; transform:translate(-50%,-100%); display:flex; flex-direction:column; align-items:center; pointer-events:auto; }
   .mk .b { width:38px; height:38px; border-radius:50%; border:3px solid #fff; display:flex; align-items:center; justify-content:center; font-size:19px; box-shadow:0 3px 10px rgba(0,0,0,.3); }
   .mk .tip { width:0; height:0; border:7px solid transparent; border-top-color:#fff; margin-top:-2px; }
@@ -113,6 +125,9 @@
   .first .ft { display:flex; flex-direction:column; gap:2px; }
   .first .ft b { font-size:20px; font-weight:900; } .first .ft span { font-size:16px; font-weight:800; } .first .ft small { font-size:12.5px; opacity:.92; }
   .first.open { background:#f3f4f6; color:var(--ink); box-shadow:none; } .first.open .fp { display:none; }
+  .figs { display:flex; gap:8px; } .figs label { flex:1; text-align:center; border:2px solid var(--line); border-radius:12px; padding:6px 2px; cursor:pointer; background:#fff; }
+  .figs input { display:none; } .figs img { height:58px; display:block; margin:0 auto; } .figs span { font-size:12.5px; font-weight:800; }
+  .figs label:has(input:checked) { border-color:var(--primary); background:#fff1f2; }
   .quick { background:#f0fdf4; border:1.5px solid #bbf7d0; border-radius:16px; padding:14px; margin-top:10px; text-align:center; }
   .btn.big { font-size:18px; padding:16px; }
   .trk { overflow:hidden; touch-action:pan-y; transition:height .25s; }
@@ -260,10 +275,14 @@
   const stop = () => { clearInterval(timer); timer = null; };
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { lastAct = Date.now(); idle = false; load(); } });
 
+  // 3D 人偶／3D 車子（圖來自進香島）
+  const FIG = { m: 'medm', f: 'medf', emt: 'emt' };
+  const fig3d = i => i.kind === '指揮車' ? 'medvan' : i.kind === '物資車' ? 'supply' : i.kind === '其他' && !i.pic ? 'medvan' : (FIG[i.fig] || 'medm');
   function iconFor(i) {
-    const off = i.duty === false, st = off || now - i.loc.at > STALE;
+    const off = i.duty === false, st = off || now - i.loc.at > STALE, car = VAN(i.kind), moving = !st && (i.loc.vel || 0) >= 2;
     const tag = off ? `<small>🌙 退勤</small>` : st ? `<small>${esc(ago(i.loc.at, now))}</small>` : '';
-    return L.divIcon({ className: '', iconSize: [0, 0], html: `<div class="mk ${st ? 'stale' : ''}"><div class="b k-${esc(i.kind)} ${i.pic || VAN(i.kind) ? 'p' : ''}" style="${i.pic || VAN(i.kind) ? 'border-color:' + KC[i.kind] : ''}">${face(i)}</div><div class="tip" style="${i.pic || VAN(i.kind) ? 'border-top-color:' + KC[i.kind] : ''}"></div><div class="l">${i.team ? `<span class="tm">${esc(i.team)}</span>` : ''}${esc(i.name)}${tag}</div></div>` });
+    const badge = !car && i.pic ? `<img class="hd" src="${esc(i.pic)}" referrerpolicy="no-referrer" alt="" style="border-color:${KC[i.kind]}" onerror="this.remove()">` : '';
+    return L.divIcon({ className: '', iconSize: [0, 0], html: `<div class="m3 ${car ? 'car' : 'ppl'} ${st ? 'stale' : ''} ${moving ? 'walk' : ''}"><div class="sh"></div><img class="fg" src="img/${fig3d(i)}.webp" alt="">${badge}<div class="l">${i.team ? `<span class="tm">${esc(i.team)}</span>` : ''}${esc(i.name)}${tag}</div></div>` });
   }
   // 距離：我（這支手機）到對方，直線距離＋步行估計（路線約比直線多 30%，每分鐘走 75 公尺）
   let myPos = null, myAsk = 0;
@@ -300,7 +319,7 @@
   const shown = i => filter === '全部' || i.kind === filter || sideOf(i) === filter;
   const KC = { 小組長: '#2563eb', 指揮車: '#dc2626', 物資車: '#d97706', 其他: '#6b7280' };
   const VAN = k => k === '指揮車' || k === '物資車';
-  const face = i => VAN(i.kind) ? `<img class="av van" src="img/van.webp" alt="">` : i.pic ? `<img class="av" src="${esc(i.pic)}" referrerpolicy="no-referrer" alt="" onerror="this.replaceWith(document.createTextNode('${EMOJI[i.kind] || '📍'}'))">` : (EMOJI[i.kind] || '📍');
+  const face = i => VAN(i.kind) ? `<img class="av van" src="img/${i.kind === '物資車' ? 'supply' : 'medvan'}.webp" alt="">` : i.pic ? `<img class="av" src="${esc(i.pic)}" referrerpolicy="no-referrer" alt="" onerror="this.replaceWith(document.createTextNode('${EMOJI[i.kind] || '📍'}'))">` : (EMOJI[i.kind] || '📍');
   const label = i => (i.team ? i.team + ' ' : '') + i.name;
   const LO = l => { const m = /^轎(前|後)(\d+)/.exec(l || ''); return !m ? 999 : m[1] === '前' ? 100 - +m[2] : 200 + +m[2]; };   // 轎前（大到小）→ 轎後（小到大）
   const sideOf = i => /^轎前/.test(i.team || '') ? '轎前' : /^轎後/.test(i.team || '') ? '轎後' : '';
@@ -318,7 +337,7 @@
       if (!i.loc || !shown(i)) continue; seen.add(i.id);
       const ll = [i.loc.lat, i.loc.lon];
       let m = marks.get(i.id);
-      if (!m) { m = L.marker(ll, { icon: iconFor(i) }).addTo(map).bindPopup('', { offset: [0, -40] }); m.on('click', () => sel(i.id, false)); marks.set(i.id, m); }
+      if (!m) { m = L.marker(ll, { icon: iconFor(i) }).addTo(map).bindPopup('', { offset: [0, -62] }); m.on('click', () => sel(i.id, false)); marks.set(i.id, m); }
       else { m.setLatLng(ll); m.setIcon(iconFor(i)); }
       m.setPopupContent(popup(i));
       let c = circles.get(i.id);
@@ -428,7 +447,7 @@
     $('msg').classList.add('hidden');
     if (r.choose) {   // 綁了好幾台：先選要設定哪一支手機
       const o = overlay(`<h3>📱 要設定哪一台？<button class="sb x" data-close>取消</button></h3><div class="hint" style="margin-bottom:10px">每一台要用不同的手機。拿著要定位的那支手機，選它對應的名稱：</div>
-        ${r.choose.map(b => `<button class="it" data-pick="${esc(b.id)}" style="width:100%;background:#fff;font:inherit;text-align:left;cursor:pointer">${VAN(b.kind) ? '<img class="pic" src="img/van.webp" alt="" style="object-fit:contain;background:#fff7ed">' : EMOJI[b.kind] || ''}<div class="m"><b>${esc(b.self && r.team ? r.team + ' ' : '')}${esc(b.name)}</b><small>${esc(b.kind)}${b.self ? '・你自己' : ''}・${b.used ? '已連線過' : '還沒設定'}</small></div><span style="font-size:20px">›</span></button>`).join('')}`);
+        ${r.choose.map(b => `<button class="it" data-pick="${esc(b.id)}" style="width:100%;background:#fff;font:inherit;text-align:left;cursor:pointer">${VAN(b.kind) ? '<img class="pic" src="img/' + (b.kind === '物資車' ? 'supply' : 'medvan') + '.webp" alt="" style="object-fit:contain;background:#fff7ed">' : EMOJI[b.kind] || ''}<div class="m"><b>${esc(b.self && r.team ? r.team + ' ' : '')}${esc(b.name)}</b><small>${esc(b.kind)}${b.self ? '・你自己' : ''}・${b.used ? '已連線過' : '還沒設定'}</small></div><span style="font-size:20px">›</span></button>`).join('')}`);
       o.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => { o.remove(); myQR(false, b.dataset.pick); });
       return true;
     }
@@ -457,7 +476,7 @@
       <h4>📱 裝置（${tk.length}）</h4>
       <div class="bar2"><button class="sb" id="all-on" style="background:#dcfce7;color:#15803d">✅ 全部值勤</button><button class="sb" id="all-off">🌙 全部退勤</button></div>
       <div class="hint" style="margin-bottom:8px">值勤＝手機每 30 秒回報（Move）；退勤＝地圖留最後位置（灰色），手機改省電（Significant），不再記錄。<br>切換要等手機下次連線才生效：值勤→退勤約 30 秒；退勤→值勤要等本人打開 OwnTracks。</div>
-      ${tk.map(t => `<div class="it tk"><div class="m">${t.pic && !VAN(t.kind) ? `<img class="pic" src="${esc(t.pic)}" referrerpolicy="no-referrer" alt="">` : VAN(t.kind) ? `<img class="pic" src="img/van.webp" alt="" style="object-fit:contain;background:#fff7ed">` : EMOJI[t.kind] || ''} <b>${esc(t.name)}</b>${t.self ? ' <span class="hint">（組長自己產生）</span>' : ''}
+      ${tk.map(t => `<div class="it tk"><div class="m">${t.pic && !VAN(t.kind) ? `<img class="pic" src="${esc(t.pic)}" referrerpolicy="no-referrer" alt="">` : VAN(t.kind) ? `<img class="pic" src="img/${t.kind === '物資車' ? 'supply' : 'medvan'}.webp" alt="" style="object-fit:contain;background:#fff7ed">` : EMOJI[t.kind] || ''} <b>${esc(t.name)}</b>${t.self ? ' <span class="hint">（組長自己產生）</span>' : ''}
           <small>${esc(t.kind)}${t.uname ? '・綁定 ' + esc(t.uname) : ''}・${t.ping ? '最後連線 ' + esc(ago(t.ping, Date.now())) : t.last ? '最後上傳 ' + esc(ago(t.last, Date.now())) : '還沒收到位置'}${modeTxt(t) ? '・' + esc(modeTxt(t)) : ''}</small></div>
           <button class="duty ${t.duty === false ? 'off' : 'on'}" data-d="${esc(t.id)}">${t.duty === false ? '🌙 退勤' : '✅ 值勤'}</button>
           <button class="sb" data-edit="${esc(t.id)}">編輯</button><button class="sb" data-qr="${esc(t.id)}">📱 QR</button><button class="sb d" data-del="${esc(t.id)}">刪除</button></div>`).join('') || '<div class="hint">還沒有裝置</div>'}
@@ -512,13 +531,14 @@
         <div><label>名稱</label><input id="e-name" maxlength="20" value="${esc(t.name)}"></div>
         <div><label>類型</label><select id="e-kind">${KINDS.map(k => `<option ${k === t.kind ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
         <div><label>綁定團員</label><select id="e-uid">${memberOpts(t.uid)}</select></div>
+        <div><label>地圖上的 3D 人偶（小組長用）</label><div class="figs">${[['m', 'medm', '男'], ['f', 'medf', '女'], ['emt', 'emt', 'EMT']].map(([v, f, n]) => `<label><input type="radio" name="e-fig" value="${v}" ${(t.fig || 'm') === v ? 'checked' : ''}><img src="img/${f}.webp" alt=""><span>${n}</span></label>`).join('')}</div></div>
         <button class="btn" id="e-save">儲存</button></div>
         <h4>🔑 換新密碼</h4><div class="hint">手機遺失時用：舊設定立刻失效，新手機要重掃 QR Code。</div><button class="btn w" id="e-reset" style="margin-top:8px">換新密碼並顯示 QR Code</button>`);
       e.querySelector('#e-reset').onclick = async () => { if (!(await ask('🔑 換新密碼', '換新密碼後，原本那支手機就不能再回報，要重新匯入設定。', '換新密碼'))) return;
         const r = await adm('reset', { id: t.id }); if (r.error) { toast(r.error); return; } e.remove(); o.remove(); showConfig(r); };
       e.querySelector('#e-save').onclick = async () => {
         const uid = e.querySelector('#e-uid').value, mm = members.find(m => m.uid === uid) || {};
-        const r = await adm('edit', { id: t.id, name: e.querySelector('#e-name').value.trim(), kind: e.querySelector('#e-kind').value, uid, uname: mm.name || '', pic: mm.pic || '', rkey: mm.rkey || '' });
+        const r = await adm('edit', { fig: (e.querySelector('[name=e-fig]:checked') || {}).value || 'm', id: t.id, name: e.querySelector('#e-name').value.trim(), kind: e.querySelector('#e-kind').value, uid, uname: mm.name || '', pic: mm.pic || '', rkey: mm.rkey || '' });
         if (r.error) { toast(r.error); return; } e.remove(); toast('已儲存'); again();
       };
     });
