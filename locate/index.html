@@ -190,7 +190,7 @@
   .rb1 b { display:block; font-size:15px; color:#b91c1c; } .rb1 span { font-size:12.5px; color:#374151; } .rb1 a { color:#2563eb; text-decoration:underline; cursor:pointer; }
   .rb2 { display:flex; gap:6px; margin-top:6px; } .rb2 .sb { flex:1; text-align:center; text-decoration:none; color:var(--ink); padding:8px 4px; } .rb2 .sb.on { background:#dcfce7; color:#15803d; font-weight:900; }
   .rflag { transform:translate(-20%,-100%); font-size:30px; display:flex; align-items:center; filter:drop-shadow(0 2px 3px rgba(0,0,0,.35)); } .rflag b { white-space:nowrap; font-size:11px; background:#dc2626; color:#fff; border-radius:6px; padding:1px 5px; margin-left:-4px; }
-  .segs { display:flex; gap:6px; } .segs.wrap { flex-wrap:wrap; } .segs button { flex:1; border:1.5px solid var(--line); background:#fff; border-radius:10px; padding:9px 4px; font:inherit; font-size:13px; font-weight:800; cursor:pointer; white-space:nowrap; }
+  .segs { display:flex; gap:6px; } .segs.wrap { flex-wrap:wrap; } .segs button small { font-weight:600; font-size:11px; color:var(--sub); } .segs button { line-height:1.25; flex:1; border:1.5px solid var(--line); background:#fff; border-radius:10px; padding:9px 4px; font:inherit; font-size:13px; font-weight:800; cursor:pointer; white-space:nowrap; }
   .segs button.on { border-color:#dc2626; background:#fef2f2; color:#b91c1c; } .fm .chk { display:flex !important; gap:8px; align-items:center; font-size:13.5px !important; font-weight:700; } .fm .chk input { width:auto !important; flex:none; transform:scale(1.3); }
   .rsum { display:flex; gap:6px; flex-wrap:wrap; margin:10px 0 2px; } .rsum span { background:#f3f4f6; border-radius:99px; padding:4px 10px; font-weight:900; font-size:13px; } .rsum .ok { background:#dcfce7; color:#15803d; } .rsum .bad { background:#fef3c7; color:#92400e; }
   .rrow { cursor:pointer; } .rrow .e { width:34px; height:34px; border-radius:50%; flex:none; display:flex; align-items:center; justify-content:center; overflow:hidden; } .rrow.ok { background:#f0fdf4; border-color:#bbf7d0; } .rrow.bad { background:#fffbeb; }
@@ -567,7 +567,42 @@
     location.href = r.url;
   }
   document.addEventListener('click', ev => { const a = ev.target.closest && ev.target.closest('[data-share]'); if (!a) return; ev.preventDefault(); ev.stopPropagation();
-    const id = a.dataset.share, i = items.find(x => x.id === id); shareLoc(id === '_rally' ? { rally: true } : { id, team: i && i.team || '' }); }, true);
+    const id = a.dataset.share, i = items.find(x => x.id === id);
+    if (id === '_rally') { toast('產生地圖圖片…', 4000); rallyImage().then(img => shareLoc({ rally: true, img: img || '' })); } else shareLoc({ id, team: i && i.team || '' }); }, true);
+  // 集結卡片的地圖截圖：集結點＋範圍圈＋團員 3D 小人和名字（OpenStreetMap 圖磚畫到 canvas）
+  const loadImg = src => new Promise((res, rej) => { const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => res(im); im.onerror = rej; im.src = src; });
+  async function rallyImage() {
+    try {
+      const g = rally; if (!g) return '';
+      const N = 1040, S = 2, C = L.CRS.EPSG3857, ctr = L.latLng(g.lat, g.lon);
+      const ppl = items.filter(i => i.loc && i.duty !== false && now - i.loc.at < 15 * 60e3 && (g.tg.includes(i.id) || VAN(i.kind)) && hav(i.loc.lat, i.loc.lon, g.lat, g.lon) < 3000);
+      let z = 18; for (; z > 13; z--) { const c = C.latLngToPoint(ctr, z), lim = N / S / 2 - 46; if ([[g.lat, g.lon], ...ppl.map(i => [i.loc.lat, i.loc.lon])].every(p => { const q = C.latLngToPoint(L.latLng(p[0], p[1]), z); return Math.abs(q.x - c.x) < lim && Math.abs(q.y - c.y) < N / S * 0.27 - 30; }) && g.r * S / (156543 * Math.cos(g.lat * Math.PI / 180) / 2 ** z) < N / 2.6) break; }
+      const c0 = C.latLngToPoint(ctr, z), ox = c0.x - N / S / 2, oy = c0.y - N / S / 2;
+      const cv = document.createElement('canvas'); cv.width = cv.height = N; const x = cv.getContext('2d');
+      x.fillStyle = '#f1efe8'; x.fillRect(0, 0, N, N);
+      const t0x = Math.floor(ox / 256), t0y = Math.floor(oy / 256), t1x = Math.floor((ox + N / S) / 256), t1y = Math.floor((oy + N / S) / 256), jobs = [];
+      for (let tx = t0x; tx <= t1x; tx++) for (let ty = t0y; ty <= t1y; ty++) jobs.push(loadImg(`https://tile.openstreetmap.org/${z}/${tx}/${ty}.png`).then(im => x.drawImage(im, (tx * 256 - ox) * S, (ty * 256 - oy) * S, 256 * S, 256 * S)).catch(() => {}));
+      await Promise.race([Promise.all(jobs), new Promise(r => setTimeout(r, 6000))]);
+      const P = (lat, lon) => { const q = C.latLngToPoint(L.latLng(lat, lon), z); return [(q.x - ox) * S, (q.y - oy) * S]; };
+      const [cx, cy] = P(g.lat, g.lon), rp = g.r * S / (156543.03 * Math.cos(g.lat * Math.PI / 180) / 2 ** z);
+      x.fillStyle = 'rgba(226,75,74,.13)'; x.strokeStyle = '#E24B4A'; x.lineWidth = 5; x.setLineDash([16, 12]); x.beginPath(); x.arc(cx, cy, rp, 0, 7); x.fill(); x.stroke(); x.setLineDash([]);
+      const spr = {}; for (const k of ['walk_m', 'walk_f', 'drive_cmd', 'drive_sup']) spr[k] = await loadImg('img/' + k + '.webp').catch(() => null);
+      ppl.sort((a, b) => b.loc.lat - a.loc.lat);
+      for (const i of ppl) {
+        const [px, py] = P(i.loc.lat, i.loc.lon), car = VAN(i.kind), arr = g.arr && g.arr[i.id];
+        const k = car ? (i.kind === '物資車' ? 'drive_sup' : 'drive_cmd') : (fig3d(i) === 'medf' ? 'walk_f' : 'walk_m'), im = spr[k];
+        x.fillStyle = 'rgba(0,0,0,.22)'; x.beginPath(); x.ellipse(px, py, car ? 46 : 26, car ? 11 : 8, 0, 0, 7); x.fill();
+        if (im) { const n = car ? 13 : 16, fw = im.width / n, h = car ? 62 : 92, w = fw / im.height * h; x.drawImage(im, 0, 0, fw, im.height, px - w / 2, py - h + 4, w, h); }
+        const lb = (i.team ? i.team + ' ' : '') + i.name; x.font = 'bold 26px -apple-system,"PingFang TC","Noto Sans TC",sans-serif';
+        const tw = x.measureText(lb).width + 22, ly = py + 10;
+        x.fillStyle = '#fff'; x.strokeStyle = arr ? '#3B6D11' : KC[i.kind] || '#6b7280'; x.lineWidth = 4; x.beginPath(); x.roundRect(px - tw / 2, ly, tw, 38, 12); x.fill(); x.stroke();
+        x.fillStyle = '#2C2C2A'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText((arr ? '✓ ' : '') + lb, px, ly + 20);
+      }
+      const fy = cy - 60; x.fillStyle = '#501313'; x.fillRect(cx - 3, fy - 80, 6, 84); x.fillStyle = '#E24B4A'; x.strokeStyle = '#fff'; x.lineWidth = 4; x.beginPath(); x.moveTo(cx + 3, fy - 80); x.lineTo(cx + 64, fy - 60); x.lineTo(cx + 3, fy - 40); x.closePath(); x.stroke(); x.fill();   // 旗子最後畫，不會被指揮車蓋住
+      x.font = '20px sans-serif'; x.textAlign = 'right'; x.textBaseline = 'alphabetic'; x.fillStyle = 'rgba(255,255,255,.85)'; x.fillRect(N - 230, N - 34, 230, 34); x.fillStyle = '#444'; x.fillText('© OpenStreetMap', N - 10, N - 10);
+      return cv.toDataURL('image/jpeg', 0.82).split(',')[1];
+    } catch (e) { return ''; }   // 圖磚不能用（或被擋）就改傳沒有圖的卡片
+  }
   // ---------- 集結 ----------
   let rally = null, canRally = false, nearMe = false, rLayer = null, pickLL = null, boardOpen = null;
   const dTxt = m => m < 1000 ? Math.round(m / 10) * 10 + ' 公尺' : (m / 1000).toFixed(1) + ' 公里';
@@ -588,7 +623,7 @@
       L.marker(ll, { zIndexOffset: 900, icon: L.divIcon({ className: '', iconSize: [0, 0], html: '<div class="rflag">🚩<b>集結點</b></div>' }) }).bindPopup(`<b>🚩 ${esc(g.msg)}</b><br>範圍 ${g.r} 公尺${g.follow ? '・跟著指揮車' : ''}<br><a href="${navUrl(g.lat, g.lon)}" target="_blank" rel="noopener">🚶 走路導航</a>`, { offset: [0, -30] })]).addTo(map);
     const tg = items.filter(i => g.tg.includes(i.id)), st = tg.map(rStatus), arr = st.filter(x => x.k === 0 || x.t === '✅ 已到').length;
     const me0 = meLL || myPos, dm = me0 ? hav(me0[0], me0[1], g.lat, g.lon) : null; if (!me0) askPos(false);
-    $('rbar').innerHTML = `<div class="rb1"><b>🚩 ${esc(g.msg)}</b><span>${dm != null ? (dm <= g.r ? '✅ 你已在集結點' : `離你 ${esc(dTxt(dm))}・走約 ${walkMin(dm)} 分`) : '<a role="button" data-mypos>算我離多遠</a>'}・到 ${hhmm2(g.until)}</span></div>
+    $('rbar').innerHTML = `<div class="rb1"><b>🚩 ${esc(g.msg)}</b><span>${dm != null ? (dm <= g.r ? '✅ 你已在集結點' : `離你 ${esc(dTxt(dm))}・走約 ${walkMin(dm)} 分`) : '<a role="button" data-mypos>算我離多遠</a>'}${g.due ? `・<b style="display:inline;color:#b91c1c;font-size:13px">${hhmm2(g.due)} 前到</b>` : ''}</span></div>
       <div class="rb2"><a class="sb" href="${navUrl(g.lat, g.lon)}" target="_blank" rel="noopener">🚶 導航</a><button class="sb" id="rb-go">📍 看位置</button><button class="sb" data-share="_rally" style="background:#06C755;color:#fff">📤 分享</button>${canRally || mgr ? `<button class="sb on" id="rb-list">✅ ${arr}/${tg.length} 到</button>` : ''}</div>`;
     $('rbar').classList.remove('hidden');
     $('rb-go').onclick = () => map.flyTo(ll, Math.max(map.getZoom(), 16), { duration: .6 });
@@ -601,7 +636,7 @@
       .sort((a, b) => (a.s.t === '✅ 已到') - (b.s.t === '✅ 已到') || a.s.k - b.s.k || (a.s.d ?? 9e9) - (b.s.d ?? 9e9));
     const n = t => rows.filter(r => r.s.t.startsWith(t)).length;
     const html = `<h3>🚩 集結名單<button class="sb x" data-close>關閉</button></h3>
-      <div class="hint">${esc(g.msg)}・範圍 ${g.r} 公尺${g.follow ? '・跟著指揮車移動' : ''}・${hhmm2(g.at)} 發佈・${esc(g.byName || '')}</div>
+      <div class="hint">${g.due ? `<b>${hhmm2(g.due)} 前到</b>・` : ''}${esc(g.msg)}・範圍 ${g.r} 公尺${g.follow ? '・跟著指揮車移動' : ''}・${hhmm2(g.at)} 發佈・${esc(g.byName || '')}</div>
       <div class="rsum"><span class="ok">✅ 已到 ${n('✅')}</span><span>🚶 未到 ${n('🚶')}</span><span class="bad">⚠️ 沒訊號 ${n('⚠️')}</span>${n('🌙') ? `<span>🌙 退勤 ${n('🌙')}</span>` : ''}</div>
       <div class="hint" style="margin:4px 0 8px">未到的人依距離排序，最近的在上面。</div>
       ${rows.map(({ i, s }) => `<div class="it rrow ${s.t === '✅ 已到' ? 'ok' : s.k >= 2 ? 'bad' : ''}" data-fly="${esc(i.id)}"><div class="e k-${esc(i.kind)} ${i.pic || VAN(i.kind) ? 'p' : ''}" style="--kc:${KC[i.kind]}">${face(i)}</div>
@@ -628,7 +663,7 @@
       <div><label>範圍（進入範圍就算「到了」）</label><div class="segs" id="r-r">${[30, 50, 100, 200].map(v => `<button ${v === 50 ? 'class="on"' : ''} data-v="${v}">${v} 公尺</button>`).join('')}</div></div>
       <div><label>對象</label><div class="segs wrap" id="r-tg">${Object.entries(T).filter(([k, v]) => v.length || k === '全部值勤').map(([k, v], n) => `<button ${n === 0 ? 'class="on"' : ''} data-v="${k}">${k} ${v.length}</button>`).join('')}</div></div>
       <div><label>訊息</label><input id="r-msg" maxlength="60" value="${cmd ? '請到指揮車集合' : '請到集結點集合'}"></div>
-      <div><label>有效時間</label><div class="segs" id="r-h">${[1, 3, 6].map(v => `<button ${v === 3 ? 'class="on"' : ''} data-v="${v}">${v} 小時</button>`).join('')}</div></div>
+      <div><label>幾點前要到</label><div class="segs" id="r-due">${[[15, '15 分'], [30, '30 分'], [60, '1 小時'], [0, '不限']].map(([v, n]) => `<button ${v === 30 ? 'class="on"' : ''} data-v="${v}">${v ? hhmm2(Date.now() + v * 60e3) + '<br><small>' + n + '後</small>' : n}</button>`).join('')}</div></div>
       <button class="btn" id="r-go">🚩 發佈集結</button></div>`);
     o.querySelectorAll('.segs').forEach(g => g.querySelectorAll('button').forEach(b => b.onclick = () => { g.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
       if (g.id === 'r-pt') { o.querySelector('#r-pth').textContent = b.dataset.v === 'cmd' ? '集結點會跟著指揮車移動' : b.dataset.v === 'me' ? '用你現在手機的位置' : '關掉這個視窗後，在地圖上點一下要集合的地方';
@@ -636,7 +671,7 @@
     if (pickLL) { o.querySelectorAll('#r-pt button').forEach(x => x.classList.toggle('on', x.dataset.v === 'pick')); o.querySelector('#r-pth').textContent = '✅ 已選好地圖上的點'; }
     const val = id => (o.querySelector(`#${id} .on`) || {}).dataset?.v;
     o.querySelector('#r-go').onclick = async () => {
-      const pt = val('r-pt'), body = { sess, idToken: await user.getIdToken(), r: +val('r-r'), msg: o.querySelector('#r-msg').value.trim(), hours: +val('r-h'), tgName: val('r-tg') };
+      const pt = val('r-pt'), body = { sess, idToken: await user.getIdToken(), r: +val('r-r'), msg: o.querySelector('#r-msg').value.trim(), due: +val('r-due'), hours: 3, tgName: val('r-tg') };
       body.tg = (T[val('r-tg')] || []).map(i => i.id);
       if (!body.tg.length) { toast('這個對象沒有人'); return; }
       if (pt === 'cmd') body.follow = cmd.id;

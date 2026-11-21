@@ -82,6 +82,11 @@ async function handleReq(req, env, ctx) {
       try { const d = await fsGet(await saToken(env), 'system_configs/body_map_polygons'); return json({ ok: true, zones: d ? fobj(d.fields).zones || null : null }); }
       catch (e) { return json({ error: 'failed' }, 500); }
     }
+    if (/^\/ls\/[A-Za-z0-9]{12}\.jpg$/.test(new URL(req.url).pathname) && req.method === 'GET' && env.LOC) {   // 集結卡片的地圖截圖（6 小時後失效）
+      const b = await locHub(env).shareImg(new URL(req.url).pathname.slice(4, 16));
+      if (!b) return new Response('expired', { status: 404 });
+      return new Response(Uint8Array.from(atob(b), c => c.charCodeAt(0)), { headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=21600' } });
+    }
     if (new URL(req.url).pathname === '/share-get' && req.method === 'GET') {   // 分享卡片內容（公開，給 LIFF 分享頁用）
       const id = new URL(req.url).searchParams.get('id') || '';
       if (!/^[A-Za-z0-9_-]{6,40}$/.test(id)) return json({ error: 'bad id' }, 400);
@@ -96,6 +101,23 @@ async function handleReq(req, env, ctx) {
           footer: { type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm', contents: [
             { type: 'button', style: 'primary', color: '#16a34a', action: { type: 'uri', label: '🚶 走路導航過去', uri: nav } },
             { type: 'button', style: 'secondary', action: { type: 'uri', label: '打開定位地圖', uri: 'https://liff.line.me/2011820105-x1KU6xLW?go=locate' } } ] } } };
+        if (v.rally && v.img) {   // 樣式 6：正方形大地圖＋上方大字「幾點前」＋團員位置
+          const tm = t => new Date(t + 8 * 3600e3).toISOString().slice(11, 16), img = new URL(req.url).origin + '/ls/' + id.slice(3) + '.jpg';
+          const big = v.due ? tm(v.due) + ' 前' : '現在集合';
+          const f6 = { type: 'flex', altText: '🚩 集結通知：' + v.text + (v.due ? '（' + tm(v.due) + ' 前）' : ''), contents: { type: 'bubble', size: 'giga',
+            hero: { type: 'box', layout: 'vertical', paddingAll: '0px', contents: [
+              { type: 'image', url: img, size: 'full', aspectRatio: '1:1', aspectMode: 'cover', action: { type: 'uri', label: '導航', uri: nav } },
+              { type: 'box', layout: 'vertical', position: 'absolute', offsetTop: '0px', offsetStart: '0px', offsetEnd: '0px', backgroundColor: '#A32D2DEE', paddingAll: '10px', contents: [
+                { type: 'text', text: '🚩 集結通知', size: 'sm', color: '#FFFFFF', align: 'center' },
+                { type: 'text', text: big, size: '3xl', weight: 'bold', color: '#FFFFFF', align: 'center' } ] },
+              { type: 'box', layout: 'vertical', position: 'absolute', offsetBottom: '16px', offsetStart: '16px', offsetEnd: '16px', backgroundColor: '#FFFFFFF2', cornerRadius: '12px', paddingAll: '10px', contents: [
+                { type: 'text', text: v.text, weight: 'bold', size: 'lg', color: '#2C2C2A', align: 'center', wrap: true },
+                { type: 'text', text: `${v.r} 公尺內算到達${v.by ? '・' + v.by + ' 分享' : ''}`, size: 'xs', color: '#5F5E5A', align: 'center', wrap: true } ] } ] },
+            footer: { type: 'box', layout: 'horizontal', paddingAll: '10px', spacing: 'sm', contents: [
+              { type: 'button', style: 'primary', color: '#3B6D11', height: 'sm', action: { type: 'uri', label: '🚶 走路導航', uri: nav } },
+              { type: 'button', style: 'secondary', height: 'sm', action: { type: 'uri', label: '打開地圖', uri: 'https://liff.line.me/2011820105-x1KU6xLW?go=locate' } } ] } } };
+          return new Response(JSON.stringify({ ok: true, card: { id, kind: 'loc', title: v.title, text: v.text + '\n' + (v.due ? tm(v.due) + ' 前到' : ''), imgUrl: img, flex: f6 } }), { headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
+        }
         const loc = { type: 'location', title: v.title.replace(/^\S+\s/, '').slice(0, 100), address: v.text.slice(0, 100) || '白沙屯拱天宮醫護團', latitude: v.lat, longitude: v.lon };
         return new Response(JSON.stringify({ ok: true, card: { id, kind: 'loc', title: v.title, text: v.text + '\n' + v.sub, flex, extra: [loc] } }), { headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
       }
@@ -1851,14 +1873,17 @@ export class LocHub extends DurableObject {
   async shareMake(a) {
     let lat, lon, title, text, sub;
     if (a.rally) { const g = await this.rallyLoad(); if (!g || Date.now() > g.until) return { error: '目前沒有集結' };
-      lat = g.lat; lon = g.lon; title = '🚩 集結通知'; text = g.msg; sub = `範圍 ${g.r} 公尺${g.follow ? '・跟著指揮車' : ''}・有效到 ${new Date(g.until + 8 * 3600e3).toISOString().slice(11, 16)}`; }
+      lat = g.lat; lon = g.lon; title = '🚩 集結通知'; text = g.msg; var due = g.due || 0, rr = g.r; sub = `範圍 ${g.r} 公尺${g.follow ? '・跟著指揮車' : ''}・有效到 ${new Date(g.until + 8 * 3600e3).toISOString().slice(11, 16)}`; }
     else { const t = this.T.get(a.id), l = this.L.get(a.id); if (!t || !l) return { error: '這台目前沒有位置' };
       lat = l.lat; lon = l.lon; title = '📍 ' + t.name + ' 的位置'; text = (a.team ? a.team + ' ' : '') + t.name + (t.kind !== '其他' && t.kind !== t.name ? '（' + t.kind + '）' : ''); sub = '位置時間 ' + new Date(l.tst + 8 * 3600e3).toISOString().slice(11, 16); }
-    const k = randStr(12), snap = { lat, lon, title, text: cleanTxt(text, 60), sub, by: cleanTxt(a.byName, 20), at: Date.now(), until: Date.now() + 6 * 3600e3 };
+    const k = randStr(12), img = a.rally && /^[A-Za-z0-9+/=]{1000,1400000}$/.test(a.img || '') ? 1 : 0;
+    const snap = { lat, lon, title, text: cleanTxt(text, 60), sub, by: cleanTxt(a.byName, 20), at: Date.now(), until: Date.now() + 6 * 3600e3, rally: !!a.rally, due: a.rally ? due : 0, r: a.rally ? rr : 0, img };
     await this.ctx.storage.put('s:' + k, snap);
+    if (img) await this.ctx.storage.put('si:' + k, a.img);   // 地圖截圖（JPEG base64），跟分享一起 6 小時後失效
     return { ok: true, k };
   }
-  async shareGet(k) { const v = await this.ctx.storage.get('s:' + k); if (!v) return null; if (Date.now() > v.until) { await this.ctx.storage.delete('s:' + k); return null; } return v; }
+  async shareGet(k) { const v = await this.ctx.storage.get('s:' + k); if (!v) return null; if (Date.now() > v.until) { await this.ctx.storage.delete(['s:' + k, 'si:' + k]); return null; } return v; }
+  async shareImg(k) { const v = await this.shareGet(k); return v && v.img ? await this.ctx.storage.get('si:' + k) : null; }
   // ---- 集結 ----
   isCmd(uid) { return !!uid && [...this.T.values()].some(t => t.uid === uid && t.kind === '指揮車'); }   // 綁定指揮車的人可以發集結
   async rallyLoad() { if (this.G === undefined) this.G = (await this.ctx.storage.get('g:cur')) || null; return this.G; }
@@ -1871,7 +1896,8 @@ export class LocHub extends DurableObject {
     if (!(Math.abs(lat) <= 90 && Math.abs(lon) <= 180) || (!lat && !lon)) return { error: '請選集結地點' };
     const tg = (Array.isArray(a.tg) ? a.tg : []).filter(id => this.T.has(id));
     const g = { id: randStr(6), lat, lon, r: Math.min(500, Math.max(15, +a.r || 50)), msg: cleanTxt(a.msg, 60) || '請到集結點集合', by: a.by || '', byName: cleanTxt(a.byName, 20),
-      follow: a.follow && this.T.has(a.follow) ? a.follow : '', tg, tgName: cleanTxt(a.tgName, 10), at: Date.now(), until: Date.now() + Math.min(12, Math.max(0.25, +a.hours || 3)) * 3600e3, arr: {} };
+      follow: a.follow && this.T.has(a.follow) ? a.follow : '', tg, tgName: cleanTxt(a.tgName, 10), at: Date.now(), due: +a.due > 0 ? Date.now() + Math.min(600, +a.due) * 60e3 : 0, arr: {} };
+    g.until = g.due ? g.due + 2 * 3600e3 : Date.now() + Math.min(12, Math.max(0.25, +a.hours || 3)) * 3600e3;   // 有「幾點前到」：時間過後再留 2 小時
     for (const id of tg) { const l = this.L.get(id); if (l && Date.now() - l.at < 10 * 60e3 && hav2(l.lat, l.lon, lat, lon) <= g.r) g.arr[id] = Date.now(); }   // 已經在範圍內的直接算到
     this.G = g; await this.ctx.storage.put('g:cur', g);
     return { ok: true, g, uids: [...new Set(tg.map(id => this.T.get(id).uid).filter(Boolean))] };
@@ -1999,7 +2025,7 @@ async function locShareRoute(req, env, json) {
     const a = await req.json(), A = await locSession(a.idToken, a.sess, env); if (A.err) return json({ error: A.err }, 401);
     const hub = locHub(env);
     if (!A.s.m && !A.s.sc && !(await hub.canView(A.s.uid))) return json({ error: '沒有權限' }, 403);
-    const r = await hub.shareMake({ rally: !!a.rally, id: String(a.id || ''), team: cleanTxt(a.team, 10), byName: A.s.n });
+    const r = await hub.shareMake({ rally: !!a.rally, id: String(a.id || ''), team: cleanTxt(a.team, 10), byName: A.s.n, img: typeof a.img === 'string' ? a.img : '' });
     return json(r.error ? r : { ok: true, url: 'https://liff.line.me/2011820105-Is9eno4N?share=ls_' + r.k, sess: A.fresh }, r.error ? 400 : 200);
   } catch (e) { return json({ error: e.code ? '請重新登入' : String((e && e.message) || e) }, e.code || 500); }
 }
