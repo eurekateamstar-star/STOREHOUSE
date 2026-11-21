@@ -90,8 +90,12 @@
   function done() {
     msg('✅ 分享完成！', true); $('done').classList.remove('hidden');
     if (card && card.id === 'guardian') $('done').querySelector('.pri').classList.add('hidden');
-    const h = $('hearts'); for (let i = 0; i < 12; i++) { const e = document.createElement('i'); e.textContent = ['❤️', '🧡', '💗'][i % 3];
+    if (card && card.kind === 'loc') {   // 定位分享：不放醫護證、不撒愛心，按鈕改成回到定位地圖
+      const pri = $('done').querySelector('.pri'); pri.textContent = '📍 回到定位地圖'; pri.href = 'https://liff.line.me/2011820105-x1KU6xLW?go=locate';
+      $('done').querySelector('h2').textContent = '已分享'; }
+    const h = $('hearts'); for (let i = 0; i < (card && card.kind === 'loc' ? 0 : 12); i++) { const e = document.createElement('i'); e.textContent = ['❤️', '🧡', '💗'][i % 3];
       e.style.left = (5 + Math.random() * 90) + '%'; e.style.animationDelay = (Math.random() * .8) + 's'; h.appendChild(e); }
+    if (card && card.kind === 'loc') return;   // 定位分享不自動關閉，讓他選要回地圖還是回聊天
     let n = 4; const tick = () => { if (n <= 0) { try { liff.closeWindow(); } catch (e) {} return; } $('cd').textContent = n + ' 秒後自動回到聊天'; n--; done.t = setTimeout(tick, 1000); };
     tick();
     $('done').addEventListener('click', () => { clearTimeout(done.t); $('cd').textContent = ''; }, { once: true });
@@ -113,7 +117,7 @@
       if (!j.ok) throw new Error(j.error || '讀不到卡片');
       card = j.card;
       const img = card.kind === 'loc' ? (card.imgUrl || '') : (card.imgUrl || (AUTH_URL + '/c/' + card.id + '.jpg'));
-      if (card.kind === 'loc') { document.querySelector('.head .t').textContent = '📍 分享位置'; $('done-sub').innerHTML = '位置已經分享出去了<br>對方可以按卡片上的「走路導航」過去。'; }
+      if (card.kind === 'loc') { document.querySelector('.head .t').textContent = '📍 分享位置'; $('done-sub').innerHTML = '集結卡片已經傳出去了<br>對方按卡片上的「走路導航」就能過去。'; }
       $('card').innerHTML = (img ? `<img src="${esc(img)}" alt="">` : '') + (card.title || card.text ? `<div class="txt">${card.title ? `<b>${esc(card.title)}</b>` : ''}${card.text ? `<p>${esc(card.text)}</p>` : ''}</div>` : '');
       ['card', 'go', 'close'].forEach(k => $(k).classList.remove('hidden'));
       share();
