@@ -1701,6 +1701,8 @@ async function locRole(idToken, env) {
   try { const M = await locMe(idToken, env); if (!M) return { ld: false, sc: false }; const T = await locTeams(env);
     return { ld: M.rkey in (T.leadNow || {}), sc: M.rkey in (T.on || {}), me: M }; } catch (e) { return { ld: false, sc: false }; }
 }
+// 性別只從身分證第二碼推算（1 男 2 女），不存也不回傳身分證
+const sexOf = c => { const d = String(c || '').toUpperCase()[1]; return d === '1' ? 'm' : d === '2' ? 'f' : ''; };
 // 自己的資料：姓名（名冊）、大頭貼、名冊 key
 async function locMe(idToken, env) {
   const uid = uidOfToken(idToken);
@@ -1708,8 +1710,9 @@ async function locMe(idToken, env) {
   if (!r.ok) throw Object.assign(new Error('not allowed'), { code: 401 });
   const u = fobj((await r.json()).fields); if (u.status !== 'approved') return null;
   let rkey = '', name = u.realName || '';
-  if (u.rosterId) { const ro = await fsGet(await saToken(env), `member_roster/${encodeURIComponent(u.rosterId)}`); if (ro) { const f = fobj(ro.fields); rkey = normName(f.name); name = f.name || name; } }
-  return { uid, u, rkey: rkey || normName(name), name: normName(name), pic: u.pictureUrl || '' };
+  let sex = '';
+  if (u.rosterId) { const ro = await fsGet(await saToken(env), `member_roster/${encodeURIComponent(u.rosterId)}`); if (ro) { const f = fobj(ro.fields); rkey = normName(f.name); name = f.name || name; sex = sexOf(f.idCard); } }
+  return { uid, u, rkey: rkey || normName(name), name: normName(name), pic: u.pictureUrl || '', sex };
 }
 const cleanTxt = (s, n) => String(s || '').replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, n);
 
@@ -1792,12 +1795,13 @@ export class LocHub extends DurableObject {
     const st = this.ctx.storage;
     let id = ([...this.T.entries()].find(([, t]) => t.uid === uid && t.self) || [])[0];
     if (id) { const t = this.T.get(id), pic = picOk(a.pic), rkey = cleanTxt(a.rkey, 20);
-      if ((pic && t.pic !== pic) || (rkey && t.rkey !== rkey) || !t.pw) { if (pic) t.pic = pic; if (rkey) t.rkey = rkey;
+      const sx = ['m', 'f'].includes(a.sex) ? a.sex : '';
+      if ((pic && t.pic !== pic) || (rkey && t.rkey !== rkey) || (sx && t.sex !== sx) || !t.pw) { if (pic) t.pic = pic; if (rkey) t.rkey = rkey; if (sx) t.sex = sx;
         if (!t.pw) { t.pw = randStr(24); t.h = await sha256hex(t.pw); } await this.kput('t:' + id, t); }
       await this.onDuty(id); return { ok: true, id, pw: t.pw, tid: t.tid, name: t.name, fresh: false, used: this.used(id) }; }
     const name = cleanTxt(a.name, 20) || '小組長';
     do { id = 'bst' + randStr(5, 'abcdefghijkmnpqrstuvwxyz23456789'); } while (this.T.has(id));
-    const pw = randStr(24), t = { name, kind: '小組長', uid, uname: name, pic: picOk(a.pic), rkey: cleanTxt(a.rkey, 20), self: true, tid: locTid('小組長', id), h: await sha256hex(pw), pw, at: Date.now(), by: uid };
+    const pw = randStr(24), t = { name, kind: '小組長', uid, uname: name, pic: picOk(a.pic), rkey: cleanTxt(a.rkey, 20), sex: ['m', 'f'].includes(a.sex) ? a.sex : '', self: true, tid: locTid('小組長', id), h: await sha256hex(pw), pw, at: Date.now(), by: uid };
     this.T.set(id, t); await this.kput('t:' + id, t);
     return { ok: true, id, pw, tid: t.tid, name, fresh: true };
   }
@@ -1826,6 +1830,7 @@ export class LocHub extends DurableObject {
   }
   // 地圖更新一次只呼叫一次 DO（list＋綁定裝置＋有沒有自己的裝置）
   view(uid, mgr, who) { const items = this.list(uid, mgr, who); return items ? { items, bd: this.bound(uid), self: this.hasSelf(uid) } : null; }
+  async setSex(uid, sex) { if (!['m', 'f'].includes(sex)) return; for (const [id, t] of this.T) if (t.uid === uid && t.sex !== sex) { t.sex = sex; await this.kput('t:' + id, t); } }
   hasSelf(uid) { return [...this.T.values()].some(t => t.uid === uid && t.self); }
   canView(uid) { return !!uid && (this.V.has(uid) || [...this.T.values()].some(t => t.uid === uid)); }
   list(uid, mgr, who) {
@@ -1837,12 +1842,12 @@ export class LocHub extends DurableObject {
       w.n++; w.last = now; w.name = (who && who.n) || w.name || ''; this.W.set(uid, w);
       if (!w.saved || now - w.saved > 300e3) { w.saved = now; this.kput('w:' + uid, w); }
     }
-    return [...this.T.entries()].map(([id, t]) => { const l = this.L.get(id); const duty = t.duty !== false; return { id, name: t.name, kind: t.kind, uname: t.uname || '', pic: t.pic || '', fig: t.fig || '', rkey: t.rkey || '', duty, mode: t.mode ?? null, loc: l && (now - l.at <= LOC_TTL || !duty) ? l : null }; });
+    return [...this.T.entries()].map(([id, t]) => { const l = this.L.get(id); const duty = t.duty !== false; return { id, name: t.name, kind: t.kind, uname: t.uname || '', pic: t.pic || '', fig: t.fig || t.sex || '', rkey: t.rkey || '', duty, mode: t.mode ?? null, loc: l && (now - l.at <= LOC_TTL || !duty) ? l : null }; });
   }
   // 管理（Worker 已確認是完整管理員）
   async admin(op, a) {
     const st = this.ctx.storage;
-    if (op === 'state') return { trackers: [...this.T.entries()].map(([id, t]) => ({ id, name: t.name, kind: t.kind, tid: t.tid, uid: t.uid || '', uname: t.uname || '', fig: t.fig || '', pic: t.pic || '', self: !!t.self, at: t.at, last: (this.L.get(id) || {}).at || 0, duty: t.duty !== false, mode: t.mode ?? null, ping: this.P.get(id) || 0 })),
+    if (op === 'state') return { trackers: [...this.T.entries()].map(([id, t]) => ({ id, name: t.name, kind: t.kind, tid: t.tid, uid: t.uid || '', uname: t.uname || '', fig: t.fig || '', sex: t.sex || '', pic: t.pic || '', self: !!t.self, at: t.at, last: (this.L.get(id) || {}).at || 0, duty: t.duty !== false, mode: t.mode ?? null, ping: this.P.get(id) || 0 })),
                                  rejects: [...(this.R || new Map()).entries()].filter(([, r]) => Date.now() - r.at < 86400e3).map(([id, r]) => ({ id, ...r })),
                                  viewers: [...this.V.entries()].map(([uid, v]) => ({ uid, name: v.name || '' })),
                                  watchers: [...this.W.entries()].filter(([, w]) => Date.now() - w.last < 3 * 86400e3).sort((a, b) => b[1].last - a[1].last)
@@ -1852,12 +1857,13 @@ export class LocHub extends DurableObject {
       const kind = LOC_KINDS.includes(a.kind) ? a.kind : '其他';
       const uid = /^U[0-9a-f]{32}$/.test(a.uid || '') ? a.uid : '';
       if (op === 'edit') { const t = this.T.get(a.id); if (!t) return { error: '找不到裝置' };
-        if (['m', 'f', 'emt'].includes(a.fig)) t.fig = a.fig;
+        if (['m', 'f', 'emt', ''].includes(a.fig)) t.fig = a.fig;
+        if (['m', 'f', ''].includes(a.sex)) t.sex = a.sex;
         Object.assign(t, { name, kind, uid, uname: uid ? cleanTxt(a.uname, 20) : '', pic: uid ? picOk(a.pic) : '', rkey: uid ? cleanTxt(a.rkey, 20) : '', tid: locTid(kind, a.id) });
         await this.kput('t:' + a.id, t); return { ok: true }; }
       let id; do { id = 'bst' + randStr(5, 'abcdefghijkmnpqrstuvwxyz23456789'); } while (this.T.has(id));
       const pw = randStr(24);
-      const t = { name, kind, uid, uname: uid ? cleanTxt(a.uname, 20) : '', pic: uid ? picOk(a.pic) : '', rkey: uid ? cleanTxt(a.rkey, 20) : '', tid: locTid(kind, id), h: await sha256hex(pw), pw, at: Date.now(), by: a.by || '' };
+      const t = { sex: ['m', 'f'].includes(a.sex) ? a.sex : '', name, kind, uid, uname: uid ? cleanTxt(a.uname, 20) : '', pic: uid ? picOk(a.pic) : '', rkey: uid ? cleanTxt(a.rkey, 20) : '', tid: locTid(kind, id), h: await sha256hex(pw), pw, at: Date.now(), by: a.by || '' };
       this.T.set(id, t); await this.kput('t:' + id, t);
       return { ok: true, id, pw, tid: t.tid, name };
     }
@@ -1906,7 +1912,7 @@ async function locSession(idToken, sess, env) {
     if (!idToken) return { err: 'login' };
     const uid = uidOfToken(idToken), me = await fsUser(idToken, uid);
     if (!me || me.status !== 'approved') return { err: '帳號尚未開通' };
-    const R = await locRole(idToken, env), ld = R.ld, sc = R.sc;
+    const R = await locRole(idToken, env), ld = R.ld, sc = R.sc; if (R.me && R.me.sex && env.LOC) try { await locHub(env).setSex(uid, R.me.sex); } catch (e) {}
     s = { uid, n: String(me.realName || '').slice(0, 20), m: await fullAdmin(me, idToken, env), ld, sc, v: 2, exp: Date.now() + LOC_SESS };
     fresh = await locSessMake(s, env);
   }
@@ -1942,7 +1948,7 @@ async function locRoute(req, env, json) {
       if (!idToken) return json({ error: 'login' }, 401);
       const uid = uidOfToken(idToken), me = await fsUser(idToken, uid);
       if (!me || me.status !== 'approved') return json({ error: '帳號尚未開通' }, 403);
-      const R = await locRole(idToken, env), ld = R.ld, sc = R.sc;
+      const R = await locRole(idToken, env), ld = R.ld, sc = R.sc; if (R.me && R.me.sex && env.LOC) try { await locHub(env).setSex(uid, R.me.sex); } catch (e) {}
       s = { uid, n: String(me.realName || '').slice(0, 20), m: await fullAdmin(me, idToken, env), ld, sc, v: 2, exp: Date.now() + LOC_SESS };
       fresh = await locSessMake(s, env);
     }
@@ -1970,7 +1976,7 @@ async function locSelfRoute(req, env, json) {
     const { id } = body;
     if (id) { const r = await hub.boundCfg(me.uid, String(id)); return json(r.error ? r : { ...r, team: r.kind === '小組長' ? team : '' }, r.error ? 403 : 200); }
     const canMake = lead || await fullAdmin(await fsUser(idToken, me.uid), idToken, env);
-    if (canMake) await hub.selfGet(me.uid, { name: me.name, pic: me.pic, rkey: me.rkey });   // 組長／管理員：確保有自己的一台
+    if (canMake) await hub.selfGet(me.uid, { name: me.name, pic: me.pic, rkey: me.rkey, sex: me.sex });   // 組長／管理員：確保有自己的一台
     const mine = await hub.bound(me.uid);
     if (!mine.length) return json({ error: '今天排班是小組長才能產生 QR Code，其他人請找管理員綁定裝置' }, 403);
     if (mine.length > 1) return json({ ok: true, choose: mine, team });
@@ -1988,9 +1994,9 @@ async function locAdminRoute(req, env, json) {
     const hub = locHub(env);
     if (a.op === 'members') {   // 選人用：只回 ID 和姓名，不含其他個資
       const tok = await saToken(env), dev = await devUid(tok);
-      const ros = {}; (await memo('roster', 300e3, () => fsList(tok, 'member_roster'))).forEach(r => { ros[r.id] = normName(r.name); });
+      const ros = {}, sx = {}; (await memo('roster', 300e3, () => fsList(tok, 'member_roster'))).forEach(r => { ros[r.id] = normName(r.name); sx[r.id] = sexOf(r.idCard); });
       const members = (await fsList(tok, 'users')).filter(u => u.status === 'approved' && /^U[0-9a-f]{32}$/.test(u.id) && (u.id !== dev || uid === dev))
-        .map(u => ({ uid: u.id, name: String(u.realName || u.displayName || '').slice(0, 20), pic: picOk(u.pictureUrl), rkey: ros[u.rosterId] || normName(u.realName) }))
+        .map(u => ({ uid: u.id, name: String(u.realName || u.displayName || '').slice(0, 20), pic: picOk(u.pictureUrl), sex: sx[u.rosterId] || '', rkey: ros[u.rosterId] || normName(u.realName) }))
         .filter(u => u.name).sort((x, y) => x.name.localeCompare(y.name, 'zh-Hant'));
       return json({ ok: true, members });
     }

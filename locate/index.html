@@ -523,7 +523,7 @@
     o.querySelector('#a-add').onclick = async () => {
       const name = o.querySelector('#a-name').value.trim(); if (!name) { toast('請填名稱'); return; }
       const uid = o.querySelector('#a-uid').value, mm = members.find(m => m.uid === uid) || {};
-      const r = await adm('add', { name, kind: o.querySelector('#a-kind').value, uid, uname: mm.name || '', pic: mm.pic || '', rkey: mm.rkey || '' });
+      const r = await adm('add', { name, kind: o.querySelector('#a-kind').value, uid, uname: mm.name || '', pic: mm.pic || '', rkey: mm.rkey || '', sex: mm.sex || '' });
       if (r.error) { toast(r.error); return; }
       o.remove(); showConfig(r); load();
     };
@@ -540,14 +540,14 @@
         <div><label>名稱</label><input id="e-name" maxlength="20" value="${esc(t.name)}"></div>
         <div><label>類型</label><select id="e-kind">${KINDS.map(k => `<option ${k === t.kind ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
         <div><label>綁定團員</label><select id="e-uid">${memberOpts(t.uid)}</select></div>
-        <div><label>地圖上的 3D 人偶（小組長用）</label><div class="figs">${[['m', 'medm', '男（會走路）'], ['f', 'medf', '女（會走路）'], ['emt', 'emt', 'EMT']].map(([v, f, n]) => `<label><input type="radio" name="e-fig" value="${v}" ${(t.fig || 'm') === v ? 'checked' : ''}><img src="img/${f}.webp" alt=""><span>${n}</span></label>`).join('')}</div></div>
+        <div><label>地圖上的 3D 人偶（預設依名冊性別自動選）</label><div class="figs">${[['', t.sex === 'f' ? 'medf' : 'medm', '自動（依性別）'], ['m', 'medm', '男'], ['f', 'medf', '女'], ['emt', 'emt', 'EMT']].map(([v, f, n]) => `<label><input type="radio" name="e-fig" value="${v}" ${(t.fig || '') === v ? 'checked' : ''}><img src="img/${f}.webp" alt=""><span>${n}</span></label>`).join('')}</div></div>
         <button class="btn" id="e-save">儲存</button></div>
         <h4>🔑 換新密碼</h4><div class="hint">手機遺失時用：舊設定立刻失效，新手機要重掃 QR Code。</div><button class="btn w" id="e-reset" style="margin-top:8px">換新密碼並顯示 QR Code</button>`);
       e.querySelector('#e-reset').onclick = async () => { if (!(await ask('🔑 換新密碼', '換新密碼後，原本那支手機就不能再回報，要重新匯入設定。', '換新密碼'))) return;
         const r = await adm('reset', { id: t.id }); if (r.error) { toast(r.error); return; } e.remove(); o.remove(); showConfig(r); };
       e.querySelector('#e-save').onclick = async () => {
         const uid = e.querySelector('#e-uid').value, mm = members.find(m => m.uid === uid) || {};
-        const r = await adm('edit', { fig: (e.querySelector('[name=e-fig]:checked') || {}).value || 'm', id: t.id, name: e.querySelector('#e-name').value.trim(), kind: e.querySelector('#e-kind').value, uid, uname: mm.name || '', pic: mm.pic || '', rkey: mm.rkey || '' });
+        const r = await adm('edit', { fig: (e.querySelector('[name=e-fig]:checked') || {}).value || '', sex: mm.sex || t.sex || '', id: t.id, name: e.querySelector('#e-name').value.trim(), kind: e.querySelector('#e-kind').value, uid, uname: mm.name || '', pic: mm.pic || '', rkey: mm.rkey || '' });
         if (r.error) { toast(r.error); return; } e.remove(); toast('已儲存'); again();
       };
     });
