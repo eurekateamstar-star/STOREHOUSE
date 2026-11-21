@@ -85,6 +85,20 @@ async function handleReq(req, env, ctx) {
     if (new URL(req.url).pathname === '/share-get' && req.method === 'GET') {   // 分享卡片內容（公開，給 LIFF 分享頁用）
       const id = new URL(req.url).searchParams.get('id') || '';
       if (!/^[A-Za-z0-9_-]{6,40}$/.test(id)) return json({ error: 'bad id' }, 400);
+      if (id.startsWith('ls_') && env.LOC) {   // 定位分享：分享當下的位置快照
+        const v = await locHub(env).shareGet(id.slice(3)); if (!v) return json({ error: '這個分享已經過期了（6 小時）' }, 404);
+        const nav = `https://www.google.com/maps/dir/?api=1&destination=${v.lat},${v.lon}&travelmode=walking`;
+        const flex = { type: 'flex', altText: v.title + '：' + v.text, contents: { type: 'bubble', size: 'kilo',
+          header: { type: 'box', layout: 'vertical', paddingAll: '14px', backgroundColor: v.title.startsWith('🚩') ? '#dc2626' : '#2563eb', contents: [{ type: 'text', text: v.title, weight: 'bold', size: 'lg', color: '#ffffff', wrap: true }] },
+          body: { type: 'box', layout: 'vertical', paddingAll: '16px', spacing: 'sm', contents: [
+            { type: 'text', text: v.text, wrap: true, weight: 'bold', size: 'md', color: '#111827' },
+            { type: 'text', text: v.sub + (v.by ? '・' + v.by + ' 分享' : ''), wrap: true, size: 'xs', color: '#6b7280' } ] },
+          footer: { type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm', contents: [
+            { type: 'button', style: 'primary', color: '#16a34a', action: { type: 'uri', label: '🚶 走路導航過去', uri: nav } },
+            { type: 'button', style: 'secondary', action: { type: 'uri', label: '打開定位地圖', uri: 'https://liff.line.me/2011820105-x1KU6xLW?go=locate' } } ] } } };
+        const loc = { type: 'location', title: v.title.replace(/^\S+\s/, '').slice(0, 100), address: v.text.slice(0, 100) || '白沙屯拱天宮醫護團', latitude: v.lat, longitude: v.lon };
+        return new Response(JSON.stringify({ ok: true, card: { id, kind: 'loc', title: v.title, text: v.text + '\n' + v.sub, flex, extra: [loc] } }), { headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
+      }
       try { let card = EDU_CARDS[id];
         if (!card) { const d = await fsGet(await saToken(env), `share/${id}`); if (!d) return json({ error: '這張卡片已經刪除了' }, 404); card = { id, ...fobj(d.fields) }; }
         return new Response(JSON.stringify({ ok: true, card: { ...card, flex: cardFlex(card, new URL(req.url).origin) } }), { headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=30' } }); }
@@ -157,6 +171,7 @@ async function handleReq(req, env, ctx) {
     if (path === '/loc-self') return locSelfRoute(req, env, json);
     if (path === '/loc-track') return locTrackRoute(req, env, json);
     if (path === '/loc-rally') return locRallyRoute(req, env, json);
+    if (path === '/loc-share') return locShareRoute(req, env, json);
 
     try {
       const { accessToken } = await req.json();
@@ -1832,6 +1847,18 @@ export class LocHub extends DurableObject {
   }
   // 地圖更新一次只呼叫一次 DO（list＋綁定裝置＋有沒有自己的裝置）
   view(uid, mgr, who) { const items = this.list(uid, mgr, who); return items ? { items, bd: this.bound(uid), self: this.hasSelf(uid), rally: this.rallyOut(), canRally: !!mgr || this.isCmd(uid) } : null; }
+  // ---- 分享位置快照（給 LINE 分享卡片用；只存分享當下的位置，6 小時後失效）----
+  async shareMake(a) {
+    let lat, lon, title, text, sub;
+    if (a.rally) { const g = await this.rallyLoad(); if (!g || Date.now() > g.until) return { error: '目前沒有集結' };
+      lat = g.lat; lon = g.lon; title = '🚩 集結通知'; text = g.msg; sub = `範圍 ${g.r} 公尺${g.follow ? '・跟著指揮車' : ''}・有效到 ${new Date(g.until + 8 * 3600e3).toISOString().slice(11, 16)}`; }
+    else { const t = this.T.get(a.id), l = this.L.get(a.id); if (!t || !l) return { error: '這台目前沒有位置' };
+      lat = l.lat; lon = l.lon; title = '📍 ' + t.name + ' 的位置'; text = (a.team ? a.team + ' ' : '') + t.name + (t.kind !== '其他' && t.kind !== t.name ? '（' + t.kind + '）' : ''); sub = '位置時間 ' + new Date(l.tst + 8 * 3600e3).toISOString().slice(11, 16); }
+    const k = randStr(12), snap = { lat, lon, title, text: cleanTxt(text, 60), sub, by: cleanTxt(a.byName, 20), at: Date.now(), until: Date.now() + 6 * 3600e3 };
+    await this.ctx.storage.put('s:' + k, snap);
+    return { ok: true, k };
+  }
+  async shareGet(k) { const v = await this.ctx.storage.get('s:' + k); if (!v) return null; if (Date.now() > v.until) { await this.ctx.storage.delete('s:' + k); return null; } return v; }
   // ---- 集結 ----
   isCmd(uid) { return !!uid && [...this.T.values()].some(t => t.uid === uid && t.kind === '指揮車'); }   // 綁定指揮車的人可以發集結
   async rallyLoad() { if (this.G === undefined) this.G = (await this.ctx.storage.get('g:cur')) || null; return this.G; }
@@ -1965,7 +1992,17 @@ async function locTrackRoute(req, env, json) {
     return json({ ok: true, pts, sess: A.fresh });
   } catch (e) { return json({ error: e.code ? '請重新登入' : String((e && e.message) || e) }, e.code || 500); }
 }
-// 集結通知：完整管理員、綁定指揮車的人可以發；可選 LINE 推播給對象（綁定裝置的團員）
+// 集結通知：完整管理員、綁定指揮車的人可以發（不推播，用「分享」卡片傳到群組）
+async function locShareRoute(req, env, json) {
+  try {
+    if (!env.LOC) return json({ error: '定位功能尚未部署' }, 501);
+    const a = await req.json(), A = await locSession(a.idToken, a.sess, env); if (A.err) return json({ error: A.err }, 401);
+    const hub = locHub(env);
+    if (!A.s.m && !A.s.sc && !(await hub.canView(A.s.uid))) return json({ error: '沒有權限' }, 403);
+    const r = await hub.shareMake({ rally: !!a.rally, id: String(a.id || ''), team: cleanTxt(a.team, 10), byName: A.s.n });
+    return json(r.error ? r : { ok: true, url: 'https://liff.line.me/2011820105-Is9eno4N?share=ls_' + r.k, sess: A.fresh }, r.error ? 400 : 200);
+  } catch (e) { return json({ error: e.code ? '請重新登入' : String((e && e.message) || e) }, e.code || 500); }
+}
 async function locRallyRoute(req, env, json) {
   try {
     if (!env.LOC) return json({ error: '定位功能尚未部署' }, 501);
@@ -1975,26 +2012,7 @@ async function locRallyRoute(req, env, json) {
     if (a.end) { await hub.rallySet({ end: true }); return json({ ok: true, sess: A.fresh }); }
     const r = await hub.rallySet({ ...a, by: A.s.uid, byName: A.s.n });
     if (r.error) return json(r, 400);
-    let sent = 0, perr = '';
-    if (a.push && env.LINE_BOT_TOKEN) {
-      const to = r.uids.filter(u => u !== A.s.uid && /^U[0-9a-f]{32}$/.test(u));
-      if (to.length) {
-        const g = r.g, nav = `https://www.google.com/maps/dir/?api=1&destination=${g.lat},${g.lon}&travelmode=walking`, until = new Date(g.until + 8 * 3600e3).toISOString().slice(11, 16);
-        const msg = { type: 'flex', altText: '🚩 集結通知：' + g.msg, contents: { type: 'bubble', size: 'kilo',
-          header: { type: 'box', layout: 'vertical', paddingAll: '14px', backgroundColor: '#D65A68', contents: [{ type: 'text', text: '🚩 集結通知', weight: 'bold', size: 'lg', color: '#ffffff' }] },
-          body: { type: 'box', layout: 'vertical', paddingAll: '16px', spacing: 'sm', contents: [
-            { type: 'text', text: g.msg, wrap: true, weight: 'bold', size: 'md', color: '#111827' },
-            { type: 'text', text: `發佈：${g.byName || '指揮組'}・範圍 ${g.r} 公尺${g.follow ? '・跟著指揮車' : ''}`, wrap: true, size: 'xs', color: '#6b7280' },
-            { type: 'text', text: `有效到 ${until}`, size: 'xs', color: '#6b7280' } ] },
-          footer: { type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm', contents: [
-            { type: 'button', style: 'primary', color: '#16a34a', action: { type: 'uri', label: '🚶 走路導航過去', uri: nav } },
-            { type: 'button', style: 'secondary', action: { type: 'uri', label: '打開定位地圖', uri: 'https://liff.line.me/2011820105-x1KU6xLW?go=locate' } } ] } } };
-        const pr = await fetch('https://api.line.me/v2/bot/message/multicast', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + env.LINE_BOT_TOKEN },
-          body: JSON.stringify({ to: to.slice(0, 500), messages: [msg] }) });
-        if (pr.ok) { sent = to.length; try { await writeUsage(await saToken(env), { pg: 'line', f: [['sent_rally', sent]] }); } catch (e) {} } else perr = (await pr.text()).slice(0, 160);
-      }
-    }
-    return json({ ok: true, rally: r.g, sent, perr, sess: A.fresh });
+    return json({ ok: true, rally: r.g, sess: A.fresh });
   } catch (e) { return json({ error: e.code ? '請重新登入' : String((e && e.message) || e) }, e.code || 500); }
 }
 async function locRoute(req, env, json) {

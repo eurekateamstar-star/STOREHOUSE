@@ -341,6 +341,7 @@
     if (l.acc != null) bits.push(`誤差：約 ${Math.round(l.acc)} 公尺`);
     bits.push(`<div class="dist" data-ll="${l.lat},${l.lon}">${distTxt(l.lat, l.lon)}</div>`);
     bits.push(`<a href="https://www.google.com/maps/dir/?api=1&destination=${l.lat},${l.lon}&travelmode=walking" target="_blank" rel="noopener">🚶 Google 走路導航</a>`);
+    bits.push(`<a role="button" data-share="${esc(i.id)}" style="cursor:pointer;color:#06a046;font-weight:800">📤 分享這個位置到 LINE</a>`);
     bits.push(`<a role="button" data-trk="${esc(i.id)}" style="cursor:pointer;color:#2563eb;text-decoration:underline">🛤 看今天的軌跡</a>`);
     return bits.join('<br>');
   }
@@ -558,6 +559,15 @@
   }
   $('b-qr').onclick = () => myQR(false);
 
+  // ---------- 分享位置到 LINE（卡片＋地圖），用分享專用 LIFF 的「選擇好友或群組」----------
+  async function shareLoc(body) {
+    toast('準備分享卡片…');
+    let r; try { r = await api('/loc-share', { sess, idToken: await user.getIdToken(), ...body }); } catch (e) { toast('連線失敗'); return; }
+    if (r.error) { toast(r.error, 3500); return; } if (r.sess) sess = r.sess;
+    location.href = r.url;
+  }
+  document.addEventListener('click', ev => { const a = ev.target.closest && ev.target.closest('[data-share]'); if (!a) return; ev.preventDefault(); ev.stopPropagation();
+    const id = a.dataset.share, i = items.find(x => x.id === id); shareLoc(id === '_rally' ? { rally: true } : { id, team: i && i.team || '' }); }, true);
   // ---------- 集結 ----------
   let rally = null, canRally = false, nearMe = false, rLayer = null, pickLL = null, boardOpen = null;
   const dTxt = m => m < 1000 ? Math.round(m / 10) * 10 + ' 公尺' : (m / 1000).toFixed(1) + ' 公里';
@@ -579,7 +589,7 @@
     const tg = items.filter(i => g.tg.includes(i.id)), st = tg.map(rStatus), arr = st.filter(x => x.k === 0 || x.t === '✅ 已到').length;
     const me0 = meLL || myPos, dm = me0 ? hav(me0[0], me0[1], g.lat, g.lon) : null; if (!me0) askPos(false);
     $('rbar').innerHTML = `<div class="rb1"><b>🚩 ${esc(g.msg)}</b><span>${dm != null ? (dm <= g.r ? '✅ 你已在集結點' : `離你 ${esc(dTxt(dm))}・走約 ${walkMin(dm)} 分`) : '<a role="button" data-mypos>算我離多遠</a>'}・到 ${hhmm2(g.until)}</span></div>
-      <div class="rb2"><a class="sb" href="${navUrl(g.lat, g.lon)}" target="_blank" rel="noopener">🚶 導航</a><button class="sb" id="rb-go">📍 看位置</button>${canRally || mgr ? `<button class="sb on" id="rb-list">✅ ${arr}/${tg.length} 到</button>` : ''}</div>`;
+      <div class="rb2"><a class="sb" href="${navUrl(g.lat, g.lon)}" target="_blank" rel="noopener">🚶 導航</a><button class="sb" id="rb-go">📍 看位置</button><button class="sb" data-share="_rally" style="background:#06C755;color:#fff">📤 分享</button>${canRally || mgr ? `<button class="sb on" id="rb-list">✅ ${arr}/${tg.length} 到</button>` : ''}</div>`;
     $('rbar').classList.remove('hidden');
     $('rb-go').onclick = () => map.flyTo(ll, Math.max(map.getZoom(), 16), { duration: .6 });
     const lb = $('rb-list'); if (lb) lb.onclick = openBoard;
@@ -596,7 +606,8 @@
       <div class="hint" style="margin:4px 0 8px">未到的人依距離排序，最近的在上面。</div>
       ${rows.map(({ i, s }) => `<div class="it rrow ${s.t === '✅ 已到' ? 'ok' : s.k >= 2 ? 'bad' : ''}" data-fly="${esc(i.id)}"><div class="e k-${esc(i.kind)} ${i.pic || VAN(i.kind) ? 'p' : ''}" style="--kc:${KC[i.kind]}">${face(i)}</div>
         <div class="m"><b>${esc(label(i))}</b><small>${esc(s.s)}</small></div><span class="rs">${s.t}</span></div>`).join('') || '<div class="hint">沒有對象</div>'}
-      <button class="btn w" id="rb-end" style="margin-top:12px">結束集結</button>`;
+      <button class="btn" data-share="_rally" style="margin-top:12px;background:#06C755">📤 分享集結卡片到 LINE 群組</button>
+      <button class="btn w" id="rb-end">結束集結</button>`;
     if (refresh && boardOpen) { boardOpen.querySelector('.pn').innerHTML = html; } else { if (boardOpen) boardOpen.remove(); boardOpen = overlay(html); }
     const o = boardOpen;
     o.querySelectorAll('[data-close]').forEach(b => b.onclick = () => { o.remove(); boardOpen = null; });
@@ -618,7 +629,6 @@
       <div><label>對象</label><div class="segs wrap" id="r-tg">${Object.entries(T).filter(([k, v]) => v.length || k === '全部值勤').map(([k, v], n) => `<button ${n === 0 ? 'class="on"' : ''} data-v="${k}">${k} ${v.length}</button>`).join('')}</div></div>
       <div><label>訊息</label><input id="r-msg" maxlength="60" value="${cmd ? '請到指揮車集合' : '請到集結點集合'}"></div>
       <div><label>有效時間</label><div class="segs" id="r-h">${[1, 3, 6].map(v => `<button ${v === 3 ? 'class="on"' : ''} data-v="${v}">${v} 小時</button>`).join('')}</div></div>
-      <label class="chk"><input type="checkbox" id="r-push" checked> 同時用 LINE 通知對象（綁定 LINE 的人才收得到）</label>
       <button class="btn" id="r-go">🚩 發佈集結</button></div>`);
     o.querySelectorAll('.segs').forEach(g => g.querySelectorAll('button').forEach(b => b.onclick = () => { g.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
       if (g.id === 'r-pt') { o.querySelector('#r-pth').textContent = b.dataset.v === 'cmd' ? '集結點會跟著指揮車移動' : b.dataset.v === 'me' ? '用你現在手機的位置' : '關掉這個視窗後，在地圖上點一下要集合的地方';
@@ -626,15 +636,15 @@
     if (pickLL) { o.querySelectorAll('#r-pt button').forEach(x => x.classList.toggle('on', x.dataset.v === 'pick')); o.querySelector('#r-pth').textContent = '✅ 已選好地圖上的點'; }
     const val = id => (o.querySelector(`#${id} .on`) || {}).dataset?.v;
     o.querySelector('#r-go').onclick = async () => {
-      const pt = val('r-pt'), body = { sess, idToken: await user.getIdToken(), r: +val('r-r'), msg: o.querySelector('#r-msg').value.trim(), hours: +val('r-h'), push: o.querySelector('#r-push').checked, tgName: val('r-tg') };
+      const pt = val('r-pt'), body = { sess, idToken: await user.getIdToken(), r: +val('r-r'), msg: o.querySelector('#r-msg').value.trim(), hours: +val('r-h'), tgName: val('r-tg') };
       body.tg = (T[val('r-tg')] || []).map(i => i.id);
       if (!body.tg.length) { toast('這個對象沒有人'); return; }
       if (pt === 'cmd') body.follow = cmd.id;
       else if (pt === 'pick') { if (!pickLL) { toast('請先在地圖上點集結點'); return; } [body.lat, body.lon] = pickLL; }
       else { const me0 = meLL || myPos; if (!me0) { askPos(true); toast('正在取得你的位置，取得後再按一次'); return; } [body.lat, body.lon] = me0; }
-      if (!(await ask('🚩 發佈集結', `對象：${esc(body.tgName)}（${body.tg.length} 人）<br>${body.push ? '會用 LINE 通知他們。' : '不發 LINE 通知。'}`, '發佈', false))) return;
+      if (!(await ask('🚩 發佈集結', `對象：${esc(body.tgName)}（${body.tg.length} 人）<br>發佈後可以按「📤 分享」把集結卡片傳到 LINE 群組。`, '發佈', false))) return;
       const r = await api('/loc-rally', body); if (r.error) { toast(r.error, 3500); return; }
-      pickLL = null; o.remove(); toast(`已發佈集結${r.sent ? `，LINE 通知 ${r.sent} 人` : ''}${r.perr ? '（LINE 傳送失敗）' : ''}`, 3500); await load(); openBoard();
+      pickLL = null; o.remove(); toast('已發佈集結，可以按「📤 分享」傳到 LINE 群組', 3500); await load(); openBoard();
     };
   }
 

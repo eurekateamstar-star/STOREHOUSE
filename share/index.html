@@ -82,7 +82,7 @@
   let card = null;
   async function share() {
     if (!window.liff || !LIFF_ID || !liff.isApiAvailable('shareTargetPicker')) { msg('請在 LINE 裡打開這個連結才能分享'); return; }
-    try { const r = await liff.shareTargetPicker([card.flex], { isMultiple: true });
+    try { const r = await liff.shareTargetPicker([card.flex, ...(card.extra || [])], { isMultiple: true });
       if (r) done(); else msg('已取消，可以再按一次'); }
     catch (e) { msg('分享失敗：' + (e.message || e)); }
   }
@@ -112,8 +112,9 @@
       const r = await fetch(AUTH_URL + '/share-get?id=' + encodeURIComponent(id)), j = await r.json();
       if (!j.ok) throw new Error(j.error || '讀不到卡片');
       card = j.card;
-      const img = card.imgUrl || (AUTH_URL + '/c/' + card.id + '.jpg');
-      $('card').innerHTML = `<img src="${esc(img)}" alt="">` + (card.title || card.text ? `<div class="txt">${card.title ? `<b>${esc(card.title)}</b>` : ''}${card.text ? `<p>${esc(card.text)}</p>` : ''}</div>` : '');
+      const img = card.kind === 'loc' ? '' : (card.imgUrl || (AUTH_URL + '/c/' + card.id + '.jpg'));
+      if (card.kind === 'loc') { document.querySelector('.head .t').textContent = '📍 分享位置'; $('done-sub').innerHTML = '位置已經分享出去了<br>對方可以按卡片上的「走路導航」過去。'; }
+      $('card').innerHTML = (img ? `<img src="${esc(img)}" alt="">` : '') + (card.title || card.text ? `<div class="txt">${card.title ? `<b>${esc(card.title)}</b>` : ''}${card.text ? `<p>${esc(card.text)}</p>` : ''}</div>` : '');
       ['card', 'go', 'close'].forEach(k => $(k).classList.remove('hidden'));
       share();
     } catch (e) { msg('❌ ' + (e.message || e)); }
