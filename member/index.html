@@ -1319,7 +1319,7 @@
   const US_VIEWS = [['alert', '⚠️ 額度總覽'], ['people', '👥 使用情況'], ['loc', '📍 定位'], ['fb', '🔥 Firebase'], ['cf', '☁️ Cloudflare']];
   const RT = { '/': 'LINE 登入', '/loc': '定位地圖更新', '/owntracks': '手機回報位置', '/loc-track': '看軌跡', '/loc-can': '團員專區檢查定位按鈕', '/loc-self': '組長產生定位 QR', '/loc-admin': '定位管理',
     '/mysched': '我的排班', '/viewsched': '唯讀排班', '/myplan': '我的一天', '/mygroup': '我的組別', '/groups': '組別看板', '/groupset': '設定組別', '/lead': '小組長檢查', '/lot': '抽籤', '/usage': '使用統計回報',
-    '/usage-stats': '使用分析（人數）', '/usage-quota': '使用分析（Firebase）', '/usage-meter': '使用分析（伺服器）', '/usage-cf': '使用分析（Cloudflare）', '/usage-trip': '進香總表', '/webhook': 'LINE 訊息／加好友',
+    '/usage-stats': '使用分析（人數）', '/usage-quota': '使用分析（Firebase）', '/usage-meter': '使用分析（伺服器）', '/usage-cf': '使用分析（Cloudflare）', '/usage-line': '使用分析（LINE 好友）', '/webhook 簽章不符': '⚠ LINE 訊息被擋（Channel secret 不對）', '/usage-trip': '進香總表', '/webhook': 'LINE 訊息／加好友',
     '/menu': 'LINE 選單切換', '/menu-setup': 'LINE 選單設定', '/gate': '團員功能開關查詢', '/gate-set': '團員功能開關', '/edu-hit': '衛教點閱', '/edu-stats': '衛教統計', '/journey': '醫護足跡', '/j/*': '足跡照片',
     '/c/*': '分享卡片圖', '/gc/*': '醫護證圖', '/guardian-no': '醫護證編號', '/guardian-img': '醫護證存圖', '/guardian-map': '醫護證地圖', '/sharecard': '分享卡片', '/share-get': '分享卡片內容', '/pic': '大頭貼代理',
     '/whtake': '倉庫領取', '/wh-members': '倉庫人員', '/wh-sched': '倉庫排班', '/item-cats': '物品分類', '/nudge': '催登記', '/remind': '提醒通知', '/parse': 'AI 智慧貼上', '/body-zones': '人體圖', '/validate': '檢查自動回覆', '(背景)': '背景工作' };
@@ -1334,7 +1334,8 @@
     Object.entries(o).forEach(([cat, x]) => { const c = D[cat] || (D[cat] = {}); Object.entries(x).forEach(([k, n]) => c[k] = (c[k] || 0) + n); }); }); return out; }
   const tot = o => Object.values(o || {}).reduce((a, b) => a + b, 0);
   const topK = (o, lab, n = 3) => Object.entries(o || {}).sort((a, b) => b[1] - a[1]).slice(0, n).map(([k, v]) => `${lab(k)} ${fmtN(v)}`).join('、') || '—';
-  let usM = { data: null, busy: false, err: '' }, usCF = { data: null, busy: false, err: '' };
+  let usM = { data: null, busy: false, err: '' }, usCF = { data: null, busy: false, err: '' }, usLN = { data: null, busy: false, err: '' };
+  async function loadLN() { usLN.busy = true; usLN.err = ''; try { usLN.data = await usPost('/usage-line', {}); } catch (e) { usLN.err = String(e.message || e); } usLN.busy = false; if (curTab === 'usage') renderUsage(); }
   async function usPost(path, body) { const idToken = await auth.currentUser.getIdToken();
     const r = await fetch(AUTH_URL + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken, ...body }) });
     const j = await r.json(); if (!r.ok || j.error) throw new Error(j.error || r.status); return j; }
@@ -1428,6 +1429,18 @@
   }
   // ===== 使用分析：磁磚首頁＋點進細節 =====
   let usTile = '', usSec = 'quota';   // ''＝首頁，其他＝細節頁
+  function usLineFriends() {
+    if (!usLN.data && !usLN.busy && !usLN.err) loadLN();
+    if (!usLN.data) return `<div class="us-h">官方帳號好友數</div><div class="us-empty">${usLN.err ? '❌ ' + esc(usLN.err) : '讀取中…'}</div>`;
+    const D = usLN.data, ok = (D.ins || []).filter(x => x.status === 'ready').sort((a, b) => b.d.localeCompare(a.d)), L = ok[0] || {};
+    const pub = L.followers != null ? Math.max(0, L.followers - (L.blocks || 0) - D.memberFriends) : null;
+    return `<div class="us-h">官方帳號好友數 <small>（LINE 官方統計，${L.d ? `${+L.d.slice(4, 6)}/${+L.d.slice(6)} 的數字` : '還沒有資料'}，隔天才更新）</small></div>
+      <div class="us-line"><div><b>${L.followers != null ? fmtN(L.followers - (L.blocks || 0)) : '—'}</b><span>目前好友</span></div><div><b>${D.memberFriends}</b><span>其中團員</span></div><div><b>${pub != null ? fmtN(pub) : '—'}</b><span>其中民眾</span></div><div><b style="color:var(--red)">${L.blocks != null ? fmtN(L.blocks) : '—'}</b><span>封鎖</span></div></div>
+      <div class="us-sub">系統會員 ${D.members} 人，有 ${D.memberFriends} 人加了官方帳號${D.memberNot ? `，<b>${D.memberNot} 人還沒加或封鎖了</b>` : ''}。</div>
+      ${ok.length > 1 ? `<div class="us-tbl" style="margin-top:6px"><div class="us-tr us-th" style="grid-template-columns:1fr 1fr 1fr 1fr"><span>日期</span><span>好友</span><span>比前一天</span><span>封鎖</span></div>
+        ${ok.map((x, i) => { const n = x.followers - (x.blocks || 0), pv = ok[i + 1] ? ok[i + 1].followers - (ok[i + 1].blocks || 0) : null, dd = pv == null ? '' : n - pv;
+          return `<div class="us-tr" style="grid-template-columns:1fr 1fr 1fr 1fr"><span>${+x.d.slice(4, 6)}/${+x.d.slice(6)}</span><span>${fmtN(n)}</span><span style="color:${dd > 0 ? 'var(--green)' : dd < 0 ? 'var(--red)' : ''}">${dd === '' ? '' : (dd > 0 ? '+' : '') + dd}</span><span>${x.blocks || 0}</span></div>`; }).join('')}</div>` : ''}`;
+  }
   function usPeople(dayKey, range) {   // dayKey：YYYYMMDD；range＝用整段期間（每個人）
     const { days, daily, last, users } = usData, sum = o => Object.values(o || {}).reduce((a, b) => a + (+b || 0), 0);
     const D = days.filter(d => range || d === dayKey).map(d => ({ d, o: daily[d] || {} })).reverse(), Dall = days.map(d => ({ d, o: daily[d] || {} })).reverse();
@@ -1470,7 +1483,10 @@
       hours: `<div class="us-h">哪個時段最多人用</div><div class="us-hr">${hrs.map((v, i) => `<div title="${i} 點：${v} 次"><i style="height:${v / mh * 100}%"></i><span>${i % 3 ? '' : i}</span></div>`).join('')}</div>`,
       line: `<div class="us-h">LINE 官方帳號選單 <small>（${LU.size} 個 LINE 帳號點過，含還不是團員的民眾）</small></div>
         <div class="us-line">${[['menu_about', '認識醫護團'], ['menu_edu', '衛教須知'], ['menu_journey', '醫護足跡'], ['menu_guardian', '全民醫護證']].map(([k, n]) => `<div><b>${F[k] || 0}</b><span>${n}</span></div>`).join('')}</div>
-        <div class="us-line2"><span>切到團員專區 <b>${F.menu_tab_member || 0}</b></span><span>切到一般資訊 <b>${F.menu_tab_public || 0}</b></span><span>➕ 加好友 <b style="color:var(--green)">${F.line_follow || 0}</b></span><span>🚫 封鎖 <b style="color:var(--red)">${F.line_unfollow || 0}</b></span></div>`,
+        <div class="us-line2"><span>切到團員專區 <b>${F.menu_tab_member || 0}</b></span><span>切到一般資訊 <b>${F.menu_tab_public || 0}</b></span></div>
+        <div class="us-h">這天加好友／封鎖</div>
+        <div class="us-line"><div><b style="color:var(--green)">${F.line_follow || 0}</b><span>➕ 加好友</span></div><div><b>${F.line_follow_m || 0}</b><span>其中團員</span></div><div><b>${F.line_follow_p || 0}</b><span>其中民眾</span></div><div><b style="color:var(--red)">${F.line_unfollow || 0}</b><span>🚫 封鎖</span></div></div>
+        <div class="us-sub">「團員／民眾」從今天起才分得出來；之前的加好友只有總數。</div>` + usLineFriends(),
       pages: `<div class="us-h">各頁面打開次數 <small>（括號＝當天第一次開的人次）</small></div>${rank(P, k => `${US_PAGE[k] || k}（${Q[k] || 0}）`)}`,
       feat: `<div class="us-h">功能使用排行</div>${rank(FF, usLabel, 40)}`,
       ppl: `<div class="us-h">超過 14 天沒打開（${idle.length} 人）</div><div class="us-idle">${idle.length ? idle.map(p => `<span>${esc(p.name)}<small>${ago(p.t)}</small></span>`).join('') : '<div class="us-empty">大家最近都有用 👍</div>'}</div>
@@ -1590,7 +1606,7 @@
     const dp = $('us-day'); if (dp) dp.onchange = () => { usDay = dp.value; renderUsage(); };
     const cr = $('us-cf-re'); if (cr) cr.onclick = () => { if (!usCF.busy) { loadCF(); loadMeter(); } };
     document.querySelectorAll('#tab-usage [data-usd]').forEach(b => b.onclick = () => { usDays = +b.dataset.usd; usData = null; renderUsage(); });
-    document.querySelectorAll('#tab-usage [data-usr]').forEach(b => b.onclick = () => { usData = null; usM.data = null; usM.err = ''; usCF.data = null; usCF.err = ''; usQ.data = null; usQ.err = ''; renderUsage(); });
+    document.querySelectorAll('#tab-usage [data-usr]').forEach(b => b.onclick = () => { usData = null; usM.data = null; usM.err = ''; usCF.data = null; usCF.err = ''; usLN.data = null; usLN.err = ''; usQ.data = null; usQ.err = ''; renderUsage(); });
     const ts = $('us-trip-sel'); if (ts) ts.onchange = () => { usTrip.eid = ts.value; usTrip.data = null; renderUsage(); };
     const qr = $('us-q-re'); if (qr) qr.onclick = () => { if (!usQ.busy) { loadQuota(); loadMeter(); } };
     const tg = $('us-trip-go'); if (tg) tg.onclick = () => { if (!usTrip.busy) loadTrip(); };

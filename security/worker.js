@@ -147,6 +147,7 @@ async function handleReq(req, env, ctx) {
     if (path === '/usage-quota') return usageQuotaRoute(req, env, json);
     if (path === '/usage-meter') return usageMeterRoute(req, env, json);
     if (path === '/usage-cf') return usageCfRoute(req, env, json);
+    if (path === '/usage-line') return usageLineRoute(req, env, json);
     if (path === '/wh-sched') return whSchedRoute(req, env, json);
     if (path === '/owntracks') return otRoute(req, env);
     if (path === '/loc') return locRoute(req, env, json);
@@ -494,7 +495,7 @@ async function webhookRoute(req, env) {
   // 確認真的是 LINE 送來的（簽章）
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.LINE_CHANNEL_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const sig = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body)))));
-  if (sig !== req.headers.get('x-line-signature')) return new Response('bad signature', { status: 401 });
+  if (sig !== req.headers.get('x-line-signature')) { mAdd('r', '/webhook 簽章不符'); return new Response('bad signature', { status: 401 }); }   // 會出現在使用分析：通常是 LINE_CHANNEL_SECRET 設錯
   let events = [];
   try { events = JSON.parse(body).events || []; } catch (e) { return ok(); }
   const stat = lineUsage(env, events).catch(() => {});   // 使用分析（不影響回覆）
@@ -1415,7 +1416,8 @@ async function lineUsage(env, events) {
     const lu = ev.source?.userId || ''; if (lu && lu === dev) continue;   // 開發者自己不算
     let uid = '', name = '';
     if (lu && /^U[0-9a-f]{32}$/.test(lu)) { try { const d = await fsGet(tok, 'users/' + lu); const u = d ? fobj(d.fields) : null; if (u && u.status === 'approved') { uid = lu; name = u.realName || ''; } } catch (e) {} }
-    await writeUsage(tok, { pg: 'line', f: [[k, 1]], uid, name, lu: /^U[0-9a-f]{32}$/.test(lu) ? lu : '' });
+    const f = [[k, 1]]; if (k === 'line_follow' || k === 'line_unfollow') f.push([k + (uid ? '_m' : '_p'), 1]);   // _m＝團員、_p＝民眾
+    await writeUsage(tok, { pg: 'line', f, uid, name, lu: /^U[0-9a-f]{32}$/.test(lu) ? lu : '' });
   }
 }
 async function usageStatsRoute(req, env, json) {
@@ -1511,6 +1513,25 @@ async function usageMeterRoute(req, env, json) {
       watchers: st.watchers.slice(0, 60).map(w => ({ name: w.name, last: w.last, n: w.n, day: w.day })),
       trackers: st.trackers.map(t => ({ name: t.name, kind: t.kind, duty: t.duty, last: Math.max(t.last || 0, t.ping || 0) })) };
     return json({ ok: true, m, loc, now });
+  } catch (e) { return json({ error: String((e && e.message) || e) }, e.code || 500); }
+}
+// 開發者：官方帳號好友數（LINE 官方統計，每天的數字隔天才有）＋團員裡有幾個是好友
+async function usageLineRoute(req, env, json) {
+  try {
+    await devOnly(req, env); if (!env.LINE_BOT_TOKEN) return json({ error: '沒有設定 LINE_BOT_TOKEN' }, 500);
+    const H = { Authorization: 'Bearer ' + env.LINE_BOT_TOKEN };
+    const out = await memo('lineFollowers', 3600e3, async () => {
+      const days = Array.from({ length: 8 }, (_, i) => new Date(Date.now() + 9 * 3600e3 - (i + 1) * 864e5).toISOString().slice(0, 10).replace(/-/g, ''));   // LINE 用日本時間
+      const ins = await Promise.all(days.map(d => fetch('https://api.line.me/v2/bot/insight/followers?date=' + d, { headers: H }).then(r => r.json()).then(j => ({ d, ...j })).catch(() => ({ d, status: 'error' }))));
+      const tok = await saToken(env), users = (await memo('users', 600e3, () => fsList(tok, 'users'))).filter(u => u.status === 'approved' && /^U[0-9a-f]{32}$/.test(u.id));
+      let friends = 0, blocked = 0;
+      for (let i = 0; i < users.length; i += 10) {   // 一次問 10 個：是好友會回個人資料，沒加或封鎖回 404
+        const R = await Promise.all(users.slice(i, i + 10).map(u => fetch('https://api.line.me/v2/bot/profile/' + u.id, { headers: H }).then(r => r.status).catch(() => 0)));
+        R.forEach(st => { if (st === 200) friends++; else if (st === 404) blocked++; });
+      }
+      return { ins, members: users.length, memberFriends: friends, memberNot: blocked, at: Date.now() };
+    });
+    return json({ ok: true, ...out });
   } catch (e) { return json({ error: String((e && e.message) || e) }, e.code || 500); }
 }
 // 開發者：Cloudflare 官方每日用量（GraphQL Analytics；要設 Secret CF_API_TOKEN 和變數 CF_ACCOUNT_ID）
