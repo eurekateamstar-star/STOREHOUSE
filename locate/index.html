@@ -178,7 +178,7 @@
   .rpc { display:flex; gap:6px; } .rpc .sb { flex:1; } .rpc .rv.on { background:var(--ink); color:#fff; } .rpc #rp-p { flex:.6; font-size:16px; }
   .rpd { position:relative; transform:translate(-50%,-50%); } .rpd i { display:block; width:14px; height:14px; border-radius:50%; background:var(--c); border:2.5px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.4); }
   .rpd b { position:absolute; left:16px; top:-3px; white-space:nowrap; font-size:11.5px; background:rgba(255,255,255,.92); padding:0 5px; border-radius:6px; color:var(--c); box-shadow:0 1px 3px rgba(0,0,0,.2); }
-  .replaying .m3 { display:none; } .replaying .leaflet-overlay-pane path.leaflet-interactive:not([stroke]) { display:none; }
+  .replaying .m3:not(.rp) { display:none; } .replaying .leaflet-overlay-pane path.leaflet-interactive:not([stroke]) { display:none; }
   .trkbar .leg { font-size:11.5px; font-weight:600; white-space:normal; max-width:70vw; line-height:1.5; }
   .ov.ask { align-items:center; z-index:1500; padding:24px; }
   .askb { background:#fff; border-radius:20px; padding:20px 18px 16px; width:100%; max-width:340px; box-shadow:0 12px 40px rgba(0,0,0,.25); }
@@ -424,7 +424,15 @@
     if (t <= pts[0][2]) return null; if (t >= pts.at(-1)[2]) return { ll: [pts.at(-1)[0], pts.at(-1)[1]], k: pts.length - 1, end: true };
     let lo = 0, hi = pts.length - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (pts[m][2] <= t) lo = m; else hi = m; }
     const a = pts[lo], b = pts[hi], f = (t - a[2]) / Math.max(1, b[2] - a[2]), gap = b[2] - a[2] > 10 * 60e3;   // 中間斷超過 10 分鐘就不內插（沒訊號）
-    return { ll: gap ? [a[0], a[1]] : [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f], k: lo };
+    const mv = !gap && hav(a[0], a[1], b[0], b[1]) / Math.max(1, (b[2] - a[2]) / 1000) > 0.55;   // 這段在移動（> 2 km/h）
+    return { ll: gap ? [a[0], a[1]] : [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f], k: lo, mv };
+  }
+  // 回放用的小人／車子：跟即時地圖一樣（3D 人偶＋頭貼＋名字），移動中才會走
+  function rpIcon(r) {
+    const i = r.it || { kind: '其他', name: r.nm }, car = VAN(i.kind), f = fig3d(i);
+    const body = car ? `<div class="fg sp ${i.kind === '物資車' ? 'sup' : 'cmd'}"></div>` : (f === 'medm' || f === 'medf') ? `<div class="fg sp ${f === 'medf' ? 'f' : 'm'}"></div>` : `<img class="fg" src="img/${f}.webp" alt="">`;
+    const badge = !car && i.pic ? `<img class="hd" src="${esc(i.pic)}" referrerpolicy="no-referrer" alt="" style="border-color:${r.c}" onerror="this.remove()">` : '';
+    return L.divIcon({ className: '', iconSize: [0, 0], html: `<div class="m3 rp ${car ? 'car' : 'ppl'}"><div class="sh"></div>${body}${badge}<div class="l" style="box-shadow:0 0 0 2px ${r.c}">${i.team ? `<span class="tm">${esc(i.team)}</span>` : ''}${esc(i.name)}</div></div>` });
   }
   async function showAllTracks(day, play) {
     const T = await getAll(day); if (!T) return;
@@ -435,7 +443,7 @@
       g.push(r.bg, r.ln);
       if (!play) g.push(L.circleMarker(ll[0], { radius: 5, color: '#fff', weight: 2, fillColor: r.c, fillOpacity: 1 }).bindTooltip(r.nm + ' 起點 ' + hhmm(r.pts[0][2])),
         L.circleMarker(ll.at(-1), { radius: 7, color: r.c, weight: 3, fillColor: '#fff', fillOpacity: 1 }).bindTooltip(r.nm + ' 最後 ' + hhmm(r.pts.at(-1)[2])));
-      else { r.dot = L.marker(ll[0], { icon: L.divIcon({ className: '', iconSize: [0, 0], html: `<div class="rpd" style="--c:${r.c}"><i></i><b>${esc(r.it ? r.it.name : r.nm)}</b></div>` }), opacity: 0 }); g.push(r.dot); } });
+      else { r.dot = L.marker(ll[0], { icon: rpIcon(r), opacity: 0, zIndexOffset: 500 }); g.push(r.dot); } });
     trkLayer = L.layerGroup(g).addTo(map);
     map.fitBounds(L.latLngBounds(all), { paddingTopLeft: [40, 120], paddingBottomRight: [40, ($('sheet').offsetHeight || 0) + 30], maxZoom: 17 });
     const leg = T.map(r => `<span style="color:${r.c}">━</span> ${esc(r.nm)} ${r.km.toFixed(1)}km`).join('　');
@@ -460,7 +468,8 @@
       for (const r of T) { const p = posAt(r.pts, rp.t);
         if (!p) { r.dot.setOpacity(0); r.ln.setLatLngs([]); r.bg.setLatLngs([]); continue; }
         const ll = r.pts.slice(0, p.k + 1).map(q => [q[0], q[1]]); if (!p.end) ll.push(p.ll);
-        r.ln.setLatLngs(ll); r.bg.setLatLngs(ll); r.dot.setLatLng(p.ll).setOpacity(p.end ? .55 : 1); }
+        r.ln.setLatLngs(ll); r.bg.setLatLngs(ll); r.dot.setLatLng(p.ll).setOpacity(p.end ? .55 : 1);
+        const el = r.dot.getElement(), m3 = el && el.querySelector('.m3'); if (m3) { const w = !!p.mv && !p.end && rp.on; if (m3.classList.contains('walk') !== w) m3.classList.toggle('walk', w); m3.classList.toggle('stale', !!p.end); } }
       bar.querySelector('#rp-t').textContent = hhmm(rp.t); bar.querySelector('#rp-s').value = rp.t;
     };
     const tick = now2 => { if (!rp) return; if (rp.on && rp.last) { rp.t = Math.min(t1, rp.t + (now2 - rp.last) * rp.spd); if (rp.t >= t1) { rp.on = false; bar.querySelector('#rp-p').textContent = '↻'; } }
