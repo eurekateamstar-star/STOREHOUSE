@@ -156,6 +156,7 @@ async function handleReq(req, env, ctx) {
     if (path === '/loc-admin') return locAdminRoute(req, env, json);
     if (path === '/loc-self') return locSelfRoute(req, env, json);
     if (path === '/loc-track') return locTrackRoute(req, env, json);
+    if (path === '/loc-rally') return locRallyRoute(req, env, json);
 
     try {
       const { accessToken } = await req.json();
@@ -1702,6 +1703,7 @@ async function locRole(idToken, env) {
     return { ld: M.rkey in (T.leadNow || {}), sc: M.rkey in (T.on || {}), me: M }; } catch (e) { return { ld: false, sc: false }; }
 }
 // 性別只從身分證第二碼推算（1 男 2 女），不存也不回傳身分證
+const hav2 = (a, b, c, d) => { const R = 6371e3, r = x => x * Math.PI / 180, x = Math.sin(r(c - a) / 2) ** 2 + Math.cos(r(a)) * Math.cos(r(c)) * Math.sin(r(d - b) / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); };
 const sexOf = c => { const d = String(c || '').toUpperCase()[1]; return d === '1' ? 'm' : d === '2' ? 'f' : ''; };
 // 自己的資料：姓名（名冊）、大頭貼、名冊 key
 async function locMe(idToken, env) {
@@ -1770,7 +1772,7 @@ export class LocHub extends DurableObject {
       const tst = numOr(m.tst) ? m.tst * 1000 : now;
       const l = { lat: m.lat, lon: m.lon, acc: numOr(m.acc), batt: numOr(m.batt), vel: numOr(m.vel), cog: numOr(m.cog), tst: Math.min(tst, now), at: now };
       const old = this.L.get(user);
-      if (!old || l.tst >= old.tst) { l.sv = old && now - (old.sv || 0) < 120e3 ? old.sv : now; this.L.set(user, l); if (l.sv === now) await this.kput('l:' + user, l); }   // 最新位置 2 分鐘才寫一次儲存（記憶體一直是最新的）   // 離線補傳的舊位置不蓋掉新的
+      if (!old || l.tst >= old.tst) { l.sv = old && now - (old.sv || 0) < 120e3 ? old.sv : now; this.L.set(user, l); try { await this.rallyTick(user, l); } catch (e) {} if (l.sv === now) await this.kput('l:' + user, l); }   // 最新位置 2 分鐘才寫一次儲存（記憶體一直是最新的）   // 離線補傳的舊位置不蓋掉新的
       const ls = (this.LS || (this.LS = new Map())).get(user), dm = ls ? Math.hypot((l.lat - ls.lat) * 111320, (l.lon - ls.lon) * 111320 * Math.cos(l.lat * Math.PI / 180)) : 1e9;
       // 軌跡只在移動超過 15 公尺、或距上一點超過 2 分鐘才存（站著不動不用一直寫，省寫入列數）
       if ((!old || l.tst !== old.tst) && (!ls || dm > 15 || Math.abs(l.tst - ls.tst) > 120e3)) { this.LS.set(user, { lat: l.lat, lon: l.lon, tst: l.tst }); this.mt('loc', '軌跡點', 1); this.q('INSERT INTO trk (id, tst, lat, lon, acc) VALUES (?, ?, ?, ?, ?)', user, l.tst, l.lat, l.lon, Math.round(l.acc || 0)); }   // 補傳的舊點也記進軌跡
@@ -1829,7 +1831,31 @@ export class LocHub extends DurableObject {
     return { ok: true, id, pw: t.pw, tid: t.tid, name: t.name, kind: t.kind, used: this.used(id) };
   }
   // 地圖更新一次只呼叫一次 DO（list＋綁定裝置＋有沒有自己的裝置）
-  view(uid, mgr, who) { const items = this.list(uid, mgr, who); return items ? { items, bd: this.bound(uid), self: this.hasSelf(uid) } : null; }
+  view(uid, mgr, who) { const items = this.list(uid, mgr, who); return items ? { items, bd: this.bound(uid), self: this.hasSelf(uid), rally: this.rallyOut(), canRally: !!mgr || this.isCmd(uid) } : null; }
+  // ---- 集結 ----
+  isCmd(uid) { return !!uid && [...this.T.values()].some(t => t.uid === uid && t.kind === '指揮車'); }   // 綁定指揮車的人可以發集結
+  async rallyLoad() { if (this.G === undefined) this.G = (await this.ctx.storage.get('g:cur')) || null; return this.G; }
+  rallyOut() { const g = this.G; if (!g || Date.now() > g.until) return null; return { ...g }; }
+  async rallySet(a) {
+    await this.rallyLoad();
+    if (a.end) { if (this.G) { this.G.until = Date.now(); this.G.ended = true; await this.ctx.storage.put('g:cur', this.G); } const g = this.G; this.G = null; return { ok: true, g }; }
+    let lat = +a.lat, lon = +a.lon;
+    if (a.follow) { const l = this.L.get(a.follow); if (!l) return { error: '指揮車目前沒有位置，請改用「我的位置」或在地圖上點' }; lat = l.lat; lon = l.lon; }
+    if (!(Math.abs(lat) <= 90 && Math.abs(lon) <= 180) || (!lat && !lon)) return { error: '請選集結地點' };
+    const tg = (Array.isArray(a.tg) ? a.tg : []).filter(id => this.T.has(id));
+    const g = { id: randStr(6), lat, lon, r: Math.min(500, Math.max(15, +a.r || 50)), msg: cleanTxt(a.msg, 60) || '請到集結點集合', by: a.by || '', byName: cleanTxt(a.byName, 20),
+      follow: a.follow && this.T.has(a.follow) ? a.follow : '', tg, tgName: cleanTxt(a.tgName, 10), at: Date.now(), until: Date.now() + Math.min(12, Math.max(0.25, +a.hours || 3)) * 3600e3, arr: {} };
+    for (const id of tg) { const l = this.L.get(id); if (l && Date.now() - l.at < 10 * 60e3 && hav2(l.lat, l.lon, lat, lon) <= g.r) g.arr[id] = Date.now(); }   // 已經在範圍內的直接算到
+    this.G = g; await this.ctx.storage.put('g:cur', g);
+    return { ok: true, g, uids: [...new Set(tg.map(id => this.T.get(id).uid).filter(Boolean))] };
+  }
+  async rallyTick(id, l) {   // 每次收到位置：跟著指揮車移動集結點、判斷有沒有到
+    const g = await this.rallyLoad(); if (!g || Date.now() > g.until) return;
+    let ch = false, arrived = false;
+    if (g.follow === id) { g.lat = l.lat; g.lon = l.lon; ch = true; }
+    if (g.tg.includes(id) && !g.arr[id] && hav2(l.lat, l.lon, g.lat, g.lon) <= g.r) { g.arr[id] = Date.now(); arrived = true; }
+    if (arrived || (ch && (!g.saved || Date.now() - g.saved > 60e3))) { g.saved = Date.now(); await this.ctx.storage.put('g:cur', g); }
+  }
   async setSex(uid, sex) { if (!['m', 'f'].includes(sex)) return; for (const [id, t] of this.T) if (t.uid === uid && t.sex !== sex) { t.sex = sex; await this.kput('t:' + id, t); } }
   hasSelf(uid) { return [...this.T.values()].some(t => t.uid === uid && t.self); }
   canView(uid) { return !!uid && (this.V.has(uid) || [...this.T.values()].some(t => t.uid === uid)); }
@@ -1939,6 +1965,38 @@ async function locTrackRoute(req, env, json) {
     return json({ ok: true, pts, sess: A.fresh });
   } catch (e) { return json({ error: e.code ? '請重新登入' : String((e && e.message) || e) }, e.code || 500); }
 }
+// 集結通知：完整管理員、綁定指揮車的人可以發；可選 LINE 推播給對象（綁定裝置的團員）
+async function locRallyRoute(req, env, json) {
+  try {
+    if (!env.LOC) return json({ error: '定位功能尚未部署' }, 501);
+    const a = await req.json(), A = await locSession(a.idToken, a.sess, env); if (A.err) return json({ error: A.err }, 401);
+    const hub = locHub(env); await hub.rallyLoad();
+    if (!A.s.m && !(await hub.isCmd(A.s.uid))) return json({ error: '只有管理員或指揮車可以發集結通知' }, 403);
+    if (a.end) { await hub.rallySet({ end: true }); return json({ ok: true, sess: A.fresh }); }
+    const r = await hub.rallySet({ ...a, by: A.s.uid, byName: A.s.n });
+    if (r.error) return json(r, 400);
+    let sent = 0, perr = '';
+    if (a.push && env.LINE_BOT_TOKEN) {
+      const to = r.uids.filter(u => u !== A.s.uid && /^U[0-9a-f]{32}$/.test(u));
+      if (to.length) {
+        const g = r.g, nav = `https://www.google.com/maps/dir/?api=1&destination=${g.lat},${g.lon}&travelmode=walking`, until = new Date(g.until + 8 * 3600e3).toISOString().slice(11, 16);
+        const msg = { type: 'flex', altText: '🚩 集結通知：' + g.msg, contents: { type: 'bubble', size: 'kilo',
+          header: { type: 'box', layout: 'vertical', paddingAll: '14px', backgroundColor: '#D65A68', contents: [{ type: 'text', text: '🚩 集結通知', weight: 'bold', size: 'lg', color: '#ffffff' }] },
+          body: { type: 'box', layout: 'vertical', paddingAll: '16px', spacing: 'sm', contents: [
+            { type: 'text', text: g.msg, wrap: true, weight: 'bold', size: 'md', color: '#111827' },
+            { type: 'text', text: `發佈：${g.byName || '指揮組'}・範圍 ${g.r} 公尺${g.follow ? '・跟著指揮車' : ''}`, wrap: true, size: 'xs', color: '#6b7280' },
+            { type: 'text', text: `有效到 ${until}`, size: 'xs', color: '#6b7280' } ] },
+          footer: { type: 'box', layout: 'vertical', paddingAll: '12px', spacing: 'sm', contents: [
+            { type: 'button', style: 'primary', color: '#16a34a', action: { type: 'uri', label: '🚶 走路導航過去', uri: nav } },
+            { type: 'button', style: 'secondary', action: { type: 'uri', label: '打開定位地圖', uri: 'https://liff.line.me/2011820105-x1KU6xLW?go=locate' } } ] } } };
+        const pr = await fetch('https://api.line.me/v2/bot/message/multicast', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + env.LINE_BOT_TOKEN },
+          body: JSON.stringify({ to: to.slice(0, 500), messages: [msg] }) });
+        if (pr.ok) { sent = to.length; try { await writeUsage(await saToken(env), { pg: 'line', f: [['sent_rally', sent]] }); } catch (e) {} } else perr = (await pr.text()).slice(0, 160);
+      }
+    }
+    return json({ ok: true, rally: r.g, sent, perr, sess: A.fresh });
+  } catch (e) { return json({ error: e.code ? '請重新登入' : String((e && e.message) || e) }, e.code || 500); }
+}
 async function locRoute(req, env, json) {
   try {
     if (!env.LOC) return json({ error: '定位功能尚未部署' }, 501);
@@ -1952,12 +2010,13 @@ async function locRoute(req, env, json) {
       s = { uid, n: String(me.realName || '').slice(0, 20), m: await fullAdmin(me, idToken, env), ld, sc, v: 2, exp: Date.now() + LOC_SESS };
       fresh = await locSessMake(s, env);
     }
-    const V = await locHub(env).view(s.uid, s.m, { n: s.n, sc: s.sc }), items = V && V.items;
+    const hub = locHub(env); await hub.rallyLoad();
+    const V = await hub.view(s.uid, s.m, { n: s.n, sc: s.sc }), items = V && V.items;
     if (!items) return json({ error: '今天有排班的人才能看定位地圖。需要的話請找管理員加入「可以看地圖的人」', canSelf: true }, 403);
     try { const T = await locTeams(env); items.forEach(i => { i.team = i.rkey ? (T.today[i.rkey] || '') : ''; delete i.rkey; }); } catch (e) { items.forEach(i => delete i.rkey); }
     const bd = V.bd;
     const selfNeed = (!!s.ld && !V.self) || bd.some(b => !b.used);   // 組長還沒產生、或綁定的裝置還沒連線過 → 自動跳設定
-    return json({ ok: true, items, mgr: s.m, canSelf: !!(s.ld || s.m || bd.length), selfNeed, sess: fresh, exp: s.exp, now: Date.now() });
+    return json({ ok: true, items, mgr: s.m, canSelf: !!(s.ld || s.m || bd.length), selfNeed, rally: V.rally, canRally: V.canRally, sess: fresh, exp: s.exp, now: Date.now() });
   } catch (e) { return json({ error: e.code ? '請重新登入' : String((e && e.message) || e) }, e.code || 500); }
 }
 // 團員專區用：要不要顯示「定位」按鈕（只回 true/false，不含任何位置）
