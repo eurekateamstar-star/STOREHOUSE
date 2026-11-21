@@ -172,6 +172,13 @@
   .seg span { padding:5px 10px; border-radius:99px; color:#374151; } .seg span.on { background:#fff; box-shadow:0 0 0 2.5px #dc2626; color:#111; }
   ol.st { padding-left:20px; margin:6px 0; font-size:13.5px; line-height:1.75; }
   .trkbar { position:fixed; z-index:600; left:50%; transform:translateX(-50%); top:calc(env(safe-area-inset-top) + 74px); background:#fff; border-radius:99px; padding:6px 8px 6px 14px; box-shadow:0 4px 14px rgba(0,0,0,.18); font-size:13px; font-weight:700; white-space:nowrap; display:flex; align-items:center; gap:8px; }
+  .trkbar.rpl { border-radius:18px; left:10px; right:10px; transform:none; padding:10px 12px; white-space:normal; }
+  .rpw { width:100%; } .rph { display:flex; align-items:center; gap:8px; } .rph b { font-size:14px; } .rph span { margin-left:auto; font-size:20px; font-weight:900; font-variant-numeric:tabular-nums; }
+  .rpw input[type=range] { width:100%; margin:6px 0; accent-color:var(--primary); }
+  .rpc { display:flex; gap:6px; } .rpc .sb { flex:1; } .rpc .rv.on { background:var(--ink); color:#fff; } .rpc #rp-p { flex:.6; font-size:16px; }
+  .rpd { position:relative; transform:translate(-50%,-50%); } .rpd i { display:block; width:14px; height:14px; border-radius:50%; background:var(--c); border:2.5px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.4); }
+  .rpd b { position:absolute; left:16px; top:-3px; white-space:nowrap; font-size:11.5px; background:rgba(255,255,255,.92); padding:0 5px; border-radius:6px; color:var(--c); box-shadow:0 1px 3px rgba(0,0,0,.2); }
+  .replaying .m3 { display:none; } .replaying .leaflet-overlay-pane path.leaflet-interactive:not([stroke]) { display:none; }
   .trkbar .leg { font-size:11.5px; font-weight:600; white-space:normal; max-width:70vw; line-height:1.5; }
   .ov.ask { align-items:center; z-index:1500; padding:24px; }
   .askb { background:#fff; border-radius:20px; padding:20px 18px 16px; width:100%; max-width:340px; box-shadow:0 12px 40px rgba(0,0,0,.25); }
@@ -388,7 +395,8 @@
   }
   // ---------- 軌跡（今天，只有值勤中的點）----------
   let trkLayer = null;
-  const trkOff = () => { if (trkLayer) { trkLayer.remove(); trkLayer = null; } $('trkbar').classList.add('hidden'); };
+  let rp = null;   // 回放狀態
+  const trkOff = () => { if (rp) { cancelAnimationFrame(rp.raf); rp = null; } if (trkLayer) { trkLayer.remove(); trkLayer = null; } $('trkbar').classList.add('hidden'); $('trkbar').classList.remove('rpl'); if (document.body.classList.contains('replaying')) { document.body.classList.remove('replaying'); $('sheet').classList.remove('min'); } };
   async function showTrack(id) {
     const i = items.find(x => x.id === id); map.closePopup();
     let j; try { j = await api('/loc-track', { sess, idToken: await user.getIdToken(), id }); } catch (e) { toast('連線失敗'); return; }
@@ -403,21 +411,80 @@
     $('trkbar').querySelector('button').onclick = trkOff; $('trkbar').classList.remove('hidden');
   }
   const PAL = ['#2563eb', '#dc2626', '#d97706', '#16a34a', '#7c3aed', '#db2777', '#0891b2', '#65a30d', '#ea580c', '#4f46e5', '#be123c', '#0d9488'];
-  async function showAllTracks(day) {
-    let j; try { j = await api('/loc-track', { sess, idToken: await user.getIdToken(), all: true, day }); } catch (e) { toast('連線失敗'); return; }
-    if (j.error) { toast(j.error); return; } if (j.sess) sess = j.sess;
+  async function getAll(day) {
+    let j; try { j = await api('/loc-track', { sess, idToken: await user.getIdToken(), all: true, day }); } catch (e) { toast('連線失敗'); return null; }
+    if (j.error) { toast(j.error); return null; } if (j.sess) sess = j.sess;
+    const ids = Object.keys(j.tracks || {}).filter(id => j.tracks[id].length); if (!ids.length) { toast(day.slice(5).replace('-', '/') + ' 沒有軌跡'); return null; }
+    return ids.map((id, k) => { const it = items.find(x => x.id === id); return { id, it, nm: it ? label(it) : id, c: PAL[k % PAL.length], pts: j.tracks[id] }; });
+  }
+  const hhmm = t => new Date(t).toTimeString().slice(0, 5);
+  const kmOf = pts => { let m = 0; for (let k = 1; k < pts.length; k++) m += hav(pts[k - 1][0], pts[k - 1][1], pts[k][0], pts[k][1]); return m / 1000; };
+  // 某時間點的位置（兩點之間內插）
+  function posAt(pts, t) {
+    if (t <= pts[0][2]) return null; if (t >= pts.at(-1)[2]) return { ll: [pts.at(-1)[0], pts.at(-1)[1]], k: pts.length - 1, end: true };
+    let lo = 0, hi = pts.length - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (pts[m][2] <= t) lo = m; else hi = m; }
+    const a = pts[lo], b = pts[hi], f = (t - a[2]) / Math.max(1, b[2] - a[2]), gap = b[2] - a[2] > 10 * 60e3;   // 中間斷超過 10 分鐘就不內插（沒訊號）
+    return { ll: gap ? [a[0], a[1]] : [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f], k: lo };
+  }
+  async function showAllTracks(day, play) {
+    const T = await getAll(day); if (!T) return;
     trkOff();
-    const ids = Object.keys(j.tracks || {}); if (!ids.length) { toast(day.slice(5).replace('-', '/') + ' 沒有軌跡'); return; }
-    const g = [], all = [], leg = [];
-    ids.forEach((id, k) => { const ll = j.tracks[id].map(p => [p[0], p[1]]), c = PAL[k % PAL.length], it = items.find(x => x.id === id), nm = it ? label(it) : id;
-      all.push(...ll); leg.push(`<span style="color:${c}">━</span> ${esc(nm)}`);
-      g.push(L.polyline(ll, { color: '#fff', weight: 7, opacity: .85 }), L.polyline(ll, { color: c, weight: 4, opacity: .9 }).bindTooltip(nm, { sticky: true }),
-        L.circleMarker(ll[0], { radius: 5, color: '#fff', weight: 2, fillColor: c, fillOpacity: 1 }).bindTooltip(nm + ' 起點 ' + new Date(j.tracks[id][0][2]).toTimeString().slice(0, 5)),
-        L.circleMarker(ll[ll.length - 1], { radius: 7, color: c, weight: 3, fillColor: '#fff', fillOpacity: 1 }).bindTooltip(nm + ' 最後 ' + new Date(j.tracks[id].at(-1)[2]).toTimeString().slice(0, 5))); });
+    const g = [], all = [];
+    T.forEach(r => { const ll = r.pts.map(p => [p[0], p[1]]); all.push(...ll); r.km = kmOf(r.pts);
+      r.bg = L.polyline(play ? [] : ll, { color: '#fff', weight: 7, opacity: .85 }); r.ln = L.polyline(play ? [] : ll, { color: r.c, weight: 4, opacity: .9 }).bindTooltip(r.nm, { sticky: true });
+      g.push(r.bg, r.ln);
+      if (!play) g.push(L.circleMarker(ll[0], { radius: 5, color: '#fff', weight: 2, fillColor: r.c, fillOpacity: 1 }).bindTooltip(r.nm + ' 起點 ' + hhmm(r.pts[0][2])),
+        L.circleMarker(ll.at(-1), { radius: 7, color: r.c, weight: 3, fillColor: '#fff', fillOpacity: 1 }).bindTooltip(r.nm + ' 最後 ' + hhmm(r.pts.at(-1)[2])));
+      else { r.dot = L.marker(ll[0], { icon: L.divIcon({ className: '', iconSize: [0, 0], html: `<div class="rpd" style="--c:${r.c}"><i></i><b>${esc(r.it ? r.it.name : r.nm)}</b></div>` }), opacity: 0 }); g.push(r.dot); } });
     trkLayer = L.layerGroup(g).addTo(map);
     map.fitBounds(L.latLngBounds(all), { paddingTopLeft: [40, 120], paddingBottomRight: [40, ($('sheet').offsetHeight || 0) + 30], maxZoom: 17 });
-    $('trkbar').innerHTML = `<div>🛤 ${day.slice(5).replace('-', '/')} 所有人軌跡（${ids.length} 台）<div class="leg">${leg.join('　')}</div></div><button class="sb">✕ 關閉</button>`;
-    $('trkbar').querySelector('button').onclick = trkOff; $('trkbar').classList.remove('hidden');
+    const leg = T.map(r => `<span style="color:${r.c}">━</span> ${esc(r.nm)} ${r.km.toFixed(1)}km`).join('　');
+    const D = day.slice(5).replace('-', '/');
+    if (!play) {
+      $('trkbar').innerHTML = `<div>🛤 ${D} 所有人軌跡（${T.length} 台）<div class="leg">${leg}</div></div><button class="sb" id="rp-go">▶ 回放</button><button class="sb">✕</button>`;
+      $('trkbar').querySelector('#rp-go').onclick = () => showAllTracks(day, true);
+      $('trkbar').querySelector('button:last-child').onclick = trkOff; $('trkbar').classList.remove('hidden'); return;
+    }
+    // ---- 回放 ----
+    const t0 = Math.min(...T.map(r => r.pts[0][2])), t1 = Math.max(...T.map(r => r.pts.at(-1)[2]));
+    rp = { t: t0, spd: 600, on: true, last: 0, raf: 0 };
+    document.body.classList.add('replaying'); $('sheet').classList.add('min');   // 回放時藏起現在位置、收起清單
+    map.fitBounds(L.latLngBounds(all), { paddingTopLeft: [30, 290], paddingBottomRight: [30, 90], maxZoom: 17 });
+    $('trkbar').classList.add('rpl');
+    $('trkbar').innerHTML = `<div class="rpw"><div class="rph"><b>▶ ${D} 回放</b><span id="rp-t">${hhmm(t0)}</span><button class="sb" id="rp-x">✕</button></div>
+      <input type="range" id="rp-s" min="${t0}" max="${t1}" value="${t0}" step="1000">
+      <div class="rpc"><button class="sb" id="rp-p">⏸</button>${[[60, '1分=1小時'], [600, '快'], [1800, '很快']].map(([v, n]) => `<button class="sb rv ${v === 600 ? 'on' : ''}" data-v="${v}">${n}</button>`).join('')}</div>
+      <div class="leg">${leg}</div></div>`;
+    const bar = $('trkbar'); bar.classList.remove('hidden');
+    const draw1 = () => {
+      for (const r of T) { const p = posAt(r.pts, rp.t);
+        if (!p) { r.dot.setOpacity(0); r.ln.setLatLngs([]); r.bg.setLatLngs([]); continue; }
+        const ll = r.pts.slice(0, p.k + 1).map(q => [q[0], q[1]]); if (!p.end) ll.push(p.ll);
+        r.ln.setLatLngs(ll); r.bg.setLatLngs(ll); r.dot.setLatLng(p.ll).setOpacity(p.end ? .55 : 1); }
+      bar.querySelector('#rp-t').textContent = hhmm(rp.t); bar.querySelector('#rp-s').value = rp.t;
+    };
+    const tick = now2 => { if (!rp) return; if (rp.on && rp.last) { rp.t = Math.min(t1, rp.t + (now2 - rp.last) * rp.spd); if (rp.t >= t1) { rp.on = false; bar.querySelector('#rp-p').textContent = '↻'; } }
+      rp.last = now2; draw1(); rp.raf = requestAnimationFrame(tick); };
+    bar.querySelector('#rp-x').onclick = trkOff;
+    bar.querySelector('#rp-p').onclick = () => { if (rp.t >= t1) rp.t = t0; rp.on = !rp.on; rp.last = 0; bar.querySelector('#rp-p').textContent = rp.on ? '⏸' : '▶'; };
+    bar.querySelector('#rp-s').oninput = e => { rp.t = +e.target.value; rp.on = false; bar.querySelector('#rp-p').textContent = '▶'; draw1(); };
+    bar.querySelectorAll('.rv').forEach(b => b.onclick = () => { rp.spd = +b.dataset.v; bar.querySelectorAll('.rv').forEach(x => x.classList.toggle('on', x === b)); });
+    rp.raf = requestAnimationFrame(tick);
+  }
+  // 下載：GPX（Google Earth、其他地圖 App 可做動畫）、CSV（Excel）
+  async function dlTracks(day, fmt) {
+    const T = await getAll(day); if (!T) return;
+    const iso = t => new Date(t).toISOString(), xe = x => String(x).replace(/[<&>"]/g, c => ({ '<': '&lt;', '&': '&amp;', '>': '&gt;', '"': '&quot;' }[c]));
+    let body, type, ext;
+    if (fmt === 'gpx') { type = 'application/gpx+xml'; ext = 'gpx';
+      body = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="白沙屯拱天宮醫護團" xmlns="http://www.topografix.com/GPX/1/1">\n` +
+        T.map(r => `<trk><name>${xe(r.nm)}</name><trkseg>\n${r.pts.map(p => `<trkpt lat="${p[0]}" lon="${p[1]}"><time>${iso(p[2])}</time></trkpt>`).join('\n')}\n</trkseg></trk>`).join('\n') + '\n</gpx>'; }
+    else { type = 'text/csv'; ext = 'csv';
+      body = '﻿名稱,類型,時間,緯度,經度\n' + T.flatMap(r => r.pts.map(p => [r.nm, r.it ? r.it.kind : '', new Date(p[2] + 8 * 3600e3).toISOString().slice(0, 19).replace('T', ' '), p[0], p[1]].join(','))).join('\n'); }
+    const name = `軌跡_${day}.${ext}`, file = new File([body], name, { type });
+    try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return; } } catch (e) { if (e.name === 'AbortError') return; }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    toast('已下載 ' + name);
   }
   document.addEventListener('click', ev => { const a = ev.target.closest && ev.target.closest('[data-trk]'); if (!a) return; ev.preventDefault(); ev.stopPropagation(); showTrack(a.dataset.trk); }, true);   // 地圖每 15 秒會重畫泡泡內容，所以用整頁監聽
   $('sh-h').onclick = () => { $('sheet').classList.toggle('min'); $('sh-arrow').textContent = $('sheet').classList.contains('min') ? '▴' : '▾'; };
@@ -500,6 +567,8 @@
       <h4>🛤 所有人的軌跡</h4>
       <div class="fm" style="grid-template-columns:1fr auto;align-items:end"><div><label>日期（保留 30 天）</label><select id="t-day">${[...Array(30)].map((_, k) => { const d = new Date(Date.now() + 8 * 3600e3 - k * 86400e3).toISOString().slice(0, 10); return `<option value="${d}">${d.slice(5).replace('-', '/')}${k === 0 ? '（今天）' : k === 1 ? '（昨天）' : ''}</option>`; }).join('')}</select></div>
         <button class="sb" id="t-show" style="padding:11px 14px;background:var(--ink);color:#fff">在地圖上顯示</button></div>
+      <div class="bar2"><button class="sb" id="t-play" style="background:#dbeafe;color:#1d4ed8">▶ 回放動畫</button><button class="sb" id="t-gpx">⬇ 下載 GPX</button><button class="sb" id="t-csv">⬇ 下載 CSV</button></div>
+      <div class="hint">GPX 可以丟進 Google Earth 等 App 做路線動畫；CSV 用 Excel 開。回放時可用手機「螢幕錄影」錄成影片。</div>
       <h4>🔑 誰可以用定位</h4>
       <div class="hint" style="margin-bottom:8px">
         ・<b>看地圖</b>：管理員、<b>今天有排班</b>的人、綁定裝置的人，再加上下面名單<br>
@@ -517,6 +586,9 @@
     o.querySelector('#v-add').onclick = async () => { const uid = o.querySelector('#v-uid').value; if (!uid) { toast('請選一位團員'); return; }
       const r = await adm('viewer', { uid, on: true, name: (members.find(m => m.uid === uid) || {}).name || '' }); if (r.error) { toast(r.error); return; } toast('已加入'); again(); };
     o.querySelector('#t-show').onclick = async () => { const day = o.querySelector('#t-day').value; o.remove(); showAllTracks(day); };
+    o.querySelector('#t-play').onclick = () => { const day = o.querySelector('#t-day').value; o.remove(); showAllTracks(day, true); };
+    o.querySelector('#t-gpx').onclick = () => dlTracks(o.querySelector('#t-day').value, 'gpx');
+    o.querySelector('#t-csv').onclick = () => dlTracks(o.querySelector('#t-day').value, 'csv');
     o.querySelector('#all-on').onclick = async () => { if (await setDuty({ all: true, on: true })) again(); };
     o.querySelector('#all-off').onclick = async () => { if (!(await ask('🌙 全部退勤', '所有裝置都退勤？<br>地圖留下最後位置（灰色），手機改成省電，不再記錄軌跡。', '全部退勤', false))) return; if (await setDuty({ all: true, on: false })) again(); };
     o.querySelectorAll('[data-d]').forEach(b => b.onclick = async () => { const t = tk.find(x => x.id === b.dataset.d); if (await setDuty({ id: t.id, on: t.duty === false })) again(); });
