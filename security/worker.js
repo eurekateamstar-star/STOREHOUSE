@@ -148,6 +148,7 @@ async function handleReq(req, env, ctx) {
     if (path === '/usage-meter') return usageMeterRoute(req, env, json);
     if (path === '/usage-cf') return usageCfRoute(req, env, json);
     if (path === '/usage-line') return usageLineRoute(req, env, json);
+    if (path === '/line-check') return lineCheckRoute(req, env, json);
     if (path === '/wh-sched') return whSchedRoute(req, env, json);
     if (path === '/owntracks') return otRoute(req, env);
     if (path === '/loc') return locRoute(req, env, json);
@@ -1513,6 +1514,17 @@ async function usageMeterRoute(req, env, json) {
       watchers: st.watchers.slice(0, 60).map(w => ({ name: w.name, last: w.last, n: w.n, day: w.day })),
       trackers: st.trackers.map(t => ({ name: t.name, kind: t.kind, duty: t.duty, last: Math.max(t.last || 0, t.ping || 0) })) };
     return json({ ok: true, m, loc, now });
+  } catch (e) { return json({ error: String((e && e.message) || e) }, e.code || 500); }
+}
+// 開發者：檢查官方帳號 webhook（LINE 那邊設定的網址、有沒有開、LINE 實際打過來的結果）
+async function lineCheckRoute(req, env, json) {
+  try {
+    await devOnly(req, env); if (!env.LINE_BOT_TOKEN) return json({ ok: true, noToken: true });
+    const H = { Authorization: 'Bearer ' + env.LINE_BOT_TOKEN, 'Content-Type': 'application/json' };
+    const info = await fetch('https://api.line.me/v2/bot/channel/webhook/endpoint', { headers: H }).then(async r => ({ st: r.status, ...(await r.json().catch(() => ({}))) }));
+    const test = await fetch('https://api.line.me/v2/bot/channel/webhook/test', { method: 'POST', headers: H, body: '{}' }).then(async r => ({ st: r.status, ...(await r.json().catch(() => ({}))) }));
+    const bot = await fetch('https://api.line.me/v2/bot/info', { headers: H }).then(async r => ({ st: r.status, ...(await r.json().catch(() => ({}))) }));
+    return json({ ok: true, info, test, bot: { st: bot.st, name: bot.displayName, id: bot.basicId, mode: bot.chatMode, read: bot.markAsReadMode } });
   } catch (e) { return json({ error: String((e && e.message) || e) }, e.code || 500); }
 }
 // 開發者：官方帳號好友數（LINE 官方統計，每天的數字隔天才有）＋團員裡有幾個是好友
