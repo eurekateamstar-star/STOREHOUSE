@@ -58,15 +58,19 @@
   /* 地圖標記 */
   .m3 { position:relative; transform:translate(-50%,-100%); display:flex; flex-direction:column; align-items:center; pointer-events:auto; cursor:pointer; }
   .m3 .fg { display:block; filter:drop-shadow(0 3px 3px rgba(0,0,0,.35)); position:relative; z-index:1; }
-  .m3.ppl .fg { height:64px; } .m3.car .fg { width:74px; }
-  .m3 .sh { position:absolute; bottom:-4px; left:50%; width:44px; height:12px; margin-left:-22px; border-radius:50%; background:radial-gradient(rgba(0,0,0,.35),rgba(0,0,0,0) 70%); }
-  .m3.car .sh { width:70px; margin-left:-35px; }
-  .m3 .hd { position:absolute; z-index:2; top:-22px; left:50%; margin-left:-13px; width:26px; height:26px; border-radius:50%; border:2.5px solid #2563eb; object-fit:cover; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,.3); }
-  .m3 .l { position:absolute; top:100%; margin-top:3px; white-space:nowrap; background:rgba(255,255,255,.95); border-radius:8px; padding:1px 7px; font-size:12px; font-weight:800; box-shadow:0 1px 5px rgba(0,0,0,.2); }
+  .m3.ppl .fg { height:46px; } .m3.car .fg { width:58px; }
+  .m3 .sp { background-repeat:no-repeat; background-size:1600% 100%; background-position:0% 0; }
+  .m3 .sp.m { aspect-ratio:58/120; background-image:url(img/walk_m.webp); } .m3 .sp.f { aspect-ratio:75/120; background-image:url(img/walk_f.webp); }
+  .m3.walk .sp { animation:spw 1.17s steps(16, jump-none) infinite !important; }
+  @keyframes spw { from { background-position:0% 0 } to { background-position:100% 0 } }
+  .m3 .sh { position:absolute; bottom:-3px; left:50%; width:30px; height:9px; margin-left:-15px; border-radius:50%; background:radial-gradient(rgba(0,0,0,.35),rgba(0,0,0,0) 70%); }
+  .m3.car .sh { width:54px; margin-left:-27px; }
+  .m3 .hd { position:absolute; z-index:2; top:-19px; left:50%; margin-left:-11px; width:22px; height:22px; border-radius:50%; border:2px solid #2563eb; object-fit:cover; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,.3); }
+  .m3 .l { position:absolute; top:100%; margin-top:2px; font-size:11.5px !important; white-space:nowrap; background:rgba(255,255,255,.95); border-radius:8px; padding:1px 7px; font-size:12px; font-weight:800; box-shadow:0 1px 5px rgba(0,0,0,.2); }
   .m3 .l .tm { background:#c2414f; color:#fff; border-radius:5px; padding:0 4px; margin-right:4px; font-size:11px; }
   .m3 .l small { font-weight:600; color:var(--sub); margin-left:3px; }
   .m3.stale .fg, .m3.stale .hd { filter:grayscale(1); opacity:.6; } .m3.stale .l { color:var(--sub); }
-  .m3.walk .fg { animation:bob .6s ease-in-out infinite alternate; } .m3.car.walk .fg { animation:bob .35s ease-in-out infinite alternate; }
+ .m3.car.walk .fg { animation:bob .35s ease-in-out infinite alternate; }
   @keyframes bob { from { transform:translateY(0) } to { transform:translateY(-3px) } }
   .mk { position:relative; transform:translate(-50%,-100%); display:flex; flex-direction:column; align-items:center; pointer-events:auto; }
   .mk .b { width:38px; height:38px; border-radius:50%; border:3px solid #fff; display:flex; align-items:center; justify-content:center; font-size:19px; box-shadow:0 3px 10px rgba(0,0,0,.3); }
@@ -282,7 +286,8 @@
     const off = i.duty === false, st = off || now - i.loc.at > STALE, car = VAN(i.kind), moving = !st && (i.loc.vel || 0) >= 2;
     const tag = off ? `<small>🌙 退勤</small>` : st ? `<small>${esc(ago(i.loc.at, now))}</small>` : '';
     const badge = !car && i.pic ? `<img class="hd" src="${esc(i.pic)}" referrerpolicy="no-referrer" alt="" style="border-color:${KC[i.kind]}" onerror="this.remove()">` : '';
-    return L.divIcon({ className: '', iconSize: [0, 0], html: `<div class="m3 ${car ? 'car' : 'ppl'} ${st ? 'stale' : ''} ${moving ? 'walk' : ''}"><div class="sh"></div><img class="fg" src="img/${fig3d(i)}.webp" alt="">${badge}<div class="l">${i.team ? `<span class="tm">${esc(i.team)}</span>` : ''}${esc(i.name)}${tag}</div></div>` });
+    const f = fig3d(i), body = !car && (f === 'medm' || f === 'medf') ? `<div class="fg sp ${f === 'medf' ? 'f' : 'm'}"></div>` : `<img class="fg" src="img/${f}.webp" alt="">`;   // 男／女：3D 走路動畫（16 格），停下來顯示站姿
+    return L.divIcon({ className: '', iconSize: [0, 0], html: `<div class="m3 ${car ? 'car' : 'ppl'} ${st ? 'stale' : ''} ${moving ? 'walk' : ''}"><div class="sh"></div>${body}${badge}<div class="l">${i.team ? `<span class="tm">${esc(i.team)}</span>` : ''}${esc(i.name)}${tag}</div></div>` });
   }
   // 距離：我（這支手機）到對方，直線距離＋步行估計（路線約比直線多 30%，每分鐘走 75 公尺）
   let myPos = null, myAsk = 0;
@@ -337,7 +342,7 @@
       if (!i.loc || !shown(i)) continue; seen.add(i.id);
       const ll = [i.loc.lat, i.loc.lon];
       let m = marks.get(i.id);
-      if (!m) { m = L.marker(ll, { icon: iconFor(i) }).addTo(map).bindPopup('', { offset: [0, -62] }); m.on('click', () => sel(i.id, false)); marks.set(i.id, m); }
+      if (!m) { m = L.marker(ll, { icon: iconFor(i) }).addTo(map).bindPopup('', { offset: [0, -48] }); m.on('click', () => sel(i.id, false)); marks.set(i.id, m); }
       else { m.setLatLng(ll); m.setIcon(iconFor(i)); }
       m.setPopupContent(popup(i));
       let c = circles.get(i.id);
@@ -531,7 +536,7 @@
         <div><label>名稱</label><input id="e-name" maxlength="20" value="${esc(t.name)}"></div>
         <div><label>類型</label><select id="e-kind">${KINDS.map(k => `<option ${k === t.kind ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
         <div><label>綁定團員</label><select id="e-uid">${memberOpts(t.uid)}</select></div>
-        <div><label>地圖上的 3D 人偶（小組長用）</label><div class="figs">${[['m', 'medm', '男'], ['f', 'medf', '女'], ['emt', 'emt', 'EMT']].map(([v, f, n]) => `<label><input type="radio" name="e-fig" value="${v}" ${(t.fig || 'm') === v ? 'checked' : ''}><img src="img/${f}.webp" alt=""><span>${n}</span></label>`).join('')}</div></div>
+        <div><label>地圖上的 3D 人偶（小組長用）</label><div class="figs">${[['m', 'medm', '男（會走路）'], ['f', 'medf', '女（會走路）'], ['emt', 'emt', 'EMT']].map(([v, f, n]) => `<label><input type="radio" name="e-fig" value="${v}" ${(t.fig || 'm') === v ? 'checked' : ''}><img src="img/${f}.webp" alt=""><span>${n}</span></label>`).join('')}</div></div>
         <button class="btn" id="e-save">儲存</button></div>
         <h4>🔑 換新密碼</h4><div class="hint">手機遺失時用：舊設定立刻失效，新手機要重掃 QR Code。</div><button class="btn w" id="e-reset" style="margin-top:8px">換新密碼並顯示 QR Code</button>`);
       e.querySelector('#e-reset').onclick = async () => { if (!(await ask('🔑 換新密碼', '換新密碼後，原本那支手機就不能再回報，要重新匯入設定。', '換新密碼'))) return;
