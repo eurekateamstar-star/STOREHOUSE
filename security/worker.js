@@ -1842,7 +1842,7 @@ export class LocHub extends DurableObject {
       w.n++; w.last = now; w.name = (who && who.n) || w.name || ''; this.W.set(uid, w);
       if (!w.saved || now - w.saved > 300e3) { w.saved = now; this.kput('w:' + uid, w); }
     }
-    return [...this.T.entries()].map(([id, t]) => { const l = this.L.get(id); const duty = t.duty !== false; return { id, name: t.name, kind: t.kind, uname: t.uname || '', pic: t.pic || '', fig: t.fig || t.sex || '', rkey: t.rkey || '', duty, mode: t.mode ?? null, loc: l && (now - l.at <= LOC_TTL || !duty) ? l : null }; });
+    return [...this.T.entries()].map(([id, t]) => { const l = this.L.get(id); const duty = t.duty !== false; return { id, name: t.name, kind: t.kind, uname: t.uname || '', pic: t.pic || '', fig: (t.fig !== 'emt' && t.fig) || t.sex || '', rkey: t.rkey || '', duty, mode: t.mode ?? null, loc: l && (now - l.at <= LOC_TTL || !duty) ? l : null }; });
   }
   // 管理（Worker 已確認是完整管理員）
   async admin(op, a) {
@@ -1857,7 +1857,7 @@ export class LocHub extends DurableObject {
       const kind = LOC_KINDS.includes(a.kind) ? a.kind : '其他';
       const uid = /^U[0-9a-f]{32}$/.test(a.uid || '') ? a.uid : '';
       if (op === 'edit') { const t = this.T.get(a.id); if (!t) return { error: '找不到裝置' };
-        if (['m', 'f', 'emt', ''].includes(a.fig)) t.fig = a.fig;
+        if (['m', 'f', ''].includes(a.fig)) t.fig = a.fig;
         if (['m', 'f', ''].includes(a.sex)) t.sex = a.sex;
         Object.assign(t, { name, kind, uid, uname: uid ? cleanTxt(a.uname, 20) : '', pic: uid ? picOk(a.pic) : '', rkey: uid ? cleanTxt(a.rkey, 20) : '', tid: locTid(kind, a.id) });
         await this.kput('t:' + a.id, t); return { ok: true }; }

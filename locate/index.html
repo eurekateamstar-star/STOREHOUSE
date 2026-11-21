@@ -284,7 +284,7 @@
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { lastAct = Date.now(); idle = false; load(); } });
 
   // 3D 人偶／3D 車子（圖來自進香島）
-  const FIG = { m: 'medm', f: 'medf', emt: 'emt' };
+  const FIG = { m: 'medm', f: 'medf' };   // 舊的 emt 設定改回依性別
   const fig3d = i => i.kind === '指揮車' ? 'medvan' : i.kind === '物資車' ? 'supply' : i.kind === '其他' && !i.pic ? 'medvan' : (FIG[i.fig] || 'medm');
   function iconFor(i) {
     const off = i.duty === false, st = off || now - i.loc.at > STALE, car = VAN(i.kind), moving = !st && (i.loc.vel || 0) >= 2;
@@ -540,7 +540,7 @@
         <div><label>名稱</label><input id="e-name" maxlength="20" value="${esc(t.name)}"></div>
         <div><label>類型</label><select id="e-kind">${KINDS.map(k => `<option ${k === t.kind ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
         <div><label>綁定團員</label><select id="e-uid">${memberOpts(t.uid)}</select></div>
-        <div><label>地圖上的 3D 人偶（預設依名冊性別自動選）</label><div class="figs">${[['', t.sex === 'f' ? 'medf' : 'medm', '自動（依性別）'], ['m', 'medm', '男'], ['f', 'medf', '女'], ['emt', 'emt', 'EMT']].map(([v, f, n]) => `<label><input type="radio" name="e-fig" value="${v}" ${(t.fig || '') === v ? 'checked' : ''}><img src="img/${f}.webp" alt=""><span>${n}</span></label>`).join('')}</div></div>
+        <div><label>地圖上的 3D 人偶（預設依名冊性別自動選）</label><div class="figs">${[['', t.sex === 'f' ? 'medf' : 'medm', '自動（依性別）'], ['m', 'medm', '男'], ['f', 'medf', '女']].map(([v, f, n]) => `<label><input type="radio" name="e-fig" value="${v}" ${((t.fig === 'emt' ? '' : t.fig) || '') === v ? 'checked' : ''}><img src="img/${f}.webp" alt=""><span>${n}</span></label>`).join('')}</div></div>
         <button class="btn" id="e-save">儲存</button></div>
         <h4>🔑 換新密碼</h4><div class="hint">手機遺失時用：舊設定立刻失效，新手機要重掃 QR Code。</div><button class="btn w" id="e-reset" style="margin-top:8px">換新密碼並顯示 QR Code</button>`);
       e.querySelector('#e-reset').onclick = async () => { if (!(await ask('🔑 換新密碼', '換新密碼後，原本那支手機就不能再回報，要重新匯入設定。', '換新密碼'))) return;
