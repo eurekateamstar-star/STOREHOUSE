@@ -62,6 +62,10 @@
   .m3 .sp { background-repeat:no-repeat; background-size:1600% 100%; background-position:0% 0; }
   .m3 .sp.m { aspect-ratio:58/120; background-image:url(img/walk_m.webp); } .m3 .sp.f { aspect-ratio:75/120; background-image:url(img/walk_f.webp); }
   .m3.walk .sp { animation:spw 1.17s steps(16, jump-none) infinite !important; }
+  .m3.car .fg.sp { width:auto; height:40px; background-size:1200% 100%; }
+  .m3 .sp.sup { aspect-ratio:134/100; background-image:url(img/drive_sup.webp); } .m3 .sp.cmd { aspect-ratio:137/100; background-image:url(img/drive_cmd.webp); }
+  .m3.car.walk .sp { animation:spd .5s steps(12, jump-none) infinite !important; }
+  @keyframes spd { from { background-position:0% 0 } to { background-position:100% 0 } }
   @keyframes spw { from { background-position:0% 0 } to { background-position:100% 0 } }
   .m3 .sh { position:absolute; bottom:-3px; left:50%; width:30px; height:9px; margin-left:-15px; border-radius:50%; background:radial-gradient(rgba(0,0,0,.35),rgba(0,0,0,0) 70%); }
   .m3.car .sh { width:54px; margin-left:-27px; }
@@ -286,7 +290,7 @@
     const off = i.duty === false, st = off || now - i.loc.at > STALE, car = VAN(i.kind), moving = !st && (i.loc.vel || 0) >= 2;
     const tag = off ? `<small>🌙 退勤</small>` : st ? `<small>${esc(ago(i.loc.at, now))}</small>` : '';
     const badge = !car && i.pic ? `<img class="hd" src="${esc(i.pic)}" referrerpolicy="no-referrer" alt="" style="border-color:${KC[i.kind]}" onerror="this.remove()">` : '';
-    const f = fig3d(i), body = !car && (f === 'medm' || f === 'medf') ? `<div class="fg sp ${f === 'medf' ? 'f' : 'm'}"></div>` : `<img class="fg" src="img/${f}.webp" alt="">`;   // 男／女：3D 走路動畫（16 格），停下來顯示站姿
+    const f = fig3d(i), body = car ? `<div class="fg sp ${i.kind === '物資車' ? 'sup' : 'cmd'}"></div>` : (f === 'medm' || f === 'medf') ? `<div class="fg sp ${f === 'medf' ? 'f' : 'm'}"></div>` : `<img class="fg" src="img/${f}.webp" alt="">`;   // 男／女：3D 走路動畫（16 格），停下來顯示站姿
     return L.divIcon({ className: '', iconSize: [0, 0], html: `<div class="m3 ${car ? 'car' : 'ppl'} ${st ? 'stale' : ''} ${moving ? 'walk' : ''}"><div class="sh"></div>${body}${badge}<div class="l">${i.team ? `<span class="tm">${esc(i.team)}</span>` : ''}${esc(i.name)}${tag}</div></div>` });
   }
   // 距離：我（這支手機）到對方，直線距離＋步行估計（路線約比直線多 30%，每分鐘走 75 公尺）
