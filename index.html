@@ -1470,7 +1470,7 @@
             if (!lots.length) lots = [{ exp: '', q: Number(maxN) || Number(it.qty) || 0 }];
             const ov = document.createElement('div'); ov.className = 'exp-ov'; ov.style.zIndex = 9800;
             const fefo = n => { lots.forEach(l => val[l.exp] = 0); for (const l of lots) { if (n <= 0) break; const m = Math.min(l.q, n); val[l.exp] = m; n -= m; } };
-            fefo(1);
+            fefo(Math.min(Math.max(1, window._wantN || 1), lotSum(lots), maxN || 1e9));
             const tot = () => Object.values(val).reduce((a, b) => a + b, 0);
             ov.innerHTML = `<div class="exp-card"><div class="exp-h" style="color:#c2410c">${escapeHtml(title)}<button type="button" class="exp-x">✕</button></div>
                 <div style="display:flex;align-items:center;gap:8px;margin:0 4px 10px;font-size:14px;font-weight:800">總共要 <input id="lp-n" type="number" inputmode="numeric" min="0" style="width:70px;height:36px;border:1.5px solid #e7dcd8;border-radius:10px;text-align:center;font-size:17px;font-weight:800"> ${escapeHtml(U)}
@@ -5456,7 +5456,8 @@
         const S = stockFor(name); if (!S || !S.text) return showToast(`倉庫裡找不到可以放的「${name}」`, 'error', 1400);
         const ov = document.getElementById('bag-list-ov'); if (ov) ov.remove();
         lastScannedCode = ''; scanGateUntil = 0;
-        await handleGlobalScan(S.text);
+        try { const C = bagCheck(currentBorrowTarget), x = C && C.list.find(y => y.n === name); window._wantN = x ? Math.max(1, (x.want || 1) - (x.have || 0)) : 1; } catch (e) { window._wantN = 1; }
+        try { await handleGlobalScan(S.text); } finally { window._wantN = 0; }
         setTimeout(() => { try { paintBagCheck(); if (bagCheck(currentBorrowTarget)) openBagList(); } catch (e) {} }, 400);
     };
     function bagContents(key) {   // 這個包裡（掃進去的）東西
