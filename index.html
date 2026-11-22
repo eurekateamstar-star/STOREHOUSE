@@ -5371,8 +5371,11 @@
         const ov = document.getElementById('bag-list-ov'); if (ov) drawBagList(ov, C);
     }
     function drawBagList(ov, C) {
-        const miss = C.list.filter(x => !x.ok && !x.opt), row = x => `<div style="display:flex;align-items:center;gap:10px;padding:12px 4px;border-top:1px solid #f1f1f1;font-size:18px;${x.ok ? 'color:#15803d' : x.opt ? 'color:#9ca3af' : 'color:#b91c1c;font-weight:900'}">
-            <span style="font-size:20px">${x.ok ? '✅' : x.opt ? '◻️' : '❌'}</span><span style="flex:1">${escapeHtml(x.n)}${x.opt ? '<small style="font-size:12px">（選配）</small>' : ''}</span><b style="font-size:18px">${x.have} / ${x.opt ? '選' : x.want}</b></div>`;
+        const miss = C.list.filter(x => !x.ok && !x.opt), row = x => { const S = !x.ok ? stockFor(x.n) : null;
+            const put = !x.ok ? (S && S.text ? `<button type="button" data-put="${escapeHtml(x.n)}" style="all:unset;flex:none;background:#16a34a;color:#fff;font-size:15px;font-weight:900;padding:9px 13px;border-radius:11px">放入</button>`
+              : `<span style="flex:none;font-size:11px;color:#9ca3af;font-weight:700">${S ? '倉庫沒庫存' : '倉庫找不到'}</span>`) : '';
+            return `<div style="display:flex;align-items:center;gap:10px;padding:10px 4px;border-top:1px solid #f1f1f1;font-size:18px;${x.ok ? 'color:#15803d' : x.opt ? 'color:#9ca3af' : 'color:#b91c1c;font-weight:900'}">
+            <span style="font-size:20px">${x.ok ? '✅' : x.opt ? '◻️' : '❌'}</span><span style="flex:1;min-width:0">${escapeHtml(x.n)}${x.opt ? '<small style="font-size:12px">（選配）</small>' : ''}${S && S.text ? `<small style="display:block;font-size:11px;color:#9ca3af;font-weight:600">📦 ${escapeHtml(S.box || '')}・剩 ${S.left}</small>` : ''}</span><b style="font-size:17px">${x.have}/${x.opt ? '選' : x.want}</b>${put}</div>`; };
         const todo = C.list.filter(x => !x.ok && !x.opt), done = C.list.filter(x => x.ok || x.opt);
         ov.querySelector('.bl-body').innerHTML = `
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px"><img src="${BAG_ICON}" style="width:54px;height:54px;border-radius:12px;object-fit:cover">
@@ -5380,7 +5383,9 @@
           ${todo.length ? `<div style="font-size:13px;font-weight:900;color:#b91c1c;margin:12px 4px 2px">還沒放（${todo.length}）</div>${todo.map(row).join('')}` : ''}
           ${done.length ? `<div style="font-size:13px;font-weight:900;color:#15803d;margin:14px 4px 2px">已放好（${done.length}）</div>${done.map(row).join('')}` : ''}
           ${C.extra.length ? `<div style="font-size:13px;font-weight:900;color:#6b7280;margin:14px 4px 2px">清單外</div>${C.extra.map(x => `<div style="padding:10px 4px;border-top:1px solid #f1f1f1;font-size:16px;color:#374151">➕ ${escapeHtml(x.name)} × ${x.n}</div>`).join('')}` : ''}
-          ${C.total ? '' : '<div style="color:#9ca3af;font-size:14px;margin-top:10px">這個包沒有設定內容物清單，只會記錄掃了什麼</div>'}`;
+          ${C.total ? '' : '<div style="color:#9ca3af;font-size:14px;margin-top:10px">這個包沒有設定內容物清單，只會記錄掃了什麼</div>'}
+          ${todo.length ? '<div style="font-size:12px;color:#9ca3af;margin:10px 4px 0">沒有自己 QR 的東西，按「放入」就會從倉庫出到這個包（跟掃 QR 一樣會記錄）</div>' : ''}`;
+        ov.querySelectorAll('[data-put]').forEach(b => b.onclick = e => { e.stopPropagation(); bagPut(b.dataset.put); });
     }
     window.openBagList = function () {
         const C = bagCheck(currentBorrowTarget); if (!C) return;
@@ -5392,6 +5397,27 @@
             <button type="button" style="all:unset;box-sizing:border-box;text-align:center;margin:8px 16px calc(14px + env(safe-area-inset-bottom));padding:15px;border-radius:14px;background:#16a34a;color:#fff;font-size:17px;font-weight:900">繼續掃描</button></div>`;
         ov.onclick = e => { if (e.target === ov || e.target.tagName === 'BUTTON') ov.remove(); };
         document.body.appendChild(ov); drawBagList(ov, C);
+    };
+    // 清單上還沒放的東西：直接點「放入」，不用去掃 QR（找倉庫裡同名、還有庫存的那一件）
+    function stockFor(name) {
+        const key = nk(name); let best = null;
+        for (const b of (boxesCache || [])) (b.items || []).forEach((it, i) => {
+            const k = nk(it.name); if (!key || !k || kitsOf(it).length) return;   // 包包本身不算
+            const exact = k === key, near = k.includes(key) || key.includes(k); if (!exact && !near) return;
+            let text = '', left = 0;
+            if (it.itemType === 'consumable') { left = Number(it.qty) || 0; text = it.cid ? `ITEM_${b.id}_${i}__${it.cid}` : `ITEM_${b.id}_${i}`; }
+            else { ensureUnits(it); const u = it.units.find(u => u.status !== 'out'); left = it.units.filter(u => u.status !== 'out').length; if (u) text = `ITEM_${b.id}_${i}_${u.uid}`; }
+            const c = { text, left, box: b.name, exact }; if (!left) c.text = '';
+            if (!best || (c.text && !best.text) || (c.exact && !best.exact && !!c.text === !!best.text)) best = c;
+        });
+        return best;
+    }
+    window.bagPut = async function (name) {
+        const S = stockFor(name); if (!S || !S.text) return showToast(`倉庫裡找不到可以放的「${name}」`, 'error', 1400);
+        const ov = document.getElementById('bag-list-ov'); if (ov) ov.remove();
+        lastScannedCode = ''; scanGateUntil = 0;
+        await handleGlobalScan(S.text);
+        setTimeout(() => { try { paintBagCheck(); if (bagCheck(currentBorrowTarget)) openBagList(); } catch (e) {} }, 400);
     };
     function bagSummary(t) {   // 結束掃描時：還缺哪些
         const C = bagCheck(t); if (!C || !C.total) return;
