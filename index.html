@@ -5491,16 +5491,47 @@
         }));
         return [...by.entries()].sort((a, b) => (/^包包 - /.test(a[0]) - /^包包 - /.test(b[0])) || a[0].localeCompare(b[0], 'zh-Hant'));
     }
+    function outCons() {   // 沒有 QR 的耗材：同一樣合在一起（不分人、不分包）
+        const L = [];
+        (boxesCache || []).forEach(b => (b.items || []).forEach((x, i) => {
+            if (x.itemType !== 'consumable') return;
+            const hs = Object.entries(x.holdings || {}).filter(([, n]) => (Number(n) || 0) > 0);
+            if (hs.length) L.push({ b, i, x, total: hs.reduce((a, [, n]) => a + Number(n), 0), hs });
+        }));
+        return L.sort((a, c) => a.x.name.localeCompare(c.x.name, 'zh-Hant'));
+    }
+    async function returnConsAll(bid, idx) {
+        const b = (boxesCache || []).find(z => z.id === bid), it = b && b.items[idx]; if (!it) return;
+        const hs = Object.entries(it.holdings || {}).filter(([, n]) => (Number(n) || 0) > 0), total = hs.reduce((a, [, n]) => a + Number(n), 0);
+        if (!total) return;
+        const raw = await showPromptDialog(`「${it.name}」外面總共 ${total} ${UNIT(it)}\n（${hs.map(([t, n]) => `${targetName(t)} ${n}`).join('、')}）\n\n這次實際收回多少${UNIT(it)}？${it.mustReturn ? '\n沒回來的會繼續記在原本的人／包名下' : '\n沒回來的算用掉（消耗）'}`, String(total), '📥 收回入庫');
+        if (raw === null || raw === undefined || raw === '') return;
+        let left = parseInt(raw, 10); if (isNaN(left) || left < 0) return showToast('請輸入 0 以上的整數', 'error', 900);
+        left = Math.min(left, total); const back = left; let used = 0;
+        hs.sort((a, c) => c[1] - a[1]).forEach(([t, n]) => { n = Number(n); const r = Math.min(n, left); left -= r;
+            lotsBack(it, t, r, it.mustReturn ? 0 : n - r);
+            if (it.mustReturn) { if (n - r > 0) it.holdings[t] = n - r; else delete it.holdings[t]; }
+            else { used += n - r; delete it.holdings[t]; } });
+        it.qty = (Number(it.qty) || 0) + back;
+        try {
+            await updateDoc(doc(db, "warehouse_boxes", bid), { items: b.items });
+            const d = new Date(), timeStr = `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+            await addDoc(collection(db, "warehouse_logs"), { ...opInfo(), type: '進貨', itemName: it.name, qty: back, boxName: b.name, target: `合併收回 (原持有: ${hs.map(([t]) => targetName(t)).join('、')})`, timestamp: Date.now(), timeStr });
+            if (used > 0) await addDoc(collection(db, "warehouse_logs"), { ...opInfo(), type: '消耗', itemName: it.name, qty: used, boxName: b.name, target: hs.map(([t]) => targetName(t)).join('、'), timestamp: Date.now(), timeStr });
+            scanSuccessFeedback('📥', `已收回入庫\n${it.name} ${back} ${UNIT(it)}${used ? `\n消耗 ${used}` : ''}\n→ 📦 ${b.name}`);
+        } catch (e) { showToast('入庫失敗：' + (e.message || e), 'error', 1600); }
+        try { refreshLiveViews(); } catch (e) {}
+    }
     function paintOutBar() {
         if (scannerMode !== 'in' || window._retBag) return;
         let el = document.getElementById('bag-check');
         if (!el) { el = document.createElement('button'); el.id = 'bag-check'; el.type = 'button';
             el.style.cssText = 'all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;width:100%;background:#fff;border-radius:14px;padding:10px 12px;margin-bottom:10px;color:#1f2937;cursor:pointer;flex:none';
             document.getElementById('scanner-target-bar').after(el); }
-        const G = outList(), n = G.reduce((a, [, L]) => a + L.length, 0);
+        const C = outCons(), G = outList().map(([t, L]) => [t, L.filter(x => x.qr)]).filter(([, L]) => L.length), n = C.length + G.reduce((a, [, L]) => a + L.length, 0);
         el.onclick = () => openOutList(); el.style.display = 'flex';
         el.innerHTML = `<div style="font-size:30px;flex:none">📋</div><div style="flex:1;min-width:0"><div style="font-size:17px;font-weight:900;color:${n ? '#b45309' : '#15803d'}">${boxesCache ? (n ? `外面還有 ${n} 樣` : '✅ 全部都在庫') : '載入中…'}</div>
-          <div style="font-size:12.5px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${G.map(([t, L]) => `${escapeHtml(targetName(t))} ${L.length}`).join('・')}</div></div>
+          <div style="font-size:12.5px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${[C.length ? `耗材 ${C.length} 樣（合併收）` : '', G.reduce((a, [, L]) => a + L.length, 0) ? `要掃 QR ${G.reduce((a, [, L]) => a + L.length, 0)} 件` : ''].filter(Boolean).join('・')}</div></div>
           <div style="flex:none;font-size:13px;font-weight:900;color:#1d4ed8;background:#eff6ff;border-radius:10px;padding:8px 10px">看清單 ›</div>`;
         const ov = document.getElementById('out-list-ov'); if (ov && ov._draw) ov._draw();
     }
@@ -5513,22 +5544,27 @@
             <button type="button" data-x style="all:unset;box-sizing:border-box;text-align:center;margin:8px 16px calc(14px + env(safe-area-inset-bottom));padding:15px;border-radius:14px;background:#16a34a;color:#fff;font-size:17px;font-weight:900">繼續掃描</button></div>`;
         const open = new Set();
         const draw = () => {
-            const G = outList(), n = G.reduce((a, [, L]) => a + L.length, 0), body = ov.querySelector('.ol-body'), st = body.scrollTop;
-            body.innerHTML = `<div style="font-size:20px;font-weight:900;margin-bottom:2px">📋 外面還有 ${n} 樣</div><div style="font-size:12.5px;color:#6b7280;margin-bottom:8px">依去向分組・耗材按「退回」，有 QR 的請掃 QR</div>
-              ${G.map(([t, L], gi) => { const isBag = /^包包 - /.test(t), on = open.has(t) || G.length <= 3;
+            const C = outCons(), G = outList().map(([t, L]) => [t, L.filter(x => x.qr)]).filter(([, L]) => L.length);
+            const nq = G.reduce((a, [, L]) => a + L.length, 0), body = ov.querySelector('.ol-body'), st = body.scrollTop;
+            body.innerHTML = `<div style="font-size:20px;font-weight:900;margin-bottom:8px">📋 外面還有 ${C.length + nq} 樣</div>
+              ${C.length ? `<div style="font-size:14px;font-weight:900;color:#1d4ed8;margin:6px 2px 2px">🧻 耗材（沒有 QR）・同一樣合在一起收</div>
+                ${C.map(c => `<div style="display:flex;align-items:center;gap:10px;padding:11px 4px;border-top:1px solid #f1f1f1">
+                  <span style="flex:1;min-width:0"><b style="font-size:17px">${escapeHtml(c.x.name)} × ${c.total}</b><small style="display:block;font-size:11.5px;color:#6b7280;line-height:1.5">${c.hs.map(([t, n]) => `${/^包包 - /.test(t) ? '🎒' : ''}${escapeHtml(targetName(t))} ${n}`).join('、')}<br><span style="color:#9ca3af">回到 📦 ${escapeHtml(c.b.name)}</span></small></span>
+                  <button type="button" data-all="${c.b.id}|${c.i}" style="all:unset;flex:none;background:#2563eb;color:#fff;font-size:15px;font-weight:900;padding:10px 13px;border-radius:11px">收回入庫</button></div>`).join('')}` : ''}
+              ${nq ? `<div style="font-size:14px;font-weight:900;color:#b45309;margin:16px 2px 6px">📷 有 QR 的・要一件一件掃（${nq}）</div>
+                ${G.map(([t, L]) => { const isBag = /^包包 - /.test(t), on = open.has(t) || G.length <= 3;
                 return `<div style="border:1.5px solid ${isBag ? '#bfdbfe' : '#f1f1f1'};border-radius:14px;margin-bottom:8px;overflow:hidden">
-                <button type="button" data-g="${gi}" style="all:unset;box-sizing:border-box;display:flex;width:100%;align-items:center;gap:8px;padding:12px;background:${isBag ? '#eff6ff' : '#fafafa'};cursor:pointer">
-                  <img src="${isBag ? BAG_ICON : ''}" style="${isBag ? 'width:30px;height:30px;border-radius:7px;object-fit:cover' : 'display:none'}">${isBag ? '' : '<span style="font-size:20px">👤</span>'}
-                  <b style="flex:1;font-size:16px">${escapeHtml(isBag ? t.slice(5) : targetName(t))}</b><span style="font-size:13px;font-weight:900;color:#b45309">${L.length} 樣 ${on ? '▾' : '›'}</span></button>
+                <button type="button" data-g="${escapeHtml(t)}" style="all:unset;box-sizing:border-box;display:flex;width:100%;align-items:center;gap:8px;padding:12px;background:${isBag ? '#eff6ff' : '#fafafa'};cursor:pointer">
+                  <span style="font-size:18px">${isBag ? '🎒' : '👤'}</span><b style="flex:1;font-size:16px">${escapeHtml(isBag ? t.slice(5) : targetName(t))}</b><span style="font-size:13px;font-weight:900;color:#b45309">${L.length} 件 ${on ? '▾' : '›'}</span></button>
                 ${on ? L.map(x => `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid #f1f1f1;font-size:16px">
-                  <span style="flex:1;min-width:0;font-weight:800">${escapeHtml(x.name)}${x.qr ? '' : ` × ${x.n}`}<small style="display:block;font-size:11px;color:#9ca3af;font-weight:600">回到 📦 ${escapeHtml(x.box)}${x.bag > 0 ? `・🎒 包裡還有 ${x.bag} 樣` : ''}</small></span>
-                  ${x.qr ? '<span style="flex:none;font-size:12px;font-weight:900;color:#2563eb">📷 掃 QR</span>' : `<button type="button" data-ret="${escapeHtml(x.text)}" data-src="${escapeHtml(x.src)}" style="all:unset;flex:none;background:#2563eb;color:#fff;font-size:15px;font-weight:900;padding:9px 13px;border-radius:11px">退回</button>`}</div>`).join('') : ''}</div>`; }).join('') || '<div style="padding:30px 0;text-align:center;color:#15803d;font-weight:900">✅ 全部都在庫</div>'}`;
+                  <span style="flex:1;min-width:0;font-weight:800">${escapeHtml(x.name)}<small style="display:block;font-size:11px;color:#9ca3af;font-weight:600">回到 📦 ${escapeHtml(x.box)}${x.bag > 0 ? `・🎒 包裡還有 ${x.bag} 樣` : ''}</small></span>
+                  <span style="flex:none;font-size:12px;font-weight:900;color:#2563eb">📷 掃 QR</span></div>`).join('') : ''}</div>`; }).join('')}` : ''}
+              ${C.length + nq ? '' : '<div style="padding:30px 0;text-align:center;color:#15803d;font-weight:900">✅ 全部都在庫</div>'}`;
             body.scrollTop = st;
-            body.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { const t = G[+b.dataset.g][0]; open.has(t) ? open.delete(t) : open.add(t); draw(); });
-            body.querySelectorAll('[data-ret]').forEach(b => b.onclick = async () => {
-                ov.style.display = 'none'; inSource = b.dataset.src; lastScannedCode = ''; scanGateUntil = 0;
-                try { await handleGlobalScan(b.dataset.ret); } finally { inSource = ''; }
-                setTimeout(() => { ov.style.display = 'flex'; draw(); paintOutBar(); }, 300);
+            body.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { const t = b.dataset.g; open.has(t) ? open.delete(t) : open.add(t); draw(); });
+            body.querySelectorAll('[data-all]').forEach(b => b.onclick = async () => {
+                const [bid, ix] = b.dataset.all.split('|'); ov.style.display = 'none';
+                try { await returnConsAll(bid, +ix); } finally { setTimeout(() => { ov.style.display = 'flex'; draw(); paintOutBar(); }, 300); }
             });
         };
         ov._draw = draw;
