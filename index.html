@@ -3434,7 +3434,18 @@
         }
         if (whSched && SHOW_PERSON_GROUPS) { const bar = schedDayBar(() => renderLookupTargetChips()); bar.style.gridColumn = ''; bar.style.width = '100%'; el.appendChild(bar); }
         loadWhSched();
-        [...getSelectableGroups(), ...bagGroups().map(g => ({ ...g, groupName: '🎒 ' + g.groupName }))].forEach(g => {
+        // 只顯示「現在手上有東西」的人／車／包（含暫存區）
+        const HK = new Map(), HN = new Map();
+        (boxesCache || []).forEach(b => (b.items || []).forEach(x => {
+            const add = (k, n) => { HK.set(k, (HK.get(k) || 0) + n); const nm = targetName(k); HN.set(nm, (HN.get(nm) || 0) + n); };
+            if (x.itemType === 'consumable') Object.entries(x.holdings || {}).forEach(([k, n]) => { if ((Number(n) || 0) > 0) add(k, 1); });
+            else (x.units || []).forEach(u => { if (u.status === 'out' && u.borrower) add(u.borrower, 1); });
+        }));
+        const heldN = (g, itemName, target) => HK.get(target) || (g.virtual ? HN.get(targetName(target)) || 0 : 0);
+        if (boxesCache && !HK.size) { const e = document.createElement('div'); e.style.cssText = 'color:#15803d;font-weight:800;padding:10px 0'; e.innerText = '✅ 目前沒有任何東西在外面'; el.appendChild(e); }
+        [...(HK.get(STAGE) ? [{ groupName: '📥 暫存區', items: ['暫存區'], stage: true }] : []), ...getSelectableGroups(), ...bagGroups().map(g => ({ ...g, groupName: '🎒 ' + g.groupName }))].forEach(g => {
+            if (boxesCache) { const tg = it => g.stage ? STAGE : g.bag ? `包包 - ${it}` : g.virtual ? targetForUser(it) : `${g.groupName} - ${it}`;
+                g = { ...g, items: (g.items || []).filter(it => heldN(g, it, tg(it)) > 0) }; if (!g.items.length) return; }
             const groupWrap = document.createElement('div');
             groupWrap.className = 'lookup-group-wrap';
             groupWrap.style.cssText = 'margin-bottom:14px;';
@@ -3447,11 +3458,12 @@
             const chipsRow = document.createElement('div');
             chipsRow.style.cssText = 'display:flex; flex-wrap:wrap;';
             (g.items || []).forEach(itemName => {
-                const target = g.bag ? `包包 - ${itemName}` : g.virtual ? targetForUser(itemName) : `${g.groupName} - ${itemName}`;
+                const target = g.stage ? STAGE : g.bag ? `包包 - ${itemName}` : g.virtual ? targetForUser(itemName) : `${g.groupName} - ${itemName}`;
+                const hn = boxesCache ? heldN(g, itemName, target) : 0;
                 const btn = document.createElement('button');
                 btn.className = 'apple-btn secondary lookup-chip';
                 btn.style.cssText = 'padding:8px 12px; font-size:12px; margin:0 6px 6px 0;';
-                btn.innerHTML = avatarHtml(itemName, 22, false) + `<span>${escapeHtml(itemName)}</span>`;
+                btn.innerHTML = (g.stage ? '<span style="font-size:20px">📥</span>' : avatarHtml(itemName, 22, false)) + `<span>${escapeHtml(itemName)}</span>` + (hn ? `<b style="margin-left:6px;background:#fef3c7;color:#b45309;border-radius:99px;padding:1px 8px;font-size:12px">${hn}</b>` : '');
                 btn.dataset.name = itemName.toLowerCase();
                 btn.onclick = () => {
                     document.querySelectorAll('.lookup-chip').forEach(b => b.classList.remove('active-chip'));
@@ -4445,7 +4457,7 @@
     function refreshLiveViews() {
         renderBoxes();
         if (document.getElementById('me-view') && document.getElementById('me-view').style.display === 'block') renderPersonHoldings();
-        if (document.getElementById('lookup-view')?.style.display === 'block') renderLookupItemChips();
+        if (document.getElementById('lookup-view')?.style.display === 'block') { renderLookupItemChips(); try { const q = (document.getElementById('lookup-target-search') || {}).value; if (!document.querySelector('.lookup-chip.active-chip')) renderLookupTargetChips(); } catch (e) {} }
         const b = currentBoxId ? (boxesCache || []).find(x => x.id === currentBoxId) : null;
         if (b) {
             const boxModalEl = document.getElementById('item-modal');
