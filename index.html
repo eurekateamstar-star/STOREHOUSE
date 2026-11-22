@@ -2910,6 +2910,7 @@
                             document.getElementById('btn-confirm-borrow').disabled = false;
                             selectorContainer.querySelectorAll('.borrower-card').forEach(c => { c.style.borderColor = ''; c.style.background = ''; });
                             card.style.borderColor = '#34c759'; card.style.background = 'rgba(52, 199, 89, 0.15)';
+                            setTimeout(() => { try { confirmBorrowerAndScan(); } catch (e) {} }, 180);
                             return;
                         } if (k === 'bag' && !bags) return showToast(boxesCache ? '🎒 目前沒有已出庫的包\n先把包包出庫，才能把東西掃進包裡' : '倉庫資料還在載入，請稍等', 'error', 1600); borrowCat = k; selectedGroupIndex = null; renderBorrowerSelectorUI(); };
                     selectorContainer.appendChild(card);
@@ -2988,6 +2989,7 @@
                         selectorContainer.querySelectorAll('.borrower-card').forEach(c => c.style.borderColor = 'rgba(255,255,255,0.08)');
                         card.style.borderColor = '#34c759';
                         card.style.background = 'rgba(52, 199, 89, 0.15)';
+                        setTimeout(() => { try { confirmBorrowerAndScan(); } catch (e) {} }, 180);   // 點了就直接開始掃
                     };
                     selectorContainer.appendChild(card);
                 });
