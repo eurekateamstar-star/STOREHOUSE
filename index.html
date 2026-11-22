@@ -2898,7 +2898,7 @@
                 const stg = (() => { let n = 0; (boxesCache || []).forEach(b => (b.items || []).forEach(x => { if (x.itemType === 'consumable') n += (Number((x.holdings || {})[STAGE]) || 0) > 0 ? 1 : 0; else n += (x.units || []).filter(u => u.status === 'out' && u.borrower === STAGE).length; })); return n; })();
                 [['car', '🚗', '車輛', `${all.filter(isCarGroup).reduce((a, g) => a + g.items.length, 0)} 項`],
                  ['ppl', '<img src="member/ic/leader.png" alt="" style="width:52px;height:52px;object-fit:contain">', '人員', '依排班日期分組'],
-                 ['bag', `<img src="${BAG_ICON}" alt="" style="width:52px;height:52px;border-radius:10px;object-fit:cover">`, '包包', bags ? `${bags} 個已出庫的包` : (boxesCache ? '目前沒有出庫的包' : '載入中…')],
+                 ['bag', '🎒', '包包', bags ? `${bags} 個已出庫的包` : (boxesCache ? '目前沒有出庫的包' : '載入中…')],
                  ['stage', '📥', '暫存區', stg ? `目前放了 ${stg} 樣` : '先拿出來、還沒分配']].forEach(([k, e, n, sub]) => {
                     const card = document.createElement('div'); card.className = 'borrower-card';
                     card.innerHTML = `<div class="borrower-card-icon" style="font-size:34px;height:56px;display:flex;align-items:center;justify-content:center">${e}</div><div class="borrower-card-name">${n}</div><div style="font-size:10px; color:#8e8e93; margin-top:2px;">${sub}${k === 'stage' ? '' : ' ›'}</div>`;
