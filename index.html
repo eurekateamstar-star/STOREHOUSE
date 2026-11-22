@@ -5615,8 +5615,8 @@
     function bagSummary(t) {   // 結束掃描時：還缺哪些
         const C = bagCheck(t); if (!C || !C.total) return;
         const miss = C.list.filter(x => !x.ok && !x.opt);
-        if (!miss.length) showToast(`🎒 ${t.slice(5)}\n✅ ${C.total} 樣全部放齊了`, 'success', 2200);
-        else showToast(`🎒 ${t.slice(5)}\n還缺 ${miss.length} 樣：\n${miss.map(x => `・${x.n}${x.want > 1 ? ` 還差 ${x.want - x.have}` : ''}`).join('\n')}`, 'error', 5000);
+        if (!miss.length) showToast(`🎒 ${t.slice(5)}\n✅ ${C.total} 樣全部放齊了`, 'success', 1200);
+        else showToast(`🎒 ${t.slice(5)} 還缺 ${miss.length} 樣\n${miss.slice(0, 3).map(x => x.n).join('、')}${miss.length > 3 ? '…' : ''}`, 'error', 1500);
     }
     function bagGroups() {
         const by = new Map();
