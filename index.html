@@ -1466,7 +1466,8 @@
     // 選效期出貨（同一種耗材有好幾批）：最早到期的先自動帶入，可以自己改
     function pickLotsSheet(it, title, maxN) {
         return new Promise(res => {
-            const lots = lotsOf(it), U = UNIT(it), val = {};
+            let lots = lotsOf(it); const U = UNIT(it), val = {};
+            if (!lots.length) lots = [{ exp: '', q: Number(maxN) || Number(it.qty) || 0 }];
             const ov = document.createElement('div'); ov.className = 'exp-ov'; ov.style.zIndex = 9800;
             const fefo = n => { lots.forEach(l => val[l.exp] = 0); for (const l of lots) { if (n <= 0) break; const m = Math.min(l.q, n); val[l.exp] = m; n -= m; } };
             fefo(1);
@@ -3725,8 +3726,7 @@
                             return;
                         }
                         let pick = null, raw;
-                        if (lotsOf(item).length > 1) { pick = await pickLotsSheet(item, `📤 ${item.name} → ${currentBorrowTarget}`, currentQty); if (!pick) return; raw = String(Object.values(pick).reduce((a, b) => a + b, 0)); }
-                        else raw = await showPromptDialog(`倉庫庫存 ${currentQty} ${UNIT(item)}，這次要出貨多少${UNIT(item)}給「${currentBorrowTarget}」？`, '1', '📤 掃描出庫數量');
+                        pick = await pickLotsSheet(item, `📤 ${item.name} → ${currentBorrowTarget}`, currentQty); if (!pick) return; raw = String(Object.values(pick).reduce((a, b) => a + b, 0));
                         if (!raw) return;
                         const n = parseInt(raw, 10);
                         if (!n || n <= 0) { showToast('請輸入大於 0 的整數', 'error', 900); return; }
@@ -6866,7 +6866,7 @@
         return (it && it.itemType === 'consumable') ? it : null;
     }
 
-    async function applyConsumableBatchTransfer(n, target, direction) {
+    async function applyConsumableBatchTransfer(n, target, direction, pick) {
         const b = boxesCache.find(x => x.id === currentBoxId);
         if (!b || editingItemIndex === null) return;
         const it = b.items[editingItemIndex];
@@ -6877,6 +6877,7 @@
         if (direction === 'out') {
             const currentQty = Number(it.qty) || 0;
             actualN = Math.min(n, currentQty);
+            try { lotsOut(it, target, actualN, pick || null); } catch (e) {}
             it.qty = currentQty - actualN;
             it.holdings[target] = (it.holdings[target] || 0) + actualN;
         } else {
@@ -6914,11 +6915,11 @@
         if (!it) return;
         if ((Number(it.qty) || 0) <= 0) { showToast('倉庫庫存已為 0，無法出貨', 'error', 900); return; }
         openBorrowerModal(async (target) => {
-            const raw = await showPromptDialog(`倉庫庫存 ${it.qty || 0} ${UNIT(it)}，要出貨多少${UNIT(it)}給「${target}」？`, '1', '🚚 整批出貨');
-            if (!raw) return;
-            const n = parseInt(raw, 10);
-            if (!n || n <= 0) { showToast('請輸入大於 0 的整數', 'error', 900); return; }
-            await applyConsumableBatchTransfer(n, target, 'out');
+            const pick = await pickLotsSheet(it, `🚚 ${it.name} → ${target}`, Number(it.qty) || 0);
+            if (!pick) return;
+            const n = Object.values(pick).reduce((a, b) => a + b, 0);
+            if (!n || n <= 0) return;
+            await applyConsumableBatchTransfer(n, target, 'out', pick);
         });
     };
 
