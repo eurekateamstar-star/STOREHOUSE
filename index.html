@@ -1614,7 +1614,8 @@
         { groupName: "車輛", items: ["物資車 1", "物資車 2"] },
         { groupName: "人員 / 部門", items: ["急診室", "手術室", "護理站", "劉奕昕"] }
     ];
-    let selectedGroupIndex = null; 
+    let selectedGroupIndex = null, borrowCat = null;   // borrowCat：null＝第一層（車輛／人員／包包）
+
 
     // ===== 進出貨紀錄：依「去處群組」上色+加圖示 =====
     const TARGET_GROUP_ICONS = ['🚗', '👤', '🏥', '📍', '🏷️', '🧰'];
@@ -2803,7 +2804,7 @@
     window.openBorrowerModal = function(onConfirm) {
         if (!canScan()) return showToast('🔒 只有管理員或進出庫小幫手可以出貨', 'error', 1200);
         isBorrowerEditMode = false;
-        selectedGroupIndex = null;
+        selectedGroupIndex = null; borrowCat = null;
         currentBorrowTarget = '';
         borrowerModalOnConfirm = typeof onConfirm === 'function' ? onConfirm : null;
         renderBorrowerSelectorUI();
@@ -2880,15 +2881,34 @@
         } else {
             selectorContainer.style.display = 'grid';
             manageContainer.style.display = 'none';
-            const groups = getSelectableGroups();
+            const groups = catGroups();
             if (selectedGroupIndex !== null && !groups[selectedGroupIndex]) selectedGroupIndex = null;
-            document.getElementById('borrower-modal-title').innerText = selectedGroupIndex === null ? '📂 選擇領用群組' : `📁 [${groups[selectedGroupIndex].groupName}] 選擇細項`;
+            if (borrowCat && borrowCat !== 'ppl' && groups.length === 1 && selectedGroupIndex === null && !window._bcBack) selectedGroupIndex = 0;   // 只有一組就直接展開
+            window._bcBack = false;
+            const CATN = { car: '🚗 車輛', ppl: '👥 人員', bag: '🎒 包包' };
+            document.getElementById('borrower-modal-title').innerText = !borrowCat ? '📂 出庫到哪裡？' : selectedGroupIndex === null ? `📂 ${CATN[borrowCat]}` : `📁 [${groups[selectedGroupIndex].groupName}] 選擇細項`;
             document.getElementById('borrower-modal-desc').innerText = selectedGroupIndex === null ? '請點擊群組以展開細項：' : '請選擇具體領用對象：';
             document.getElementById('btn-confirm-borrow').style.display = 'inline-flex';
             document.getElementById('btn-pick-by-qr').style.display = (borrowerModalOnConfirm || !SHOW_PERSON_GROUPS) ? 'none' : 'flex';
 
-            if (selectedGroupIndex === null) {
-                if (whSched && SHOW_PERSON_GROUPS) selectorContainer.appendChild(schedDayBar(() => renderBorrowerSelectorUI()));
+            if (!borrowCat) {   // 第一層：車輛／人員／包包
+                document.getElementById('borrower-modal-desc').innerText = '先選類別：';
+                const all = getSelectableGroups(), bags = bagGroups().reduce((a, g) => a + g.items.length, 0);
+                [['car', '🚗', '車輛', `${all.filter(isCarGroup).reduce((a, g) => a + g.items.length, 0)} 項`],
+                 ['ppl', '👥', '人員', '依排班日期分組'],
+                 ['bag', '🎒', '包包', bags ? `${bags} 個已出庫的包` : (boxesCache ? '目前沒有出庫的包' : '載入中…')]].forEach(([k, e, n, sub]) => {
+                    const card = document.createElement('div'); card.className = 'borrower-card';
+                    card.innerHTML = `<div class="borrower-card-icon" style="font-size:34px">${e}</div><div class="borrower-card-name">${n}</div><div style="font-size:10px; color:#8e8e93; margin-top:2px;">${sub} ›</div>`;
+                    card.onclick = () => { if (k === 'bag' && !bags) return showToast(boxesCache ? '🎒 目前沒有已出庫的包\n先把包包出庫，才能把東西掃進包裡' : '倉庫資料還在載入，請稍等', 'error', 1600); borrowCat = k; selectedGroupIndex = null; renderBorrowerSelectorUI(); };
+                    selectorContainer.appendChild(card);
+                });
+                if (!boxesCache && typeof startBoxesLiveSync === 'function') try { startBoxesLiveSync(); } catch (e) {}
+                if (borrowCat === null) loadWhSched();
+            } else if (selectedGroupIndex === null) {
+                const back0 = document.createElement('button'); back0.className = 'apple-btn secondary';
+                back0.style.cssText = 'padding: 8px; font-size: 12px; margin-bottom: 6px; grid-column: 1 / -1;'; back0.innerHTML = '‹ 返回類別';
+                back0.onclick = () => { borrowCat = null; renderBorrowerSelectorUI(); }; selectorContainer.appendChild(back0);
+                if (borrowCat === 'ppl' && whSched && SHOW_PERSON_GROUPS) selectorContainer.appendChild(schedDayBar(() => renderBorrowerSelectorUI()));
                 loadWhSched();
                 groups.forEach((group, idx) => {
                     const card = document.createElement('div');
@@ -2912,6 +2932,7 @@
                 backBtn.style.cssText = 'padding: 8px; font-size: 12px; margin-bottom: 6px; grid-column: span 3;';
                 backBtn.innerHTML = '‹ 返回上一層群組';
                 backBtn.onclick = () => {
+                    if (borrowCat !== 'ppl' && groups.length === 1) borrowCat = null; else window._bcBack = true;
                     selectedGroupIndex = null;
                     document.getElementById('selected-target-preview').innerText = '尚未選擇對象';
                     document.getElementById('btn-confirm-borrow').disabled = true;
@@ -2945,10 +2966,10 @@
                     card.dataset.name = itemName.toLowerCase();
                     card.innerHTML = `
                         <div class="borrower-card-icon">${(currentGroup.images || {})[itemName] ? `<img src="${currentGroup.images[itemName]}" alt="" style="width:100%;max-width:120px;height:64px;object-fit:contain;display:block;margin:0 auto">` : avatarHtml(itemName, 40)}</div>
-                        <div class="borrower-card-name">${escapeHtml(itemName)}</div>
+                        <div class="borrower-card-name">${escapeHtml(itemName)}</div>${currentGroup.sub && currentGroup.sub[itemName] ? `<div style="font-size:10px;color:#8e8e93;margin-top:2px">${escapeHtml(currentGroup.sub[itemName])}</div>` : ''}
                     `;
                     card.onclick = () => {
-                        currentBorrowTarget = currentGroup.virtual ? targetForUser(itemName) : `${currentGroup.groupName} - ${itemName}`;
+                        currentBorrowTarget = currentGroup.bag ? `包包 - ${itemName}` : currentGroup.virtual ? targetForUser(itemName) : `${currentGroup.groupName} - ${itemName}`;
                         document.getElementById('selected-target-preview').innerText = `已選擇: [ ${currentBorrowTarget} ]`;
                         document.getElementById('btn-confirm-borrow').disabled = false;
                         
@@ -3399,7 +3420,7 @@
         }
         if (whSched && SHOW_PERSON_GROUPS) { const bar = schedDayBar(() => renderLookupTargetChips()); bar.style.gridColumn = ''; bar.style.width = '100%'; el.appendChild(bar); }
         loadWhSched();
-        getSelectableGroups().forEach(g => {
+        [...getSelectableGroups(), ...bagGroups().map(g => ({ ...g, groupName: '🎒 ' + g.groupName }))].forEach(g => {
             const groupWrap = document.createElement('div');
             groupWrap.className = 'lookup-group-wrap';
             groupWrap.style.cssText = 'margin-bottom:14px;';
@@ -3412,7 +3433,7 @@
             const chipsRow = document.createElement('div');
             chipsRow.style.cssText = 'display:flex; flex-wrap:wrap;';
             (g.items || []).forEach(itemName => {
-                const target = g.virtual ? targetForUser(itemName) : `${g.groupName} - ${itemName}`;
+                const target = g.bag ? `包包 - ${itemName}` : g.virtual ? targetForUser(itemName) : `${g.groupName} - ${itemName}`;
                 const btn = document.createElement('button');
                 btn.className = 'apple-btn secondary lookup-chip';
                 btn.style.cssText = 'padding:8px 12px; font-size:12px; margin:0 6px 6px 0;';
@@ -3993,7 +4014,11 @@
             <div class="ks-body"></div></div>`;
         const body = ov.querySelector('.ks-body');
         const paintTabs = () => ov.querySelectorAll('[data-tab]').forEach(b => { const on = b.dataset.tab === tab; b.style.background = on ? '#fff' : 'transparent'; b.style.color = on ? '#c2410c' : '#8a7f7a'; b.style.boxShadow = on ? '0 1px 4px rgba(0,0,0,.08)' : 'none'; });
-        const drawView = () => { body.innerHTML = kitsHtml(it, unitNo, true) + `<button type="button" class="exp-ok" style="all:unset;box-sizing:border-box;display:block;width:100%;text-align:center;padding:13px;border-radius:14px;background:#f3efed;font-weight:800;margin-top:12px;cursor:pointer">知道了</button>`; };
+        const inBag = (() => { if (!unitNo) return ''; const key = bagTarget(it, unitNo), L = [];
+            (boxesCache || []).forEach(b => (b.items || []).forEach(x => { if (x.itemType === 'consumable') { const n = Number((x.holdings || {})[key]) || 0; if (n > 0) L.push(`${escapeHtml(x.name)} × ${n}`); }
+                else (x.units || []).forEach((u, i) => { if (u.status === 'out' && u.borrower === key) L.push(`${escapeHtml(x.name)} #${i + 1}`); }); }));
+            return L.length ? `<div style="margin:4px 0 10px;padding:10px 12px;border-radius:14px;background:#eff6ff;border:1.5px solid #bfdbfe"><div style="font-weight:900;color:#1d4ed8;margin-bottom:4px">🎒 另外掃進這個包的東西</div><div style="font-size:14px;line-height:1.7;color:#1f2937">${L.join('<br>')}</div></div>` : ''; })();
+        const drawView = () => { body.innerHTML = inBag + kitsHtml(it, unitNo, true) + `<button type="button" class="exp-ok" style="all:unset;box-sizing:border-box;display:block;width:100%;text-align:center;padding:13px;border-radius:14px;background:#f3efed;font-weight:800;margin-top:12px;cursor:pointer">知道了</button>`; };
         let pos = 0;
         const drawCheck = () => {   // 一樣一樣來：大照片、大字，按「缺」或「有，下一樣」
             const ok = res.filter(x => x === 'y').length, no = res.filter(x => x === 'n').length;
@@ -5297,6 +5322,25 @@
         w.querySelectorAll('[data-sd]').forEach(b => b.onclick = () => { whSchedDay = b.dataset.sd; onPick(); });
         setTimeout(() => { const on = w.querySelector(`[data-sd="${whSchedDay}"]`); if (on) on.scrollIntoView({ inline: 'center', block: 'nearest' }); }, 0);
         return w;
+    }
+    // ===== 出庫對象分三類：車輛／人員（再分天）／包包（已出庫、有內容物清單的包，可以把東西掃進去）=====
+    const isCarGroup = g => !g.virtual && /車/.test(g.groupName || '');   // 手動建的「車輛」群組（排班的汽機車組算人員）
+    const bagTarget = (it, n) => `包包 - ${it.name} #${n}`;
+    function bagGroups() {
+        const by = new Map();
+        (boxesCache || []).forEach(b => (b.items || []).forEach(it => {
+            if (it.itemType === 'consumable' || !kitsOf(it).length) return; ensureUnits(it);
+            it.units.forEach((u, i) => { if (u.status !== 'out') return;
+                const g = by.get(it.name) || { groupName: it.name, items: [], sub: {}, bag: true, icon: it.imageUrl || '' };
+                const lab = `${it.name} #${i + 1}`; g.items.push(lab); g.sub[lab] = '在 ' + targetName(u.borrower || '不詳'); by.set(it.name, g); });
+        }));
+        return [...by.values()];
+    }
+    function catGroups() {
+        if (!borrowCat) return [];
+        if (borrowCat === 'bag') return bagGroups();
+        const all = getSelectableGroups();
+        return borrowCat === 'car' ? all.filter(isCarGroup) : all.filter(g => !isCarGroup(g));
     }
     function getSelectableGroups() {
         const groups = borrowerGroupsCache.map(g => ({ ...g }));
