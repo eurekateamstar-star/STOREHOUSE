@@ -1904,7 +1904,7 @@
         imgEl.src = url;
     }
 
-    let lastScannedCode = null;
+    let lastScannedCode = null, inSource = '';   // inSource：從包包退回時，直接指定是哪個包
     let lastScannedAt = 0;
     let scanGateUntil = 0;
     const SAME_CODE_COOLDOWN_MS = 900;
@@ -3562,6 +3562,7 @@
         } else {
             targetBar.style.display = 'none';
         }
+        window._retBag = null;
         try { paintBagCheck(); } catch (e) {}
 
         document.getElementById('scanner-modal').style.display = 'flex';
@@ -3725,9 +3726,10 @@
                     } else {
                         const holdings = item.holdings || {};
                         const holdingKeys = Object.keys(holdings).filter(k => (holdings[k] || 0) > 0);
-                        let sourceTarget = null;
+                        let sourceTarget = inSource && (holdings[inSource] || 0) > 0 ? inSource : null;
 
-                        if (holdingKeys.length === 1) {
+                        if (sourceTarget) {}
+                        else if (holdingKeys.length === 1) {
                             sourceTarget = holdingKeys[0];
                         } else if (holdingKeys.length > 1) {
                             const listText = holdingKeys.map(k => `${k}（${holdings[k]}${UNIT(item)}）`).join('\n');
@@ -3776,6 +3778,7 @@
                         const feedbackLines = sourceTarget
                             ? `${item.name}\n回庫存：${returned} ${UNIT(item)}${consumedQty > 0 ? `\n消耗：${consumedQty} ${UNIT(item)}` : ''}\n${(item.holdings || {})[sourceTarget] ? `（${sourceTarget} 還有 ${item.holdings[sourceTarget]} ${UNIT(item)}未還）` : `（${sourceTarget} 已結清歸零）`}`
                             : `${item.name}\n目前：${item.qty} ${UNIT(item)}`;
+                        try { if (window._bagRetDraw) setTimeout(window._bagRetDraw, 300); } catch (e) {}
                         scanSuccessFeedback('📥', `已入庫\n${feedbackLines}`);
                         showToast(`✅ 入庫完成\n${item.name}\n回庫存：${returned} 個${consumedQty > 0 ? `\n消耗：${consumedQty} 個（${sourceTarget}）` : ''}\n倉庫現有：${item.qty} 個`, 'success', 1600);
 
@@ -3856,6 +3859,12 @@
                             lastScannedCode = scannedText; lastScannedAt = now;
                             return;
                         }
+                        if (kitsOf(item).length && bagContents(bagTarget(item, item.units.indexOf(unit) + 1)).length) {   // 包裡還有東西：不能入庫（可以交接給別人）
+                            scanErrorFeedback('🎒', `${item.name} (${unitLabel})\n裡面的東西還沒入庫`);
+                            openBagReturn(item, item.units.indexOf(unit) + 1, scannedText);
+                            scanGateUntil = now + SCAN_GATE_MS; lastScannedCode = scannedText; lastScannedAt = now;
+                            return;
+                        }
                         const oldBorrower = unit.borrower || '不詳';
                         unit.status = 'in';
                         unit.borrower = '';
@@ -3864,6 +3873,7 @@
                         actionType = '進貨';
                         recordTarget = `還回 (原借用: ${oldBorrower})`;
                         scanSuccessFeedback('📥', `已入庫\n${item.name} (${unitLabel})\n${targetName(oldBorrower)} 歸還 → 「${box.name}」`);
+                        try { const ro = document.getElementById('bag-ret-ov'); if (ro && window._bagRetDraw) setTimeout(window._bagRetDraw, 300); } catch (e) {}
                         showToast(`✅ 已入庫\n物品：${item.name} (${unitLabel})\n👤 歸還人：${targetName(oldBorrower)}\n📦 回到：${box.name}`, 'success', 1600);
                     }
                     syncItemCounts(item);
@@ -5373,9 +5383,9 @@
     function drawBagList(ov, C) {
         const miss = C.list.filter(x => !x.ok && !x.opt), row = x => { const S = !x.ok ? stockFor(x.n) : null;
             const put = !x.ok ? (S && S.text ? `<button type="button" data-put="${escapeHtml(x.n)}" style="all:unset;flex:none;background:#16a34a;color:#fff;font-size:15px;font-weight:900;padding:9px 13px;border-radius:11px">放入</button>`
-              : `<span style="flex:none;font-size:11px;color:#9ca3af;font-weight:700">${S ? '倉庫沒庫存' : '倉庫找不到'}</span>`) : '';
+              : `<span style="flex:none;font-size:11px;color:${S && S.qr ? '#2563eb' : '#9ca3af'};font-weight:800;text-align:right">${S && S.qr ? (S.left ? '📷 掃它的 QR' : '倉庫沒庫存') : S ? '倉庫沒庫存' : '倉庫找不到'}</span>`) : '';
             return `<div style="display:flex;align-items:center;gap:10px;padding:10px 4px;border-top:1px solid #f1f1f1;font-size:18px;${x.ok ? 'color:#15803d' : x.opt ? 'color:#9ca3af' : 'color:#b91c1c;font-weight:900'}">
-            <span style="font-size:20px">${x.ok ? '✅' : x.opt ? '◻️' : '❌'}</span><span style="flex:1;min-width:0">${escapeHtml(x.n)}${x.opt ? '<small style="font-size:12px">（選配）</small>' : ''}${S && S.text ? `<small style="display:block;font-size:11px;color:#9ca3af;font-weight:600">📦 ${escapeHtml(S.box || '')}・剩 ${S.left}</small>` : ''}</span><b style="font-size:17px">${x.have}/${x.opt ? '選' : x.want}</b>${put}</div>`; };
+            <span style="font-size:20px">${x.ok ? '✅' : x.opt ? '◻️' : '❌'}</span><span style="flex:1;min-width:0">${escapeHtml(x.n)}${x.opt ? '<small style="font-size:12px">（選配）</small>' : ''}${S && S.left ? `<small style="display:block;font-size:11px;color:#9ca3af;font-weight:600">📦 ${escapeHtml(S.box || '')}・剩 ${S.left}</small>` : ''}</span><b style="font-size:17px">${x.have}/${x.opt ? '選' : x.want}</b>${put}</div>`; };
         const todo = C.list.filter(x => !x.ok && !x.opt), done = C.list.filter(x => x.ok || x.opt);
         ov.querySelector('.bl-body').innerHTML = `
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px"><img src="${BAG_ICON}" style="width:54px;height:54px;border-radius:12px;object-fit:cover">
@@ -5384,7 +5394,7 @@
           ${done.length ? `<div style="font-size:13px;font-weight:900;color:#15803d;margin:14px 4px 2px">已放好（${done.length}）</div>${done.map(row).join('')}` : ''}
           ${C.extra.length ? `<div style="font-size:13px;font-weight:900;color:#6b7280;margin:14px 4px 2px">清單外</div>${C.extra.map(x => `<div style="padding:10px 4px;border-top:1px solid #f1f1f1;font-size:16px;color:#374151">➕ ${escapeHtml(x.name)} × ${x.n}</div>`).join('')}` : ''}
           ${C.total ? '' : '<div style="color:#9ca3af;font-size:14px;margin-top:10px">這個包沒有設定內容物清單，只會記錄掃了什麼</div>'}
-          ${todo.length ? '<div style="font-size:12px;color:#9ca3af;margin:10px 4px 0">沒有自己 QR 的東西，按「放入」就會從倉庫出到這個包（跟掃 QR 一樣會記錄）</div>' : ''}`;
+          ${todo.length ? '<div style="font-size:12px;color:#9ca3af;margin:10px 4px 0">耗材（沒有自己 QR）按「放入」就會從倉庫出到這個包；有自己 QR 的器材請直接掃它的 QR</div>' : ''}`;
         ov.querySelectorAll('[data-put]').forEach(b => b.onclick = e => { e.stopPropagation(); bagPut(b.dataset.put); });
     }
     window.openBagList = function () {
@@ -5406,8 +5416,8 @@
             const exact = k === key, near = k.includes(key) || key.includes(k); if (!exact && !near) return;
             let text = '', left = 0;
             if (it.itemType === 'consumable') { left = Number(it.qty) || 0; text = it.cid ? `ITEM_${b.id}_${i}__${it.cid}` : `ITEM_${b.id}_${i}`; }
-            else { ensureUnits(it); const u = it.units.find(u => u.status !== 'out'); left = it.units.filter(u => u.status !== 'out').length; if (u) text = `ITEM_${b.id}_${i}_${u.uid}`; }
-            const c = { text, left, box: b.name, exact }; if (!left) c.text = '';
+            else { ensureUnits(it); left = it.units.filter(u => u.status !== 'out').length; text = ''; }   // 有自己 QR 的器材：要掃 QR，不給按鈕
+            const c = { text, left, box: b.name, exact, qr: it.itemType !== 'consumable' }; if (!left) c.text = '';
             if (!best || (c.text && !best.text) || (c.exact && !best.exact && !!c.text === !!best.text)) best = c;
         });
         return best;
@@ -5419,6 +5429,59 @@
         await handleGlobalScan(S.text);
         setTimeout(() => { try { paintBagCheck(); if (bagCheck(currentBorrowTarget)) openBagList(); } catch (e) {} }, 400);
     };
+    function bagContents(key) {   // 這個包裡（掃進去的）東西
+        const L = [];
+        (boxesCache || []).forEach(b => (b.items || []).forEach((x, i) => {
+            if (x.itemType === 'consumable') { const n = Number((x.holdings || {})[key]) || 0; if (n > 0) L.push({ name: x.name, n, qr: false, text: x.cid ? `ITEM_${b.id}_${i}__${x.cid}` : `ITEM_${b.id}_${i}`, box: b.name }); }
+            else (x.units || []).forEach((u, k) => { if (u.status === 'out' && u.borrower === key) L.push({ name: `${x.name} #${k + 1}`, n: 1, qr: true, box: b.name }); });
+        }));
+        return L;
+    }
+    // 包包入庫前：先把裡面的東西退回倉庫（耗材按「退回」，有 QR 的掃 QR）
+    window.openBagReturn = function (item, unitNo, bagQr) {
+        const key = bagTarget(item, unitNo);
+        let ov = document.getElementById('bag-ret-ov'); if (ov) ov.remove();
+        ov = document.createElement('div'); ov.id = 'bag-ret-ov';
+        ov.style.cssText = 'position:fixed;inset:0;z-index:99990;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center';
+        ov.innerHTML = `<div style="background:#fff;color:#1f2937;width:100%;max-width:560px;max-height:88vh;border-radius:22px 22px 0 0;display:flex;flex-direction:column;overflow:hidden">
+            <div class="br-body" style="padding:18px 16px 8px;overflow:auto;flex:1"></div>
+            <div class="br-foot" style="padding:8px 16px calc(14px + env(safe-area-inset-bottom))"></div></div>`;
+        const draw = () => {
+            const L = bagContents(key);
+            ov.querySelector('.br-body').innerHTML = `<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><img src="${item.imageUrl || BAG_ICON}" style="width:54px;height:54px;border-radius:12px;object-fit:cover">
+                <div style="flex:1"><div style="font-size:20px;font-weight:900">${escapeHtml(item.name)} #${unitNo}</div><div style="font-size:15px;font-weight:800;color:${L.length ? '#b91c1c' : '#15803d'}">${L.length ? `包裡還有 ${L.length} 樣，先入庫才能還包` : '✅ 包裡的東西都入庫了'}</div></div></div>
+                ${L.map(x => `<div style="display:flex;align-items:center;gap:10px;padding:11px 4px;border-top:1px solid #f1f1f1;font-size:17px">
+                    <span style="flex:1;min-width:0;font-weight:800">${escapeHtml(x.name)}${x.qr ? '' : ` × ${x.n}`}<small style="display:block;font-size:11px;color:#9ca3af;font-weight:600">回到 📦 ${escapeHtml(x.box)}</small></span>
+                    ${x.qr ? '<span style="flex:none;font-size:12px;font-weight:900;color:#2563eb">📷 掃它的 QR</span>' : `<button type="button" data-ret="${escapeHtml(x.text)}" style="all:unset;flex:none;background:#2563eb;color:#fff;font-size:15px;font-weight:900;padding:9px 13px;border-radius:11px">退回</button>`}</div>`).join('')}
+                <div style="font-size:12px;color:#9ca3af;margin:10px 4px 0">不想拆包？可以用「快速出貨」把整個包交接給別人，裡面的東西會跟著包走。</div>`;
+            ov.querySelector('.br-foot').innerHTML = L.length ? `<button type="button" data-x style="all:unset;box-sizing:border-box;display:block;width:100%;text-align:center;padding:15px;border-radius:14px;background:#f3f4f6;font-size:17px;font-weight:900">繼續掃描</button>`
+                : `<button type="button" data-done style="all:unset;box-sizing:border-box;display:block;width:100%;text-align:center;padding:15px;border-radius:14px;background:#16a34a;color:#fff;font-size:17px;font-weight:900">📥 把包包入庫</button>`;
+            ov.querySelectorAll('[data-ret]').forEach(b => b.onclick = async () => {
+                ov.style.display = 'none'; inSource = key; lastScannedCode = ''; scanGateUntil = 0;
+                try { await handleGlobalScan(b.dataset.ret); } finally { inSource = ''; }
+                setTimeout(() => { ov.style.display = 'flex'; draw(); }, 300);
+            });
+            const x = ov.querySelector('[data-x]'); if (x) x.onclick = () => { ov.remove(); paintRetBar(); };
+            const d = ov.querySelector('[data-done]'); if (d) d.onclick = async () => { ov.remove(); lastScannedCode = ''; scanGateUntil = 0; await handleGlobalScan(bagQr); };
+        };
+        window._bagRetDraw = () => { if (document.getElementById('bag-ret-ov')) draw(); paintRetBar(); };
+        window._retBag = { item, unitNo, bagQr, key };
+        document.body.appendChild(ov); draw();
+    };
+    function paintRetBar() {   // 入庫時：鏡頭上方顯示「這個包還有幾樣沒入庫」，點一下看清單
+        let el = document.getElementById('bag-check'); const R = window._retBag;
+        if (!R || scannerMode !== 'in') return;
+        const L = bagContents(R.key);
+        if (!el) { el = document.createElement('button'); el.id = 'bag-check'; el.type = 'button';
+            el.style.cssText = 'all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;width:100%;background:#fff;border-radius:14px;padding:10px 12px;margin-bottom:10px;color:#1f2937;cursor:pointer;flex:none';
+            document.getElementById('scanner-target-bar').after(el); }
+        el.onclick = () => openBagReturn(R.item, R.unitNo, R.bagQr);
+        el.style.display = 'flex';
+        el.innerHTML = `<img src="${R.item.imageUrl || BAG_ICON}" style="width:40px;height:40px;border-radius:9px;object-fit:cover;flex:none">
+          <div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:900;color:${L.length ? '#b91c1c' : '#15803d'}">${escapeHtml(R.item.name)} #${R.unitNo}：${L.length ? `還有 ${L.length} 樣沒入庫` : '✅ 可以入庫了'}</div>
+          <div style="font-size:12.5px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${L.map(x => escapeHtml(x.name)).join('、') || '點這裡把包包入庫'}</div></div>
+          <div style="flex:none;font-size:13px;font-weight:900;color:#1d4ed8;background:#eff6ff;border-radius:10px;padding:8px 10px">看清單 ›</div>`;
+    }
     function bagSummary(t) {   // 結束掃描時：還缺哪些
         const C = bagCheck(t); if (!C || !C.total) return;
         const miss = C.list.filter(x => !x.ok && !x.opt);
