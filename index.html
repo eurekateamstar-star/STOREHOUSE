@@ -3113,7 +3113,7 @@
             document.getElementById('scanner-title').innerText = `📤 快速出貨`;
             const targetBar = document.getElementById('scanner-target-bar');
             targetBar.style.display = 'flex';
-            document.getElementById('scanner-target-name').innerText = newTarget;
+            document.getElementById('scanner-target-name').innerText = newTarget; try { paintBagCheck(); } catch (e) {}
             showToast(`✅ 對象已切換為「${newTarget}」`, 'success', 900);
         });
     };
@@ -3562,6 +3562,7 @@
         } else {
             targetBar.style.display = 'none';
         }
+        try { paintBagCheck(); } catch (e) {}
 
         document.getElementById('scanner-modal').style.display = 'flex';
 
@@ -3598,6 +3599,8 @@
     }
 
     window.closeScanner = function() {
+        try { if (scannerMode === 'out' && /^包包 - /.test(currentBorrowTarget || '')) bagSummary(currentBorrowTarget); } catch (e) {}
+        try { const bc = document.getElementById('bag-check'); if (bc) bc.style.display = 'none'; } catch (e) {}
         if (html5QrCode && html5QrCode.isScanning) {
             html5QrCode.stop().then(() => { document.getElementById('scanner-modal').style.display = 'none'; }).catch(() => { document.getElementById('scanner-modal').style.display = 'none'; });
         } else {
@@ -3707,7 +3710,7 @@
                         const gotLots = lotsOut(item, currentBorrowTarget, n, pick);
                         item.qty = currentQty - n;
                         item.holdings[currentBorrowTarget] = (item.holdings[currentBorrowTarget] || 0) + n;
-                        scanSuccessFeedback('📤', `已出貨 ${n} ${UNIT(item)}\n${item.name}\n→ ${currentBorrowTarget}${gotLots.some(l => l.exp) ? '\n📅 ' + gotLots.map(l => expTxt(l.exp) + '×' + l.q).join('、') : ''}`);
+                        try { setTimeout(paintBagCheck, 50); } catch (e) {} scanSuccessFeedback('📤', `已出貨 ${n} ${UNIT(item)}\n${item.name}\n→ ${currentBorrowTarget}${gotLots.some(l => l.exp) ? '\n📅 ' + gotLots.map(l => expTxt(l.exp) + '×' + l.q).join('、') : ''}`);
                         showToast(`✅ 出貨 ${n} 個\n${item.name}\n去向：${currentBorrowTarget}\n倉庫剩餘：${item.qty} 個`, 'success', 1000);
 
                         await updateDoc(doc(db, "warehouse_boxes", targetBoxId), { items: box.items });
@@ -3818,6 +3821,7 @@
                             unit.outBy = (currentUser && currentUser.account) || ''; unit.outByHelper = !isAdmin() && isHelper();
                             actionType = '出庫';
                             recordTarget = currentBorrowTarget;
+                            try { setTimeout(paintBagCheck, 50); } catch (e) {}
                             scanSuccessFeedback('📤', `已出庫\n${item.name} (${unitLabel})\n→ ${currentBorrowTarget}`);
                             showToast(`✅ 出貨成功\n物品：${item.name} (${unitLabel})\n去向：${currentBorrowTarget}`, 'success', 700);
                         } else {
@@ -5326,13 +5330,56 @@
     // ===== 出庫對象分三類：車輛／人員（再分天）／包包（已出庫、有內容物清單的包，可以把東西掃進去）=====
     const isCarGroup = g => !g.virtual && /車/.test(g.groupName || '');   // 手動建的「車輛」群組（排班的汽機車組算人員）
     const bagTarget = (it, n) => `包包 - ${it.name} #${n}`;
+    const BAG_ICON = 'img/bag-icon.jpg';
+    // ===== 把東西掃進包包：對照這個包的內容物清單，看哪些放了、還缺什麼 =====
+    const nk = x => String(x || '').replace(/[\s　()（）#＃\-－_]/g, '').toLowerCase();
+    function bagOfTarget(t) {   // 「包包 - 救護包 #3」→ { item, unitNo }
+        const m = /^包包 - (.+) #(\d+)$/.exec(t || ''); if (!m) return null;
+        for (const b of (boxesCache || [])) for (const it of (b.items || [])) if (it.name === m[1]) return { item: it, unitNo: +m[2] };
+        return null;
+    }
+    function bagCheck(t) {
+        const B = bagOfTarget(t); if (!B) return null;
+        const rows = []; kitsFor(B.item, B.unitNo).forEach(k => k.rows.forEach(r => { if (!rows.some(x => x.n === r.n)) rows.push(r); }));
+        const got = [];   // 已掃進這個包的東西
+        (boxesCache || []).forEach(b => (b.items || []).forEach(x => {
+            if (x.itemType === 'consumable') { const n = Number((x.holdings || {})[t]) || 0; if (n > 0) got.push({ name: x.name, n }); }
+            else { const n = (x.units || []).filter(u => u.status === 'out' && u.borrower === t).length; if (n) got.push({ name: x.name, n }); }
+        }));
+        const used = new Set();
+        const list = rows.map(r => { const want = parseInt(r.q) || 1, key = nk(r.n);
+            let gi = got.findIndex((x, i) => !used.has(i) && nk(x.name) === key);
+            if (gi < 0) gi = got.findIndex((x, i) => !used.has(i) && key && nk(x.name) && (nk(x.name).includes(key) || key.includes(nk(x.name))));
+            if (gi >= 0) used.add(gi); const have = gi >= 0 ? got[gi].n : 0; return { n: r.n, q: r.q, want, have, ok: have >= want, opt: r.q === '選' }; });
+        const extra = got.filter((_, i) => !used.has(i));
+        return { B, list, extra, done: list.filter(x => x.ok || x.opt).length, total: list.length };
+    }
+    function paintBagCheck() {
+        let el = document.getElementById('bag-check'); const t = currentBorrowTarget;
+        const C = scannerMode === 'out' && /^包包 - /.test(t || '') ? bagCheck(t) : null;
+        if (!C) { if (el) el.style.display = 'none'; return; }
+        if (!el) { el = document.createElement('div'); el.id = 'bag-check'; el.style.cssText = 'background:#fff;border-radius:14px;padding:10px 12px;margin-bottom:10px;max-height:30vh;overflow:auto;color:#1f2937';
+            document.getElementById('scanner-target-bar').after(el); }
+        el.style.display = 'block';
+        const miss = C.list.filter(x => !x.ok && !x.opt);
+        el.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><img src="${BAG_ICON}" style="width:34px;height:34px;border-radius:8px;object-fit:cover"><b style="flex:1;font-size:15px">${miss.length ? `還缺 ${miss.length} 樣` : '✅ 全部放齊了'}</b><span style="font-size:13px;color:#6b7280;font-weight:800">${C.done}/${C.total}</span></div>
+          ${C.total ? '' : '<div style="font-size:12px;color:#9ca3af">這個包沒有設定內容物清單，只會記錄掃了什麼</div>'}
+          ${C.list.map(x => `<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-top:1px solid #f3f4f6;font-size:13.5px;${x.ok ? 'color:#15803d' : x.opt ? 'color:#9ca3af' : 'color:#b91c1c;font-weight:800'}"><span>${x.ok ? '✅' : x.opt ? '◻️' : '❌'} ${escapeHtml(x.n)}</span><span>${x.have}/${x.opt ? '選' : x.want}</span></div>`).join('')}
+          ${C.extra.length ? `<div style="font-size:12px;color:#6b7280;margin-top:4px">清單外：${C.extra.map(x => escapeHtml(x.name) + ' ×' + x.n).join('、')}</div>` : ''}`;
+    }
+    function bagSummary(t) {   // 結束掃描時：還缺哪些
+        const C = bagCheck(t); if (!C || !C.total) return;
+        const miss = C.list.filter(x => !x.ok && !x.opt);
+        if (!miss.length) showToast(`🎒 ${t.slice(5)}\n✅ ${C.total} 樣全部放齊了`, 'success', 2200);
+        else showToast(`🎒 ${t.slice(5)}\n還缺 ${miss.length} 樣：\n${miss.map(x => `・${x.n}${x.want > 1 ? ` 還差 ${x.want - x.have}` : ''}`).join('\n')}`, 'error', 5000);
+    }
     function bagGroups() {
         const by = new Map();
         (boxesCache || []).forEach(b => (b.items || []).forEach(it => {
             if (it.itemType === 'consumable' || !kitsOf(it).length) return; ensureUnits(it);
             it.units.forEach((u, i) => { if (u.status !== 'out') return;
-                const g = by.get(it.name) || { groupName: it.name, items: [], sub: {}, bag: true, icon: it.imageUrl || '' };
-                const lab = `${it.name} #${i + 1}`; g.items.push(lab); g.sub[lab] = '在 ' + targetName(u.borrower || '不詳'); by.set(it.name, g); });
+                const g = by.get(it.name) || { groupName: it.name, items: [], sub: {}, images: {}, bag: true, icon: it.imageUrl || BAG_ICON };
+                const lab = `${it.name} #${i + 1}`; g.items.push(lab); g.images[lab] = it.imageUrl || BAG_ICON; g.sub[lab] = '在 ' + targetName(u.borrower || '不詳'); by.set(it.name, g); });
         }));
         return [...by.values()];
     }
@@ -5399,7 +5446,7 @@
         if (scannerMode === 'out') {
             currentBorrowTarget = target;
             document.getElementById('scanner-target-bar').style.display = 'flex';
-            document.getElementById('scanner-target-name').innerText = target;
+            document.getElementById('scanner-target-name').innerText = target; try { paintBagCheck(); } catch (e) {}
             scanSuccessFeedback('👤', `對象：${user.account}`);
             showToast(`✅ 領用對象已切換為\n「${user.account}」`, 'success', 900);
         } else if (scannerMode === 'pickperson') {
