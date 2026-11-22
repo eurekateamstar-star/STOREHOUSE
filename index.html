@@ -1351,7 +1351,7 @@
 <script type="module">
     // ⭐️ 已經不需要 Firebase Storage，直接使用 Firestore 即可
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { initializeFirestore, getFirestore, collection, getDocs as __fsGDs, addDoc as _addDoc, doc, updateDoc as _updateDoc, getDoc as __fsGD, setDoc, deleteDoc as _deleteDoc, runTransaction, onSnapshot as __fsOS, query, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, getFirestore, collection, getDocs as __fsGDs, addDoc as _addDoc, doc, updateDoc as _updateDoc, getDoc as __fsGD, setDoc, deleteDoc as _deleteDoc, runTransaction, onSnapshot as __fsOS, query, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
   const { getDocs, getDoc, onSnapshot } = (window.bstUsage && bstUsage.fsWrap) ? bstUsage.fsWrap({ getDocs: __fsGDs, getDoc: __fsGD, onSnapshot: __fsOS }) : { getDocs: __fsGDs, getDoc: __fsGD, onSnapshot: __fsOS };   // 算瀏覽器讀了幾筆資料庫（使用分析）
 
@@ -1366,7 +1366,9 @@
       measurementId: "G-1Z55WR53W7"
     };
     const app = initializeApp(firebaseConfig);
-    const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+    // 手機裡留一份倉庫資料（IndexedDB）：第二次開起來馬上有畫面，之後只下載有變的箱子（也省讀取次數）
+    let db; try { db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true, localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) }); }
+    catch (e) { db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true }); }
 
     // ===== Firebase 身分驗證：LINE → 驗證伺服器（Cloudflare）→ Firebase，資料庫規則靠這個認人 =====
     const AUTH_URL = 'https://bst-auth.eurekateamstar.workers.dev';   // Cloudflare Worker 網址
@@ -2707,9 +2709,9 @@
             pagesReady = Promise.all([loadPages(), loadPanorama()]);   // 全景只需要排和全景圖，先好先顯示
             coreDataReady = Promise.all([pagesReady, startBoxesLiveSync(), loadBorrowerGroupsFromCloud()]);
             await coreDataReady;
-            document.getElementById('preload-status').innerText = "正在預先下載底圖…";
+            document.getElementById('preload-status').innerText = "系統就緒";   // 資料好了就能用；底圖在背景慢慢下載
             const pageImgUrls = pages.map(p => p.imageUrl).concat([panoImg]);
-            await preloadImagesAwait(pageImgUrls);
+            preloadImagesAsync(pageImgUrls);
             const otherImgUrls = [];
             (boxesCache || []).forEach(b => {
                 // 不再有 box imageUrl 的預載，只需處理物品照片
