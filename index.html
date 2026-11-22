@@ -5483,7 +5483,6 @@
                 ${L.map(x => `<div style="display:flex;align-items:center;gap:10px;padding:11px 4px;border-top:1px solid #f1f1f1;font-size:17px">
                     <span style="flex:1;min-width:0;font-weight:800">${escapeHtml(x.name)}${x.qr ? '' : ` × ${x.n}`}<small style="display:block;font-size:11px;color:#9ca3af;font-weight:600">回到 📦 ${escapeHtml(x.box)}</small></span>
                     ${x.qr ? '<span style="flex:none;font-size:12px;font-weight:900;color:#2563eb">📷 掃它的 QR</span>' : `<button type="button" data-ret="${escapeHtml(x.text)}" style="all:unset;flex:none;background:#2563eb;color:#fff;font-size:15px;font-weight:900;padding:9px 13px;border-radius:11px">退回</button>`}</div>`).join('')}
-                <div style="margin-top:10px;border:1.5px solid #bfdbfe;border-radius:14px;overflow:hidden">${bagMissHtml(key)}</div>
                 <div style="font-size:12px;color:#9ca3af;margin:10px 4px 0">不想拆包？可以用「快速出貨」把整個包交接給別人，裡面的東西會跟著包走。</div>`;
             ov.querySelector('.br-foot').innerHTML = L.length ? `<button type="button" data-x style="all:unset;box-sizing:border-box;display:block;width:100%;text-align:center;padding:15px;border-radius:14px;background:#f3f4f6;font-size:17px;font-weight:900">繼續掃描</button>`
                 : `<button type="button" data-done style="all:unset;box-sizing:border-box;display:block;width:100%;text-align:center;padding:15px;border-radius:14px;background:#16a34a;color:#fff;font-size:17px;font-weight:900">📥 把包包入庫</button>`;
@@ -5584,9 +5583,8 @@
                 <button type="button" data-g="${escapeHtml(t)}" style="all:unset;box-sizing:border-box;display:flex;width:100%;align-items:center;gap:8px;padding:12px;background:${isBag ? '#eff6ff' : '#fafafa'};cursor:pointer">
                   <span style="font-size:18px">${isBag ? '🎒' : t === STAGE ? '📥' : '👤'}</span><b style="flex:1;font-size:16px">${escapeHtml(isBag ? t.slice(5) : targetName(t))}</b><span style="font-size:13px;font-weight:900;color:#b45309">${L.length} 件 ${on ? '▾' : '›'}</span></button>
                 ${on ? L.map(x => `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid #f1f1f1;font-size:16px">
-                  <span style="flex:1;min-width:0;font-weight:800">${escapeHtml(x.name)}<small style="display:block;font-size:11px;color:#9ca3af;font-weight:600">回到 📦 ${escapeHtml(x.box)}${x.bag > 0 ? `・🎒 包裡還有 ${x.bag} 樣` : ''}${x.miss ? `・<b style="color:#b91c1c">缺 ${x.miss} 樣</b>` : ''}</small></span>
-                  <span style="flex:none;font-size:12px;font-weight:900;color:#2563eb">📷 掃 QR</span></div>`).join('') + (isBag ? bagMissHtml(t) : '') : ''}</div>`; }).join('')}` : ''}
-              ${(() => { const bags = outBagsOut().filter(t => !G.some(([g]) => g === t)); return bags.length ? `<div style="font-size:14px;font-weight:900;color:#1d4ed8;margin:16px 2px 6px">🎒 包包現在缺什麼</div>` + bags.map(t => `<div style="border:1.5px solid #bfdbfe;border-radius:14px;margin-bottom:8px;overflow:hidden"><div style="padding:10px 12px;background:#eff6ff;font-weight:900;font-size:16px">🎒 ${escapeHtml(t.slice(5))}</div>${bagMissHtml(t)}</div>`).join('') : ''; })()}
+                  <span style="flex:1;min-width:0;font-weight:800">${escapeHtml(x.name)}<small style="display:block;font-size:11px;color:#9ca3af;font-weight:600">回到 📦 ${escapeHtml(x.box)}${x.bag > 0 ? `・🎒 包裡還有 ${x.bag} 樣` : ''}</small></span>
+                  <span style="flex:none;font-size:12px;font-weight:900;color:#2563eb">📷 掃 QR</span></div>`).join('') : ''}</div>`; }).join('')}` : ''}
               ${C.length + nq ? '' : '<div style="padding:30px 0;text-align:center;color:#15803d;font-weight:900">✅ 全部都在庫</div>'}`;
             body.scrollTop = st;
             body.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { const t = b.dataset.g; open.has(t) ? open.delete(t) : open.add(t); draw(); });
