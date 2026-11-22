@@ -2880,6 +2880,7 @@
             });
         } else {
             selectorContainer.style.display = 'grid';
+            selectorContainer.style.gridTemplateColumns = (!borrowCat && selectedGroupIndex === null) ? 'repeat(2, 1fr)' : '';   // 第一層 4 個類別排 2×2
             manageContainer.style.display = 'none';
             const groups = catGroups();
             if (selectedGroupIndex !== null && !groups[selectedGroupIndex]) selectedGroupIndex = null;
@@ -2894,12 +2895,23 @@
             if (!borrowCat) {   // 第一層：車輛／人員／包包
                 document.getElementById('borrower-modal-desc').innerText = '先選類別：';
                 const all = getSelectableGroups(), bags = bagGroups().reduce((a, g) => a + g.items.length, 0);
+                const stg = (() => { let n = 0; (boxesCache || []).forEach(b => (b.items || []).forEach(x => { if (x.itemType === 'consumable') n += (Number((x.holdings || {})[STAGE]) || 0) > 0 ? 1 : 0; else n += (x.units || []).filter(u => u.status === 'out' && u.borrower === STAGE).length; })); return n; })();
                 [['car', '🚗', '車輛', `${all.filter(isCarGroup).reduce((a, g) => a + g.items.length, 0)} 項`],
-                 ['ppl', '👥', '人員', '依排班日期分組'],
-                 ['bag', '🎒', '包包', bags ? `${bags} 個已出庫的包` : (boxesCache ? '目前沒有出庫的包' : '載入中…')]].forEach(([k, e, n, sub]) => {
+                 ['ppl', '<img src="member/ic/leader.png" alt="" style="width:52px;height:52px;object-fit:contain">', '人員', '依排班日期分組'],
+                 ['bag', `<img src="${BAG_ICON}" alt="" style="width:52px;height:52px;border-radius:10px;object-fit:cover">`, '包包', bags ? `${bags} 個已出庫的包` : (boxesCache ? '目前沒有出庫的包' : '載入中…')],
+                 ['stage', '📥', '暫存區', stg ? `目前放了 ${stg} 樣` : '先拿出來、還沒分配']].forEach(([k, e, n, sub]) => {
                     const card = document.createElement('div'); card.className = 'borrower-card';
-                    card.innerHTML = `<div class="borrower-card-icon" style="font-size:34px">${e}</div><div class="borrower-card-name">${n}</div><div style="font-size:10px; color:#8e8e93; margin-top:2px;">${sub} ›</div>`;
-                    card.onclick = () => { if (k === 'bag' && !bags) return showToast(boxesCache ? '🎒 目前沒有已出庫的包\n先把包包出庫，才能把東西掃進包裡' : '倉庫資料還在載入，請稍等', 'error', 1600); borrowCat = k; selectedGroupIndex = null; renderBorrowerSelectorUI(); };
+                    card.innerHTML = `<div class="borrower-card-icon" style="font-size:34px;height:56px;display:flex;align-items:center;justify-content:center">${e}</div><div class="borrower-card-name">${n}</div><div style="font-size:10px; color:#8e8e93; margin-top:2px;">${sub}${k === 'stage' ? '' : ' ›'}</div>`;
+                    if (k === 'stage') card.dataset.stage = '1';
+                    card.onclick = () => {
+                        if (k === 'stage') {   // 暫存區：直接選這個對象
+                            currentBorrowTarget = STAGE;
+                            document.getElementById('selected-target-preview').innerText = '已選擇: [ 📥 暫存區 ]';
+                            document.getElementById('btn-confirm-borrow').disabled = false;
+                            selectorContainer.querySelectorAll('.borrower-card').forEach(c => { c.style.borderColor = ''; c.style.background = ''; });
+                            card.style.borderColor = '#34c759'; card.style.background = 'rgba(52, 199, 89, 0.15)';
+                            return;
+                        } if (k === 'bag' && !bags) return showToast(boxesCache ? '🎒 目前沒有已出庫的包\n先把包包出庫，才能把東西掃進包裡' : '倉庫資料還在載入，請稍等', 'error', 1600); borrowCat = k; selectedGroupIndex = null; renderBorrowerSelectorUI(); };
                     selectorContainer.appendChild(card);
                 });
                 if (!boxesCache && typeof startBoxesLiveSync === 'function') try { startBoxesLiveSync(); } catch (e) {}
@@ -5342,6 +5354,7 @@
     const isCarGroup = g => !g.virtual && /車/.test(g.groupName || '');   // 手動建的「車輛」群組（排班的汽機車組算人員）
     const bagTarget = (it, n) => `包包 - ${it.name} #${n}`;
     const BAG_ICON = 'img/bag-icon.jpg';
+    const STAGE = '暫存區 - 暫存區';   // 先從倉庫拿出來、還沒分給人／車／包的東西
     // ===== 把東西掃進包包：對照這個包的內容物清單，看哪些放了、還缺什麼 =====
     const nk = x => String(x || '').replace(/[\s　()（）#＃\-－_]/g, '').toLowerCase();
     function bagOfTarget(t) {   // 「包包 - 救護包 #3」→ { item, unitNo }
