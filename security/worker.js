@@ -1365,7 +1365,7 @@ function b64url(bytes) {
 
 // ===== 衛教網頁統計（匿名計數，不存任何個資）=====
 const EDU_K = ['wound', 'sun', 'foot', 'water', 'heat', 'help'];
-const eduOk = e => /^(visit|uniq|all|c_line|c_fb|c_ig)$/.test(e) || new RegExp(`^(open|done)_(${EDU_K.join('|')})$`).test(e);
+const eduOk = e => /^(visit|uniq|duniq|all|c_line|c_fb|c_ig)$/.test(e) || new RegExp(`^(open|done)_(${EDU_K.join('|')})$`).test(e);
 async function eduHitRoute(req, env, json) {
   try {
     const b = await req.json().catch(() => ({}));
@@ -1374,8 +1374,9 @@ async function eduHitRoute(req, env, json) {
     const day = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10).replace(/-/g, '');
     const doc = n => `projects/${PROJECT_ID}/databases/(default)/documents/stats/${n}`;
     const inc = f => ({ fieldPath: f, increment: { integerValue: '1' } });
-    const writes = [{ transform: { document: doc('edu'), fieldTransforms: evs.map(inc) } }];
-    if (evs.some(e => e === 'visit' || e === 'uniq')) writes.push({ transform: { document: doc('edu_daily'), fieldTransforms: evs.filter(e => e === 'visit' || e === 'uniq').map(e => inc(`${e}_${day}`)) } });
+    const tot = evs.filter(e => e !== 'duniq');
+    const writes = [{ transform: { document: doc('edu_daily'), fieldTransforms: evs.map(e => inc(`${e}_${day}`)) } }];   // 每天每種都記
+    if (tot.length) writes.push({ transform: { document: doc('edu'), fieldTransforms: tot.map(inc) } });
     const tok = await saToken(env);
     const r = await fetch(`${FS}:commit`, { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify({ writes }) });
     return json({ ok: r.ok });
@@ -1473,10 +1474,10 @@ async function usageStatsRoute(req, env, json) {
     if (!bg.ok) throw new Error('read ' + bg.status);
     const out = {}; let last = {};
     for (const x of await bg.json()) { if (!x.found) continue; const id = x.found.name.split('/').pop(), o = fobj(x.found.fields); if (id === 'last') last = o; else out[id] = o; }
-    const [usersL, eduA, evL] = await Promise.all([memo('users', 600e3, () => fsList(tok, 'users')), fsGet(tok, 'stats/edu'), memo('events', 30e3, () => fsList(tok, 'events'))]);
+    const [usersL, eduA, eduD, evL] = await Promise.all([memo('users', 600e3, () => fsList(tok, 'users')), fsGet(tok, 'stats/edu'), fsGet(tok, 'stats/edu_daily'), memo('events', 30e3, () => fsList(tok, 'events'))]);
     const users = usersL.filter(u => u.status === 'approved' && u.id !== uid).map(u => ({ id: u.id, name: u.realName || u.displayName || '' }));
     const trips = evL.filter(e => e.schedPublic || e.schedAt || e.askGroups).map(e => ({ id: e.id, title: e.title || '', at: e.createdAt || 0 }));
-    return json({ ok: true, days: ids, daily: out, last, users, edu: eduA ? fobj(eduA.fields) : {}, trips });
+    return json({ ok: true, days: ids, daily: out, last, users, edu: eduA ? fobj(eduA.fields) : {}, eduDaily: eduD ? fobj(eduD.fields) : {}, trips });
   } catch (e) { return json({ error: String((e && e.message) || e) }, 500); }
 }
 

@@ -116,7 +116,9 @@ const DUR = 4500;
 const HIT = 'https://bst-auth.eurekateamstar.workers.dev/edu-hit', hitSent = new Set();
 function hit(...e) { e = e.filter(x => x && !hitSent.has(x)); if (!e.length) return; e.forEach(x => { if (!/^c_/.test(x)) hitSent.add(x); });
   try { fetch(HIT, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ e }), keepalive: true, mode: 'cors' }).catch(() => {}); } catch (err) {} }
-{ let first = false; try { first = !localStorage.getItem('eduV'); localStorage.setItem('eduV', '1'); } catch (err) {} hit('visit', ...(first ? ['uniq'] : [])); }
+{ let first = false, today = false; try { first = !localStorage.getItem('eduV'); localStorage.setItem('eduV', '1');
+    const d = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10); today = localStorage.getItem('eduD') !== d; localStorage.setItem('eduD', d); } catch (err) {}
+  hit('visit', ...(first ? ['uniq'] : []), ...(today ? ['duniq'] : [])); }
 document.addEventListener('click', ev => { const a = ev.target.closest('a[href]'); if (!a) return; const h = a.href; hit(/line\.me/.test(h) ? 'c_line' : /facebook\.com/.test(h) ? 'c_fb' : /instagram\.com/.test(h) ? 'c_ig' : ''); }, true);
 let ti = 0, si = 0, t0 = 0, raf = 0, paused = false, pausedAt = 0;
 function markSeen(i) { if (!SEEN.includes(i)) { SEEN.push(i); try { localStorage.setItem('eduSeen', JSON.stringify(SEEN)); } catch (e) {} } document.querySelectorAll(`.sb[data-i="${i}"]`).forEach(b => b.classList.add('seen')); }

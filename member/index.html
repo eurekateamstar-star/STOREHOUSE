@@ -1569,6 +1569,22 @@
     return `<div class="uc-w">${cells.map(d => `<span>${d === t0 ? '今天' : '日一二三四五六'[new Date(d + 'T12:00:00').getDay()]}</span>`).join('')}</div><div class="uc">${cells.map(cell).join('')}</div>
       <div class="uc-lg"><span><i style="background:rgba(208,80,95,.2)"></i>正常</span><span><i style="background:#fbbf24"></i>60%</span><span><i style="background:#f97316"></i>85%</span><span><i style="background:#dc2626"></i>爆量</span><span style="margin-left:auto">% ＝當天最吃緊的額度</span></div>`;
   }
+  function usEduHtml(dk) {   // dk：YYYYMMDD
+    const E = (usData && usData.edu) || {}, D = (usData && usData.eduDaily) || {}, g = (k, d) => +D[k + '_' + d] || 0;
+    const days = [...new Set(Object.keys(D).map(k => k.split('_').pop()))].filter(x => /^\d{8}$/.test(x)).sort().reverse().slice(0, 14);
+    const ppl = d => g('duniq', d) || g('uniq', d);   // 11/24 前只有「第一次來」的人數
+    const em = Math.max(1, ...Object.keys(EDU_N).map(k => g('open_' + k, dk))), lab = `${+dk.slice(4, 6)}/${+dk.slice(6)}`;
+    const tile = (v, t, c) => `<div style="flex:1;min-width:0;background:${c};border-radius:14px;padding:10px 4px;text-align:center"><b style="display:block;font-size:24px;line-height:1.1">${v}</b><small style="font-size:11.5px;color:#4b5563;font-weight:800">${t}</small></div>`;
+    return `<div style="display:flex;gap:6px;margin-bottom:6px">${tile(E.uniq || 0, '總共看過的人', '#fef3c7')}${tile(E.visit || 0, '總共打開', '#ffe4e6')}${tile(E.all || 0, '6 則全看完', '#dcfce7')}</div>
+      <div class="us-sub">「人」＝不同的手機（同一支手機只算一次）・從上線到現在</div>
+      <div class="us-h">${lab} 這天</div>
+      <div class="us-line2" style="margin:0 0 8px"><span>看的人 <b>${ppl(dk)}</b></span><span>第一次來 <b>${g('uniq', dk)}</b></span><span>打開 <b>${g('visit', dk)}</b></span><span>分享 LINE <b>${g('c_line', dk)}</b></span><span>FB <b>${g('c_fb', dk)}</b></span><span>IG <b>${g('c_ig', dk)}</b></span></div>
+      ${Object.entries(EDU_N).map(([k, n]) => `<div class="us-r"><span>${n}</span><div><i style="width:${g('open_' + k, dk) / em * 100}%"></i></div><b>${g('open_' + k, dk)}</b></div><div class="us-sub">看完 ${g('done_' + k, dk)} 次・累計打開 ${E['open_' + k] || 0}</div>`).join('')}
+      <div class="us-h">每天</div>
+      <div class="us-tbl"><div class="us-tr us-th" style="grid-template-columns:1fr 1fr 1fr 1fr"><span>日期</span><span>看的人</span><span>第一次來</span><span>打開</span></div>
+      ${days.length ? days.map(d => `<div class="us-tr" style="grid-template-columns:1fr 1fr 1fr 1fr${d === dk ? ';background:#fff7ed' : ''}"><span>${+d.slice(4, 6)}/${+d.slice(6)}</span><span><b>${ppl(d)}</b></span><span>${g('uniq', d)}</span><span>${g('visit', d)}</span></div>`).join('') : '<div class="us-empty">還沒有資料</div>'}</div>
+      <div class="us-sub" style="margin-top:4px">每則漫畫、分享分天是從 11/24 開始記；之前的只有累計</div>`;
+  }
   function usDayBody() {
     const d = usDay || twToday(), dt = new Date(d + 'T12:00:00'), lab = `${dt.getMonth() + 1}/${dt.getDate()}（${'日一二三四五六'[dt.getDay()]}）${usDay ? '' : '今天'}`;
     const card = (t, h) => `<div class="card us-card"><div class="us-h" style="margin-top:0">${t}</div>${h}</div>`;
@@ -1579,13 +1595,13 @@
     const secs = [['quota', '⚠️', '額度'], ['fb', '🔥', 'Firebase'], ['use', '👥', '人數'], ['line', '💬', 'LINE'], ['page', '📄', '頁面'], ['src', '🚪', '來源'],
       ['loc', '📍', '定位'], ['cf', '☁️', 'CF'], ['ppl', '🙋', '每人'], ['edu', '📘', '衛教'], ['trip', '🏮', '進香']];
     if (!secs.some(x => x[0] === usSec)) usSec = 'quota';
-    const NO = ['ppl', 'edu', 'trip'];
+    const NO = ['ppl', 'trip'];
     const body = usSec === 'quota' ? usAlertHtml().replace(/<div class="us-tip">[\s\S]*?<\/div>/, '')
       : usSec === 'fb' ? usBrowserReads() + rankBox('伺服器讀取（依功能）', T.f, rtL) + rankBox('伺服器寫入（依功能）', T.fw, rtL)
       : usSec === 'use' ? (P ? P.kpi + P.hours : ppl) : usSec === 'line' ? usLineCheck() + (P ? P.line : ppl) : usSec === 'page' ? (P ? P.pages + P.feat : ppl)
       : usSec === 'src' ? (X ? X.src + X.notif : ppl) : usSec === 'loc' ? usLocHtml() : usSec === 'cf' ? usCfHtml()
       : usSec === 'ppl' ? (usData ? `<div class="us-seg">${[7, 30, 90].map(n => `<button class="${usDays === n ? 'on' : ''}" data-usd="${n}">近 ${n} 天</button>`).join('')}</div>` + usPeople('', true).ppl : ppl)
-      : usSec === 'edu' ? (X ? X.edu + X.speed + (usData ? `<div class="us-seg" style="margin-top:10px">${[7, 30, 90].map(n => `<button class="${usDays === n ? 'on' : ''}" data-usd="${n}">近 ${n} 天</button>`).join('')}</div>` + usPeople('', true).slowT : '') : ppl) : (X ? X.trip : ppl);
+      : usSec === 'edu' ? (X ? usEduHtml(d.replace(/-/g, '')) + X.speed + (usData ? `<div class="us-seg" style="margin-top:10px">${[7, 30, 90].map(n => `<button class="${usDays === n ? 'on' : ''}" data-usd="${n}">近 ${n} 天</button>`).join('')}</div>` + usPeople('', true).slowT : '') : ppl) : (X ? X.trip : ppl);
     const name = secs.find(x => x[0] === usSec);
     return `<div class="uc-day"><b>${lab}</b>${x.p >= .85 ? `<span style="color:var(--red)">⚠ ${esc(x.k)} ${Math.round(x.p * 100)}%</span>` : '<span style="color:var(--green)">✓ 額度正常</span>'}</div>
       <div class="card us-side"><nav>${secs.map(([k, e, n]) => `<button class="${k === usSec ? 'on' : ''}" data-usec="${k}"><b>${e}</b>${n}</button>`).join('')}</nav>
