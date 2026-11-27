@@ -5429,13 +5429,11 @@
     else {
       rows.push(row('✅ 出席', '出席／不出席請務必回覆'));
       if (e.askLunch !== false) rows.push(row('🍱 午膳', '葷／素／自行處理'));
-      if (e.askUniform) rows.push(row('👕 團服', e.uniformFrom ? '另填團服登記表' : '新團員配發／舊團員加購'));
-      if (e.askGroups) rows.push(row('🧩 選組', '可複選，組長確認'));
+      if (e.askGroups) rows.push(row('🧩 選組', '填前三志願，額滿依志願安排，組長確認'));
     }
     const body = [T('白沙屯拱天宮醫護團', { size: 'xs', weight: 'bold', color: '#D65A68' }), T(e.title || '出席調查', { size: 'lg', weight: 'bold', color: '#1F2937', margin: 'sm' })];
-    if (e.date) body.push(T('📅 ' + e.date, { size: 'sm', weight: 'bold', color: '#6B7280', margin: 'sm' }));
     body.push({ type: 'separator', margin: 'lg', color: '#F0E3DC' });
-    if (e.desc && !e.uniformOnly) body.push(T(e.desc.slice(0, 200), { size: 'sm', color: '#4B5563', margin: 'lg', maxLines: 4 }));
+    if (e.desc && !e.uniformOnly) body.push(T(e.desc.slice(0, 1500), { size: 'sm', color: '#4B5563', margin: 'lg' }));
     body.push({ type: 'box', layout: 'vertical', margin: 'md', contents: rows });
     return { type: 'flex', altText: '📋 ' + (e.title || '出席調查'), contents: { type: 'bubble', size: 'mega',
       hero: { type: 'image', url: IMG + (e.uniformOnly ? 'share-uniform.jpg' : 'share-event.jpg') + '?v=1', size: 'full', aspectRatio: '1040:560', aspectMode: 'cover', action: { type: 'uri', uri: url } },
