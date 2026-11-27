@@ -117,7 +117,9 @@
   .gp::before { content: ''; position: absolute; left: 14px; top: 14px; width: 20px; height: 20px; border-radius: 6px; border: 2px solid #d1d5db; background: #fff; }
   .gp.on { border-color: var(--primary); background: #fff1f2; box-shadow: 0 6px 14px rgba(214,90,104,0.15); }
   .gp.on::before { background: var(--primary); border-color: var(--primary); }
-  .gp.on::after { content: '✓'; position: absolute; left: 18px; top: 12px; color: #fff; font-weight: 900; font-size: 15px; }
+  .gp.on::before { width: 26px; height: 26px; left: 11px; top: 11px; border-radius: 50%; }
+  .gp.on::after { content: attr(data-rk); position: absolute; left: 11px; top: 11px; width: 30px; line-height: 30px; text-align: center; color: #fff; font-weight: 900; font-size: 15px; }
+  .gp .rk { display: inline-block; margin-left: 8px; font-size: 12px; font-weight: 900; color: #fff; background: var(--primary); border-radius: 999px; padding: 1px 9px; vertical-align: 2px; }
   .gp .gn { font-size: 16px; font-weight: 900; }
   .gp .gl { font-size: 12px; color: #9a3412; font-weight: 700; margin-top: 3px; line-height: 1.6; }
   .gp ul { margin: 6px 0 0; padding-left: 16px; font-size: 12.5px; color: #4b5563; line-height: 1.65; }
@@ -185,9 +187,10 @@
     <div class="card hidden" id="uni-link" style="font-size:14px;line-height:1.8;color:#7c2d12;background:#fff7ed;border:1.5px solid #fed7aa;">👕 <b>團服</b>請到另一張「<span id="uni-link-t">團服登記</span>」填寫，填過的不用再填 🙏<a id="uni-link-a" style="display:block;margin-top:8px;text-align:center;text-decoration:none;background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;font-weight:900;padding:11px;border-radius:12px;">前往團服登記</a></div>
     <div class="card hidden" id="grp-skip" style="padding:14px 18px;font-size:14px;font-weight:800;color:#9a3412;background:#fff7ed;">🧩 你是幹部／組長／教官團，這次不需要選組 🙏</div>
     <div class="card hidden" id="grp-card">
-      <h2>🧩 選組（可複選）<span class="req">*</span></h2>
+      <h2>🧩 選組・填前三志願<span class="req">*</span></h2>
+      <div class="gp-hint" style="margin:-4px 0 10px;color:#9a3412;font-weight:800">依序點你想去的組：第一下＝第 1 志願、第二下＝第 2 志願、第三下＝第 3 志願。<br>組別可能會額滿，額滿時依你的第 2、第 3 志願安排。再點一次可取消。</div>
       <div id="grp-core"></div>
-      <div class="field" data-f="grp"><div id="grp-list"></div><div class="err">請至少選一組</div></div>
+      <div class="field" data-f="grp"><div id="grp-list"></div><div class="err" id="grp-err">請填滿三個志願</div></div>
       <div class="gp-hint">送出後由各組組長確認，確認後會顯示在團員專區的「我的排班」。</div>
     </div>
     <div class="card" id="cmt-card">
@@ -278,7 +281,8 @@
     return { gs: gs.filter(g => g.n), core };
   }
   let GP = { gs: [], core: [] };
-  const picks = new Set();
+  const picks = [];   // 依志願順序
+  const MAXP = () => Math.min(3, GP.gs.length);
   const nk = x => String(x || '').replace(/[（(].*$/, '').replace(/[\s　]+/g, '');
   const gBase = () => !!(ev && ev.askGroups) && GP.gs.length > 0 && attend !== 'no';
   const gSkip = () => { const k = nk(f.elements.name.value); return !!k && (ev.grpSkip || []).includes(k); };   // 幹部、組長、教官團不用選組
@@ -288,10 +292,13 @@
     $('grp-card').classList.toggle('hidden', !gOn());
     $('grp-skip').classList.toggle('hidden', !(gBase() && gSkip()));
     $('grp-core').innerHTML = GP.core.length ? '<div class="gp-core">' + GP.core.map(c => `<span class="nw"><b>${escH(c.t)}</b>：${escH(c.n)}</span>`).join('') + '</div>' : '';
-    $('grp-list').innerHTML = GP.gs.map((g, i) => `<button type="button" class="gp${picks.has(g.n) ? ' on' : ''}" data-gi="${i}"><div class="gn">${escH(g.n)}</div>
+    $('grp-err').textContent = MAXP() > 1 ? `請填滿 ${MAXP()} 個志願（還差 ${Math.max(0, MAXP() - picks.length)} 個）` : '請選一組';
+    $('grp-list').innerHTML = GP.gs.map((g, i) => { const r = picks.indexOf(g.n) + 1; return `<button type="button" class="gp${r ? ' on' : ''}" data-gi="${i}" data-rk="${r || ''}"><div class="gn">${escH(g.n)}${r ? `<span class="rk">第 ${r} 志願</span>` : ''}</div>
       ${g.lead.length ? `<div class="gl">${g.lead.map(l => `<span class="nw">${escH(l.t)}：${escH(l.n)}</span>`).join('')}</div>` : ''}
-      ${g.duty.length ? `<ul>${g.duty.map(d => `<li>${escH(d)}</li>`).join('')}</ul>` : ''}</button>`).join('');
-    document.querySelectorAll('[data-gi]').forEach(b => b.onclick = () => { const n = GP.gs[+b.dataset.gi].n; picks.has(n) ? picks.delete(n) : picks.add(n); b.closest('.field').classList.remove('bad'); b.classList.toggle('on', picks.has(n)); });
+      ${g.duty.length ? `<ul>${g.duty.map(d => `<li>${escH(d)}</li>`).join('')}</ul>` : ''}</button>`; }).join('');
+    document.querySelectorAll('[data-gi]').forEach(b => b.onclick = () => { const n = GP.gs[+b.dataset.gi].n, i = picks.indexOf(n);
+      if (i >= 0) picks.splice(i, 1); else if (picks.length >= MAXP()) { toast(`最多填 ${MAXP()} 個志願，先點掉一個再選`); return; } else picks.push(n);
+      b.closest('.field').classList.remove('bad'); gRender(); });
   }
   (async () => {
     msg('⏳', '載入中…');
@@ -319,7 +326,7 @@
       if (!UONLY() && prev.attend) { const b = document.querySelector(`.opt[data-v="${prev.attend}"]`); if (b) b.click(); }
       if (prev.lunch) document.querySelectorAll('[data-f="lunch"] .chip').forEach(c => { if (c.textContent === prev.lunch) c.click(); });
       if (prev.U) { Object.assign(U, prev.U); }
-      (prev.picks || []).forEach(n => picks.add(n));
+      picks.length = 0; (prev.picks || []).forEach(n => { if (!picks.includes(n) && picks.length < 3) picks.push(n); });
       uRender(); gRender();
       f.classList.add('hidden');
       const lab = UONLY() ? '👕 已登記團服' : { yes: '✅ 出席', join: '⚠️ 無法出席，但參與團隊進香', no: '❌ 不出席，亦不參與進香' }[prev.attend] || '';
@@ -378,7 +385,7 @@
         if (U.mem === 'old' && !U.shirts.length && !U.pants.length) { toast('要加購的話，請按「＋」加一件'); bad.push($('u-pick')); }
       }
     }
-    if (gOn()) mark(document.querySelector('[data-f="grp"]'), picks.size > 0);
+    if (gOn()) mark(document.querySelector('[data-f="grp"]'), picks.length >= MAXP());
     if (bad.length) { bad[0].scrollIntoView({ behavior: 'smooth', block: 'center' }); return toast('還有欄位沒填好'); }
     const btn = $('btn-submit'); btn.disabled = true; btn.textContent = '送出中…';
     try {
@@ -386,13 +393,13 @@
         name: v('name'), lineName: v('lineName'), attend: UONLY() ? 'yes' : attend, lunch: attend === 'yes' && !UONLY() ? lunch : '',
         reason: attend === 'join' ? v('reason') : '', comment: v('comment'), createdAt: serverTimestamp(), src: 'form',
         ...(uData() ? { uniform: uData() } : {}),
-        ...(gOn() ? { groups: GP.gs.map(g => g.n).filter(n => picks.has(n)) } : {})
+        ...(gOn() ? { groups: picks.filter(n => GP.gs.some(g => g.n === n)) } : {})
       });
       try { localStorage.setItem('attend_me', JSON.stringify({ name: v('name'), lineName: v('lineName') }));
         localStorage.setItem('attend_last_' + eid, JSON.stringify({ name: v('name'), lineName: v('lineName'), attend, lunch, reason: v('reason'), comment: v('comment'), U: { mem: U.mem, buy: U.buy, shirts: U.shirts.slice(), pants: U.pants.slice() }, picks: [...picks] })); } catch (err) {}
       f.classList.add('hidden'); window.scrollTo(0, 0);
       const label = UONLY() ? '👕 已登記團服' : { yes: '✅ 出席', join: '⚠️ 無法出席，但參與團隊進香', no: '❌ 不出席，亦不參與進香' }[attend];
-      msg('✅', '已收到你的回覆，謝謝！', `<b>${v('name').replace(/</g, '&lt;')}</b>：${label}${lunch && attend === 'yes' ? '<br>午膳：' + lunch : ''}${uData() ? '<br>團服：' + uText(uData()) : ''}${gOn() && picks.size ? '<br>選組：' + escH(GP.gs.map(g => g.n).filter(n => picks.has(n)).join('、')) + '（待組長確認）' : ''}<br><span style="font-size:12px">要更改的話，重新填寫一次即可，以最後一次為準。</span>`
+      msg('✅', '已收到你的回覆，謝謝！', `<b>${v('name').replace(/</g, '&lt;')}</b>：${label}${lunch && attend === 'yes' ? '<br>午膳：' + lunch : ''}${uData() ? '<br>團服：' + uText(uData()) : ''}${gOn() && picks.length ? '<br>選組志願：' + escH(picks.map((n, i) => `${i + 1}. ${n}`).join('　')) + '（待組長確認）' : ''}<br><span style="font-size:12px">要更改的話，重新填寫一次即可，以最後一次為準。</span>`
         );
       $('done-act').classList.remove('hidden');
     } catch (err) {

@@ -2558,7 +2558,7 @@
       return; }
     const grpLine = e => { if (!e.grp) return ''; const g = e.grp, role = g.role || [], has = g.final.length || role.length;
       const body = role.length ? `🧩 今年職務：<b>${role.map(esc).join('、')}</b>${(() => { const led = role.map(r => r.split(' ')[0]), more = g.final.filter(x => !led.includes(x)); return more.length ? `　也在 <b>${more.map(esc).join('、')}</b>` : ''; })()}`
-        : g.final.length ? `🧩 今年組別：<b>${g.final.map(esc).join('、')}</b> <span class="ok">✅ 已確認</span>` : `🧩 今年選組：${g.picks.map(esc).join('、')} <span class="wt">⏳ 等管理員確認</span>`;
+        : g.final.length ? `🧩 今年組別：<b>${g.final.map(esc).join('、')}</b> <span class="ok">✅ 已確認</span>` : `🧩 今年選組志願：${g.picks.map((x, i) => `${i + 1}.${esc(x)}`).join('　')} <span class="wt">⏳ 等管理員確認</span>`;
       return `<div class="ms-grp"${has ? ` data-myg="${e.id}" style="cursor:pointer"` : ''}>${body}${has ? '<span class="ms-ar" style="float:right">看組員 ›</span>' : ''}</div>`; };
     box.innerHTML = `<style>
       .ms-card{background:#fff;border-radius:16px;box-shadow:0 6px 18px rgba(120,60,50,.07);border:1px solid #f1e8e4;overflow:hidden;margin:12px 0}
@@ -3373,8 +3373,8 @@
         ${E.groups.map((g, gi) => { const ok = g.people.filter(p => p.ok).length, wait = g.people.filter(p => !p.ok && !okIn(p.k).length).length;
           return `<div class="gb-g"><div class="gb-h"><div><b>${esc(g.n)}</b><small>${g.lead.map(l => esc(l.t + '：' + l.n)).join('　')}</small></div>
             <div class="gb-n">✅ ${ok} / ${g.people.length}${wait ? `<button class="gb-all" data-gall="${gi}">全部確認（${wait}）</button>` : ''}</div></div>
-          ${g.people.map((p, pi) => { const other = okIn(p.k).filter(x => x !== g.n);
-            return `<div class="gb-r"><div class="nm"><b>${esc(p.name)}</b><div>${[p.pos, p.cert, ATT[p.attend] || '', p.picks.includes(g.n) ? '' : '管理員加入', p.picks.length > 1 ? '也選：' + p.picks.filter(x => x !== g.n).join('、') : ''].filter(Boolean).map(esc).join('・')}${other.length ? ` <span class="warn">・已在 ${esc(other.join('、'))}</span>` : ''}</div></div>
+          ${g.people.map((p, pi) => [p, pi]).sort((A, B) => ((A[0].picks.indexOf(g.n) + 1) || 9) - ((B[0].picks.indexOf(g.n) + 1) || 9)).map(([p, pi]) => { const other = okIn(p.k).filter(x => x !== g.n), rk = p.picks.indexOf(g.n) + 1;
+            return `<div class="gb-r"><div class="nm"><b>${esc(p.name)}</b>${rk ? ` <span style="font-size:11px;font-weight:900;color:#fff;background:${['', '#16a34a', '#2563eb', '#9333ea'][rk] || '#6b7280'};border-radius:999px;padding:1px 7px">第${rk}志願</span>` : ''}<div>${[p.pos, p.cert, ATT[p.attend] || '', rk ? '' : '管理員加入', p.picks.length > 1 ? '志願：' + p.picks.map((x, i) => `${i + 1}.${x}`).join(' ') : ''].filter(Boolean).map(esc).join('・')}${other.length ? ` <span class="warn">・已在 ${esc(other.join('、'))}</span>` : ''}</div></div>
             ${!p.ok && other.length ? `<span class="gb-btn" style="opacity:.55;border-style:dashed">已分組</span>` : `<button class="gb-btn ${p.ok ? 'ok' : ''}" data-gb="${gi}|${pi}">${p.ok ? '✅ 已確認' : '確認'}</button>`}</div>`; }).join('') || '<div class="gb-r" style="color:var(--sub);font-size:13px">還沒有人選這組</div>'}
           <button class="gb-add" data-gadd="${gi}">＋ 加入沒選這組的人</button></div>`; }).join('')}`;
       $('sheet').scrollTop = y;
