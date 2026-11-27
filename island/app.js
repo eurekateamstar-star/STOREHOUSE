@@ -817,7 +817,7 @@ function qDrawMap(c,q,A,t,place){const W=720,H=1280,E=x=>x<0?0:x>1?1:x,eo=x=>1-M
  c.fillStyle='#f6efe4';c.fillRect(0,0,W,H);try{c.drawImage(gl,sx,sy,sw,sh,0,0,W,H)}catch(e){}
  // top gradient + title
  let g=c.createLinearGradient(0,0,0,300);g.addColorStop(0,'#2a1f1dcc');g.addColorStop(1,'#2a1f1d00');c.fillStyle=g;c.fillRect(0,0,W,300);
- const tt=eo(t/.7);c.save();c.globalAlpha=tt;c.translate(0,(1-tt)*-40);c.textAlign='center';c.font='700 26px "Noto Sans TC"';c.fillStyle='#ffd6e4';c.fillText('2026 白沙屯媽祖進香',W/2,86);c.font='900 60px "Noto Serif TC"';c.fillStyle='#fff';c.shadowColor='#0008';c.shadowBlur=12;c.fillText('我是哪一種香燈腳？',W/2,158);c.shadowBlur=0;
+ const tt=eo(t/.7);c.save();c.globalAlpha=tt;c.translate(0,(1-tt)*-40);c.textAlign='center';c.font='700 26px "Noto Sans TC"';c.fillStyle='#ffd6e4';c.fillText('2027 白沙屯媽祖進香',W/2,86);c.font='900 60px "Noto Serif TC"';c.fillStyle='#fff';c.shadowColor='#0008';c.shadowBlur=12;c.fillText('我是哪一種香燈腳？',W/2,158);c.shadowBlur=0;
  if(place){c.font='700 24px "Noto Sans TC"';const pw=c.measureText(place).width+44;c.fillStyle='#ffffffe6';c.beginPath();c.roundRect(W/2-pw/2,186,pw,44,22);c.fill();c.fillStyle='#e85a8c';c.fillText(place,W/2,216)}c.restore();
  // bottom card
  const bt=(t-.9)/.6;if(bt>0){g=c.createLinearGradient(0,H-520,0,H);g.addColorStop(0,'#2a1f1d00');g.addColorStop(1,'#2a1f1dd9');c.fillStyle=g;c.fillRect(0,H-520,W,520);
