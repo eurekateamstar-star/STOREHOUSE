@@ -1931,8 +1931,7 @@
     const miss = rs.filter(r => r.attend !== 'no' && !m[normName(r.name)]).map(r => r.name);
     return `<div class="card" style="background:#fff7ed;border:1.5px solid #fed7aa;font-size:13.5px;line-height:1.8;color:#7c2d12">
       <b>👕 團服資料從「${esc(src ? src.title : '團服登記')}」帶入</b>（依姓名對應）<br>
-      已對應 <b>${got}</b> 人　·　這張表有填、還沒登記團服 <b>${miss.length}</b> 人${miss.length ? '：' + miss.map(esc).join('、') : ''}<br>
-      有登記團服、但還沒填這張表 <b>${only.length}</b> 人${only.length ? '：' + only.map(esc).join('、') : ''}</div>`;
+      有登記團服 <b>${Object.keys(m).length}</b> 人${Object.keys(m).length ? '：' + Object.keys(m).map(k => esc(m[k].name) + (here.has(k) ? '' : '<small style="opacity:.7">（還沒填出席）</small>')).join('、') : ''}</div>`;
   }
   function uniSummary(rs) {
     const list = rs.filter(r => r.uniform && r.attend !== 'no'); if (!list.length) return '';
