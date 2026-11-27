@@ -779,16 +779,53 @@ const INTRO=[['每座島是媽祖停過的地方','從苗栗白沙屯到雲林�
  ['路線由媽祖決定','白沙屯媽祖進香沒有固定路線。靠近看，橘色衣服的是醫護團。右側有行程、人物、儀式、數據四個分頁，也可以測測你是哪一種香燈腳。']];
 function intro(i=0){modal.innerHTML=`<div class="modal"><div class="box"><div class="kick">HELLO, PILGRIM / 0${i+1}</div><h3>${INTRO[i][0]}</h3><p>${INTRO[i][1]}</p><div class="dots">${INTRO.map((_,k)=>`<i class="${k===i?'on':''}"></i>`).join('')}</div><div class="acts"><button id="mS">略過</button><button class="go" id="mN">${i===2?'開始走 →':'下一步 →'}</button></div></div></div>`;
  $('mS').onclick=closeModal;$('mN').onclick=()=>i<2?intro(i+1):closeModal()}
-function quiz(i=0,score={}){if(i>=QUIZ.length){const id=Object.entries(score).sort((a,b)=>b[1]-a[1])[0][0],q=PEOPLE.find(p=>p.id===id);
-  modal.innerHTML=`<div class="modal"><div class="box" style="text-align:center"><div class="kick">YOUR ROLE</div><div style="margin:14px 0 4px">${avatar(q,96)}</div><h3>你是「${q.name}」型</h3><p><b>${q.tag}</b></p><p style="margin-top:8px;text-align:left">${q.lead}</p><div class="acts"><button id="mS">再測一次</button><button class="go" id="mN">看這個角色 →</button></div></div></div>`;
-  $('mS').onclick=()=>quiz();$('mN').onclick=()=>{closeModal();openRole(id)};return}
+function quiz(i=0,score={}){if(i>=QUIZ.length){const id=Object.entries(score).sort((a,b)=>b[1]-a[1])[0][0];quizResult(id);return}
  modal.innerHTML=`<div class="modal"><div class="box"><div class="kick">QUESTION ${i+1} / ${QUIZ.length}</div><h3>${QUIZ[i][0]}</h3>${QUIZ[i][1].map(([t,r])=>`<button class="opt" data-r="${r}">${t}</button>`).join('')}<div class="acts"><button id="mS">關閉</button><span></span></div></div></div>`;
  $('mS').onclick=closeModal;modal.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{const s={...score};s[b.dataset.r]=(s[b.dataset.r]||0)+1+i*.01;quiz(i+1,s)})}
-$('quizBtn').onclick=()=>quiz();$('bHelp').onclick=()=>intro();
+
+const QSITE=/pages\.dev$/.test(location.hostname)?location.origin+location.pathname:'https://tsushin-buishatun.pages.dev/island/';
+const QFULL={touqi:'touqi',jiaoban:'bearer',xiangdeng:'pilm',snack:'snack',gtmed:'medm',live:'pass'};
+function qImg(src){return new Promise(r=>{const im=new Image();im.onload=()=>r(im);im.onerror=()=>r(null);im.src=src})}
+function qWrap(c,t,maxW){const out=[];let line='';for(const ch of t){if(c.measureText(line+ch).width>maxW&&line){if('，。、！？」』）'.includes(ch)){line+=ch;continue}out.push(line);line=ch}else line+=ch}if(line)out.push(line);return out}
+async function qVideoAssets(q){try{await Promise.all(['900 64px "Noto Serif TC"','700 30px "Noto Sans TC"','500 26px "Noto Sans TC"'].map(f=>document.fonts.load(f,'白沙屯香燈腳')))}catch(e){}
+ const full=QFULL[q.id]?await qImg('img/'+QFULL[q.id]+'.webp'):null,head=await qImg('img/h_'+(AVI[q.id]||'pilm')+'.webp');return{full,head}}
+function qDraw(c,q,A,t){const W=720,H=1280,E=x=>x<0?0:x>1?1:x,eo=x=>1-Math.pow(1-E(x),3),bk=x=>{x=E(x);const k=1.7;return 1+(k+1)*Math.pow(x-1,3)+k*Math.pow(x-1,2)};
+ c.fillStyle='#f6efe4';c.fillRect(0,0,W,H);c.fillStyle='#e6d8c4';for(let y=12;y<H;y+=28)for(let x=12;x<W;x+=28){c.beginPath();c.arc(x,y,1.6,0,7);c.fill()}
+ // footprints walking along bottom
+ c.save();for(let i=0;i<14;i++){const p=(t*1.4-i*.55);if(p<0)continue;const x=50+i*48,y=1130+(i%2?18:-18),al=Math.max(0,1-Math.max(0,t*1.4-i*.55-4)*.4);c.globalAlpha=.5*E(p*3)*al;c.fillStyle='#f39abb';c.beginPath();c.ellipse(x,y,13,20,.25,0,7);c.fill();for(let k=0;k<4;k++){c.beginPath();c.arc(x-9+k*6,y-24-(k==0||k==3?0:3),3.6,0,7);c.fill()}}c.restore();
+ // title
+ const tt=eo(t/.6);c.save();c.globalAlpha=tt;c.translate(0,(1-tt)*-30);c.textAlign='center';c.font='700 26px "Noto Sans TC"';c.fillStyle='#a3786a';c.fillText('2026 白沙屯媽祖進香',W/2,110);
+ c.fillStyle='#ffb3cc';const hw=520*eo((t-.3)/.6);c.fillRect(W/2-260,150,hw,30);c.font='900 64px "Noto Serif TC"';c.fillStyle='#3a2620';c.fillText('我是哪一種香燈腳？',W/2,178);c.restore();
+ // polaroid
+ const pt=(t-.5)/.7;if(pt>0){c.save();const pw=430,ph=500,cx=W/2,cy=520;c.translate(cx,cy-(1-bk(pt))*120);c.rotate((-4+(1-eo(pt))*10)*Math.PI/180);c.globalAlpha=E(pt*3);c.shadowColor='#6a4a3040';c.shadowBlur=30;c.shadowOffsetY=12;c.fillStyle='#fff';c.fillRect(-pw/2,-ph/2,pw,ph);c.shadowColor='transparent';
+  c.fillStyle=q.bg;c.fillRect(-pw/2+18,-ph/2+18,pw-36,pw-36);const im=A.full||A.head;if(im){const box=pw-36,sc=Math.min(box/im.width,box/im.height)*(A.full?.96:1),bob=A.full?Math.sin(t*5)*5:0;c.save();c.beginPath();c.rect(-pw/2+18,-ph/2+18,box,box);c.clip();c.drawImage(im,-im.width*sc/2,-ph/2+18+box-im.height*sc+bob+(A.full?4:0),im.width*sc,im.height*sc);c.restore()}
+  c.fillStyle='#3a2620';c.textAlign='center';c.font='700 30px "Noto Sans TC"';c.fillText(q.em+' '+q.name,0,ph/2-30);c.fillStyle='#f7c2d5cc';c.rotate(-.06);c.fillRect(-60,-ph/2-16,120,34);c.restore()}
+ // stamp result
+ const st=(t-1.4)/.45;if(st>0){c.save();c.translate(W/2,860);const sc=st<1?2.2-1.2*bk(st):1;c.scale(sc,sc);c.rotate(-.05);c.globalAlpha=E(st*2.5);c.fillStyle='#e85a8c';const tx='你是「'+q.name+'」型';c.font='900 52px "Noto Serif TC"';const fz=Math.min(52,52*600/c.measureText(tx).width);c.font='900 '+fz+'px "Noto Serif TC"';const tw=c.measureText(tx).width+60;c.beginPath();c.roundRect(-tw/2,-48,tw,84,20);c.fill();c.fillStyle='#fff';c.textAlign='center';c.fillText(tx,0,10);c.restore()}
+ // tag + lead
+ const lt=(t-2.1)/.5;if(lt>0){c.save();c.globalAlpha=E(lt);c.textAlign='center';c.fillStyle='#3a2620';c.font='700 30px "Noto Sans TC"';c.fillText(q.tag,W/2,950);c.font='500 24px "Noto Sans TC"';c.fillStyle='#5b4842';let lines=qWrap(c,q.lead.replace(/<[^>]+>/g,''),600);if(lines.length>3){lines=lines.slice(0,3);lines[2]=lines[2].slice(0,-1)+'⋯'}const n=Math.floor((t-2.3)*28);let used=0;lines.forEach((ln,i)=>{const k=Math.max(0,Math.min(ln.length,n-used));used+=ln.length;c.fillText(ln.slice(0,k),W/2,1000+i*38)});c.restore()}
+ // confetti
+ if(t>1.5){const cols=['#e85a8c','#f7d21a','#f47b20','#3f9a7a','#4a7fc1','#ffb3cc'];for(let i=0;i<60;i++){const s0=hash(i,3),s1=hash(i,7),tt2=t-1.5-s0*.6;if(tt2<0)continue;const x=W*s1+Math.sin(tt2*3+i)*30,y=-20+tt2*(260+s0*220);if(y>H)continue;c.save();c.translate(x,y);c.rotate(tt2*6*(s1-.5));c.fillStyle=cols[i%6];c.fillRect(-7,-4,14,8);c.restore()}}
+ // footer
+ const ft=(t-2.8)/.5;if(ft>0){c.save();c.globalAlpha=E(ft);c.textAlign='center';c.fillStyle='#3a2620';c.font='900 34px "Noto Serif TC"';c.fillText('進香島｜白沙屯 → 北港',W/2,1205);c.font='600 22px "Noto Sans TC"';c.fillStyle='#e85a8c';c.fillText('你也來測測看 → '+QSITE.replace(/^https?:\/\//,''),W/2,1244);c.restore()}
+}
+async function quizResult(id,friend){const q=PEOPLE.find(p=>p.id===id);if(!q)return;
+ modal.innerHTML=`<div class="modal"><div class="box qres" style="text-align:center"><div class="kick">${friend?'朋友的測驗結果':'YOUR ROLE'}</div><h3 style="margin:6px 0 0">${friend?'朋友':'你'}是「${q.name}」型</h3><p style="margin:2px 0 0"><b>${q.tag}</b></p><canvas id="qCv" width="720" height="1280"></canvas><div class="st" id="qSt">${friend?'':'正在製作你的分享影片⋯'}</div>${friend?`<div class="shr"><button id="qGo">換我測 →</button></div>`:`<div class="shr"><button id="qShare" disabled>分享影片</button><button class="alt" id="qLink">複製連結</button></div>`}<div class="acts"><button id="mS">${friend?'關閉':'再測一次'}</button><button class="go" id="mN">看這個角色 →</button></div></div></div>`;
+ $('mS').onclick=()=>friend?closeModal():quiz();$('mN').onclick=()=>{closeModal();openRole(id)};if(friend)$('qGo').onclick=()=>quiz();
+ const cv=$('qCv'),c=cv.getContext('2d'),A=await qVideoAssets(q),D=7,url=QSITE+'#q='+id,txt=`我是「${q.name}」型香燈腳！${q.tag}。你是哪一種？`;let t0=performance.now(),file=null,alive=true;
+ const loop=()=>{if(!document.body.contains(cv)){alive=false;return}const t=(performance.now()-t0)/1000;qDraw(c,q,A,friend?t%(D+1.5):Math.min(t,D));requestAnimationFrame(loop)};
+ if(!friend){const lk=$('qLink');lk.onclick=async()=>{try{await navigator.clipboard.writeText(txt+' '+url);lk.textContent='已複製 ✓'}catch(e){prompt('複製這段文字分享：',txt+' '+url)}};
+  const types=['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp9','video/webm'],mt=window.MediaRecorder&&cv.captureStream?types.find(x=>MediaRecorder.isTypeSupported(x)):null;
+  const done=()=>{const b=$('qShare');if(!b)return;b.disabled=false;b.textContent=file?'分享影片':'分享';$('qSt').textContent=file?'影片做好了！可以分享到 LINE、IG 限動':'';
+   b.onclick=async()=>{const fileOk=file&&navigator.canShare&&navigator.canShare({files:[file]});try{if(fileOk){await navigator.share({files:[file],title:'我是哪一種香燈腳？',text:txt+' '+url});return}if(navigator.share&&!file){await navigator.share({title:'我是哪一種香燈腳？',text:txt,url});return}}catch(e){if(e&&e.name==='AbortError')return}
+    if(file){const u=URL.createObjectURL(file),a=document.createElement('a');a.href=u;a.download=file.name;document.body.appendChild(a);a.click();a.remove();$('qSt').innerHTML=`影片已下載，再把連結一起貼上分享。<a href="${u}" target="_blank">開啟影片</a>`;try{await navigator.clipboard.writeText(txt+' '+url)}catch(e){}}else lk.click()}};
+  if(mt){try{const stream=cv.captureStream(30),rec=new MediaRecorder(stream,{mimeType:mt,videoBitsPerSecond:4e6}),ch=[];rec.ondataavailable=e=>e.data.size&&ch.push(e.data);rec.onstop=()=>{const ext=mt.includes('mp4')?'mp4':'webm';file=new File(ch,`香燈腳-${q.name}.${ext}`,{type:mt.split(';')[0]});done()};t0=performance.now();rec.start(200);setTimeout(()=>{rec.state!=='inactive'&&rec.stop()},D*1000+300)}catch(e){done()}}else done()}
+ loop()}
+$('quizBtn').onclick=()=>quiz();$('bQuiz').onclick=()=>quiz();$('bHelp').onclick=()=>intro();
 
 /* ================= LOOP ================= */
 function resize(){const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix()}
-addEventListener('resize',resize);resize();render();overview();Object.assign(cam,goal);cam.dist=goal.dist*1.35;setProg(0);paintDays();intro();requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(()=>{const sp=document.getElementById('splash');sp.classList.add('out');setTimeout(()=>sp.remove(),900)},Math.max(400,3100-performance.now()))));
+addEventListener('resize',resize);resize();render();overview();Object.assign(cam,goal);cam.dist=goal.dist*1.35;setProg(0);paintDays();{const m=location.hash.match(/^#q=(\w+)/);m&&PEOPLE.some(p=>p.id===m[1])?quizResult(m[1],true):intro()}requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(()=>{const sp=document.getElementById('splash');sp.classList.add('out');setTimeout(()=>sp.remove(),900)},Math.max(400,3100-performance.now()))));
 window.__app={flag,dan,GONGP,get cer(){return cer},pickAt:(x,y)=>pick(x,y),palq,camera,PATCH,FSC,tags,ptAt,ROUTE,PL,scene,dbg:()=>[frontOn,leadMoving,FXS.filter(f=>f.mode==='smoke').map(f=>[f.pts.visible,f.c.x,f.c.y])],get bigMode(){return bigMode},goal,uQ,get cer(){return cer},uA,uC,setMe,whoOf,openPlace,openRole,goDay,setProg,quiz,closeModal,play:()=>playBtn.onclick(),get palqY(){return palq.position.y}};
 let bgWas=false,lodN=0,last=performance.now(),frame=0,wasWalk=false;
 let lastF=0;function loop(now){if(innerWidth<=760&&now-lastF<32){requestAnimationFrame(loop);return}lastF=now;const dt=Math.min(.05,(now-last)/1000);last=now;

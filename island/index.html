@@ -77,9 +77,20 @@ h4{font-size:11px;color:var(--mute);margin:16px 0 8px;letter-spacing:1px;font-we
 #panel .top{padding:22px 22px 8px}
 #panel h1{font-family:"Noto Serif TC",serif;font-size:25px;font-weight:900;margin:6px 0}
 #panel .meta{font-size:12px;color:var(--mute);line-height:1.6}
-.callout{margin:12px 0 0;background:#fff;border:1px solid #f6c3d5;border-radius:14px;padding:11px 14px;font-size:12px;line-height:1.55;color:var(--mute);display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;width:100%;text-align:left}
-.callout b{display:block;font-size:14px;color:var(--ink)}
-.callout em{font-style:normal;color:var(--pink);font-size:18px}
+.callout{margin:14px 0 0;background:linear-gradient(120deg,#ff9cc0,#e85a8c 60%,#d6406f);border:none;border-radius:16px;padding:14px 14px 14px 16px;font-size:12.5px;line-height:1.55;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;width:100%;text-align:left;box-shadow:0 10px 24px #e85a8c55;position:relative;overflow:hidden;transition:transform .2s}
+.callout:hover{transform:translateY(-2px)}
+.callout:after{content:"";position:absolute;top:0;bottom:0;width:40%;left:-60%;background:linear-gradient(100deg,transparent,#ffffff66,transparent);animation:qsh 3.2s 1.5s infinite}
+@keyframes qsh{0%{left:-60%}35%,100%{left:130%}}
+.callout b{display:block;font-size:17px;color:#fff;font-family:"Noto Serif TC",serif;font-weight:900;margin:2px 0 1px}
+.callout .qtag{font-style:normal;display:inline-block;background:#fff;color:#e85a8c;font-weight:700;font-size:11px;padding:1px 8px;border-radius:999px}
+.callout .qav{display:flex;flex:none}.callout .qav img{width:34px;height:34px;border-radius:50%;border:2px solid #fff;background:#fde8ef;object-fit:cover;object-position:50% 0;margin-left:-10px}
+.callout em{font-style:normal;color:#e85a8c;background:#fff;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:18px;flex:none}
+#tools .qbtn{background:linear-gradient(120deg,#ff8db5,#e85a8c);color:#fff;box-shadow:0 6px 18px #e85a8c66;animation:qpulse 2.4s infinite}
+@keyframes qpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+.qres canvas{width:min(250px,60vw);aspect-ratio:9/16;border-radius:16px;box-shadow:0 10px 30px #0003;display:block;margin:10px auto 0;background:#f6efe4}
+.qres .shr{display:flex;gap:8px;margin-top:14px}.qres .shr button{flex:1;border-radius:12px;padding:11px 8px;font:700 14px "Noto Sans TC";cursor:pointer;border:none;background:#e85a8c;color:#fff}
+.qres .shr button.alt{background:#fff;color:var(--ink);border:1px solid var(--line)}.qres .shr button:disabled{opacity:.5;cursor:wait}
+.qres .st{font-size:12px;color:var(--mute);margin-top:8px;min-height:18px}
 .tabs{display:flex;gap:6px;padding:12px 22px 8px}
 .tabs button{flex:1;padding:10px 0;border-radius:12px;border:1px solid var(--line);background:#fff;font:600 13px "Noto Sans TC";cursor:pointer}
 .tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
@@ -143,6 +154,7 @@ h4{font-size:11px;color:var(--mute);margin:16px 0 8px;letter-spacing:1px;font-we
   #brand{left:10px;top:10px;padding:9px 12px;gap:10px;border-radius:14px}
   #brand .big{font-size:21px}#brand .sub{font-size:13px;padding-left:10px}
   #tools{top:auto;bottom:150px;right:10px;flex-direction:column}
+  #tools .qbtn{font-size:12px;padding:8px 10px}
   #player{left:8px;right:8px;transform:none;width:auto;bottom:max(8px,env(safe-area-inset-bottom));padding:8px 10px 10px}
   #panel{top:auto;height:80vh;width:100%;border-left:none;border-radius:22px 22px 0 0;box-shadow:0 -10px 40px #3a201830;transform:translateY(100%);transition:transform .35s cubic-bezier(.2,.8,.2,1)}
   #panel.open{transform:none}
@@ -182,6 +194,7 @@ html{background:#f6efe4}
   <button class="btn" id="bAll">⤢ 全景</button>
   <button class="btn" id="bFollow">◎ 跟轎</button>
   <button class="btn" id="sheetBtn">☰ 清單</button>
+  <button class="btn qbtn" id="bQuiz">🎯 測你是哪種香燈腳</button>
   <button class="btn" id="bHelp">?</button>
 </div>
 <div id="player">
@@ -197,7 +210,7 @@ html{background:#f6efe4}
     <div class="kick">THE PILGRIM INDEX</div>
     <h1>一步一腳印，跟著媽祖走。</h1>
     <div class="meta" id="meta"></div>
-    <button class="callout" id="quizBtn"><span><b>你是哪一種香燈腳？</b>四個問題，看看你在進香隊伍裡的位置。</span><em>›</em></button>
+    <button class="callout" id="quizBtn"><span><i class="qtag">🎯 1 分鐘小測驗</i><b>你是哪一種香燈腳？</b>四個問題，測完可以分享動畫小影片！</span><span class="qav"><img src="img/h_touqi.webp" alt=""><img src="img/h_medm.webp" alt=""><img src="img/h_pilm.webp" alt=""></span><em>›</em></button>
   </div>
   <div class="tabs"><button class="on" data-tab="route">行程</button><button data-tab="people">人物</button><button data-tab="rites">儀式</button><button data-tab="data">數據</button></div>
   <div id="list"></div>
