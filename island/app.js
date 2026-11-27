@@ -835,6 +835,20 @@ function qClip(onFrame,onEnd,D){const sv={prog,playing,following,me,goal:{...goa
  const place=($('now').querySelector('b').textContent||'').split('・')[0];let t=0,ended=false;
  const end=()=>{if(ended)return;ended=true;qHook=null;qY=0;playing=sv.playing;playBtn.textContent=playing?'❚❚':'▶';setProg(sv.prog);me=sv.me;following=sv.following;setBtn();Object.assign(goal,sv.goal);Object.assign(cam,sv.cam);onEnd&&onEnd()};
  const T0=performance.now();qHook=dt=>{t=(performance.now()-T0)/1000;goal.az+=dt*.12;qY+=(mePos().y+.25-qY)*.1;if(t>=D){onFrame(D,place);end();return}onFrame(t,place)};return end}
+
+let runOn=false;
+function introRun(after){if(runOn)return;runOn=true;const sv={playing};closeDetail&&closeDetail();me=ME0;
+ const n=ROUTE.pts.length,geo=new THREE.BufferGeometry().setFromPoints(ROUTE.pts.map(p=>new THREE.Vector3(p.x,(p.y||0)+.6,p.z)));geo.setDrawRange(0,0);
+ const ln=new THREE.Line(geo,new THREE.LineBasicMaterial({color:0xff5c9a,transparent:true,opacity:.95,depthTest:false}));ln.renderOrder=9;scene.add(ln);
+ const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:(()=>{const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d'),r=g.createRadialGradient(32,32,0,32,32,32);r.addColorStop(0,'#fff');r.addColorStop(.3,'#ff8fb8');r.addColorStop(1,'#ff5c9a00');g.fillStyle=r;g.fillRect(0,0,64,64);return new THREE.CanvasTexture(c)})(),depthTest:false,transparent:true}));glow.renderOrder=10;scene.add(glow);
+ const cap=document.createElement('div');cap.id='runCap';cap.innerHTML='<span>D1</span><b>白沙屯拱天宮</b><button>略過</button>';document.body.appendChild(cap);
+ const D=9,T0=performance.now();setProg(0);playing=false;following=true;setBtn();Object.assign(goal,{dist:mob()?70:55,pol:.62});const p0=mePos();Object.assign(cam,goal,{tx:p0.x,tz:p0.z});
+ let done=false;const fin=()=>{if(done)return;done=true;qHook=null;runOn=false;scene.remove(ln);scene.remove(glow);cap.classList.add('out');setTimeout(()=>cap.remove(),600);playing=sv.playing;playBtn.textContent=playing?'❚❚':'▶';setProg(0);overview();after&&after()};
+ cap.querySelector('button').onclick=fin;
+ qHook=()=>{const t=(performance.now()-T0)/1000,u=Math.min(1,t<.6?0:(t-.6)/(D-1.6)),e=u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2;
+  if(cer)cer=null;setProg(e);if(detail.classList.contains('open'))closeDetail();geo.setDrawRange(0,Math.floor(e*(n-1))+1);const p=ptAt(e);glow.position.set(p.x,(p.y||0)+3,p.z);const sc=goal.dist*.09;glow.scale.set(sc,sc,1);
+  cap.querySelector('b').textContent=($('now').querySelector('b').textContent||'白沙屯').split('・')[0];cap.querySelector('span').textContent='D'+curDay;
+  if(t>D)fin()}}
 async function quizResult(id,friend,v){let q=PEOPLE.find(p=>p.id===id);if(!q)return;if(id==='xiangdeng'){v=v>=1&&v<=XDV.length?v:1+Math.floor(Math.random()*XDV.length);q={...q,xv:v,vname:XDV[v-1]}}else v=0;
  modal.innerHTML=`<div class="modal"><div class="box qres" style="text-align:center"><div class="kick">${friend?'朋友的測驗結果':'YOUR ROLE'}</div><h3 style="margin:6px 0 0">${friend?'朋友':'你'}是「${q.name}」型</h3><p style="margin:2px 0 0"><b>${q.vname?q.vname+'・':''}${q.tag}</b></p><canvas id="qCv" width="720" height="1280"></canvas><div class="st" id="qSt">${friend?'':'正在製作你的分享影片⋯'}</div>${friend?`<div class="shr"><button id="qGo">換我測 →</button></div>`:`<div class="shr"><button id="qShare" disabled>分享影片</button><button class="alt" id="qLink">複製連結</button></div>`}<div class="acts"><button id="mS">${friend?'關閉':'再測一次'}</button><button class="go" id="mN">看這個角色 →</button></div></div></div>`;
  $('mS').onclick=()=>friend?closeModal():quiz();$('mN').onclick=()=>{closeModal();openRole(id)};if(friend)$('qGo').onclick=()=>quiz();
@@ -854,7 +868,7 @@ $('quizBtn').onclick=()=>quiz();$('bQuiz').onclick=()=>quiz();$('bHelp').onclick
 
 /* ================= LOOP ================= */
 function resize(){const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix()}
-addEventListener('resize',resize);resize();render();overview();Object.assign(cam,goal);cam.dist=goal.dist*1.35;setProg(0);paintDays();{const m=location.hash.match(/^#q=([a-z0-9]+)(?:-(\d+))?/);m&&PEOPLE.some(p=>p.id===m[1])?quizResult(m[1],true,+m[2]||0):intro()}requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(()=>{const sp=document.getElementById('splash');sp.classList.add('out');setTimeout(()=>sp.remove(),900)},Math.max(400,5200-performance.now()))));
+addEventListener('resize',resize);resize();render();overview();Object.assign(cam,goal);cam.dist=goal.dist*1.35;setProg(0);paintDays();{const m=location.hash.match(/^#q=([a-z0-9]+)(?:-(\d+))?/);m&&PEOPLE.some(p=>p.id===m[1])?quizResult(m[1],true,+m[2]||0):setTimeout(()=>introRun(()=>intro()),3300)}requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(()=>{const sp=document.getElementById('splash');sp.classList.add('out');setTimeout(()=>sp.remove(),900)},Math.max(400,3100-performance.now()))));
 window.__app={flag,dan,GONGP,get cer(){return cer},pickAt:(x,y)=>pick(x,y),palq,camera,PATCH,FSC,tags,ptAt,ROUTE,PL,scene,dbg:()=>[frontOn,leadMoving,FXS.filter(f=>f.mode==='smoke').map(f=>[f.pts.visible,f.c.x,f.c.y])],get bigMode(){return bigMode},goal,uQ,get cer(){return cer},uA,uC,setMe,whoOf,openPlace,openRole,goDay,setProg,quiz,closeModal,play:()=>playBtn.onclick(),get palqY(){return palq.position.y}};
 let bgWas=false,lodN=0,last=performance.now(),frame=0,wasWalk=false;
 let lastF=0;function loop(now){if(innerWidth<=760&&now-lastF<32){requestAnimationFrame(loop);return}lastF=now;const dt=Math.min(.05,(now-last)/1000);last=now;

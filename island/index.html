@@ -181,8 +181,10 @@ h4{font-size:11px;color:var(--mute);margin:16px 0 8px;letter-spacing:1px;font-we
 html{background:#f6efe4}
 #splash{position:fixed;inset:0;z-index:999;overflow:hidden;background:#f6efe4;background-image:radial-gradient(#e6d8c4 1px,transparent 1px);background-size:18px 18px;transition:opacity .9s ease,visibility .9s;font-family:"Noto Serif TC","Songti TC",serif}
 #splash.out{opacity:0;visibility:hidden}
-#splash .g-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 60%;animation:gfade 1s forwards;opacity:0}
-#splash .g-shade{position:absolute;inset:0;background:linear-gradient(180deg,#f6efe4e6 0%,#f6efe400 30%,#f6efe400 75%,#f6efe4d9 100%);pointer-events:none}
+#runCap{position:fixed;left:50%;top:18%;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:10px;background:#fffdf8ee;border-radius:999px;padding:8px 10px 8px 18px;box-shadow:0 8px 24px #0002;font:900 18px "Noto Serif TC";color:#3a2620;transition:opacity .5s}
+#runCap span{color:#e85a8c}#runCap b{min-width:6em}#runCap span{font:800 13px ui-monospace,monospace;background:#e85a8c;color:#fff;border-radius:999px;padding:3px 9px}#runCap button{border:none;background:#3a2620;color:#fff;border-radius:999px;padding:6px 12px;font:700 12px "Noto Sans TC";cursor:pointer}
+#runCap.out{opacity:0}
+
 
 #splash .g-ttl{position:absolute;top:6%;left:0;right:0;text-align:center}
 #splash .g-ttl h1{display:inline-block;margin:0;font-size:clamp(38px,8vw,72px);font-weight:900;color:#3a2620;position:relative;z-index:0;letter-spacing:.06em}
@@ -203,7 +205,7 @@ html{background:#f6efe4}
 <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" as="script"><link rel="preload" href="app.js" as="script">
 </head>
 <body>
-<div id="splash"><video class="g-vid" src="img/intro.mp4" poster="img/intro_poster.webp" autoplay muted playsinline loop preload="auto"></video><div class="g-shade"></div><div class="g-ttl"><h1>進香島</h1><p>BAISHATUN → BEIGANG · 2026</p></div><div class="g-bar">媽祖起駕中<div><i></i></div></div></div>
+<div id="splash"><div class="g-ttl"><h1>進香島</h1><p>BAISHATUN → BEIGANG · 2026</p></div><div class="g-board"><div class="g-pol" style="left:8%;top:6%;--r:-6deg;--bg:#fff3c4;animation-delay:0.30s"><img src="img/bearer.webp" alt=""><span>大轎班</span></div><div class="g-pol" style="left:36%;top:3%;--r:5deg;--bg:#e3e9f7;animation-delay:0.52s"><img src="img/traffic.webp" alt=""><span>交通組</span></div><div class="g-pol" style="left:64%;top:8%;--r:-3deg;--bg:#ffe0ec;animation-delay:0.74s"><img src="img/pink.webp" alt=""><span>粉紅超跑</span></div><div class="g-pol" style="left:12%;top:52%;--r:7deg;--bg:#ffe6d2;animation-delay:0.96s"><img src="img/medm.webp" alt=""><span>醫護團</span></div><div class="g-pol" style="left:40%;top:48%;--r:-5deg;--bg:#ffe3df;animation-delay:1.18s"><img src="img/sedan8.webp" alt=""><span>八人大轎</span></div><div class="g-pol" style="left:68%;top:53%;--r:4deg;--bg:#f2e8ff;animation-delay:1.40s"><img src="img/pilf.webp" alt=""><span>香燈腳</span></div></div><div class="g-bar">媽祖起駕中<div><i></i></div></div></div>
 <div id="stage"><div id="labels"></div></div>
 <div id="brand"><div class="big">進香島<small>BAISHATUN → BEIGANG</small></div><div class="sub">白沙屯 → 北港<span>2026 丙午年 · 8 天 7 夜</span></div></div>
 <div id="tools">
