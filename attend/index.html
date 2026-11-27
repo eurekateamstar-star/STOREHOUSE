@@ -239,7 +239,7 @@
   const uNeedPick = () => U.mem === 'new' || (U.mem === 'old' && U.buy === 'yes');
   function uRender() {
     $('uni-card').classList.toggle('hidden', !uOn());
-    $('uni-link').classList.toggle('hidden', !(ev && !UONLY() && ev.askUniform && ev.uniformFrom && attend && attend !== 'no'));
+    $('uni-link').classList.add('hidden');   // 團服另外登記，這裡不再提示
     document.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === U.mem));
     document.querySelectorAll('[data-b]').forEach(b => b.classList.toggle('on', b.dataset.b === U.buy));
     $('u-new').classList.toggle('hidden', U.mem !== 'new'); $('u-old').classList.toggle('hidden', U.mem !== 'old'); $('u-pick').classList.toggle('hidden', !uNeedPick());
