@@ -65,6 +65,7 @@
     else refresh();
   });
   addEventListener('pagehide', flush);
+  setInterval(() => { if (Object.keys(buf.f).some(k => k.startsWith('rd_'))) flush(); }, 3 * 60e3);   // 讀取筆數每 3 分鐘先送一次（LINE 直接關掉常常送不出去）
   setInterval(refresh, 20 * 60e3);   // 權杖一小時過期，定時換新
   { let n = 0; const t = setInterval(() => { if (tok || ++n > 30) return clearInterval(t); refresh(); }, 4000); }   // 剛打開還沒登入：登入好就拿到身分
 })();

@@ -1413,11 +1413,14 @@ async function usageRoute(req, env, json) {
     let uid = '', name = '';
     if (typeof b.t === 'string' && b.t.split('.').length === 3) {
       try { const id = uidOfToken(b.t); const u = await fsUser(b.t, id); if (u && u.status === 'approved') { uid = id; name = u.realName || ''; } } catch (e) {}
+      { const rf = f.filter(([k]) => k.startsWith('rd_'));   // 瀏覽器讀取也記進每小時用量（跟 Firebase 同一個「一天」才對得起來）
+        if (rf.length) { rf.forEach(([k, n]) => mAdd('rd', k, n)); mAdd('rdp', (name || '未登入').slice(0, 12), rf.reduce((a, [, n]) => a + n, 0)); } }
       if (uid && uid === await devUid(tok)) {   // 開發者自己的使用不算，但讀了多少資料庫要算（才找得到誰讀最多）
         const rf = f.filter(([k]) => k.startsWith('rd_')); if (!rf.length) return json({ ok: true, skip: 'dev' });
         const r = await writeUsage(tok, { pg, v: 0, q: 0, f: rf, uid, name }); return json({ ok: r.ok });
       }
     }
+    if (!uid && !(typeof b.t === 'string' && b.t.split('.').length === 3)) { const rf = f.filter(([k]) => k.startsWith('rd_')); if (rf.length) { rf.forEach(([k, n]) => mAdd('rd', k, n)); mAdd('rdp', '未登入', rf.reduce((a, [, n]) => a + n, 0)); } }
     const r = await writeUsage(tok, { pg, v, q, f, uid, name });
     return json({ ok: r.ok });
   } catch (e) { return json({ ok: false }, 500); }
