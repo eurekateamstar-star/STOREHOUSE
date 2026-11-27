@@ -337,7 +337,7 @@
 
   document.querySelectorAll('.opt').forEach(b => b.onclick = () => {
     attend = b.dataset.v; document.querySelectorAll('.opt').forEach(x => x.classList.toggle('on', x === b));
-    $('reason-box').classList.toggle('hidden', attend !== 'join');
+    $('reason-box').classList.toggle('hidden', attend !== 'join' && attend !== 'no');
     b.closest('.field').classList.remove('bad');
     $('lunch-card').classList.toggle('hidden', attend !== 'yes' || (ev && ev.askLunch === false));
     uRender(); gRender();
@@ -374,7 +374,7 @@
     mark(f.elements.name.closest('.field'), !!v('name'));
     mark(f.elements.lineName.closest('.field'), !!v('lineName'));
     if (!UONLY()) mark(document.querySelector('[data-f="attend"]'), !!attend);
-    if (attend === 'join') mark($('reason-box'), !!v('reason'));
+    if (attend === 'join' || attend === 'no') mark($('reason-box'), !!v('reason'));
     if (!$('lunch-card').classList.contains('hidden')) mark(document.querySelector('[data-f="lunch"]'), !!lunch);
     if (uOn()) {
       mark(document.querySelector('[data-f="umem"]'), !!U.mem);
@@ -391,7 +391,7 @@
     try {
       await addDoc(collection(db, 'events', eid, 'responses'), {
         name: v('name'), lineName: v('lineName'), attend: UONLY() ? 'yes' : attend, lunch: attend === 'yes' && !UONLY() ? lunch : '',
-        reason: attend === 'join' ? v('reason') : '', comment: v('comment'), createdAt: serverTimestamp(), src: 'form',
+        reason: attend === 'join' || attend === 'no' ? v('reason') : '', comment: v('comment'), createdAt: serverTimestamp(), src: 'form',
         ...(uData() ? { uniform: uData() } : {}),
         ...(gOn() ? { groups: picks.filter(n => GP.gs.some(g => g.n === n)) } : {})
       });
