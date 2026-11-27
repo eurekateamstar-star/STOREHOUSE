@@ -356,7 +356,7 @@ function fx(c,n,mode,dim,cond){if(innerWidth<=760)n=Math.ceil(n*.5);const pos=ne
  for(let i=0;i<n;i++){P.push({x:Math.random()-.5,y:Math.random(),z:Math.random()-.5,v:.5+Math.random()*.7,ph:Math.random()*6});c2.setHex(PC[i%PC.length]);cl.set([c2.r,c2.g,c2.b],i*3)}
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('color',new THREE.BufferAttribute(cl,3));
  const pts=new THREE.Points(g,mode==='smoke'?new THREE.PointsMaterial({size:.85,vertexColors:true,transparent:true,opacity:.55,depthWrite:false,map:smokeTex()}):new THREE.PointsMaterial({size:mode==='spark'?.05:.06,vertexColors:true,transparent:true,opacity:.95,depthWrite:false}));pts.frustumCulled=false;scene.add(pts);FXS.push({pts,P,c,mode,dim,cond})}
-let GONGMV=()=>false,gongT0=0;const GONGB=[];function updFX(dt,now){const ts=now*.001;{const on=playing;if(on&&!gongT0)gongT0=ts-3.3;if(!on)gongT0=0;const t=on?(ts-gongT0)%4:3,A=1.05,e=x=>x*x*(3-2*x),a=t<.45?A*(1-(t/.45)*(t/.45)):t<1.2?0:t<2.3?A*e((t-1.2)/1.1):A,w=on&&t>=.45?.3*Math.exp(-(t-.45)*1.6)*Math.sin((t-.45)*8):0;GONGP.forEach(p=>p.quaternion.setFromAxisAngle(p.userData.ax,a));GONGB.forEach(g=>{g.rotation.z=w;g.rotation.x=w*.4})}GIVEA.forEach(o=>{const k=(Math.sin(ts*1.6+o.ph)+1)/2;o.it.position.lerpVectors(o.a,o.b,k);o.it.visible=k<.93});CTGW.forEach(o=>{if(!o.g.parent||!o.done)return;o.q.on=false;o.g.position.copy(o.base);o.g.rotation.y=o.rot});
+let GONGMV=()=>false,gongT0=0,qHook=null,qY=0;const GONGB=[];function updFX(dt,now){const ts=now*.001;{const on=playing;if(on&&!gongT0)gongT0=ts-3.3;if(!on)gongT0=0;const t=on?(ts-gongT0)%4:3,A=1.05,e=x=>x*x*(3-2*x),a=t<.45?A*(1-(t/.45)*(t/.45)):t<1.2?0:t<2.3?A*e((t-1.2)/1.1):A,w=on&&t>=.45?.3*Math.exp(-(t-.45)*1.6)*Math.sin((t-.45)*8):0;GONGP.forEach(p=>p.quaternion.setFromAxisAngle(p.userData.ax,a));GONGB.forEach(g=>{g.rotation.z=w;g.rotation.x=w*.4})}GIVEA.forEach(o=>{const k=(Math.sin(ts*1.6+o.ph)+1)/2;o.it.position.lerpVectors(o.a,o.b,k);o.it.visible=k<.93});CTGW.forEach(o=>{if(!o.g.parent||!o.done)return;o.q.on=false;o.g.position.copy(o.base);o.g.rotation.y=o.rot});
 FXS.forEach(f=>{const c=f.c.isVector3?f.c:f.c.position,on=(!f.cond||f.cond())&&cam.dist<60&&Math.abs(c.x-cam.tx)+Math.abs(c.z-cam.tz)<cam.dist*2+6;f.pts.visible=on;if(!on)return;const a=f.pts.geometry.attributes.position,sp=f.mode==='spark'?1.5:.32;
   if(f.mode==='smoke'){f.P.forEach((p,i)=>{p.y+=dt*p.v*.22;if(p.y>1){p.y=0;p.x=(Math.random()-.5)*.5;p.z=(Math.random()-.5)*.5}const e=.45+p.y;a.setXYZ(i,c.x+p.x*e*f.dim[0]+Math.sin(now*.001+p.ph)*.08,c.y+.05+p.y*f.dim[1],c.z+p.z*e*f.dim[2])});a.needsUpdate=true;return}
   f.P.forEach((p,i)=>{p.y-=dt*p.v*sp;if(p.y<0){p.y=1;p.x=Math.random()-.5;p.z=Math.random()-.5}a.setXYZ(i,c.x+p.x*f.dim[0]+Math.sin(now*.003+p.ph)*.04,c.y+p.y*f.dim[1],c.z+p.z*f.dim[2])});a.needsUpdate=true})}
@@ -600,7 +600,7 @@ const mob=()=>innerWidth<=760;
 const cam={tx:0,tz:0,dist:200,az:-.22,pol:.82},goal={...cam};let following=false;
 function overview(){Object.assign(goal,{tx:X(mob()?120.5:120.52),tz:Z(mob()?23.95:23.9),dist:mob()?320:250,az:-.1,pol:mob()?.42:.52});following=false;setBtn()}
 function flyTo(p,d){const dd=d||(p.bridge?13:6.2*p.r+2.2)*(mob()?1.45:1);Object.assign(goal,{tx:p.x-(mob()?0:dd*.1),tz:p.z+(mob()?dd*.27:dd*.03),dist:dd,pol:1.0})}
-function applyCam(){const sp=Math.sin(cam.pol),cp=Math.cos(cam.pol);camera.position.set(cam.tx+cam.dist*sp*Math.sin(cam.az),cam.dist*cp,cam.tz+cam.dist*sp*Math.cos(cam.az));camera.lookAt(cam.tx,0,cam.tz)}
+function applyCam(){const sp=Math.sin(cam.pol),cp=Math.cos(cam.pol);camera.position.set(cam.tx+cam.dist*sp*Math.sin(cam.az),cam.dist*cp+qY,cam.tz+cam.dist*sp*Math.cos(cam.az));camera.lookAt(cam.tx,qY,cam.tz)}
 const el=renderer.domElement,ptrs=new Map();let lastPinch=0,lastAng=0,lastMy=0,moved=0;
 el.addEventListener('pointerdown',e=>{try{el.setPointerCapture(e.pointerId)}catch(_){}ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});moved=0});
 el.addEventListener('pointermove',e=>{const p=ptrs.get(e.pointerId);if(!p)return;const dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;
@@ -809,18 +809,43 @@ function qDraw(c,q,A,t){const W=720,H=1280,E=x=>x<0?0:x>1?1:x,eo=x=>1-Math.pow(1
  // footer
  const ft=(t-2.8)/.5;if(ft>0){c.save();c.globalAlpha=E(ft);c.textAlign='center';c.fillStyle='#3a2620';c.font='900 34px "Noto Serif TC"';c.fillText('進香島｜白沙屯 → 北港',W/2,1205);c.font='600 22px "Noto Sans TC"';c.fillStyle='#e85a8c';c.fillText('你也來測測看 → '+QSITE.replace(/^https?:\/\//,''),W/2,1244);c.restore()}
 }
+
+function qDrawMap(c,q,A,t,place){const W=720,H=1280,E=x=>x<0?0:x>1?1:x,eo=x=>1-Math.pow(1-E(x),3),bk=x=>{x=E(x);const k=1.7;return 1+(k+1)*Math.pow(x-1,3)+k*Math.pow(x-1,2)};
+ const gl=renderer.domElement,gw=gl.width,gh=gl.height;let sx=0,sy=0,sw=gw,sh=gh;if(gw/gh>W/H){sw=gh*W/H;sx=(gw-sw)/2}else{sh=gw*H/W;sy=(gh-sh)/2}
+ c.fillStyle='#f6efe4';c.fillRect(0,0,W,H);try{c.drawImage(gl,sx,sy,sw,sh,0,0,W,H)}catch(e){}
+ // top gradient + title
+ let g=c.createLinearGradient(0,0,0,300);g.addColorStop(0,'#2a1f1dcc');g.addColorStop(1,'#2a1f1d00');c.fillStyle=g;c.fillRect(0,0,W,300);
+ const tt=eo(t/.7);c.save();c.globalAlpha=tt;c.translate(0,(1-tt)*-40);c.textAlign='center';c.font='700 26px "Noto Sans TC"';c.fillStyle='#ffd6e4';c.fillText('2026 白沙屯媽祖進香',W/2,86);c.font='900 60px "Noto Serif TC"';c.fillStyle='#fff';c.shadowColor='#0008';c.shadowBlur=12;c.fillText('我是哪一種香燈腳？',W/2,158);c.shadowBlur=0;
+ if(place){c.font='700 24px "Noto Sans TC"';const pw=c.measureText(place).width+44;c.fillStyle='#ffffffe6';c.beginPath();c.roundRect(W/2-pw/2,186,pw,44,22);c.fill();c.fillStyle='#e85a8c';c.fillText(place,W/2,216)}c.restore();
+ // bottom card
+ const bt=(t-.9)/.6;if(bt>0){g=c.createLinearGradient(0,H-520,0,H);g.addColorStop(0,'#2a1f1d00');g.addColorStop(1,'#2a1f1dd9');c.fillStyle=g;c.fillRect(0,H-520,W,520);
+  c.save();c.translate(0,(1-bk(bt))*260);const cx=W/2,cy=H-330;c.fillStyle='#fff';c.shadowColor='#0006';c.shadowBlur=24;c.beginPath();c.arc(cx,cy-70,86,0,7);c.fill();c.shadowBlur=0;c.save();c.beginPath();c.arc(cx,cy-70,78,0,7);c.clip();c.fillStyle=q.bg;c.fillRect(cx-80,cy-150,160,160);if(A.head){const s2=156/Math.max(A.head.width,A.head.height)*1.05;c.drawImage(A.head,cx-A.head.width*s2/2,cy-148,A.head.width*s2,A.head.height*s2)}c.restore();
+  const tx='你是「'+q.name+'」型';c.font='900 52px "Noto Serif TC"';const fz=Math.min(52,52*620/c.measureText(tx).width);c.font='900 '+fz+'px "Noto Serif TC"';const tw=c.measureText(tx).width+56;const st=(t-1.4)/.4,sc=st<=0?0:st<1?2-bk(st):1;
+  if(sc>0){c.save();c.translate(cx,cy+60);c.scale(sc,sc);c.rotate(-.04);c.fillStyle='#e85a8c';c.beginPath();c.roundRect(-tw/2,-46,tw,80,20);c.fill();c.fillStyle='#fff';c.textAlign='center';c.fillText(tx,0,10);c.restore()}
+  c.textAlign='center';c.globalAlpha=E((t-1.9)/.5);c.fillStyle='#fff';c.font='700 30px "Noto Sans TC"';c.fillText(q.em+' '+q.tag,cx,cy+150);c.restore()}
+ // confetti
+ if(t>1.5){const cols=['#e85a8c','#f7d21a','#f47b20','#3f9a7a','#4a7fc1','#ffb3cc'];for(let i=0;i<60;i++){const s0=hash(i,3),s1=hash(i,7),t2=t-1.5-s0*.6;if(t2<0)continue;const x=W*s1+Math.sin(t2*3+i)*30,y=-20+t2*(260+s0*220);if(y>H)continue;c.save();c.translate(x,y);c.rotate(t2*6*(s1-.5));c.fillStyle=cols[i%6];c.fillRect(-7,-4,14,8);c.restore()}}
+ const ft=(t-2.4)/.5;if(ft>0){c.save();c.globalAlpha=E(ft);c.textAlign='center';c.fillStyle='#fff';c.font='900 32px "Noto Serif TC"';c.fillText('進香島｜白沙屯 → 北港',W/2,H-78);c.font='600 22px "Noto Sans TC"';c.fillStyle='#ffc2d6';c.fillText('你也來測測看 → '+QSITE.replace(/^https?:\/\//,''),W/2,H-40);c.restore()}
+}
+function qClip(onFrame,onEnd,D){const sv={prog,playing,following,me,goal:{...goal},cam:{...cam}};closeDetail&&closeDetail();
+ const cand=CERS.length?null:null;let u=.03+Math.random()*.9;setProg(u);me=ME0;playing=true;playBtn.textContent='❚❚';following=true;setBtn();goal.dist=mob()?8.5:7.5;goal.pol=.88;goal.az=Math.random()*6.28;
+ const mp=mePos();qY=mp.y+.25;goal.tx=mp.x;goal.tz=mp.z;Object.assign(cam,goal);cam.dist=goal.dist*1.6;
+ const place=($('now').querySelector('b').textContent||'').split('・')[0];let t=0,ended=false;
+ const end=()=>{if(ended)return;ended=true;qHook=null;qY=0;playing=sv.playing;playBtn.textContent=playing?'❚❚':'▶';setProg(sv.prog);me=sv.me;following=sv.following;setBtn();Object.assign(goal,sv.goal);Object.assign(cam,sv.cam);onEnd&&onEnd()};
+ const T0=performance.now();qHook=dt=>{t=(performance.now()-T0)/1000;goal.az+=dt*.12;qY+=(mePos().y+.25-qY)*.1;if(t>=D){onFrame(D,place);end();return}onFrame(t,place)};return end}
 async function quizResult(id,friend){const q=PEOPLE.find(p=>p.id===id);if(!q)return;
  modal.innerHTML=`<div class="modal"><div class="box qres" style="text-align:center"><div class="kick">${friend?'朋友的測驗結果':'YOUR ROLE'}</div><h3 style="margin:6px 0 0">${friend?'朋友':'你'}是「${q.name}」型</h3><p style="margin:2px 0 0"><b>${q.tag}</b></p><canvas id="qCv" width="720" height="1280"></canvas><div class="st" id="qSt">${friend?'':'正在製作你的分享影片⋯'}</div>${friend?`<div class="shr"><button id="qGo">換我測 →</button></div>`:`<div class="shr"><button id="qShare" disabled>分享影片</button><button class="alt" id="qLink">複製連結</button></div>`}<div class="acts"><button id="mS">${friend?'關閉':'再測一次'}</button><button class="go" id="mN">看這個角色 →</button></div></div></div>`;
  $('mS').onclick=()=>friend?closeModal():quiz();$('mN').onclick=()=>{closeModal();openRole(id)};if(friend)$('qGo').onclick=()=>quiz();
- const cv=$('qCv'),c=cv.getContext('2d'),A=await qVideoAssets(q),D=7,url=QSITE+'#q='+id,txt=`我是「${q.name}」型香燈腳！${q.tag}。你是哪一種？`;let t0=performance.now(),file=null,alive=true;
- const loop=()=>{if(!document.body.contains(cv)){alive=false;return}const t=(performance.now()-t0)/1000;qDraw(c,q,A,friend?t%(D+1.5):Math.min(t,D));requestAnimationFrame(loop)};
- if(!friend){const lk=$('qLink');lk.onclick=async()=>{try{await navigator.clipboard.writeText(txt+' '+url);lk.textContent='已複製 ✓'}catch(e){prompt('複製這段文字分享：',txt+' '+url)}};
-  const types=['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp9','video/webm'],mt=window.MediaRecorder&&cv.captureStream?types.find(x=>MediaRecorder.isTypeSupported(x)):null;
-  const done=()=>{const b=$('qShare');if(!b)return;b.disabled=false;b.textContent=file?'分享影片':'分享';$('qSt').textContent=file?'影片做好了！可以分享到 LINE、IG 限動':'';
-   b.onclick=async()=>{const fileOk=file&&navigator.canShare&&navigator.canShare({files:[file]});try{if(fileOk){await navigator.share({files:[file],title:'我是哪一種香燈腳？',text:txt+' '+url});return}if(navigator.share&&!file){await navigator.share({title:'我是哪一種香燈腳？',text:txt,url});return}}catch(e){if(e&&e.name==='AbortError')return}
-    if(file){const u=URL.createObjectURL(file),a=document.createElement('a');a.href=u;a.download=file.name;document.body.appendChild(a);a.click();a.remove();$('qSt').innerHTML=`影片已下載，再把連結一起貼上分享。<a href="${u}" target="_blank">開啟影片</a>`;try{await navigator.clipboard.writeText(txt+' '+url)}catch(e){}}else lk.click()}};
-  if(mt){try{const stream=cv.captureStream(30),rec=new MediaRecorder(stream,{mimeType:mt,videoBitsPerSecond:4e6}),ch=[];rec.ondataavailable=e=>e.data.size&&ch.push(e.data);rec.onstop=()=>{const ext=mt.includes('mp4')?'mp4':'webm';file=new File(ch,`香燈腳-${q.name}.${ext}`,{type:mt.split(';')[0]});done()};t0=performance.now();rec.start(200);setTimeout(()=>{rec.state!=='inactive'&&rec.stop()},D*1000+300)}catch(e){done()}}else done()}
- loop()}
+ const cv=$('qCv'),c=cv.getContext('2d'),A=await qVideoAssets(q),D=8,url=QSITE+'#q='+id,txt=`我是「${q.name}」型香燈腳！${q.tag}。你是哪一種？`;let file=null,rec=null;
+ const draw=(t,place)=>{if(document.body.contains(cv))qDrawMap(c,q,A,t,place)};
+ const types=['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp9','video/webm'],mt=!friend&&window.MediaRecorder&&cv.captureStream?types.find(x=>MediaRecorder.isTypeSupported(x)):null;
+ const done=()=>{const b=$('qShare');if(!b)return;b.disabled=false;b.textContent=file?'分享影片':'分享';$('qSt').textContent=file?'影片做好了！可以分享到 LINE、IG 限動':'';
+  b.onclick=async()=>{const fileOk=file&&navigator.canShare&&navigator.canShare({files:[file]});try{if(fileOk){await navigator.share({files:[file],title:'我是哪一種香燈腳？',text:txt+' '+url});return}if(navigator.share&&!file){await navigator.share({title:'我是哪一種香燈腳？',text:txt,url});return}}catch(e){if(e&&e.name==='AbortError')return}
+   if(file){const u=URL.createObjectURL(file),a=document.createElement('a');a.href=u;a.download=file.name;document.body.appendChild(a);a.click();a.remove();$('qSt').innerHTML=`影片已下載，再把連結一起貼上分享。<a href="${u}" target="_blank">開啟影片</a>`;try{await navigator.clipboard.writeText(txt+' '+url)}catch(e){}}else $('qLink').click()}};
+ if(!friend){const lk=$('qLink');lk.onclick=async()=>{try{await navigator.clipboard.writeText(txt+' '+url);lk.textContent='已複製 ✓'}catch(e){prompt('複製這段文字分享：',txt+' '+url)}}}
+ if(mt){try{const ch=[];rec=new MediaRecorder(cv.captureStream(30),{mimeType:mt,videoBitsPerSecond:5e6});rec.ondataavailable=e=>e.data.size&&ch.push(e.data);rec.onstop=()=>{const ext=mt.includes('mp4')?'mp4':'webm';file=new File(ch,`香燈腳-${q.name}.${ext}`,{type:mt.split(';')[0]});done()};rec.start(200)}catch(e){rec=null}}
+ const stopClip=qClip(draw,()=>{if(rec&&rec.state!=='inactive')rec.stop();else if(!friend)done()},D);
+ const mo=new MutationObserver(()=>{if(!document.body.contains(cv)){mo.disconnect();stopClip()}});mo.observe(modal,{childList:true});}
 $('quizBtn').onclick=()=>quiz();$('bQuiz').onclick=()=>quiz();$('bHelp').onclick=()=>intro();
 
 /* ================= LOOP ================= */
@@ -840,5 +865,5 @@ let lastF=0;function loop(now){if(innerWidth<=760&&now-lastF<32){requestAnimatio
  {const s=Math.max(7,Math.min(125,cam.dist*.6)),sc=sun.shadow.camera;if(Math.abs(sc.right-s)>s*.04){sc.left=-s;sc.right=s;sc.top=s;sc.bottom=-s;sc.near=1;sc.far=s*7;sc.updateProjectionMatrix()}const q=Math.max(.2,sc.right/8);const tx=Math.round(cam.tx/q)*q,tz=Math.round(cam.tz/q)*q;sun.position.set(tx-sc.right*1.3,sc.right*2.4,tz+sc.right*1.1);sun.target.position.set(tx,0,tz)}
  const g=palq.userData.glow,s=1+Math.sin(now*.005)*.14+Math.min(5,cam.dist/32);{const bm=palq.userData.beam,hh=Math.max(1.2,cam.dist*.05);bm.scale.set(Math.max(1,cam.dist/30),hh,Math.max(1,cam.dist/30));bm.position.y=1.15+hh/2;bm.material.opacity=.22+Math.sin(now*.005)*.1};g.scale.setScalar(s);g.material.opacity=.3+Math.sin(now*.005)*.12;
  blades.forEach((b,i)=>b.rotation.z=now*.002+i);updFX(dt,now);scene.fog.near=cam.dist*1.6+10;scene.fog.far=cam.dist*4+40;const cv=cam.dist>110;clouds.forEach(c=>{c.visible=cv;c.position.x+=c.userData.v;if(c.position.x>60)c.position.x=-60});
- renderer.render(scene,camera);updateLabels();requestAnimationFrame(loop)}
+ renderer.render(scene,camera);qHook&&qHook(dt);updateLabels();requestAnimationFrame(loop)}
 requestAnimationFrame(loop);
