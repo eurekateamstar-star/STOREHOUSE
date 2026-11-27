@@ -3125,8 +3125,6 @@
           <div style="display:${UO ? 'none' : 'flex'}; gap:6px; flex-wrap:wrap; margin-top:8px; padding-top:8px; border-top:1px dashed rgba(0,0,0,.12);">
             <button class="sbtn" id="ev-draw" style="background:linear-gradient(90deg,#D65A68,#F08339);color:#fff;">👥 分組名單・抽籤・簽到表</button>
             ${e.askGroups ? '<button class="sbtn" id="ev-grpb" style="background:#ea580c;color:#fff;">🧩 選組確認</button>' : ''}
-            <button class="sbtn" id="ev-test-add" style="background:#ecfeff;color:#0e7490;">🧪 產生測試回覆（名冊 9 成）</button>
-            ${e.askGroups && rs.some(r => r.src === 'test' && r.attend !== 'no' && !(r.groups || []).length) ? '<button class="sbtn" id="ev-test-grp" style="background:#fff7ed;color:#c2410c;">🧩 幫測試回覆加上選組</button>' : ''}
             ${testN ? `<button class="sbtn" id="ev-test-clear" style="background:#fef2f2;color:#b91c1c;">🧹 清除測試回覆（${testN}）</button>` : ''}</div></div>
         <div class="ev-stats">
           ${e.uniformOnly ? st('all', '已登記', rs.length) + st('none', '名冊中未登記', notYet.length) : `${st('all', '已回覆', rs.length)}${st('yes', '出席', cnt('yes'), 'var(--green)')}${st('join', '不出席但參與進香', cnt('join'), '#b45309')}
@@ -3194,7 +3192,7 @@
         toast('🧩 已加上選組');
       } catch (err) { console.error(err); toast('❌ 失敗'); }
     };
-    $('ev-test-add').onclick = async () => {
+    if ($('ev-test-add')) $('ev-test-add').onclick = async () => {
       if (!e.open) return toast('請先「重新開放」回覆，才能產生測試資料');
       const pool = notYet.slice(); for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
       const pick = pool.slice(0, Math.max(0, Math.round(rosterCache.length * 0.9) - (rosterCache.length - notYet.length)));
