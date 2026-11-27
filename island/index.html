@@ -88,9 +88,11 @@ h4{font-size:11px;color:var(--mute);margin:16px 0 8px;letter-spacing:1px;font-we
 #tools .qbtn{background:linear-gradient(120deg,#ff8db5,#e85a8c);color:#fff;box-shadow:0 6px 18px #e85a8c66;animation:qpulse 2.4s infinite}
 #tools .qbtn .qs{display:none}
 @keyframes qpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
-.qres canvas{width:min(250px,60vw);aspect-ratio:9/16;border-radius:16px;box-shadow:0 10px 30px #0003;display:block;margin:10px auto 0;background:#f6efe4}
+.qres canvas{width:min(250px,60vw,calc((90vh - 420px)*.5625));min-width:150px;aspect-ratio:9/16;border-radius:16px;box-shadow:0 10px 30px #0003;display:block;margin:10px auto 0;background:#f6efe4}
 .qres .shr{display:flex;gap:8px;margin-top:14px}.qres .shr button{flex:1;border-radius:12px;padding:11px 8px;font:700 14px "Noto Sans TC";cursor:pointer;border:none;background:#e85a8c;color:#fff}
 .qres .shr button.alt{background:#fff;color:var(--ink);border:1px solid var(--line)}.qres .shr button:disabled{opacity:.5;cursor:wait}
+.qres .sns{display:flex;gap:8px;margin-top:12px}.qres .sns button{flex:1;border:none;border-radius:12px;padding:10px 4px;font:800 13px "Noto Sans TC";color:#fff;cursor:pointer}.qres .sns button:disabled{opacity:.5;cursor:wait}
+.qres .sns .ln{background:#06c755}.qres .sns .fb{background:#1877f2}.qres .sns .ig{background:linear-gradient(45deg,#f9ce34,#ee2a7b 55%,#6228d7)}
 .qres .st{font-size:12px;color:var(--mute);margin-top:8px;min-height:18px}
 .tabs{display:flex;gap:6px;padding:12px 22px 8px}
 .tabs button{flex:1;padding:10px 0;border-radius:12px;border:1px solid var(--line);background:#fff;font:600 13px "Noto Sans TC";cursor:pointer}
