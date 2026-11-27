@@ -1359,7 +1359,8 @@
     const Q = usQ.data, fbR = Q ? Math.round((Q.reads.byDay || {})[usDay || Q.today] || 0) : null, fbW = Q ? Math.round((Q.writes.byDay || {})[usDay || Q.today] || 0) : null;
     const cf = (k, f) => cfOk(k) ? (usCF.data[k].ok[utc] || {})[f] : null;
     const srv = tot(P.f), browser = fbR != null ? Math.max(0, fbR - srv) : null;
-    const fbWhy = fbR == null ? '讀取中…' : `瀏覽器直接讀 ≈${fmtN(browser)}・伺服器 ${fmtN(srv)}（${topK(P.f, rtL, 2)}）`;
+    const RD = usData ? Object.fromEntries(Object.entries((usData.daily[(usDay || twToday()).replace(/-/g, '')] || {}).f || {}).filter(([k]) => k.startsWith('rd_'))) : {};
+    const fbWhy = fbR == null ? '讀取中…' : `瀏覽器直接讀 ≈${fmtN(browser)}${tot(RD) ? `（${topK(RD, rdL, 3)}）` : ''}・伺服器 ${fmtN(srv)}（${topK(P.f, rtL, 2)}）`;
     const wr = cf('workers', 'requests'), dq = cf('doReq', 'requests'), drr = cf('doRows', 'rowsRead'), dww = cf('doRows', 'rowsWritten');
     const srcC = v => v != null ? 'Cloudflare 官方數字' : '伺服器自己記的（大約）';
     const nextUTC = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate() + 1));
