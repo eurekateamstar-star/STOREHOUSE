@@ -146,8 +146,8 @@ const RITES=[
 ];
 const QUIZ=[
  ['凌晨兩點，媽祖要起駕了，你⋯',[['早就站在最前面等了','touqi'],['默默把鞋帶再綁緊一次','xiangdeng'],['先看直播確認位置再出門','live'],['起來煮一鍋熱湯給大家','snack'],['再檢查一次急救包','gtmed'],['穿上反光背心，到路口指揮','jtz'],['在神前擲筊，確認吉時','zhunian'],['人在北港，開始掛燈籠準備接駕','ctg']]],
- ['岔路口，鑾轎突然往右衝，你⋯',[['我就說是右邊！跟上','touqi'],['不問為什麼，跟著就對了','jiaoban'],['先顧好身上最重要的東西','xiangdan'],['拿起手機回報：轉彎了！','live'],['衝到前面先把路口的車擋住','jtz'],['轉進我家這條巷子了！快開門','host']]],
- ['朋友腳起水泡走不動了，你⋯',[['幫他揹包包，一起慢慢走','jiaoban'],['掏出整包足貼和藥膏','snack'],['蹲下來先幫他處理水泡','gtmed'],['穩穩走自己的，到前面等他','xiangdan'],['請他到我家坐，泡腳喝杯茶','host'],['帶他到廟裡休息，倒杯水','ctg']]],
+ ['岔路口，鑾轎突然往右衝，你⋯',[['我就說是右邊！跟上','touqi'],['不問為什麼，跟著就對了','jiaoban'],['先顧好身上最重要的東西','xiangdan'],['拿起手機回報：轉彎了！','live'],['跟著人潮走，媽祖去哪我去哪','xiangdeng'],['衝到前面先把路口的車擋住','jtz'],['轉進我家這條巷子了！快開門','host']]],
+ ['朋友腳起水泡走不動了，你⋯',[['幫他揹包包，一起慢慢走','jiaoban'],['掏出整包足貼和藥膏','snack'],['蹲下來先幫他處理水泡','gtmed'],['陪他坐下來休息，等等再一起走','xiangdeng'],['穩穩走自己的，到前面等他','xiangdan'],['請他到我家坐，泡腳喝杯茶','host'],['帶他到廟裡休息，倒杯水','ctg']]],
  ['隊伍終於要進北港了，你在哪裡？',[['早就站在朝天宮廟前準備接駕','ctg'],['在中山路口拉好封鎖線','jtz'],['跟在鑾轎旁，盤算刈火的大小事','zhunian'],['在家看直播，想起媽祖停在我家那晚','host'],['擠在人潮裡一起喊「進喔！」','xiangdeng'],['守著香擔，等著刈火','xiangdan']]],
  ['走完這趟，你最想帶回家的是⋯',[['第一個衝進廟門的那一刻','touqi'],['肩膀上的重量','jiaoban'],['那把沒有熄過的火','xiangdan'],['一路上陌生人給的那瓶水','snack'],['八天的截圖和定位紀錄','live'],['安靜下來的自己','xiangdeng'],['每個人都平安到家','gtmed'],['擲出的那三個聖筊','zhunian']]]
 ];
@@ -780,16 +780,17 @@ const INTRO=[['每座島是媽祖停過的地方','從苗栗白沙屯到雲林�
  ['路線由媽祖決定','白沙屯媽祖進香沒有固定路線。靠近看，橘色衣服的是醫護團。右側有行程、人物、儀式、數據四個分頁，也可以測測你是哪一種香燈腳。']];
 function intro(i=0){modal.innerHTML=`<div class="modal"><div class="box"><div class="kick">HELLO, PILGRIM / 0${i+1}</div><h3>${INTRO[i][0]}</h3><p>${INTRO[i][1]}</p><div class="dots">${INTRO.map((_,k)=>`<i class="${k===i?'on':''}"></i>`).join('')}</div><div class="acts"><button id="mS">略過</button><button class="go" id="mN">${i===2?'開始走 →':'下一步 →'}</button></div></div></div>`;
  $('mS').onclick=closeModal;$('mN').onclick=()=>i<2?intro(i+1):closeModal()}
-function quiz(i=0,score={}){if(i>=QUIZ.length){const id=Object.entries(score).sort((a,b)=>b[1]-a[1])[0][0];quizResult(id);return}
+function quiz(i=0,score={}){if(i>=QUIZ.length){const sc={...score};sc.xiangdeng=(sc.xiangdeng||0)+.6;const top=Object.entries(sc).sort((a,b)=>b[1]-a[1])[0];const id=top[1]<2&&Math.random()<.6?'xiangdeng':top[0];quizResult(id);return}
  modal.innerHTML=`<div class="modal"><div class="box"><div class="kick">QUESTION ${i+1} / ${QUIZ.length}</div><h3>${QUIZ[i][0]}</h3>${QUIZ[i][1].map(([t,r])=>`<button class="opt" data-r="${r}">${t}</button>`).join('')}<div class="acts"><button id="mS">關閉</button><span></span></div></div></div>`;
  $('mS').onclick=closeModal;modal.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{const s={...score};s[b.dataset.r]=(s[b.dataset.r]||0)+1+i*.01;quiz(i+1,s)})}
 
 const QSITE=/pages\.dev$/.test(location.hostname)?location.origin+location.pathname:'https://tsushin-buishatun.pages.dev/island/';
+const XDV=['全副武裝女香燈腳','攝影大哥','外國背包客','斗笠阿伯','騎車來的香燈腳','粉紅小資女','穿海青的師姐','小小香燈腳','全副武裝男香燈腳'];
 const QFULL={touqi:'touqi',jiaoban:'bearer',xiangdeng:'pilm',snack:'snack',gtmed:'medm',live:'pass'};
 function qImg(src){return new Promise(r=>{const im=new Image();im.onload=()=>r(im);im.onerror=()=>r(null);im.src=src})}
 function qWrap(c,t,maxW){const out=[];let line='';for(const ch of t){if(c.measureText(line+ch).width>maxW&&line){if('，。、！？」』）'.includes(ch)){line+=ch;continue}out.push(line);line=ch}else line+=ch}if(line)out.push(line);return out}
 async function qVideoAssets(q){try{await Promise.all(['900 64px "Noto Serif TC"','700 30px "Noto Sans TC"','500 26px "Noto Sans TC"'].map(f=>document.fonts.load(f,'白沙屯香燈腳')))}catch(e){}
- const full=QFULL[q.id]?await qImg('img/'+QFULL[q.id]+'.webp'):null,head=await qImg('img/h_'+(AVI[q.id]||'pilm')+'.webp');return{full,head}}
+ const full=QFULL[q.id]?await qImg('img/'+QFULL[q.id]+'.webp'):null,head=await qImg(q.xv?'img/h_xd'+q.xv+'.webp':'img/h_'+(AVI[q.id]||'pilm')+'.webp');return{full,head}}
 function qDraw(c,q,A,t){const W=720,H=1280,E=x=>x<0?0:x>1?1:x,eo=x=>1-Math.pow(1-E(x),3),bk=x=>{x=E(x);const k=1.7;return 1+(k+1)*Math.pow(x-1,3)+k*Math.pow(x-1,2)};
  c.fillStyle='#f6efe4';c.fillRect(0,0,W,H);c.fillStyle='#e6d8c4';for(let y=12;y<H;y+=28)for(let x=12;x<W;x+=28){c.beginPath();c.arc(x,y,1.6,0,7);c.fill()}
  // footprints walking along bottom
@@ -823,7 +824,7 @@ function qDrawMap(c,q,A,t,place){const W=720,H=1280,E=x=>x<0?0:x>1?1:x,eo=x=>1-M
   c.save();c.translate(0,(1-bk(bt))*260);const cx=W/2,cy=H-330;c.fillStyle='#fff';c.shadowColor='#0006';c.shadowBlur=24;c.beginPath();c.arc(cx,cy-70,86,0,7);c.fill();c.shadowBlur=0;c.save();c.beginPath();c.arc(cx,cy-70,78,0,7);c.clip();c.fillStyle=q.bg;c.fillRect(cx-80,cy-150,160,160);if(A.head){const s2=156/Math.max(A.head.width,A.head.height)*1.05;c.drawImage(A.head,cx-A.head.width*s2/2,cy-148,A.head.width*s2,A.head.height*s2)}c.restore();
   const tx='你是「'+q.name+'」型';c.font='900 52px "Noto Serif TC"';const fz=Math.min(52,52*620/c.measureText(tx).width);c.font='900 '+fz+'px "Noto Serif TC"';const tw=c.measureText(tx).width+56;const st=(t-1.4)/.4,sc=st<=0?0:st<1?2-bk(st):1;
   if(sc>0){c.save();c.translate(cx,cy+60);c.scale(sc,sc);c.rotate(-.04);c.fillStyle='#e85a8c';c.beginPath();c.roundRect(-tw/2,-46,tw,80,20);c.fill();c.fillStyle='#fff';c.textAlign='center';c.fillText(tx,0,10);c.restore()}
-  c.textAlign='center';c.globalAlpha=E((t-1.9)/.5);c.fillStyle='#fff';c.font='700 30px "Noto Sans TC"';c.fillText(q.em+' '+q.tag,cx,cy+150);c.restore()}
+  c.textAlign='center';c.globalAlpha=E((t-1.9)/.5);c.fillStyle='#fff';c.font='700 30px "Noto Sans TC"';c.fillText(q.em+' '+(q.vname?q.vname+'・':'')+q.tag,cx,cy+150);c.restore()}
  // confetti
  if(t>1.5){const cols=['#e85a8c','#f7d21a','#f47b20','#3f9a7a','#4a7fc1','#ffb3cc'];for(let i=0;i<60;i++){const s0=hash(i,3),s1=hash(i,7),t2=t-1.5-s0*.6;if(t2<0)continue;const x=W*s1+Math.sin(t2*3+i)*30,y=-20+t2*(260+s0*220);if(y>H)continue;c.save();c.translate(x,y);c.rotate(t2*6*(s1-.5));c.fillStyle=cols[i%6];c.fillRect(-7,-4,14,8);c.restore()}}
  const ft=(t-2.4)/.5;if(ft>0){c.save();c.globalAlpha=E(ft);c.textAlign='center';c.fillStyle='#fff';c.font='900 32px "Noto Serif TC"';c.fillText('進香島｜白沙屯 → 北港',W/2,H-78);c.font='600 22px "Noto Sans TC"';c.fillStyle='#ffc2d6';c.fillText('你也來測測看 → '+QSITE.replace(/^https?:\/\//,''),W/2,H-40);c.restore()}
@@ -834,10 +835,10 @@ function qClip(onFrame,onEnd,D){const sv={prog,playing,following,me,goal:{...goa
  const place=($('now').querySelector('b').textContent||'').split('・')[0];let t=0,ended=false;
  const end=()=>{if(ended)return;ended=true;qHook=null;qY=0;playing=sv.playing;playBtn.textContent=playing?'❚❚':'▶';setProg(sv.prog);me=sv.me;following=sv.following;setBtn();Object.assign(goal,sv.goal);Object.assign(cam,sv.cam);onEnd&&onEnd()};
  const T0=performance.now();qHook=dt=>{t=(performance.now()-T0)/1000;goal.az+=dt*.12;qY+=(mePos().y+.25-qY)*.1;if(t>=D){onFrame(D,place);end();return}onFrame(t,place)};return end}
-async function quizResult(id,friend){const q=PEOPLE.find(p=>p.id===id);if(!q)return;
- modal.innerHTML=`<div class="modal"><div class="box qres" style="text-align:center"><div class="kick">${friend?'朋友的測驗結果':'YOUR ROLE'}</div><h3 style="margin:6px 0 0">${friend?'朋友':'你'}是「${q.name}」型</h3><p style="margin:2px 0 0"><b>${q.tag}</b></p><canvas id="qCv" width="720" height="1280"></canvas><div class="st" id="qSt">${friend?'':'正在製作你的分享影片⋯'}</div>${friend?`<div class="shr"><button id="qGo">換我測 →</button></div>`:`<div class="shr"><button id="qShare" disabled>分享影片</button><button class="alt" id="qLink">複製連結</button></div>`}<div class="acts"><button id="mS">${friend?'關閉':'再測一次'}</button><button class="go" id="mN">看這個角色 →</button></div></div></div>`;
+async function quizResult(id,friend,v){let q=PEOPLE.find(p=>p.id===id);if(!q)return;if(id==='xiangdeng'){v=v>=1&&v<=XDV.length?v:1+Math.floor(Math.random()*XDV.length);q={...q,xv:v,vname:XDV[v-1]}}else v=0;
+ modal.innerHTML=`<div class="modal"><div class="box qres" style="text-align:center"><div class="kick">${friend?'朋友的測驗結果':'YOUR ROLE'}</div><h3 style="margin:6px 0 0">${friend?'朋友':'你'}是「${q.name}」型</h3><p style="margin:2px 0 0"><b>${q.vname?q.vname+'・':''}${q.tag}</b></p><canvas id="qCv" width="720" height="1280"></canvas><div class="st" id="qSt">${friend?'':'正在製作你的分享影片⋯'}</div>${friend?`<div class="shr"><button id="qGo">換我測 →</button></div>`:`<div class="shr"><button id="qShare" disabled>分享影片</button><button class="alt" id="qLink">複製連結</button></div>`}<div class="acts"><button id="mS">${friend?'關閉':'再測一次'}</button><button class="go" id="mN">看這個角色 →</button></div></div></div>`;
  $('mS').onclick=()=>friend?closeModal():quiz();$('mN').onclick=()=>{closeModal();openRole(id)};if(friend)$('qGo').onclick=()=>quiz();
- const cv=$('qCv'),c=cv.getContext('2d'),A=await qVideoAssets(q),D=8,url=QSITE+'#q='+id,txt=`我是「${q.name}」型香燈腳！${q.tag}。你是哪一種？`;let file=null,rec=null,pic=null;
+ const cv=$('qCv'),c=cv.getContext('2d'),A=await qVideoAssets(q),D=8,url=QSITE+'#q='+id+(q.xv?'-'+q.xv:''),txt=q.vname?`我是「${q.vname}」型香燈腳！${q.tag}。你是哪一種？`:`我是「${q.name}」型香燈腳！${q.tag}。你是哪一種？`;let file=null,rec=null,pic=null;
  let picReq=false;const mkPic=()=>{picReq=true;const pb=$('qPic');if(!pb)return;try{cv.toBlob(bl=>{if(bl){pic=new File([bl],`香燈腳-${q.name}.png`,{type:'image/png'});pb.disabled=false}},'image/png')}catch(e){pb.disabled=false}};const draw=(t,place)=>{if(document.body.contains(cv)){qDrawMap(c,q,A,t,place);if(t>3.3&&!picReq)mkPic()}};
  const types=['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp9','video/webm'],mt=!friend&&window.MediaRecorder&&cv.captureStream?types.find(x=>MediaRecorder.isTypeSupported(x)):null;
  const done=()=>{const b=$('qShare');if(!b)return;b.disabled=false;b.textContent=file?'分享影片':'分享';$('qSt').textContent=file?'影片做好了！按分享時會一併複製文字和連結':'';
@@ -853,7 +854,7 @@ $('quizBtn').onclick=()=>quiz();$('bQuiz').onclick=()=>quiz();$('bHelp').onclick
 
 /* ================= LOOP ================= */
 function resize(){const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix()}
-addEventListener('resize',resize);resize();render();overview();Object.assign(cam,goal);cam.dist=goal.dist*1.35;setProg(0);paintDays();{const m=location.hash.match(/^#q=(\w+)/);m&&PEOPLE.some(p=>p.id===m[1])?quizResult(m[1],true):intro()}requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(()=>{const sp=document.getElementById('splash');sp.classList.add('out');setTimeout(()=>sp.remove(),900)},Math.max(400,3100-performance.now()))));
+addEventListener('resize',resize);resize();render();overview();Object.assign(cam,goal);cam.dist=goal.dist*1.35;setProg(0);paintDays();{const m=location.hash.match(/^#q=([a-z0-9]+)(?:-(\d+))?/);m&&PEOPLE.some(p=>p.id===m[1])?quizResult(m[1],true,+m[2]||0):intro()}requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(()=>{const sp=document.getElementById('splash');sp.classList.add('out');setTimeout(()=>sp.remove(),900)},Math.max(400,3100-performance.now()))));
 window.__app={flag,dan,GONGP,get cer(){return cer},pickAt:(x,y)=>pick(x,y),palq,camera,PATCH,FSC,tags,ptAt,ROUTE,PL,scene,dbg:()=>[frontOn,leadMoving,FXS.filter(f=>f.mode==='smoke').map(f=>[f.pts.visible,f.c.x,f.c.y])],get bigMode(){return bigMode},goal,uQ,get cer(){return cer},uA,uC,setMe,whoOf,openPlace,openRole,goDay,setProg,quiz,closeModal,play:()=>playBtn.onclick(),get palqY(){return palq.position.y}};
 let bgWas=false,lodN=0,last=performance.now(),frame=0,wasWalk=false;
 let lastF=0;function loop(now){if(innerWidth<=760&&now-lastF<32){requestAnimationFrame(loop);return}lastF=now;const dt=Math.min(.05,(now-last)/1000);last=now;
