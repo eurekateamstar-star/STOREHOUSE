@@ -181,8 +181,8 @@ h4{font-size:11px;color:var(--mute);margin:16px 0 8px;letter-spacing:1px;font-we
 html{background:#f6efe4}
 #splash{position:fixed;inset:0;z-index:999;overflow:hidden;background:#f6efe4;background-image:radial-gradient(#e6d8c4 1px,transparent 1px);background-size:18px 18px;transition:opacity .9s ease,visibility .9s;font-family:"Noto Serif TC","Songti TC",serif}
 #splash.out{opacity:0;visibility:hidden}
-#splash .g-map{position:absolute;left:50%;top:54%;transform:translate(-50%,-50%);width:min(88vw,420px);height:min(66vh,560px);opacity:0;animation:gfade .6s .2s forwards}
-#splash .g-map svg{width:100%;height:100%;display:block}
+#splash .g-map{position:absolute;left:50%;top:54%;transform:translate(-50%,-50%);width:min(84vw,calc(64vh*.8),440px);aspect-ratio:4/5;height:auto;opacity:0;animation:gfade .6s .2s forwards}
+#splash .g-map video{width:100%;height:100%;display:block;object-fit:cover;border-radius:28px;box-shadow:0 14px 34px #6a4a3040;background:#bfe3f2}
 
 #runCap{position:fixed;left:50%;top:18%;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:10px;background:#fffdf8ee;border-radius:999px;padding:8px 10px 8px 18px;box-shadow:0 8px 24px #0002;font:900 18px "Noto Serif TC";color:#3a2620;transition:opacity .5s}
 #runCap span{color:#e85a8c}#runCap b{min-width:6em}#runCap span{font:800 13px ui-monospace,monospace;background:#e85a8c;color:#fff;border-radius:999px;padding:3px 9px}#runCap button{border:none;background:#3a2620;color:#fff;border-radius:999px;padding:6px 12px;font:700 12px "Noto Sans TC";cursor:pointer}
@@ -208,29 +208,7 @@ html{background:#f6efe4}
 <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" as="script"><link rel="preload" href="app.js" as="script">
 </head>
 <body>
-<div id="splash"><div class="g-ttl"><h1>進香島</h1><p>BAISHATUN → BEIGANG · 2026</p></div><div class="g-map"><svg viewBox="0 0 400 520" preserveAspectRatio="xMidYMid meet">
-<defs><pattern id="gw" width="14" height="14" patternUnits="userSpaceOnUse"><path d="M0 7q3.5-4 7 0t7 0" fill="none" stroke="#a9d3e6" stroke-width="1.4"/></pattern>
-<clipPath id="gclip"><rect width="400" height="520" rx="26"/></clipPath><filter id="gsh"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#6a4a30" flood-opacity=".25"/></filter></defs>
-<g clip-path="url(#gclip)"><rect width="400" height="520" rx="26" fill="#cfe9f3"/><rect width="400" height="520" rx="26" fill="url(#gw)" opacity=".7"/>
-<path d="M188 0 C176 60 196 110 172 170 C150 230 176 280 160 330 C146 380 172 430 166 520 L400 520 L400 0Z" fill="#f3e6c8" filter="url(#gsh)"/>
-<path d="M200 0 C190 60 208 110 186 170 C166 230 190 280 176 330 C162 380 186 430 180 520 L400 520 L400 0Z" fill="#cfe3a6"/>
-<path d="M260 0 C250 80 300 140 280 220 C262 300 320 360 300 520 L400 520 L400 0Z" fill="#b9d88f"/>
-<path d="M330 0 C320 120 372 200 350 300 C336 380 380 440 372 520 L400 520 L400 0Z" fill="#9cc47a"/>
-<g fill="none" stroke="#8fc6e0" stroke-width="3" stroke-linecap="round"><path d="M188 120 q40 10 90 -6 t110 4"/><path d="M178 250 q50 12 110 -4 t120 8"/><path d="M170 390 q46 -10 100 6 t130 -6"/></g>
-</g><g fill="#7aa95a"><circle cx="300" cy="60" r="9"/><circle cx="312" cy="66" r="7"/><circle cx="350" cy="180" r="10"/><circle cx="290" cy="330" r="8"/><circle cx="340" cy="420" r="11"/><circle cx="352" cy="428" r="7"/><circle cx="250" cy="470" r="8"/></g>
-<path id="gR" d="M214 52 C236 90 206 126 226 160 C246 196 214 230 230 266 C246 302 214 336 230 372 C242 404 222 436 236 468 C252 486 272 480 270 462 C266 430 254 404 262 372 C272 334 246 302 262 266 C276 230 244 196 262 160 C278 126 246 92 262 62 C258 40 226 38 214 52Z" fill="none" stroke="#e85a8c" stroke-width="5" stroke-linecap="round" stroke-dasharray="2 9" opacity=".35"/>
-<path id="gT" d="M214 52 C236 90 206 126 226 160 C246 196 214 230 230 266 C246 302 214 336 230 372 C242 404 222 436 236 468 C252 486 272 480 270 462 C266 430 254 404 262 372 C272 334 246 302 262 266 C276 230 244 196 262 160 C278 126 246 92 262 62 C258 40 226 38 214 52Z" fill="none" stroke="#e85a8c" stroke-width="5" stroke-linecap="round"/>
-<g font-family="Noto Serif TC,serif" font-weight="900" fill="#3a2620"><g transform="translate(150 50)"><rect x="-38" y="-16" width="76" height="28" rx="14" fill="#fff" filter="url(#gsh)"/><text text-anchor="middle" y="5" font-size="15">白沙屯</text></g>
-<g transform="translate(320 478)"><rect x="-32" y="-16" width="64" height="28" rx="14" fill="#fff" filter="url(#gsh)"/><text text-anchor="middle" y="5" font-size="15">北港</text></g>
-<text x="60" y="270" font-size="13" fill="#6aa3c0" letter-spacing="6">臺灣海峽</text></g>
-<circle cx="214" cy="52" r="7" fill="#e85a8c" stroke="#fff" stroke-width="3"/><circle cx="268" cy="474" r="7" fill="#e85a8c" stroke="#fff" stroke-width="3"/>
-<g id="gP"><ellipse cx="0" cy="22" rx="30" ry="6" fill="#3a2620" opacity=".18"/>
-<g id="gPb"><image href="img/bearer.webp" x="-34" y="-12" width="30" height="32"/><image href="img/bearer.webp" x="4" y="-12" width="30" height="32"/>
-<image id="gPq" href="img/pink.webp" x="-21" y="-40" width="42" height="45"/><image href="img/bearer.webp" x="-30" y="-2" width="30" height="32"/><image href="img/bearer.webp" x="2" y="-2" width="30" height="32"/></g></g>
-</svg></div><div class="g-bar">媽祖起駕中<div><i></i></div></div><script>(()=>{const R=document.getElementById('gR'),T=document.getElementById('gT'),P=document.getElementById('gP'),B=document.getElementById('gPb');if(!R)return;const L=R.getTotalLength(),D=4200;T.style.strokeDasharray=L;T.style.strokeDashoffset=L;let t0=null,px=0;
-const f=now=>{if(!document.getElementById('gP'))return;if(t0==null)t0=now;const k=((now-t0)%D)/D,e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2,p=R.getPointAtLength(e*L),q=R.getPointAtLength(Math.min(L,e*L+2));
-const dir=q.x<p.x-.05?-1:q.x>p.x+.05?1:(px||1);px=dir;const bob=Math.abs(Math.sin(now/90))*-3;P.setAttribute('transform',`translate(${p.x} ${p.y-12}) scale(1.45)`);B.setAttribute('transform',`translate(0 ${bob}) scale(${dir} 1)`);
-T.style.strokeDashoffset=L*(1-e);requestAnimationFrame(f)};requestAnimationFrame(f)})()</script></div>
+<div id="splash"><div class="g-ttl"><h1>進香島</h1><p>BAISHATUN → BEIGANG · 2026</p></div><div class="g-map"><video src="img/intro.mp4" poster="img/intro_poster.webp" autoplay muted playsinline loop preload="auto"></video></div><div class="g-bar">媽祖起駕中<div><i></i></div></div></div>
 <div id="stage"><div id="labels"></div></div>
 <div id="brand"><div class="big">進香島<small>BAISHATUN → BEIGANG</small></div><div class="sub">白沙屯 → 北港<span>2026 丙午年 · 8 天 7 夜</span></div></div>
 <div id="tools">
