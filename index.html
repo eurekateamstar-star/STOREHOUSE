@@ -2134,7 +2134,8 @@
     // 名冊文件 ID = SHA-256(身分證|生日)；姓名也要相符、且尚未被別的 LINE 綁定，才算驗證通過
     const ROSTER = 'member_roster';
     const _normId = s => String(s || '').replace(/\s+/g, '').toUpperCase();
-    const _normName = s => String(s || '').replace(/[\s　]+/g, '');
+    const _NV = {'顔':'顏','峯':'峰','羣':'群','裏':'裡','衞':'衛','説':'說','内':'內','吴':'吳','呉':'吳','黄':'黃','庄':'莊','粧':'妝','綫':'線','増':'增','徳':'德','恵':'惠','栄':'榮','沢':'澤','浜':'濱','斉':'齊','斎':'齋','国':'國','竜':'龍','亜':'亞','麗':'麗','嶋':'島','嶌':'島','隆':'隆','涼':'涼','稲':'稻','塩':'鹽','晋':'晉','戸':'戶','冨':'富','煕':'熙','凛':'凜','姫':'姬','槇':'槙','真':'眞'};   // 異體字（例：顔／顏）當成同一個字
+    const _normName = s => String(s || '').normalize('NFKC').replace(/[\s\u3000\u200b-\u200f\ufeff]+/g, '').replace(/./g, c => _NV[c] || c);
     async function rosterKey(idCard, bday) {
         const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${_normId(idCard)}|${bday || ''}`));
         return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');

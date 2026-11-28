@@ -582,7 +582,8 @@ async function fsList(tok, path) {
        if (!r.ok) throw new Error('list ' + path); const j = await r.json(); out = out.concat(j.documents || []); pt = j.nextPageToken || ''; } while (pt);
   return out.map(d => ({ id: d.name.split('/').pop(), ...fobj(d.fields) }));
 }
-const normName = s => String(s || '').replace(/[\s　]+/g, '');
+const NV = {'顔':'顏','峯':'峰','羣':'群','裏':'裡','衞':'衛','説':'說','内':'內','吴':'吳','呉':'吳','黄':'黃','庄':'莊','粧':'妝','綫':'線','増':'增','徳':'德','恵':'惠','栄':'榮','沢':'澤','浜':'濱','斉':'齊','斎':'齋','国':'國','竜':'龍','亜':'亞','麗':'麗','嶋':'島','嶌':'島','隆':'隆','涼':'涼','稲':'稻','塩':'鹽','晋':'晉','戸':'戶','冨':'富','煕':'熙','凛':'凜','姫':'姬','槇':'槙','真':'眞'};   // 異體字（例：顔／顏）當成同一個字
+const normName = s => String(s || '').normalize('NFKC').replace(/[\s\u3000\u200b-\u200f\ufeff]+/g, '').replace(/./g, c => NV[c] || c);
 const SLOTS = ['前', '中', '後'];
 const slotTargets = n => { const b = Math.floor(n / 3), m = n % 3; return { 前: b, 中: b + (m >= 2 ? 1 : 0), 後: b + (m >= 1 ? 1 : 0) }; };
 // 有開選組：指揮官、車輛組組長、確認在車輛組的人 → 指揮官及汽機車組（要跟團員專區的 carSet 一樣）
